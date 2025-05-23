@@ -15,7 +15,7 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::block::{Block, BlockGraphStatus};
 use massa_models::block_id::BlockId;
-use massa_models::config::{CompactConfig, BLOCK_REWARD_V1};
+use massa_models::config::CompactConfig;
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 use massa_models::operation::{OperationId, SecureShareOperation};
@@ -915,7 +915,7 @@ pub(crate) fn get_status(
     grpc: &MassaPublicGrpc,
     _request: tonic::Request<grpc_api::GetStatusRequest>,
 ) -> Result<grpc_api::GetStatusResponse, GrpcError> {
-    let mut config = CompactConfig::default();
+    let config = CompactConfig::default();
     let now = MassaTime::now();
     let last_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
@@ -948,9 +948,6 @@ pub(crate) fn get_status(
     let state = grpc.execution_controller.query_state(empty_request);
 
     let current_mip_version = grpc.keypair_factory.mip_store.get_network_version_current();
-    if current_mip_version > 0 {
-        config.block_reward = BLOCK_REWARD_V1;
-    }
 
     let status = grpc_model::PublicStatus {
         node_id: grpc.node_id.to_string(),
@@ -1008,14 +1005,11 @@ pub(crate) fn query_state(
         return Err(GrpcError::InvalidArgument(format!("too many query items received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_query_items_per_request)));
     }
 
-    let current_version = grpc.keypair_factory.mip_store.get_network_version_current();
-
     let queries = queries
         .into_iter()
         .map(|q| {
             to_querystate_filter(
                 q,
-                current_version,
                 grpc.grpc_config.max_datastore_keys_queries,
                 grpc.grpc_config.max_datastore_key_length,
             )

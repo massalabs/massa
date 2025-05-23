@@ -39,7 +39,7 @@ use massa_models::{
     block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
-    config::{CompactConfig, BLOCK_REWARD_V1},
+    config::CompactConfig,
     datastore::{cleanup_datastore_key_range_query, DatastoreDeserializer},
     deferred_calls::DeferredCallId,
     endorsement::{EndorsementId, SecureShareEndorsement},
@@ -457,7 +457,7 @@ impl MassaRpcServer for API<Public> {
         let api_settings = self.0.api_settings.clone();
         let protocol_config = self.0.protocol_config.clone();
         let node_id = self.0.node_id;
-        let mut config = CompactConfig::default();
+        let config = CompactConfig::default();
         let now = MassaTime::now();
 
         let current_mip_version = self
@@ -465,10 +465,6 @@ impl MassaRpcServer for API<Public> {
             .keypair_factory
             .mip_store
             .get_network_version_current();
-
-        if current_mip_version > 0 {
-            config.block_reward = BLOCK_REWARD_V1;
-        }
 
         let last_slot_result = get_latest_block_slot_at_timestamp(
             api_settings.thread_count,
@@ -1226,16 +1222,6 @@ impl MassaRpcServer for API<Public> {
         &self,
         req: Vec<DeferredCallsQuoteRequest>,
     ) -> RpcResult<Vec<DeferredCallsQuoteResponse>> {
-        let current_network_version = self
-            .0
-            .keypair_factory
-            .mip_store
-            .get_network_version_current();
-
-        if current_network_version < 1 {
-            return Err(ApiError::NotFound.into());
-        }
-
         if req.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
@@ -1281,16 +1267,6 @@ impl MassaRpcServer for API<Public> {
         &self,
         arg: Vec<String>,
     ) -> RpcResult<Vec<DeferredCallResponse>> {
-        let current_network_version = self
-            .0
-            .keypair_factory
-            .mip_store
-            .get_network_version_current();
-
-        if current_network_version < 1 {
-            return Err(ApiError::NotFound.into());
-        }
-
         if arg.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
@@ -1331,16 +1307,6 @@ impl MassaRpcServer for API<Public> {
         &self,
         slots: Vec<Slot>,
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
-        let current_network_version = self
-            .0
-            .keypair_factory
-            .mip_store
-            .get_network_version_current();
-
-        if current_network_version < 1 {
-            return Err(ApiError::NotFound.into());
-        }
-
         if slots.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }

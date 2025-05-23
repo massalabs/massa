@@ -123,6 +123,5 @@ massa_versioning = { workspace = true, "features" = ["test-exports"] }
 tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }
-assert_matches = { workspace = true }
 massa_event_cache = { workspace = true, features = ["test-exports"] }
 regex = { workspace = true }

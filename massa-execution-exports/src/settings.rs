@@ -43,10 +43,8 @@ pub struct ExecutionConfig {
     pub genesis_timestamp: MassaTime,
     /// period duration
     pub t0: MassaTime,
-    /// block creation reward (v0)
-    pub block_reward_v0: Amount,
-    /// block creation reward (v1)
-    pub block_reward_v1: Amount,
+    /// block creation reward
+    pub block_reward: Amount,
     /// operation validity period
     pub operation_validity_period: u64,
     /// endorsement count
@@ -96,7 +94,7 @@ pub struct ExecutionConfig {
     /// max size of event data, in bytes
     pub max_event_size_v0: usize,
     /// max size of event data, in bytes
-    pub max_event_size_v1: usize,
+    pub max_event_size: usize,
     /// chain id
     pub chain_id: u64,
     /// whether slot execution traces broadcast is enabled

@@ -257,20 +257,15 @@ impl Interface for InterfaceImpl {
     }
 
     fn get_interface_version(&self) -> Result<u32> {
-        let context = context_guard!(self);
-        Ok(context.execution_component_version)
+        bail!("get_interface_version has been called but no versioning is in progress")
     }
 
     fn increment_recursion_counter(&self) -> Result<()> {
-        let execution_component_version = self.get_interface_version()?;
-
         let mut context = context_guard!(self);
 
         context.recursion_counter += 1;
 
-        if execution_component_version > 0
-            && context.recursion_counter > self.config.max_recursive_calls_depth
-        {
+        if context.recursion_counter > self.config.max_recursive_calls_depth {
             return Err(InterfaceError::DepthError(
                 "recursion depth limit reached".to_string(),
             ));
@@ -1026,23 +1021,14 @@ impl Interface for InterfaceImpl {
         signature_: &[u8],
         public_key_: &[u8],
     ) -> Result<bool> {
-        let execution_component_version = self.get_interface_version()?;
-
         // check the signature length
         if signature_.len() != 65 {
             return Err("invalid signature length in evm_signature_verify".into());
         }
 
         // parse the public key
-        let public_key = match execution_component_version {
-            0 => libsecp256k1::PublicKey::parse_slice(
-                public_key_,
-                Some(libsecp256k1::PublicKeyFormat::Raw),
-            )
-            .map_err(|e| e.to_string())?,
-            _ => libsecp256k1::PublicKey::parse_slice(public_key_, None)
-                .map_err(|e| e.to_string())?,
-        };
+        let public_key =
+            libsecp256k1::PublicKey::parse_slice(public_key_, None).map_err(|e| e.to_string())?;
 
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
@@ -1059,68 +1045,34 @@ impl Interface for InterfaceImpl {
         let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])
             .map_err(|e| e.to_string())?;
 
-        if execution_component_version != 0 {
-            let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])
-                .map_err(|e| e.to_string())?
-                .into();
-            // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
-            //       restrict to only 27 & 28 (=> 0 & 1)
-            if recovery_id != 0 && recovery_id != 1 {
-                // Note:
-                // The v value in an EVM signature serves as a recovery ID,
-                // aiding in the recovery of the public key from the signature.
-                // Typically, v should be either 27 or 28
-                // (or sometimes 0 or 1, depending on the implementation).
-                // Ensuring that v is within the expected range is crucial
-                // for correctly recovering the public key.
-                // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
-                return Err(
-                    "invalid recovery id value (v = {recovery_id}) in evm_signature_verify".into(),
-                );
-            }
-
+        let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])
+            .map_err(|e| e.to_string())?
+            .into();
+        // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
+        //       restrict to only 27 & 28 (=> 0 & 1)
+        if recovery_id != 0 && recovery_id != 1 {
             // Note:
-            // The s value in an EVM signature should be in the lower half of the elliptic curve
-            // in order to prevent malleability attacks.
-            // If s is in the high-order range, it can be converted to its low-order equivalent,
-            // which should be enforced during signature verification.
-            if signature.s.is_high() {
-                return Err(
-                    "High-Order s Value are prohibited in evm_get_pubkey_from_signature".into(),
-                );
-            }
+            // The v value in an EVM signature serves as a recovery ID,
+            // aiding in the recovery of the public key from the signature.
+            // Typically, v should be either 27 or 28
+            // (or sometimes 0 or 1, depending on the implementation).
+            // Ensuring that v is within the expected range is crucial
+            // for correctly recovering the public key.
+            // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
+            return Err(
+                "invalid recovery id value (v = {recovery_id}) in evm_signature_verify".into(),
+            );
         }
 
-        if execution_component_version != 0 {
-            let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])
-                .map_err(|e| e.to_string())?
-                .into();
-            // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
-            //       restrict to only 27 & 28 (=> 0 & 1)
-            if recovery_id != 0 && recovery_id != 1 {
-                // Note:
-                // The v value in an EVM signature serves as a recovery ID,
-                // aiding in the recovery of the public key from the signature.
-                // Typically, v should be either 27 or 28
-                // (or sometimes 0 or 1, depending on the implementation).
-                // Ensuring that v is within the expected range is crucial
-                // for correctly recovering the public key.
-                // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
-                return Err(
-                    "invalid recovery id value (v = {recovery_id}) in evm_signature_verify".into(),
-                );
-            }
-
-            // Note:
-            // The s value in an EVM signature should be in the lower half of the elliptic curve
-            // in order to prevent malleability attacks.
-            // If s is in the high-order range, it can be converted to its low-order equivalent,
-            // which should be enforced during signature verification.
-            if signature.s.is_high() {
-                return Err(
-                    "High-Order s Value are prohibited in evm_get_pubkey_from_signature".into(),
-                );
-            }
+        // Note:
+        // The s value in an EVM signature should be in the lower half of the elliptic curve
+        // in order to prevent malleability attacks.
+        // If s is in the high-order range, it can be converted to its low-order equivalent,
+        // which should be enforced during signature verification.
+        if signature.s.is_high() {
+            return Err(
+                "High-Order s Value are prohibited in evm_get_pubkey_from_signature".into(),
+            );
         }
 
         // verify the signature
@@ -1135,27 +1087,11 @@ impl Interface for InterfaceImpl {
     /// Get an EVM address from a raw secp256k1 public key (64 bytes).
     /// Address is the last 20 bytes of the hash of the public key.
     fn evm_get_address_from_pubkey(&self, public_key_: &[u8]) -> Result<Vec<u8>> {
-        let execution_component_version = self.get_interface_version()?;
-
-        let hash = match execution_component_version {
-            0 => {
-                // parse the public key
-                let public_key = libsecp256k1::PublicKey::parse_slice(
-                    public_key_,
-                    Some(libsecp256k1::PublicKeyFormat::Raw),
-                )
-                .map_err(|e| e.to_string())?;
-                // compute the hash of the public key
-                sha3::Keccak256::digest(public_key.serialize())
-            }
-            _ => {
-                // parse the public key
-                let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)
-                    .map_err(|e| e.to_string())?;
-                // compute the hash of the public key
-                sha3::Keccak256::digest(&public_key.serialize()[1..])
-            }
-        };
+        // parse the public key
+        let public_key =
+            libsecp256k1::PublicKey::parse_slice(public_key_, None).map_err(|e| e.to_string())?;
+        // compute the hash of the public key
+        let hash = sha3::Keccak256::digest(&public_key.serialize()[1..]);
 
         // ignore the first 12 bytes of the hash
         let address = hash[12..].to_vec();
@@ -1166,69 +1102,46 @@ impl Interface for InterfaceImpl {
 
     /// Get a raw secp256k1 public key from an EVM signature and the signed hash.
     fn evm_get_pubkey_from_signature(&self, hash_: &[u8], signature_: &[u8]) -> Result<Vec<u8>> {
-        let execution_component_version = self.get_interface_version()?;
-
         // check the signature length
         if signature_.len() != 65 {
             return Err("invalid signature length in evm_get_pubkey_from_signature".into());
         }
 
-        match execution_component_version {
-            0 => {
-                // parse the message
-                let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
+        // parse the message
+        let message = libsecp256k1::Message::parse_slice(hash_).map_err(|e| e.to_string())?;
 
-                // parse the signature as being (r, s, v) use only r and s
-                let signature =
-                    libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+        // parse the signature as being (r, s, v) use only r and s
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])
+            .map_err(|e| e.to_string())?;
 
-                // parse v as a recovery id
-                let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
-
-                // recover the public key
-                let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
-
-                // return its serialized value
-                Ok(recovered.serialize().to_vec())
-            }
-            _ => {
-                // parse the message
-                let message =
-                    libsecp256k1::Message::parse_slice(hash_).map_err(|e| e.to_string())?;
-
-                // parse the signature as being (r, s, v) use only r and s
-                let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])
-                    .map_err(|e| e.to_string())?;
-
-                // Note:
-                // See evm_signature_verify explanation
-                if signature.s.is_high() {
-                    return Err(
-                        "High-Order s Value are prohibited in evm_get_pubkey_from_signature".into(),
-                    );
-                }
-
-                // parse v as a recovery id
-                let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64])
-                    .map_err(|e| e.to_string())?;
-
-                let recovery_id_: u8 = recovery_id.into();
-                if recovery_id_ != 0 && recovery_id_ != 1 {
-                    // Note:
-                    // See evm_signature_verify explanation
-                    return Err(
-                        "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
-                    .into());
-                }
-
-                // recover the public key
-                let recovered = libsecp256k1::recover(&message, &signature, &recovery_id)
-                    .map_err(|e| e.to_string())?;
-
-                // return its serialized value
-                Ok(recovered.serialize().to_vec())
-            }
+        // Note:
+        // See evm_signature_verify explanation
+        if signature.s.is_high() {
+            return Err(
+                "High-Order s Value are prohibited in evm_get_pubkey_from_signature".into(),
+            );
         }
+
+        // parse v as a recovery id
+        let recovery_id =
+            libsecp256k1::RecoveryId::parse_rpc(signature_[64]).map_err(|e| e.to_string())?;
+
+        let recovery_id_: u8 = recovery_id.into();
+        if recovery_id_ != 0 && recovery_id_ != 1 {
+            // Note:
+            // See evm_signature_verify explanation
+            return Err(
+                "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
+                    .into(),
+            );
+        }
+
+        // recover the public key
+        let recovered =
+            libsecp256k1::recover(&message, &signature, &recovery_id).map_err(|e| e.to_string())?;
+
+        // return its serialized value
+        Ok(recovered.serialize().to_vec())
     }
 
     // Return true if the address is a User address, false if it is an SC address.
@@ -1383,16 +1296,14 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
-        let execution_component_version = self.get_interface_version()?;
         let mut context = context_guard!(self);
 
         let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
 
         // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
-        let max_event_size = match (execution_component_version, bypass_event_limitation) {
-            (0, _) => self.config.max_event_size_v0,
-            (_, true) => self.config.max_event_size_v0,
-            (_, false) => self.config.max_event_size_v1,
+        let max_event_size = match bypass_event_limitation {
+            true => self.config.max_event_size_v0,
+            false => self.config.max_event_size,
         };
 
         if data.len() > max_event_size {
@@ -1407,13 +1318,12 @@ impl Interface for InterfaceImpl {
                 context.user_event_count_in_current_exec.saturating_add(1);
         }
 
-        if execution_component_version > 0 {
-            let event_per_op = context.user_event_count_in_current_exec as usize;
+        let event_per_op = context.user_event_count_in_current_exec as usize;
 
-            if event_per_op > self.config.max_event_per_operation {
-                bail!("Too many event for this operation");
-            }
+        if event_per_op > self.config.max_event_per_operation {
+            bail!("Too many event for this operation");
         }
+
         context.event_emit(event);
         Ok(())
     }
@@ -1423,16 +1333,14 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the bytes_array data that is the payload of the event
     fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
-        let execution_component_version = self.get_interface_version()?;
         let mut context = context_guard!(self);
 
         let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
 
         // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
-        let max_event_size = match (execution_component_version, bypass_event_limitation) {
-            (0, _) => self.config.max_event_size_v0,
-            (_, true) => self.config.max_event_size_v0,
-            (_, false) => self.config.max_event_size_v1,
+        let max_event_size = match bypass_event_limitation {
+            true => self.config.max_event_size_v0,
+            false => self.config.max_event_size,
         };
 
         if data.len() > max_event_size {
@@ -1448,13 +1356,12 @@ impl Interface for InterfaceImpl {
                 context.user_event_count_in_current_exec.saturating_add(1);
         }
 
-        if execution_component_version > 0 {
-            let event_per_op = context.user_event_count_in_current_exec as usize;
+        let event_per_op = context.user_event_count_in_current_exec as usize;
 
-            if event_per_op > self.config.max_event_per_operation {
-                bail!("Too many event for this operation");
-            }
+        if event_per_op > self.config.max_event_per_operation {
+            bail!("Too many event for this operation");
         }
+
         context.event_emit(event);
 
         Ok(())
@@ -1560,19 +1467,15 @@ impl Interface for InterfaceImpl {
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
 
-        let execution_component_version = execution_context.execution_component_version;
-        if execution_component_version > 0 {
-            if max_gas < self.config.gas_costs.max_instance_cost {
-                bail!("max gas is lower than the minimum instance cost")
-            }
-            if Slot::new(validity_end.0, validity_end.1)
-                < Slot::new(validity_start.0, validity_start.1)
-            {
-                bail!("validity end is earlier than the validity start")
-            }
-            if Slot::new(validity_end.0, validity_end.1) < emission_slot {
-                bail!("validity end is earlier than the current slot")
-            }
+        if max_gas < self.config.gas_costs.max_instance_cost {
+            bail!("max gas is lower than the minimum instance cost")
+        }
+        if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
+        {
+            bail!("validity end is earlier than the validity start")
+        }
+        if Slot::new(validity_end.0, validity_end.1) < emission_slot {
+            bail!("validity end is earlier than the current slot")
         }
 
         let emission_index = execution_context.created_message_index;
@@ -2071,18 +1974,15 @@ impl Interface for InterfaceImpl {
 
     fn get_address_category_wasmv1(&self, to_check: &str) -> Result<AddressCategory> {
         let addr = Address::from_str(to_check).map_err(|e| e.to_string())?;
-        let execution_component_version = context_guard!(self).execution_component_version;
 
         // Fixed behavior for this ABI in https://github.com/massalabs/massa/pull/4728
         // We keep the previous (bugged) code if the execution component version is 0
         // to avoid a breaking change
-        match (addr, execution_component_version) {
-            (Address::User(_), 0) => Ok(AddressCategory::ScAddress),
-            (Address::SC(_), 0) => Ok(AddressCategory::UserAddress),
-            (Address::User(_), _) => Ok(AddressCategory::UserAddress),
-            (Address::SC(_), _) => Ok(AddressCategory::ScAddress),
+        match addr {
+            Address::User(_) => Ok(AddressCategory::UserAddress),
+            Address::SC(_) => Ok(AddressCategory::ScAddress),
             #[allow(unreachable_patterns)]
-            (_, _) => Ok(AddressCategory::Unspecified),
+            _ => Ok(AddressCategory::Unspecified),
         }
     }
 

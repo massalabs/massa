@@ -161,17 +161,9 @@ impl LedgerController for FinalLedger {
     }
 
     /// Allows applying `LedgerChanges` to the final ledger
-    fn apply_changes_to_batch(
-        &mut self,
-        changes: LedgerChanges,
-        ledger_batch: &mut DBBatch,
-        final_state_component_version: u32,
-    ) {
-        self.sorted_ledger.apply_changes_to_batch(
-            changes,
-            ledger_batch,
-            final_state_component_version,
-        );
+    fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch) {
+        self.sorted_ledger
+            .apply_changes_to_batch(changes, ledger_batch);
     }
 
     /// Deserializes the key and value, useful after bootstrap

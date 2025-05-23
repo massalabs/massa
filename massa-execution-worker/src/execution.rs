@@ -9,7 +9,7 @@
 //! * the output of the execution is extracted from the context
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
-use crate::context::{ExecutionContext, ExecutionContextSnapshot};
+use crate::context::{truncate_string, ExecutionContext, ExecutionContextSnapshot};
 use crate::datastore_scan::scan_datastore;
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
@@ -44,7 +44,7 @@ use massa_models::{amount::Amount, slot::Slot};
 use massa_module_cache::config::ModuleCacheConfig;
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::{CondomLimits, Interface, Response, VMError};
+use massa_sc_runtime::{Interface, Response, VMError};
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
@@ -144,7 +144,6 @@ pub(crate) struct ExecutionState {
     // pub(crate) execution_info: Arc<RwLock<ExecutionInfo>>,
     #[cfg(feature = "dump-block")]
     block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
-    cur_execution_version: u32,
 }
 
 impl ExecutionState {
@@ -201,7 +200,6 @@ impl ExecutionState {
             mip_store.clone(),
             execution_trail_hash,
         );
-        let cur_execution_version = execution_context.execution_component_version;
         let execution_context = Arc::new(Mutex::new(execution_context));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -245,7 +243,6 @@ impl ExecutionState {
             config,
             #[cfg(feature = "dump-block")]
             block_storage_backend,
-            cur_execution_version,
         }
     }
 
@@ -480,7 +477,6 @@ impl ExecutionState {
 
         // lock execution context
         let mut context = context_guard!(self);
-        let execution_component_version = context.execution_component_version;
 
         // ignore the operation if it was already executed
         if context.is_op_executed(&operation_id) {
@@ -516,12 +512,9 @@ impl ExecutionState {
             }),
         ) {
             let mut error = format!("could not spend fees: {}", err);
-            let max_event_size = match execution_component_version {
-                0 => self.config.max_event_size_v0,
-                _ => self.config.max_event_size_v1,
-            };
+            let max_event_size = self.config.max_event_size;
             if error.len() > max_event_size {
-                error.truncate(max_event_size);
+                error = truncate_string(error, max_event_size);
             }
             let event = context.event_create(error.clone(), true);
             context.event_emit(event);
@@ -1203,7 +1196,6 @@ impl ExecutionState {
         &self,
         message: AsyncMessage,
         bytecode: Option<Bytecode>,
-        execution_version: u32,
     ) -> Result<AsyncMessageExecutionResult, ExecutionError> {
         let mut result = AsyncMessageExecutionResult::new();
         #[cfg(feature = "execution-info")]
@@ -1223,10 +1215,7 @@ impl ExecutionState {
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,
-                    coins: match execution_version {
-                        0 => message.coins,
-                        _ => Default::default(),
-                    },
+                    coins: Default::default(),
                     owned_addresses: vec![message.sender],
                     operation_datastore: None,
                 },
@@ -1290,30 +1279,21 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = match context_guard!(self).execution_component_version {
-            0 => self.module_cache.write().load_module(
-                &bytecode,
-                message.max_gas,
-                CondomLimits::default(),
-            )?,
-            _ => {
-                match self.module_cache.write().load_module(
-                    &bytecode,
-                    message.max_gas,
-                    self.config.condom_limits.clone(),
-                ) {
-                    Ok(module) => module,
-                    Err(err) => {
-                        let err = ExecutionError::RuntimeError(format!(
-                            "could not load module for async execution: {}",
-                            err
-                        ));
-                        let mut context = context_guard!(self);
-                        context.reset_to_snapshot(context_snapshot, err.clone());
-                        context.cancel_async_message(&message);
-                        return Err(err);
-                    }
-                }
+        let module = match self.module_cache.write().load_module(
+            &bytecode,
+            message.max_gas,
+            self.config.condom_limits.clone(),
+        ) {
+            Ok(module) => module,
+            Err(err) => {
+                let err = ExecutionError::RuntimeError(format!(
+                    "could not load module for async execution: {}",
+                    err
+                ));
+                let mut context = context_guard!(self);
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(&message);
+                return Err(err);
             }
         };
 
@@ -1568,92 +1548,43 @@ impl ExecutionState {
             exec_target.as_ref().map(|(b_id, _)| *b_id),
         );
 
-        let execution_version = execution_context.execution_component_version;
-        if self.cur_execution_version != execution_version {
-            // Reset the cache because a new execution version has become active
-            info!("A new execution version has become active! Resetting the module-cache.");
-            self.module_cache.write().reset();
-            self.cur_execution_version = execution_version;
-        }
-
-        let mut deferred_calls_slot_gas = 0;
         // (success, fail, cancel)
         let mut deferred_calls_stats = (0, 0, 0);
 
-        // deferred calls execution
+        // Deferred calls execution
+        let calls = execution_context.deferred_calls_advance_slot(*slot);
 
-        match execution_version {
-            0 => {
-                // Get asynchronous messages to execute
-                let messages = execution_context.take_async_batch_v0(
-                    self.config.max_async_gas,
-                    self.config.async_msg_cst_gas_cost,
-                );
+        let deferred_calls_slot_gas = calls.effective_slot_gas;
 
-                // Apply the created execution context for slot execution
-                *context_guard!(self) = execution_context;
+        // Apply the created execution context for slot execution
+        *context_guard!(self) = execution_context;
 
-                // Try executing asynchronous messages.
-                // Effects are cancelled on failure and the sender is reimbursed.
-                for (opt_bytecode, message) in messages {
-                    match self.execute_async_message(message, opt_bytecode, execution_version) {
-                        Ok(_message_return) => {
-                            cfg_if::cfg_if! {
-                                if #[cfg(feature = "execution-trace")] {
-                                    // Safe to unwrap
-                                    slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
-                                } else if #[cfg(feature = "execution-info")] {
-                                    slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
-                                    exec_info.async_messages.push(Ok(_message_return));
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            let msg = format!("failed executing async message: {}", err);
-                            #[cfg(feature = "execution-info")]
-                            exec_info.async_messages.push(Err(msg.clone()));
-                            debug!(msg);
+        for (id, call) in calls.slot_calls {
+            let cancelled = call.cancelled;
+            match self.execute_deferred_call(&id, call) {
+                Ok(_exec) => {
+                    if cancelled {
+                        deferred_calls_stats.2 += 1;
+                        continue;
+                    }
+                    deferred_calls_stats.0 += 1;
+                    info!("executed deferred call: {:?}", id);
+                    cfg_if::cfg_if! {
+                        if #[cfg(feature = "execution-trace")] {
+                            // Safe to unwrap
+                            slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().0);
+                        } else if #[cfg(feature = "execution-info")] {
+                            slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().0);
+                            exec_info.deferred_calls_messages.push(Ok(_exec));
                         }
                     }
                 }
-            }
-            _ => {
-                // Deferred calls
-                let calls = execution_context.deferred_calls_advance_slot(*slot);
-
-                deferred_calls_slot_gas = calls.effective_slot_gas;
-
-                // Apply the created execution context for slot execution
-                *context_guard!(self) = execution_context;
-
-                for (id, call) in calls.slot_calls {
-                    let cancelled = call.cancelled;
-                    match self.execute_deferred_call(&id, call) {
-                        Ok(_exec) => {
-                            if cancelled {
-                                deferred_calls_stats.2 += 1;
-                                continue;
-                            }
-                            deferred_calls_stats.0 += 1;
-                            info!("executed deferred call: {:?}", id);
-                            cfg_if::cfg_if! {
-                                if #[cfg(feature = "execution-trace")] {
-                                    // Safe to unwrap
-                                    slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().0);
-                                } else if #[cfg(feature = "execution-info")] {
-                                    slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().0);
-                                    exec_info.deferred_calls_messages.push(Ok(_exec));
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            deferred_calls_stats.1 += 1;
-                            let msg = format!("failed executing deferred call: {}", err);
-                            #[cfg(feature = "execution-info")]
-                            exec_info.deferred_calls_messages.push(Err(msg.clone()));
-                            dbg!(msg);
-                        }
-                    }
+                Err(err) => {
+                    deferred_calls_stats.1 += 1;
+                    let msg = format!("failed executing deferred call: {}", err);
+                    #[cfg(feature = "execution-info")]
+                    exec_info.deferred_calls_messages.push(Err(msg.clone()));
+                    debug!(msg);
                 }
             }
         }
@@ -1717,10 +1648,7 @@ impl ExecutionState {
             // Block credits count every operation fee, denunciation slash and endorsement reward.
             // We initialize the block credits with the block reward to stimulate block production
             // even in the absence of operations and denunciations.
-            let mut block_credits = match execution_version {
-                0 => self.config.block_reward_v0,
-                _ => self.config.block_reward_v1,
-            };
+            let mut block_credits = self.config.block_reward;
 
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
@@ -1851,177 +1779,93 @@ impl ExecutionState {
             // Update speculative rolls state production stats
             context.update_production_stats(&block_creator_addr, *slot, Some(*block_id));
 
-            match execution_version {
-                0 => {
-                    // Credit endorsement producers and endorsed block producers
-                    let mut remaining_credit = block_credits;
-                    let block_credit_part = block_credits
-                        .checked_div_u64(3 * (1 + (self.config.endorsement_count)))
-                        .expect("critical: block_credits checked_div factor is 0");
+            // Divide the total block credits into parts + remainder
+            let block_credit_part_count = 3 * (1 + self.config.endorsement_count);
+            let block_credit_part = block_credits
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: block_credits checked_div factor is 0");
+            let remainder = block_credits
+                .checked_rem_u64(block_credit_part_count)
+                .expect("critical: block_credits checked_rem factor is 0");
 
-                    for endorsement_creator in endorsement_creators {
-                        // credit creator of the endorsement with coins
-                        match context.transfer_coins(
-                            None,
-                            Some(endorsement_creator),
-                            block_credit_part,
-                            false,
-                            TransferContext::EndorsementCreatorReward,
-                        ) {
-                            Ok(_) => {
-                                remaining_credit =
-                                    remaining_credit.saturating_sub(block_credit_part);
+            // Give 3 parts + remainder to the block producer to stimulate block production
+            // even in the absence of endorsements.
+            let mut block_producer_credit = block_credit_part
+                .saturating_mul_u64(3)
+                .saturating_add(remainder);
 
-                                #[cfg(feature = "execution-info")]
-                                exec_info
-                                    .endorsement_creator_rewards
-                                    .insert(endorsement_creator, block_credit_part);
-                            }
-                            Err(err) => {
-                                debug!(
-                                    "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
-                                    block_credit_part, endorsement_creator, err
-                                )
-                            }
-                        }
+            for endorsement_creator in endorsement_creators {
+                // Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
+                // and dissuade from emitting the block too early (before the endorsements have propageted).
+                block_producer_credit = block_producer_credit.saturating_add(block_credit_part);
 
-                        // credit creator of the endorsed block with coins
-                        match context.transfer_coins(
-                            None,
-                            Some(endorsement_target_creator),
-                            block_credit_part,
-                            false,
-                            TransferContext::EndorsementTargetReward,
-                        ) {
-                            Ok(_) => {
-                                remaining_credit =
-                                    remaining_credit.saturating_sub(block_credit_part);
-                                #[cfg(feature = "execution-info")]
-                                {
-                                    exec_info.endorsement_target_reward =
-                                        Some((endorsement_target_creator, block_credit_part));
-                                }
-                            }
-                            Err(err) => {
-                                debug!(
-                                    "failed to credit {} coins to endorsement target creator {} on block execution: {}",
-                                    block_credit_part, endorsement_target_creator, err
-                                )
-                            }
-                        }
-                    }
-
-                    // Credit block creator with remaining_credit
-                    if let Err(err) = context.transfer_coins(
-                        None,
-                        Some(block_creator_addr),
-                        remaining_credit,
-                        false,
-                        TransferContext::BlockCreatorReward,
-                    ) {
-                        debug!(
-                            "failed to credit {} coins to block creator {} on block execution: {}",
-                            remaining_credit, block_creator_addr, err
-                        )
-                    } else {
+                // Credit creator of the endorsement with 1 part to stimulate the production of endorsements.
+                // This also motivates endorsers to not publish their endorsements too early (will not endorse the right block),
+                // and to not publish too late (will not be included in the block).
+                match context.transfer_coins(
+                    None,
+                    Some(endorsement_creator),
+                    block_credit_part,
+                    false,
+                    TransferContext::EndorsementCreatorReward,
+                ) {
+                    Ok(_) => {
                         #[cfg(feature = "execution-info")]
-                        {
-                            exec_info.block_producer_reward =
-                                Some((block_creator_addr, remaining_credit));
-                        }
+                        exec_info
+                            .endorsement_creator_rewards
+                            .insert(endorsement_creator, block_credit_part);
+                    }
+                    Err(err) => {
+                        debug!(
+                            "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
+                            block_credit_part, endorsement_creator, err
+                        )
                     }
                 }
-                _ => {
-                    // Divide the total block credits into parts + remainder
-                    let block_credit_part_count = 3 * (1 + self.config.endorsement_count);
-                    let block_credit_part = block_credits
-                        .checked_div_u64(block_credit_part_count)
-                        .expect("critical: block_credits checked_div factor is 0");
-                    let remainder = block_credits
-                        .checked_rem_u64(block_credit_part_count)
-                        .expect("critical: block_credits checked_rem factor is 0");
 
-                    // Give 3 parts + remainder to the block producer to stimulate block production
-                    // even in the absence of endorsements.
-                    let mut block_producer_credit = block_credit_part
-                        .saturating_mul_u64(3)
-                        .saturating_add(remainder);
-
-                    for endorsement_creator in endorsement_creators {
-                        // Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
-                        // and dissuade from emitting the block too early (before the endorsements have propageted).
-                        block_producer_credit =
-                            block_producer_credit.saturating_add(block_credit_part);
-
-                        // Credit creator of the endorsement with 1 part to stimulate the production of endorsements.
-                        // This also motivates endorsers to not publish their endorsements too early (will not endorse the right block),
-                        // and to not publish too late (will not be included in the block).
-                        match context.transfer_coins(
-                            None,
-                            Some(endorsement_creator),
-                            block_credit_part,
-                            false,
-                            TransferContext::EndorsementCreatorReward,
-                        ) {
-                            Ok(_) => {
-                                #[cfg(feature = "execution-info")]
-                                exec_info
-                                    .endorsement_creator_rewards
-                                    .insert(endorsement_creator, block_credit_part);
-                            }
-                            Err(err) => {
-                                debug!(
-                                    "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
-                                    block_credit_part, endorsement_creator, err
-                                )
-                            }
-                        }
-
-                        // Credit the creator of the endorsed block with 1 part.
-                        // This is done to incentivize block producers to be endorsed,
-                        // typically by not publishing their blocks too late.
-                        match context.transfer_coins(
-                            None,
-                            Some(endorsement_target_creator),
-                            block_credit_part,
-                            false,
-                            TransferContext::EndorsementTargetReward,
-                        ) {
-                            Ok(_) => {
-                                #[cfg(feature = "execution-info")]
-                                {
-                                    exec_info.endorsement_target_reward =
-                                        Some((endorsement_target_creator, block_credit_part));
-                                }
-                            }
-                            Err(err) => {
-                                debug!(
-                                    "failed to credit {} coins to endorsement target creator {} on block execution: {}",
-                                    block_credit_part, endorsement_target_creator, err
-                                )
-                            }
-                        }
-                    }
-
-                    // Credit block producer
-                    if let Err(err) = context.transfer_coins(
-                        None,
-                        Some(block_creator_addr),
-                        block_producer_credit,
-                        false,
-                        TransferContext::BlockCreatorReward,
-                    ) {
-                        debug!(
-                            "failed to credit {} coins to block creator {} on block execution: {}",
-                            block_producer_credit, block_creator_addr, err
-                        )
-                    } else {
+                // Credit the creator of the endorsed block with 1 part.
+                // This is done to incentivize block producers to be endorsed,
+                // typically by not publishing their blocks too late.
+                match context.transfer_coins(
+                    None,
+                    Some(endorsement_target_creator),
+                    block_credit_part,
+                    false,
+                    TransferContext::EndorsementTargetReward,
+                ) {
+                    Ok(_) => {
                         #[cfg(feature = "execution-info")]
                         {
-                            exec_info.block_producer_reward =
-                                Some((block_creator_addr, block_producer_credit));
+                            exec_info.endorsement_target_reward =
+                                Some((endorsement_target_creator, block_credit_part));
                         }
                     }
+                    Err(err) => {
+                        debug!(
+                            "failed to credit {} coins to endorsement target creator {} on block execution: {}",
+                            block_credit_part, endorsement_target_creator, err
+                        )
+                    }
+                }
+            }
+
+            // Credit block producer
+            if let Err(err) = context.transfer_coins(
+                None,
+                Some(block_creator_addr),
+                block_producer_credit,
+                false,
+                TransferContext::BlockCreatorReward,
+            ) {
+                debug!(
+                    "failed to credit {} coins to block creator {} on block execution: {}",
+                    block_producer_credit, block_creator_addr, err
+                )
+            } else {
+                #[cfg(feature = "execution-info")]
+                {
+                    exec_info.block_producer_reward =
+                        Some((block_creator_addr, block_producer_credit));
                 }
             }
         } else {
@@ -2034,45 +1878,43 @@ impl ExecutionState {
 
         // Async msg execution
 
-        if execution_version > 0 {
-            // Get asynchronous messages to execute
-            // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
-            let async_msg_gas_available = self
-                .config
-                .max_async_gas
-                .saturating_sub(deferred_calls_slot_gas)
-                .saturating_add(remaining_block_gas);
+        // Get asynchronous messages to execute
+        // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
+        let async_msg_gas_available = self
+            .config
+            .max_async_gas
+            .saturating_sub(deferred_calls_slot_gas)
+            .saturating_add(remaining_block_gas);
 
-            // Get asynchronous messages to execute
-            let messages = context_guard!(self)
-                .take_async_batch_v1(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
+        // Get asynchronous messages to execute
+        let messages = context_guard!(self)
+            .take_async_batch(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
 
-            // clear operation id (otherwise events will be generated using this operation id)
-            self.execution_context.lock().origin_operation_id = None;
+        // clear operation id (otherwise events will be generated using this operation id)
+        self.execution_context.lock().origin_operation_id = None;
 
-            // Try executing asynchronous messages.
-            // Effects are cancelled on failure and the sender is reimbursed.
-            for (_message_id, message) in messages {
-                let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
+        // Try executing asynchronous messages.
+        // Effects are cancelled on failure and the sender is reimbursed.
+        for (_message_id, message) in messages {
+            let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
 
-                match self.execute_async_message(message, opt_bytecode, execution_version) {
-                    Ok(_message_return) => {
-                        cfg_if::cfg_if! {
-                            if #[cfg(feature = "execution-trace")] {
-                                // Safe to unwrap
-                                slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
-                            } else if #[cfg(feature = "execution-info")] {
-                                slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
-                                exec_info.async_messages.push(Ok(_message_return));
-                            }
+            match self.execute_async_message(message, opt_bytecode) {
+                Ok(_message_return) => {
+                    cfg_if::cfg_if! {
+                        if #[cfg(feature = "execution-trace")] {
+                            // Safe to unwrap
+                            slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
+                        } else if #[cfg(feature = "execution-info")] {
+                            slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
+                            exec_info.async_messages.push(Ok(_message_return));
                         }
                     }
-                    Err(err) => {
-                        let msg = format!("failed executing async message: {}", err);
-                        #[cfg(feature = "execution-info")]
-                        exec_info.async_messages.push(Err(msg.clone()));
-                        debug!(msg);
-                    }
+                }
+                Err(err) => {
+                    let msg = format!("failed executing async message: {}", err);
+                    #[cfg(feature = "execution-info")]
+                    exec_info.async_messages.push(Err(msg.clone()));
+                    debug!(msg);
                 }
             }
         }
