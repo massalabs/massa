@@ -205,7 +205,7 @@
     # max number of generated events kept in RAM
     max_final_events = 10000
     # maximum length of the read-only execution requests queue
-    readonly_queue_length = 10
+    readonly_queue_length = 100
     # by how many milliseconds should the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
     cursor_delay = 2000
