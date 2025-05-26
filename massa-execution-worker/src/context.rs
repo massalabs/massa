@@ -19,6 +19,11 @@ use massa_async_pool::AsyncPoolChanges;
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
+#[cfg(feature = "execution-info")]
+use massa_execution_exports::execution_info::ExecutionInfoForSlot;
+use massa_execution_exports::execution_info::{
+    OriginTransferContext, TransferContext, TransferInfo,
+};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
@@ -31,6 +36,7 @@ use massa_models::async_msg::{AsyncMessage, AsyncMessageInfo};
 use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
+use massa_models::datastore::cleanup_datastore_key_range_query;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -111,6 +117,9 @@ pub struct ExecutionContextSnapshot {
     /// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
+
+    /// Transfer history count
+    pub transfer_history_len: usize,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -203,6 +212,7 @@ pub struct ExecutionContext {
     /// so *excluding* the gas used by the last sc call.
     pub gas_remaining_before_subexecution: Option<u64>,
 
+    #[allow(unused)]
     /// The version of the execution component
     pub execution_component_version: u32,
 
@@ -212,6 +222,12 @@ pub struct ExecutionContext {
     /// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
+
+    transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
+
+    /// Execution info
+    #[cfg(feature = "execution-info")]
+    pub execution_info: ExecutionInfoForSlot,
 
     /// The deferred call id that is currently being executed
     pub deferred_call_id: Option<DeferredCallId>,
@@ -250,6 +266,8 @@ impl ExecutionContext {
         )
         .expect("Time overflow when getting block slot timestamp for MIP");
 
+        let transfers_history = Arc::new(RwLock::new(Vec::new()));
+
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
                 final_state.clone(),
@@ -258,6 +276,7 @@ impl ExecutionContext {
                 config.max_bytecode_size,
                 config.max_datastore_value_size,
                 config.storage_costs_constants,
+                transfers_history.clone(),
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),
@@ -271,6 +290,7 @@ impl ExecutionContext {
             speculative_roll_state: SpeculativeRollState::new(
                 final_state.clone(),
                 active_history.clone(),
+                transfers_history.clone(),
             ),
             speculative_executed_ops: SpeculativeExecutedOps::new(
                 final_state.clone(),
@@ -278,7 +298,7 @@ impl ExecutionContext {
             ),
             speculative_executed_denunciations: SpeculativeExecutedDenunciations::new(
                 final_state,
-                active_history,
+                active_history.clone(),
             ),
             creator_min_balance: Default::default(),
             slot,
@@ -303,6 +323,9 @@ impl ExecutionContext {
                 .get_latest_component_version_at(&MipComponent::Execution, ts),
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
+            transfers_history,
+            #[cfg(feature = "execution-info")]
+            execution_info: ExecutionInfoForSlot::new(slot, execution_trail_hash, None),
             deferred_call_id: Default::default(),
             async_msg_id: Default::default(),
         }
@@ -329,6 +352,7 @@ impl ExecutionContext {
             gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
             recursion_counter: self.recursion_counter,
             user_event_count_in_current_exec: self.user_event_count_in_current_exec,
+            transfer_history_len: self.transfers_history.read().len(),
         }
     }
 
@@ -346,10 +370,7 @@ impl ExecutionContext {
             serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
             true,
         );
-        let max_event_size = match self.execution_component_version {
-            0 => self.config.max_event_size_v0,
-            _ => self.config.max_event_size_v1,
-        };
+        let max_event_size = self.config.max_event_size;
         if event.data.len() > max_event_size {
             event.data = truncate_string(event.data, max_event_size);
         }
@@ -376,6 +397,11 @@ impl ExecutionContext {
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
         self.recursion_counter = snapshot.recursion_counter;
         self.user_event_count_in_current_exec = snapshot.user_event_count_in_current_exec;
+
+        {
+            let mut transfers_history = self.transfers_history.write();
+            transfers_history.truncate(snapshot.transfer_history_len);
+        }
 
         // For events, set snapshot delta to error events.
         for event in self.events.0.range_mut(snapshot.event_count..) {
@@ -438,28 +464,7 @@ impl ExecutionContext {
         }
     }
 
-    /// This function takes a batch of asynchronous operations to execute, removing them from the speculative pool.
-    ///
-    /// # Arguments
-    /// * `max_gas`: maximal amount of asynchronous gas available
-    ///
-    /// # Returns
-    /// A vector of `(Option<Bytecode>, AsyncMessage)` pairs where:
-    /// * `Option<Bytecode>` is the bytecode to execute (or `None` if not found)
-    /// * `AsyncMessage` is the asynchronous message to execute
-    pub(crate) fn take_async_batch_v0(
-        &mut self,
-        max_gas: u64,
-        async_msg_cst_gas_cost: u64,
-    ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
-        self.speculative_async_pool
-            .take_batch_to_execute(self.slot, max_gas, async_msg_cst_gas_cost)
-            .into_iter()
-            .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
-            .collect()
-    }
-
-    pub(crate) fn take_async_batch_v1(
+    pub(crate) fn take_async_batch(
         &mut self,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
@@ -621,7 +626,6 @@ impl ExecutionContext {
             self.get_current_address()?,
             address,
             bytecode,
-            self.execution_component_version,
         )?;
 
         // add the address to owned addresses
@@ -651,8 +655,31 @@ impl ExecutionContext {
     }
 
     /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
-    pub fn get_keys(&self, address: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
-        self.speculative_ledger.get_keys(address, prefix)
+    pub fn get_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        start_key: std::ops::Bound<Vec<u8>>,
+        end_key: std::ops::Bound<Vec<u8>>,
+        count: Option<u32>,
+    ) -> Result<Option<BTreeSet<Vec<u8>>>, ExecutionError> {
+        // TODO when updating the ABI, make sure to set this value to a maximum defined as a CONSTANT for determinism
+        // The API will use a different, user-configurable max value
+        let max_datastore_query = None;
+
+        // cleanup bounds
+        let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+            prefix,
+            start_key,
+            end_key,
+            count,
+            self.config.max_datastore_key_length,
+            max_datastore_query,
+        )?;
+
+        Ok(self
+            .speculative_ledger
+            .get_keys(addr, &prefix, start_key, end_key, count))
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
@@ -693,13 +720,8 @@ impl ExecutionContext {
         }
 
         // set data entry
-        self.speculative_ledger.set_data_entry(
-            &self.get_current_address()?,
-            address,
-            key,
-            data,
-            self.execution_component_version,
-        )
+        self.speculative_ledger
+            .set_data_entry(&self.get_current_address()?, address, key, data)
     }
 
     /// Appends data to a datastore entry for an address in the speculative ledger.
@@ -739,13 +761,8 @@ impl ExecutionContext {
         res_data.extend(data);
 
         // set data entry
-        self.speculative_ledger.set_data_entry(
-            &self.get_current_address()?,
-            address,
-            key,
-            res_data,
-            self.execution_component_version,
-        )
+        self.speculative_ledger
+            .set_data_entry(&self.get_current_address()?, address, key, res_data)
     }
 
     /// Deletes a datastore entry for an address.
@@ -768,12 +785,8 @@ impl ExecutionContext {
         }
 
         // delete entry
-        self.speculative_ledger.delete_data_entry(
-            &self.get_current_address()?,
-            address,
-            key,
-            self.execution_component_version,
-        )
+        self.speculative_ledger
+            .delete_data_entry(&self.get_current_address()?, address, key)
     }
 
     /// Transfers coins from one address to another.
@@ -791,55 +804,24 @@ impl ExecutionContext {
         to_addr: Option<Address>,
         amount: Amount,
         check_rights: bool,
+        transfer_context: TransferContext,
     ) -> Result<(), ExecutionError> {
-        let execution_component_version = self.execution_component_version;
-
         if let Some(from_addr) = &from_addr {
             // check access rights
             // ensure we can't spend from an address on which we have no write access
             // If execution component version is 0, we need to disallow sending to SC addresses
 
-            match execution_component_version {
-                0 => {
-                    if check_rights {
-                        if !self.has_write_rights_on(from_addr) {
-                            return Err(ExecutionError::RuntimeError(format!(
-                                "spending from address {} is not allowed in this context",
-                                from_addr
-                            )));
-                        }
-
-                        // ensure we can't transfer towards SC addresses on which we have no write access
-                        if let Some(to_addr) = &to_addr {
-                            if matches!(to_addr, Address::SC(..))
-                                && !self.has_write_rights_on(to_addr)
-                            {
-                                return Err(ExecutionError::RuntimeError(format!(
-                                    "crediting SC address {} is not allowed without write access to it",
-                                    to_addr
-                                )));
-                            }
-                        }
-                    }
-                }
-                _ => {
-                    if check_rights && !self.has_write_rights_on(from_addr) {
-                        return Err(ExecutionError::RuntimeError(format!(
-                            "spending from address {} is not allowed in this context",
-                            from_addr
-                        )));
-                    }
-                }
+            if check_rights && !self.has_write_rights_on(from_addr) {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "spending from address {} is not allowed in this context",
+                    from_addr
+                )));
             }
         }
 
         // do the transfer
-        self.speculative_ledger.transfer_coins(
-            from_addr,
-            to_addr,
-            amount,
-            execution_component_version,
-        )
+        self.speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount, transfer_context)
     }
 
     /// Add a new asynchronous message to speculative pool
@@ -860,7 +842,16 @@ impl ExecutionContext {
     ) -> Option<(Address, Result<Amount, String>)> {
         #[allow(unused_assignments, unused_mut)]
         let mut result = None;
-        let transfer_result = self.transfer_coins(None, Some(msg.sender), msg.coins, false);
+        let transfer_result = self.transfer_coins(
+            None,
+            Some(msg.sender),
+            msg.coins,
+            false,
+            TransferContext::AyncMsgCancel(OriginTransferContext {
+                async_message_id: Some(msg.compute_id()),
+                ..Default::default()
+            }),
+        );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
                 "async message cancel: reimbursement of {} failed: {}",
@@ -884,9 +875,9 @@ impl ExecutionContext {
     /// # Arguments
     /// * `buyer_addr`: address that will receive the rolls
     /// * `roll_count`: number of rolls it will receive
-    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64, operation_id: OperationId) {
         self.speculative_roll_state
-            .add_rolls(buyer_addr, roll_count);
+            .add_rolls(buyer_addr, roll_count, operation_id);
     }
 
     /// Try to sell `roll_count` rolls from the seller address.
@@ -898,6 +889,7 @@ impl ExecutionContext {
         &mut self,
         seller_addr: &Address,
         roll_count: u64,
+        operation_id: OperationId,
     ) -> Result<(), ExecutionError> {
         self.speculative_roll_state.try_sell_rolls(
             seller_addr,
@@ -906,6 +898,7 @@ impl ExecutionContext {
             self.config.periods_per_cycle,
             self.config.thread_count,
             self.config.roll_price,
+            operation_id,
         )
     }
 
@@ -919,76 +912,7 @@ impl ExecutionContext {
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
-    ) -> Result<Amount, ExecutionError> {
-        let execution_component_version = self.execution_component_version;
-
-        match execution_component_version {
-            0 => self.try_slash_rolls_v0(denounced_addr, roll_count),
-            _ => self.try_slash_rolls_v1(denounced_addr, roll_count),
-        }
-    }
-
-    pub fn try_slash_rolls_v0(
-        &mut self,
-        denounced_addr: &Address,
-        roll_count: u64,
-    ) -> Result<Amount, ExecutionError> {
-        // try to slash as many roll as available
-        let slashed_rolls = self
-            .speculative_roll_state
-            .try_slash_rolls(denounced_addr, roll_count);
-        // convert slashed rolls to coins (as deferred credits => coins)
-        let mut slashed_coins = self
-            .config
-            .roll_price
-            .checked_mul_u64(slashed_rolls.unwrap_or_default())
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(format!(
-                    "Cannot multiply roll price by {}",
-                    roll_count
-                ))
-            })?;
-
-        // what remains to slash (then will try to slash as many deferred credits as avail/what remains to be slashed)
-        let amount_remaining_to_slash = self
-            .config
-            .roll_price
-            .checked_mul_u64(roll_count)
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(format!(
-                    "Cannot multiply roll price by {}",
-                    roll_count
-                ))
-            })?
-            .saturating_sub(slashed_coins);
-
-        if amount_remaining_to_slash > Amount::zero() {
-            // There is still an amount to slash for this denunciation so we need to slash
-            // in deferred credits
-            let slashed_coins_in_deferred_credits = self
-                .speculative_roll_state
-                .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
-
-            slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
-
-            let amount_remaining_to_slash_2 =
-                slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
-            if amount_remaining_to_slash_2 > Amount::zero() {
-                // Use saturating_mul_u64 to avoid an error (for just a warn!(..))
-                warn!("Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins",
-                    slashed_coins, slashed_coins_in_deferred_credits, denounced_addr,
-                    self.config.roll_price.saturating_mul_u64(roll_count)
-                );
-            }
-        }
-
-        Ok(slashed_coins)
-    }
-
-    pub fn try_slash_rolls_v1(
-        &mut self,
-        denounced_addr: &Address,
-        roll_count: u64,
+        denunciation_idx: &DenunciationIndex,
     ) -> Result<Amount, ExecutionError> {
         // try to slash as many roll as available
         let slashed_rolls = self
@@ -1025,9 +949,13 @@ impl ExecutionContext {
         if amount_remaining_to_slash > Amount::zero() {
             // There is still an amount to slash for this denunciation so we need to slash
             // in deferred credits
-            let slashed_coins_in_deferred_credits = self
-                .speculative_roll_state
-                .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
+            let slashed_coins_in_deferred_credits =
+                self.speculative_roll_state.try_slash_deferred_credits(
+                    &self.slot,
+                    denounced_addr,
+                    &amount_remaining_to_slash,
+                    denunciation_idx,
+                );
 
             total_slashed_coins =
                 total_slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
@@ -1079,7 +1007,15 @@ impl ExecutionContext {
             .credits
         {
             for (address, amount) in map {
-                let transfer_result = self.transfer_coins(None, Some(address), amount, false);
+                let transfer_result = self.transfer_coins(
+                    None,
+                    Some(address),
+                    amount,
+                    false,
+                    TransferContext::DeferredCredits(OriginTransferContext {
+                        ..Default::default()
+                    }),
+                );
 
                 if let Err(e) = transfer_result.as_ref() {
                     debug!(
@@ -1100,81 +1036,14 @@ impl ExecutionContext {
         result
     }
 
-    fn settle_slot_v0(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
-        let slot = self.slot;
-        // execute the deferred credits coming from roll sells
-        let deferred_credits_transfers = self.execute_deferred_credits(&slot);
-
-        // take the ledger changes first as they are needed for async messages and cache
-        let ledger_changes = self.speculative_ledger.take();
-
-        // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages =
-            self.speculative_async_pool
-                .settle_slot(&slot, &ledger_changes, false);
-
-        let mut cancel_async_message_transfers = vec![];
-        for (_msg_id, msg) in deleted_messages {
-            if let Some(t) = self.cancel_async_message(&msg) {
-                cancel_async_message_transfers.push(t)
-            }
-        }
-
-        // update module cache
-        let bc_updates = ledger_changes.get_bytecode_updates();
-
-        {
-            let mut cache_write_lock = self.module_cache.write();
-            for bytecode in bc_updates {
-                cache_write_lock.save_module(&bytecode.0, CondomLimits::default());
-            }
-        }
-        // if the current slot is last in cycle check the production stats and act accordingly
-        let auto_sell_rolls = if self
-            .slot
-            .is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count)
-        {
-            self.speculative_roll_state.settle_production_stats(
-                &slot,
-                self.config.periods_per_cycle,
-                self.config.thread_count,
-                self.config.roll_price,
-                self.config.max_miss_ratio,
-            )
-        } else {
-            vec![]
-        };
-
-        // generate the execution output
-        let state_changes = StateChanges {
-            ledger_changes,
-            async_pool_changes: self.speculative_async_pool.take(),
-            pos_changes: self.speculative_roll_state.take(),
-            executed_ops_changes: self.speculative_executed_ops.take(),
-            executed_denunciations_changes: self.speculative_executed_denunciations.take(),
-            execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
-            deferred_call_changes: self.speculative_deferred_calls.take(),
-        };
-        std::mem::take(&mut self.opt_block_id);
-        ExecutionOutput {
-            slot,
-            block_info,
-            state_changes,
-            events: std::mem::take(&mut self.events),
-            #[cfg(feature = "execution-trace")]
-            slot_trace: None,
-            #[cfg(feature = "dump-block")]
-            storage: None,
-            deferred_credits_execution: deferred_credits_transfers,
-            cancel_async_message_execution: cancel_async_message_transfers,
-            auto_sell_execution: auto_sell_rolls,
-        }
-    }
-
-    fn settle_slot_with_fixed_ledger_change_handling(
-        &mut self,
-        block_info: Option<ExecutedBlockInfo>,
-    ) -> ExecutionOutput {
+    /// Finishes a slot and generates the execution output.
+    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
+    /// Moves the output of the execution out of the context,
+    /// resetting some context fields in the process.
+    ///
+    /// This is used to get the output of an execution before discarding the context.
+    /// Note that we are not taking self by value to consume it because the context is shared.
+    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells
@@ -1230,6 +1099,8 @@ impl ExecutionContext {
             execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
         };
 
+        let transfers_history = std::mem::take(&mut *self.transfers_history.write());
+
         std::mem::take(&mut self.opt_block_id);
         ExecutionOutput {
             slot,
@@ -1243,20 +1114,7 @@ impl ExecutionContext {
             deferred_credits_execution: deferred_credits_transfers,
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
-        }
-    }
-
-    /// Finishes a slot and generates the execution output.
-    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
-    /// Moves the output of the execution out of the context,
-    /// resetting some context fields in the process.
-    ///
-    /// This is used to get the output of an execution before discarding the context.
-    /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
-        match self.execution_component_version {
-            0 => self.settle_slot_v0(block_info),
-            _ => self.settle_slot_with_fixed_ledger_change_handling(block_info),
+            transfers_history,
         }
     }
 
@@ -1289,12 +1147,8 @@ impl ExecutionContext {
         }
 
         // set data entry
-        self.speculative_ledger.set_bytecode(
-            &self.get_current_address()?,
-            address,
-            bytecode,
-            self.execution_component_version,
-        )
+        self.speculative_ledger
+            .set_bytecode(&self.get_current_address()?, address, bytecode)
     }
 
     /// Creates a new event but does not emit it.
@@ -1474,8 +1328,18 @@ impl ExecutionContext {
         #[allow(unused_assignments, unused_mut)]
         let mut result = None;
 
-        let transfer_result =
-            self.transfer_coins(None, Some(call.sender_address), call.coins, false);
+        let transfer_result = self.transfer_coins(
+            None,
+            Some(call.sender_address),
+            call.coins,
+            false,
+            TransferContext::DeferredCallFail(OriginTransferContext {
+                deferred_call_id: Some(id.clone()),
+                operation_id: self.origin_operation_id,
+                async_message_id: self.async_msg_id,
+                ..Default::default()
+            }),
+        );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
                 "deferred call {} fail: reimbursement of {} to {} failed: {}",
@@ -1512,7 +1376,18 @@ impl ExecutionContext {
                 let (address, amount) = self.speculative_deferred_calls.cancel_call(call_id)?;
 
                 // refund the coins to the caller
-                let transfer_result = self.transfer_coins(None, Some(address), amount, false);
+                let transfer_result = self.transfer_coins(
+                    None,
+                    Some(address),
+                    amount,
+                    false,
+                    TransferContext::DeferredCallCancel(OriginTransferContext {
+                        deferred_call_id: Some(call_id.clone()),
+                        operation_id: self.origin_operation_id,
+                        async_message_id: self.async_msg_id,
+                        ..Default::default()
+                    }),
+                );
                 if let Err(e) = transfer_result.as_ref() {
                     debug!(
                         "deferred call cancel: reimbursement of {} failed: {}",
@@ -1538,10 +1413,7 @@ impl ExecutionContext {
 
     /// Get the condom limits to pass to the VM depending on the current execution component version
     pub fn get_condom_limits(&self) -> CondomLimits {
-        match self.execution_component_version {
-            0 => Default::default(),
-            _ => self.config.condom_limits.clone(),
-        }
+        self.config.condom_limits.clone()
     }
 }
 
@@ -1590,7 +1462,7 @@ fn init_prng(execution_trail_hash: &massa_hash::Hash) -> Xoshiro256PlusPlus {
 }
 
 /// Truncates a string to a maximum byte length, ensuring it remains valid UTF-8 in the process.
-fn truncate_string(string: String, max_byte_len: usize) -> String {
+pub(crate) fn truncate_string(string: String, max_byte_len: usize) -> String {
     let mut truncated_bytes = string.as_bytes().to_vec();
     truncated_bytes.truncate(max_byte_len);
     let mut res_str = String::from_utf8_lossy(&truncated_bytes);

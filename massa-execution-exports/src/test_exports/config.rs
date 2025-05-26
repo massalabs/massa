@@ -94,7 +94,7 @@ impl Default for ExecutionConfig {
             broadcast_enabled: true,
             broadcast_slot_execution_output_channel_capacity: 5000,
             max_event_size_v0: 50_000,
-            max_event_size_v1: 512,
+            max_event_size: 1024,
             max_event_per_operation: 25,
             max_function_length: 1000,
             max_parameter_length: 1000,
@@ -110,6 +110,7 @@ impl Default for ExecutionConfig {
             event_cache_path,
             event_cache_size: 100,
             event_snip_amount: 10,
+            broadcast_slot_execution_info_channel_capacity: 0,
         }
     }
 }

@@ -40,6 +40,10 @@
     enable_ws = false
     # whether to broadcast for blocks, endorsements and operations
     enable_broadcast = false
+    # max datastore keys query
+    max_datastore_keys_query = 500
+    # max number of addresses that can be included in a single request
+    max_addresses_datastore_keys_query = 50
 
 [grpc]
     [grpc.public]
@@ -115,6 +119,10 @@
         client_certificate_path = "../massa-client/config/tls_public_client.pem"
         # client private key path
         client_private_key_path = "../massa-client/config/tls_public_client.key"
+        # max datastore keys query
+        max_datastore_keys_query = 500
+        # check interval for unidirectional stream
+        unidirectional_stream_interval_check = 10
     [grpc.private]
         # whether to enable gRPC
         enabled = true
@@ -188,12 +196,14 @@
         client_certificate_path = "../massa-client/config/tls_private_client.pem"
         # client private key path
         client_private_key_path = "../massa-client/config/tls_private_client.key"
+        # check interval for unidirectional stream
+        unidirectional_stream_interval_check = 10
 
 [execution]
     # max number of generated events kept in RAM
     max_final_events = 10000
     # maximum length of the read-only execution requests queue
-    readonly_queue_length = 10
+    readonly_queue_length = 100
     # by how many milliseconds should the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
     cursor_delay = 2000
@@ -230,6 +240,8 @@
     event_snip_amount = 10
     # maximum number of events return by a query
     max_event_per_query = 7000
+    # slot execution info channel capacity
+    broadcast_slot_execution_info_channel_capacity = 5000
 
 [ledger]
     # path to the initial ledger

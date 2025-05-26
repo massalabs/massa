@@ -97,7 +97,7 @@ use massa_models::config::{
     DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST, DEFERRED_CALL_MIN_GAS_INCREMENT,
     DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_EVENT_DATA_SIZE_V0, MAX_EVENT_DATA_SIZE_V1, MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE,
+    MAX_EVENT_DATA_SIZE, MAX_EVENT_DATA_SIZE_V0, MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE,
     MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
     MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
     MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
@@ -487,6 +487,8 @@ async fn launch(
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
         max_event_cache_length: SETTINGS.execution.event_cache_size,
         snip_amount: SETTINGS.execution.event_snip_amount,
+        // Note: we still use the v0 event data size for the event cache to be able to deserialize
+        // events that bypass the v1 event limitation
         max_event_data_length: MAX_EVENT_DATA_SIZE_V0 as u64,
         thread_count: THREAD_COUNT,
         // Note: SCOutputEvent call stack comes from the execution module, and we assume
@@ -578,7 +580,7 @@ async fn launch(
             .execution
             .broadcast_slot_execution_output_channel_capacity,
         max_event_size_v0: MAX_EVENT_DATA_SIZE_V0,
-        max_event_size_v1: MAX_EVENT_DATA_SIZE_V1,
+        max_event_size: MAX_EVENT_DATA_SIZE,
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
         chain_id: *CHAINID,
@@ -598,6 +600,9 @@ async fn launch(
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
         event_cache_size: SETTINGS.execution.event_cache_size,
         event_snip_amount: SETTINGS.execution.event_snip_amount,
+        broadcast_slot_execution_info_channel_capacity: SETTINGS
+            .execution
+            .broadcast_slot_execution_info_channel_capacity,
     };
 
     let execution_channels = ExecutionChannels {
@@ -608,6 +613,11 @@ async fn launch(
         #[cfg(feature = "execution-trace")]
         slot_execution_traces_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_traces_channel_capacity,
+        )
+        .0,
+        #[cfg(feature = "execution-info")]
+        slot_execution_info_sender: broadcast::channel(
+            execution_config.broadcast_slot_execution_info_channel_capacity,
         )
         .0,
     };
@@ -960,6 +970,9 @@ async fn launch(
         chain_id: *CHAINID,
         minimal_fees: SETTINGS.pool.minimal_fees,
         deferred_calls_config,
+        max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        max_addresses_datastore_keys_query: SETTINGS.api.max_addresses_datastore_keys_query,
     };
 
     // spawn Massa API
@@ -1259,6 +1272,9 @@ fn configure_grpc(
         client_private_key_path: settings.client_private_key_path.clone(),
         chain_id: *CHAINID,
         minimal_fees,
+        max_datastore_keys_queries: settings.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        unidirectional_stream_interval_check: settings.unidirectional_stream_interval_check,
     }
 }
 

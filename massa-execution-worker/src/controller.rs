@@ -195,20 +195,44 @@ impl ExecutionController for ExecutionControllerImpl {
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
                     }
                 }
-                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate { addr, prefix } => {
-                    let (_final_v, speculative_v) =
-                        execution_lock.get_final_and_candidate_datastore_keys(&addr, &prefix);
+                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+                    address,
+                    prefix,
+                    start_key,
+                    end_key,
+                    count,
+                } => {
+                    let (_final_v, speculative_v) = execution_lock
+                        .get_final_and_candidate_datastore_keys(
+                            &address, &prefix, start_key, end_key, count,
+                        );
                     match speculative_v {
-                        Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+                        Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
+                            keys, address, false,
+                        )),
+                        None => Err(ExecutionQueryError::NotFound(format!(
+                            "Account {}",
+                            address
+                        ))),
                     }
                 }
-                ExecutionQueryRequestItem::AddressDatastoreKeysFinal { addr, prefix } => {
-                    let (final_v, _speculative_v) =
-                        execution_lock.get_final_and_candidate_datastore_keys(&addr, &prefix);
+                ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+                    address,
+                    prefix,
+                    start_key,
+                    end_key,
+                    count,
+                } => {
+                    let final_v = execution_lock
+                        .get_final_datastore_keys(&address, &prefix, start_key, end_key, count);
                     match final_v {
-                        Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+                        Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
+                            keys, address, true,
+                        )),
+                        None => Err(ExecutionQueryError::NotFound(format!(
+                            "Account {}",
+                            address
+                        ))),
                     }
                 }
                 ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } => {
@@ -471,8 +495,14 @@ impl ExecutionController for ExecutionControllerImpl {
         let mut res = Vec::with_capacity(addresses.len());
         let exec_state = self.execution_state.read();
         for addr in addresses {
-            let (final_datastore_keys, candidate_datastore_keys) =
-                exec_state.get_final_and_candidate_datastore_keys(addr, &[]);
+            let (final_datastore_keys, candidate_datastore_keys) = exec_state
+                .get_final_and_candidate_datastore_keys(
+                    addr,
+                    &[],
+                    std::ops::Bound::Unbounded,
+                    std::ops::Bound::Unbounded,
+                    None,
+                );
             let (final_balance, candidate_balance) =
                 exec_state.get_final_and_candidate_balance(addr);
             let (final_roll_count, candidate_roll_count) =

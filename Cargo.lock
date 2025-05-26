@@ -177,7 +177,7 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "as-ffi-bindings"
 version = "0.2.5"
-source = "git+https://github.com/massalabs/as-ffi-bindings.git?branch=feature/update_wasmer_4_3_4#c0afa48488418a66d872a8c51bc7fa30fe4f8a11"
+source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.6#ba6583eb2877065090e28985e370feac427641a1"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -2388,15 +2388,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2925,7 +2916,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=c9a7c55914f3d308996113df0936f15d96490313#c9a7c55914f3d308996113df0936f15d96490313"
+source = "git+https://github.com/massalabs/massa-proto-rs?branch=mainnet_2_6#aac9a2ef5fd8882311f5e64cd76c6476c9f34a67"
 dependencies = [
  "glob",
  "prost",
@@ -2939,7 +2930,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=cd14c775aff31b8c0f49064613118f428f9dd45f#cd14c775aff31b8c0f49064613118f428f9dd45f"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=mainnet_2_6#549ed9672e83da8da9d7ba4417f3b6536bfe64ae"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -3270,6 +3261,7 @@ dependencies = [
  "massa_models",
  "massa_module_cache",
  "massa_pos_exports",
+ "massa_serialization",
  "massa_storage",
  "massa_time",
  "massa_versioning",
@@ -3279,14 +3271,13 @@ dependencies = [
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
 name = "massa_execution_worker"
 version = "28.14.0"
 dependencies = [
- "anyhow",
- "assert_matches",
  "blake3",
  "bs58",
  "cfg-if",
@@ -3324,6 +3315,7 @@ dependencies = [
  "prost",
  "rand",
  "rand_xoshiro",
+ "regex",
  "rust-rocksdb",
  "schnellru",
  "serde_json",
@@ -3424,6 +3416,7 @@ dependencies = [
  "massa_execution_exports",
  "massa_final_state",
  "massa_hash",
+ "massa_ledger_exports",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
@@ -4662,7 +4655,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
  "heck 0.5.0",
- "itertools 0.14.0",
+ "itertools 0.12.1",
  "log",
  "multimap",
  "once_cell",
@@ -4682,7 +4675,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools 0.12.1",
  "proc-macro2 1.0.94",
  "quote 1.0.40",
  "syn 2.0.100",

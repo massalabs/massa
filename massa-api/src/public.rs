@@ -6,7 +6,9 @@ use async_trait::async_trait;
 use itertools::{izip, Itertools};
 use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
-    address::{AddressFilter, AddressInfo},
+    address::{
+        AddressFilter, AddressInfo, GetAddressDatastoreKeysRequest, GetAddressDatastoreKeysResponse,
+    },
     block::{BlockInfo, BlockInfoContent, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -38,7 +40,7 @@ use massa_models::{
     clique::Clique,
     composite::PubkeySig,
     config::CompactConfig,
-    datastore::DatastoreDeserializer,
+    datastore::{cleanup_datastore_key_range_query, DatastoreDeserializer},
     deferred_calls::DeferredCallId,
     endorsement::{EndorsementId, SecureShareEndorsement},
     error::ModelsError,
@@ -153,16 +155,43 @@ impl MassaRpcServer for API<Public> {
                         let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
                         for transfer in only_transfer {
                             let (t_from, t_to, t_amount) = transfer.parse_transfer();
-                            transfers.push(Transfer {
-                                from: Address::from_str(&t_from).unwrap(),
-                                to: Address::from_str(&t_to).unwrap(),
-                                amount: Amount::from_raw(t_amount),
-                                effective_amount_received: Amount::from_raw(t_amount),
-                                context: TransferContext::ASC(i as u64),
-                                succeed: true,
-                                fee: Amount::from_raw(0),
-                                block_id,
-                            });
+                            if let (Ok(addr_from), Ok(addr_to)) =
+                                (Address::from_str(&t_from), Address::from_str(&t_to))
+                            {
+                                transfers.push(Transfer {
+                                    from: addr_from,
+                                    to: addr_to,
+                                    amount: Amount::from_raw(t_amount),
+                                    effective_amount_received: Amount::from_raw(t_amount),
+                                    context: TransferContext::ASC(i as u64),
+                                    succeed: true,
+                                    fee: Amount::from_raw(0),
+                                    block_id,
+                                });
+                            }
+                        }
+                    }
+                }
+
+                for (call_id, deferred_call_call_stack) in abi_calls.deferred_call_stacks {
+                    for abi_trace in deferred_call_call_stack {
+                        let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                        for transfer in only_transfer {
+                            let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                            if let (Ok(addr_from), Ok(addr_to)) =
+                                (Address::from_str(&t_from), Address::from_str(&t_to))
+                            {
+                                transfers.push(Transfer {
+                                    from: addr_from,
+                                    to: addr_to,
+                                    amount: Amount::from_raw(t_amount),
+                                    effective_amount_received: Amount::from_raw(t_amount),
+                                    context: TransferContext::DeferredCall(call_id.clone()),
+                                    succeed: true,
+                                    fee: Amount::from_raw(0),
+                                    block_id,
+                                });
+                            }
                         }
                     }
                 }
@@ -174,16 +203,20 @@ impl MassaRpcServer for API<Public> {
                         let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
                         for transfer in only_transfer {
                             let (t_from, t_to, t_amount) = transfer.parse_transfer();
-                            transfers.push(Transfer {
-                                from: Address::from_str(&t_from).unwrap(),
-                                to: Address::from_str(&t_to).unwrap(),
-                                amount: Amount::from_raw(t_amount),
-                                effective_amount_received: Amount::from_raw(t_amount),
-                                context: TransferContext::Operation(op_id),
-                                succeed: true,
-                                fee: Amount::from_raw(0),
-                                block_id,
-                            });
+                            if let (Ok(addr_from), Ok(addr_to)) =
+                                (Address::from_str(&t_from), Address::from_str(&t_to))
+                            {
+                                transfers.push(Transfer {
+                                    from: addr_from,
+                                    to: addr_to,
+                                    amount: Amount::from_raw(t_amount),
+                                    effective_amount_received: Amount::from_raw(t_amount),
+                                    context: TransferContext::Operation(op_id),
+                                    succeed: true,
+                                    fee: Amount::from_raw(0),
+                                    block_id,
+                                });
+                            }
                         }
                     }
                 }
@@ -952,6 +985,59 @@ impl MassaRpcServer for API<Public> {
             .collect())
     }
 
+    async fn get_addresses_datastore_keys(
+        &self,
+        arg: Vec<GetAddressDatastoreKeysRequest>,
+    ) -> RpcResult<Vec<GetAddressDatastoreKeysResponse>> {
+        if let Some(conf_max) = self.0.api_settings.max_addresses_datastore_keys_query {
+            if arg.len() > conf_max as usize {
+                return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", conf_max)).into());
+            }
+        }
+
+        let requests: Vec<ExecutionQueryRequestItem> = arg
+            .into_iter()
+            .map(|request| {
+                get_address_datastore_keys_to_state_query_item(
+                    request,
+                    self.0.api_settings.max_datastore_keys_queries,
+                    self.0.api_settings.max_datastore_key_length,
+                )
+            })
+            .collect::<Result<_, _>>()?;
+
+        let mut result: Vec<GetAddressDatastoreKeysResponse> = Vec::with_capacity(requests.len());
+
+        let response = self
+            .0
+            .execution_controller
+            .query_state(ExecutionQueryRequest { requests });
+
+        for response_item in response.responses {
+            match response_item {
+                Ok(item) => match item {
+                    ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, is_final) => {
+                        result.push(GetAddressDatastoreKeysResponse {
+                            address,
+                            is_final,
+                            keys: keys.into_iter().collect(),
+                        });
+                    }
+                    _ => {
+                        return Err(
+                            ApiError::ExecutionError("unexpected response".to_string()).into()
+                        );
+                    }
+                },
+                Err(e) => {
+                    return Err(ApiError::ExecutionError(e.to_string()).into());
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
     /// get addresses
     async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
         // get info from storage about which blocks the addresses have created
@@ -1154,16 +1240,6 @@ impl MassaRpcServer for API<Public> {
         &self,
         req: Vec<DeferredCallsQuoteRequest>,
     ) -> RpcResult<Vec<DeferredCallsQuoteResponse>> {
-        let current_network_version = self
-            .0
-            .keypair_factory
-            .mip_store
-            .get_network_version_current();
-
-        if current_network_version < 1 {
-            return Err(ApiError::NotFound.into());
-        }
-
         if req.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
@@ -1209,16 +1285,6 @@ impl MassaRpcServer for API<Public> {
         &self,
         arg: Vec<String>,
     ) -> RpcResult<Vec<DeferredCallResponse>> {
-        let current_network_version = self
-            .0
-            .keypair_factory
-            .mip_store
-            .get_network_version_current();
-
-        if current_network_version < 1 {
-            return Err(ApiError::NotFound.into());
-        }
-
         if arg.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
@@ -1259,16 +1325,6 @@ impl MassaRpcServer for API<Public> {
         &self,
         slots: Vec<Slot>,
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
-        let current_network_version = self
-            .0
-            .keypair_factory
-            .mip_store
-            .get_network_version_current();
-
-        if current_network_version < 1 {
-            return Err(ApiError::NotFound.into());
-        }
-
         if slots.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
@@ -1527,5 +1583,56 @@ fn check_input_operation(
             "There is data left after operation deserialization".to_owned(),
         ))
         .into())
+    }
+}
+
+/// Convert GetAddressDatastoreKeys to ExecutionQueryRequestItem
+fn get_address_datastore_keys_to_state_query_item(
+    value: GetAddressDatastoreKeysRequest,
+    max_datastore_query_config: Option<u32>,
+    max_datastore_key_length: u8,
+) -> RpcResult<ExecutionQueryRequestItem> {
+    let start_key = match (value.start_key, value.inclusive_start_key.unwrap_or(true)) {
+        (None, _) => std::ops::Bound::Unbounded,
+        (Some(k), true) => std::ops::Bound::Included(k),
+        (Some(k), false) => std::ops::Bound::Excluded(k),
+    };
+    let end_key = match (value.end_key, value.inclusive_end_key.unwrap_or(true)) {
+        (None, _) => std::ops::Bound::Unbounded,
+        (Some(k), true) => std::ops::Bound::Included(k),
+        (Some(k), false) => std::ops::Bound::Excluded(k),
+    };
+
+    let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+        &value.prefix,
+        start_key,
+        end_key,
+        value.count,
+        max_datastore_key_length,
+        max_datastore_query_config,
+    )
+    .map_err(|e| {
+        ApiError::BadRequest(format!(
+            "error querying datastore keys for address {}: {}",
+            value.address, e
+        ))
+    })?;
+
+    if value.is_final {
+        Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+            address: value.address,
+            prefix,
+            start_key,
+            end_key,
+            count: value.count,
+        })
+    } else {
+        Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+            address: value.address,
+            prefix,
+            start_key,
+            end_key,
+            count: value.count,
+        })
     }
 }

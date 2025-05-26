@@ -109,10 +109,8 @@ massa_wallet = { path = "./massa-wallet" }
 massa_event_cache = { path = "./massa-event-cache" }
 
 # Massa projects dependencies
-# massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "deferred_calls" }
-# massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "deferred_calls" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "c9a7c55914f3d308996113df0936f15d96490313" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "cd14c775aff31b8c0f49064613118f428f9dd45f" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "branch" = "mainnet_2_6" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "mainnet_2_6" }
 
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "04b05ddd320fbe76cc858115af7b5fc28bdb8310" }
 # Dev only - use local dependencies
@@ -176,6 +174,7 @@ rand_distr = "=0.4"
 rand_xoshiro = "0.6"
 rayon = "1.7"
 rcgen = "0.11"
+regex = "1.11.1"
 # "rust-rocksdb" instead of "rocksdb" fixes jemalloc feature, see https://github.com/rust-rocksdb/rust-rocksdb/issues/863
 rocksdb = { package = "rust-rocksdb", version = "0.36.0" }
 rust_decimal = { version = "1.32", default-features = false }
@@ -202,10 +201,10 @@ time = "0.3"
 tokio = "1.23"
 tokio-stream = "0.1"
 toml_edit = "0.21"
-tonic = "0.12"
-tonic-health = "0.12"
-tonic-reflection = "0.12"
-tonic-web = "0.12"
+tonic = "=0.12"
+tonic-health = "=0.12"
+tonic-reflection = "=0.12"
+tonic-web = "=0.12"
 tower = "0.4"
 tower-http = "0.6"
 tower-service = "0.3"

@@ -6,27 +6,29 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
-use anyhow::{anyhow, bail, Result};
+
 use massa_deferred_calls::DeferredCall;
-use massa_execution_exports::ExecutionConfig;
-use massa_execution_exports::ExecutionStackElement;
+
+use massa_execution_exports::{
+    execution_info::{OriginTransferContext, TransferContext},
+    ExecutionConfig, ExecutionStackElement,
+};
 use massa_models::async_msg::{AsyncMessage, AsyncMessageTrigger};
-use massa_models::bytecode::Bytecode;
-use massa_models::datastore::get_prefix_bounds;
-use massa_models::deferred_calls::DeferredCallId;
+
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
     amount::Amount,
+    bytecode::Bytecode,
+    datastore::get_prefix_bounds,
+    deferred_calls::DeferredCallId,
     slot::Slot,
     timeslots::get_block_slot_timestamp,
 };
 use massa_proto_rs::massa::model::v1::{
     AddressCategory, ComparisonResult, NativeAmount, NativeTime,
 };
-use massa_sc_runtime::RuntimeModule;
-use massa_sc_runtime::{Interface, InterfaceClone};
-use massa_signature::PublicKey;
-use massa_signature::Signature;
+use massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, Result, RuntimeModule};
+use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
 #[cfg(any(
     feature = "gas_calibration",
@@ -200,7 +202,7 @@ impl InterfaceClone for InterfaceImpl {
 /// Helper function that creates an amount from a NativeAmount
 fn amount_from_native_amount(amount: &NativeAmount) -> Result<Amount> {
     let amount = Amount::from_mantissa_scale(amount.mantissa, amount.scale)
-        .map_err(|err| anyhow!(format!("{}", err)))?;
+        .map_err(|err| format!("{}", err))?;
 
     Ok(amount)
 }
@@ -230,8 +232,12 @@ fn get_address_from_opt_or_context(
     option_address_string: Option<String>,
 ) -> Result<Address> {
     match option_address_string {
-        Some(address_string) => Address::from_str(&address_string).map_err(|e| e.into()),
-        None => context.get_current_address().map_err(|e| e.into()),
+        Some(address_string) => {
+            Address::from_str(&address_string).map_err(|e| e.to_string().into())
+        }
+        None => context
+            .get_current_address()
+            .map_err(|e| e.to_string().into()),
     }
 }
 
@@ -251,21 +257,18 @@ impl Interface for InterfaceImpl {
     }
 
     fn get_interface_version(&self) -> Result<u32> {
-        let context = context_guard!(self);
-        Ok(context.execution_component_version)
+        bail!("get_interface_version has been called but no versioning is in progress")
     }
 
     fn increment_recursion_counter(&self) -> Result<()> {
-        let execution_component_version = self.get_interface_version()?;
-
         let mut context = context_guard!(self);
 
         context.recursion_counter += 1;
 
-        if execution_component_version > 0
-            && context.recursion_counter > self.config.max_recursive_calls_depth
-        {
-            bail!("recursion depth limit reached");
+        if context.recursion_counter > self.config.max_recursive_calls_depth {
+            return Err(InterfaceError::DepthError(
+                "recursion depth limit reached".to_string(),
+            ));
         }
 
         Ok(())
@@ -276,7 +279,11 @@ impl Interface for InterfaceImpl {
 
         match context.recursion_counter.checked_sub(1) {
             Some(value) => context.recursion_counter = value,
-            None => bail!("recursion counter underflow"),
+            None => {
+                return Err(InterfaceError::DepthError(
+                    "recursion counter underflow".to_string(),
+                ));
+            }
         }
 
         Ok(())
@@ -295,13 +302,15 @@ impl Interface for InterfaceImpl {
     /// The target bytecode or an error
     fn init_call(&self, address: &str, raw_coins: u64) -> Result<Vec<u8>> {
         // get target address
-        let to_address = Address::from_str(address)?;
+        let to_address = Address::from_str(address).map_err(|e| e.to_string())?;
 
         // write-lock context
         let mut context = context_guard!(self);
 
         // check that the target address is a SC address and if it exists
-        context.check_target_sc_address(to_address)?;
+        context
+            .check_target_sc_address(to_address)
+            .map_err(|e| e.to_string())?;
 
         // get target bytecode
         let bytecode = match context.get_bytecode(&to_address) {
@@ -319,8 +328,13 @@ impl Interface for InterfaceImpl {
         let coins = Amount::from_raw(raw_coins);
         // note: rights are not checked here we checked that to_address is an SC address above
         // and we know that the sender is at the top of the call stack
-        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, false)
-        {
+        if let Err(err) = context.transfer_coins(
+            Some(from_address),
+            Some(to_address),
+            coins,
+            false,
+            TransferContext::AbiCallCoins,
+        ) {
             bail!(
                 "error transferring {} coins from {} to {}: {}",
                 coins,
@@ -365,7 +379,8 @@ impl Interface for InterfaceImpl {
         let ret = context
             .module_cache
             .write()
-            .load_module(bytecode, gas_limit, condom_limits)?;
+            .load_module(bytecode, gas_limit, condom_limits)
+            .map_err(|e| e.to_string())?;
 
         Ok(ret)
     }
@@ -378,11 +393,11 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let condom_limits = context.get_condom_limits();
 
-        let ret =
-            context
-                .module_cache
-                .write()
-                .load_tmp_module(bytecode, gas_limit, condom_limits)?;
+        let ret = context
+            .module_cache
+            .write()
+            .load_tmp_module(bytecode, gas_limit, condom_limits)
+            .map_err(|e| e.to_string())?;
 
         Ok(ret)
     }
@@ -396,7 +411,7 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `get_balance_wasmv1`
     fn get_balance(&self) -> Result<u64> {
         let context = context_guard!(self);
-        let address = context.get_current_address()?;
+        let address = context.get_current_address().map_err(|e| e.to_string())?;
         Ok(context.get_balance(&address).unwrap_or_default().to_raw())
     }
 
@@ -411,7 +426,8 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_balance_wasmv1`
     fn get_balance_for(&self, address: &str) -> Result<u64> {
-        let address = massa_models::address::Address::from_str(address)?;
+        let address =
+            massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         Ok(context_guard!(self)
             .get_balance(&address)
             .unwrap_or_default()
@@ -459,8 +475,25 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `get_keys_wasmv1`
     fn get_keys(&self, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
-        let addr = context.get_current_address()?;
-        match context.get_keys(&addr, prefix_opt.unwrap_or_default()) {
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
+
+        // TODO update when implementing the ABI key limits
+        let start_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let end_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let count = None;
+
+        match context
+            .get_keys(
+                &addr,
+                prefix_opt.unwrap_or_default(),
+                start_key,
+                end_key,
+                count,
+            )
+            .map_err(|e| e.to_string())?
+        {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -473,9 +506,25 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_keys_wasmv1`
     fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
-        let addr = &Address::from_str(address)?;
+        let addr = &Address::from_str(address).map_err(|e| e.to_string())?;
         let context = context_guard!(self);
-        match context.get_keys(addr, prefix_opt.unwrap_or_default()) {
+        // TODO update when implementing the ABI key limits
+        let start_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let end_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let count = None;
+
+        match context
+            .get_keys(
+                addr,
+                prefix_opt.unwrap_or_default(),
+                start_key,
+                end_key,
+                count,
+            )
+            .map_err(|e| e.to_string())?
+        {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -493,7 +542,17 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
-        match context.get_keys(&address, prefix) {
+        // TODO update when implementing the ABI key limits
+        let start_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let end_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let count = None;
+
+        match context
+            .get_keys(&address, prefix, start_key, end_key, count)
+            .map_err(|e| e.to_string())?
+        {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -510,7 +569,7 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `raw_get_data_wasmv1`
     fn raw_get_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
-        let addr = context.get_current_address()?;
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
         match context.get_data_entry(&addr, key) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
@@ -528,7 +587,7 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_get_data_wasmv1`
     fn raw_get_data_for(&self, address: &str, key: &[u8]) -> Result<Vec<u8>> {
-        let addr = &massa_models::address::Address::from_str(address)?;
+        let addr = &massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         let context = context_guard!(self);
         match context.get_data_entry(addr, key) {
             Some(value) => Ok(value),
@@ -566,8 +625,10 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `raw_set_data_wasmv1`
     fn raw_set_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
-        let addr = context.get_current_address()?;
-        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
+        context
+            .set_data_entry(&addr, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -582,9 +643,11 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_set_data_wasmv1`
     fn raw_set_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
-        let addr = massa_models::address::Address::from_str(address)?;
+        let addr = massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         let mut context = context_guard!(self);
-        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        context
+            .set_data_entry(&addr, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -592,7 +655,9 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
-        context.set_data_entry(&address, key.to_vec(), value.to_vec())?;
+        context
+            .set_data_entry(&address, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -606,8 +671,10 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `raw_append_data_wasmv1`
     fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
-        let addr = context.get_current_address()?;
-        context.append_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
+        context
+            .append_data_entry(&addr, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -621,8 +688,10 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_append_data_wasmv1`
     fn raw_append_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
-        let addr = massa_models::address::Address::from_str(address)?;
-        context_guard!(self).append_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        let addr = massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
+        context_guard!(self)
+            .append_data_entry(&addr, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -642,7 +711,9 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
-        context.append_data_entry(&address, key.to_vec(), value.to_vec())?;
+        context
+            .append_data_entry(&address, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -655,8 +726,10 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `raw_delete_data_wasmv1`
     fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
-        let addr = context.get_current_address()?;
-        context.delete_data_entry(&addr, key)?;
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
+        context
+            .delete_data_entry(&addr, key)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -669,8 +742,10 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_delete_data_wasmv1`
     fn raw_delete_data_for(&self, address: &str, key: &[u8]) -> Result<()> {
-        let addr = &massa_models::address::Address::from_str(address)?;
-        context_guard!(self).delete_data_entry(addr, key)?;
+        let addr = &massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
+        context_guard!(self)
+            .delete_data_entry(addr, key)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -684,7 +759,9 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
-        context.delete_data_entry(&address, key)?;
+        context
+            .delete_data_entry(&address, key)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -699,7 +776,7 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `has_data_wasmv1`
     fn has_data(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
-        let addr = context.get_current_address()?;
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
         Ok(context.has_data_entry(&addr, key))
     }
 
@@ -714,7 +791,7 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `has_data_wasmv1`
     fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
-        let addr = massa_models::address::Address::from_str(address)?;
+        let addr = massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         let context = context_guard!(self);
         Ok(context.has_data_entry(&addr, key))
     }
@@ -748,9 +825,9 @@ impl Interface for InterfaceImpl {
                 last.owned_addresses.clone()
             }
         } else {
-            return Err(anyhow!("empty stack"));
+            bail!("empty stack");
         };
-        let current_address = context.get_current_address()?;
+        let current_address = context.get_current_address().map_err(|e| e.to_string())?;
         Ok(caller_owned_addresses.contains(&current_address))
     }
 
@@ -759,7 +836,7 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `raw_get_bytecode_wasmv1`
     fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
         let context = context_guard!(self);
-        let address = context.get_current_address()?;
+        let address = context.get_current_address().map_err(|e| e.to_string())?;
         match context.get_bytecode(&address) {
             Some(bytecode) => Ok(bytecode.0),
             _ => bail!("bytecode not found"),
@@ -771,7 +848,7 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `raw_get_bytecode_wasmv1`
     fn raw_get_bytecode_for(&self, address: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
-        let address = Address::from_str(address)?;
+        let address = Address::from_str(address).map_err(|e| e.to_string())?;
         match context.get_bytecode(&address) {
             Some(bytecode) => Ok(bytecode.0),
             _ => bail!("bytecode not found"),
@@ -804,11 +881,11 @@ impl Interface for InterfaceImpl {
         let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
         let context = context_guard!(self);
-        let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
+        let stack = context.stack.last().ok_or("No stack")?;
         let datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| anyhow!("No datastore in stack"))?;
+            .ok_or("No datastore in stack")?;
         let keys = datastore
             .range::<Vec<u8>, _>(range_ref)
             .map(|(k, _v)| k.clone())
@@ -826,11 +903,11 @@ impl Interface for InterfaceImpl {
         let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
         let context = context_guard!(self);
-        let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
+        let stack = context.stack.last().ok_or("No stack")?;
         let datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| anyhow!("No datastore in stack"))?;
+            .ok_or("No datastore in stack")?;
         let keys = datastore
             .range::<Vec<u8>, _>(range_ref)
             .map(|(k, _v)| k.clone())
@@ -848,11 +925,11 @@ impl Interface for InterfaceImpl {
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
     fn op_entry_exists(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
-        let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
+        let stack = context.stack.last().ok_or("No stack")?;
         let datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| anyhow!("No datastore in stack"))?;
+            .ok_or("No datastore in stack")?;
         let has_key = datastore.contains_key(key);
         Ok(has_key)
     }
@@ -867,16 +944,16 @@ impl Interface for InterfaceImpl {
     /// The operation datastore value matching the provided key, if found, otherwise an error.
     fn get_op_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
-        let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
+        let stack = context.stack.last().ok_or("No stack")?;
         let datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| anyhow!("No datastore in stack"))?;
+            .ok_or("No datastore in stack")?;
         let data = datastore
             .get(key)
             .cloned()
-            .ok_or_else(|| anyhow!("Unknown key: {:?}", key));
-        data
+            .ok_or(format!("Unknown key: {:?}", key))?;
+        Ok(data)
     }
 
     /// Hashes arbitrary data
@@ -898,7 +975,8 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the resulting address
     fn address_from_public_key(&self, public_key: &str) -> Result<String> {
-        let public_key = massa_signature::PublicKey::from_str(public_key)?;
+        let public_key =
+            massa_signature::PublicKey::from_str(public_key).map_err(|e| e.to_string())?;
         let addr = massa_models::address::Address::from_public_key(&public_key);
         Ok(addr.to_string())
     }
@@ -943,21 +1021,14 @@ impl Interface for InterfaceImpl {
         signature_: &[u8],
         public_key_: &[u8],
     ) -> Result<bool> {
-        let execution_component_version = self.get_interface_version()?;
-
         // check the signature length
         if signature_.len() != 65 {
-            return Err(anyhow!("invalid signature length in evm_signature_verify"));
+            return Err("invalid signature length in evm_signature_verify".into());
         }
 
         // parse the public key
-        let public_key = match execution_component_version {
-            0 => libsecp256k1::PublicKey::parse_slice(
-                public_key_,
-                Some(libsecp256k1::PublicKeyFormat::Raw),
-            )?,
-            _ => libsecp256k1::PublicKey::parse_slice(public_key_, None)?,
-        };
+        let public_key =
+            libsecp256k1::PublicKey::parse_slice(public_key_, None).map_err(|e| e.to_string())?;
 
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
@@ -971,36 +1042,37 @@ impl Interface for InterfaceImpl {
         // s is the signature proof for R.x (32 bytes)
         // v is a recovery parameter used to ease the signature verification (1 byte)
         // see test_evm_verify for an example of its usage
-        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])
+            .map_err(|e| e.to_string())?;
 
-        if execution_component_version != 0 {
-            let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?.into();
-            // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
-            //       restrict to only 27 & 28 (=> 0 & 1)
-            if recovery_id != 0 && recovery_id != 1 {
-                // Note:
-                // The v value in an EVM signature serves as a recovery ID,
-                // aiding in the recovery of the public key from the signature.
-                // Typically, v should be either 27 or 28
-                // (or sometimes 0 or 1, depending on the implementation).
-                // Ensuring that v is within the expected range is crucial
-                // for correctly recovering the public key.
-                // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
-                return Err(anyhow!(
-                    "invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
-                ));
-            }
-
+        let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])
+            .map_err(|e| e.to_string())?
+            .into();
+        // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
+        //       restrict to only 27 & 28 (=> 0 & 1)
+        if recovery_id != 0 && recovery_id != 1 {
             // Note:
-            // The s value in an EVM signature should be in the lower half of the elliptic curve
-            // in order to prevent malleability attacks.
-            // If s is in the high-order range, it can be converted to its low-order equivalent,
-            // which should be enforced during signature verification.
-            if signature.s.is_high() {
-                return Err(anyhow!(
-                    "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
-                ));
-            }
+            // The v value in an EVM signature serves as a recovery ID,
+            // aiding in the recovery of the public key from the signature.
+            // Typically, v should be either 27 or 28
+            // (or sometimes 0 or 1, depending on the implementation).
+            // Ensuring that v is within the expected range is crucial
+            // for correctly recovering the public key.
+            // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
+            return Err(
+                "invalid recovery id value (v = {recovery_id}) in evm_signature_verify".into(),
+            );
+        }
+
+        // Note:
+        // The s value in an EVM signature should be in the lower half of the elliptic curve
+        // in order to prevent malleability attacks.
+        // If s is in the high-order range, it can be converted to its low-order equivalent,
+        // which should be enforced during signature verification.
+        if signature.s.is_high() {
+            return Err(
+                "High-Order s Value are prohibited in evm_get_pubkey_from_signature".into(),
+            );
         }
 
         // verify the signature
@@ -1015,25 +1087,11 @@ impl Interface for InterfaceImpl {
     /// Get an EVM address from a raw secp256k1 public key (64 bytes).
     /// Address is the last 20 bytes of the hash of the public key.
     fn evm_get_address_from_pubkey(&self, public_key_: &[u8]) -> Result<Vec<u8>> {
-        let execution_component_version = self.get_interface_version()?;
-
-        let hash = match execution_component_version {
-            0 => {
-                // parse the public key
-                let public_key = libsecp256k1::PublicKey::parse_slice(
-                    public_key_,
-                    Some(libsecp256k1::PublicKeyFormat::Raw),
-                )?;
-                // compute the hash of the public key
-                sha3::Keccak256::digest(public_key.serialize())
-            }
-            _ => {
-                // parse the public key
-                let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)?;
-                // compute the hash of the public key
-                sha3::Keccak256::digest(&public_key.serialize()[1..])
-            }
-        };
+        // parse the public key
+        let public_key =
+            libsecp256k1::PublicKey::parse_slice(public_key_, None).map_err(|e| e.to_string())?;
+        // compute the hash of the public key
+        let hash = sha3::Keccak256::digest(&public_key.serialize()[1..]);
 
         // ignore the first 12 bytes of the hash
         let address = hash[12..].to_vec();
@@ -1044,72 +1102,51 @@ impl Interface for InterfaceImpl {
 
     /// Get a raw secp256k1 public key from an EVM signature and the signed hash.
     fn evm_get_pubkey_from_signature(&self, hash_: &[u8], signature_: &[u8]) -> Result<Vec<u8>> {
-        let execution_component_version = self.get_interface_version()?;
-
         // check the signature length
         if signature_.len() != 65 {
-            return Err(anyhow!(
-                "invalid signature length in evm_get_pubkey_from_signature"
-            ));
+            return Err("invalid signature length in evm_get_pubkey_from_signature".into());
         }
 
-        match execution_component_version {
-            0 => {
-                // parse the message
-                let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
+        // parse the message
+        let message = libsecp256k1::Message::parse_slice(hash_).map_err(|e| e.to_string())?;
 
-                // parse the signature as being (r, s, v) use only r and s
-                let signature =
-                    libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+        // parse the signature as being (r, s, v) use only r and s
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])
+            .map_err(|e| e.to_string())?;
 
-                // parse v as a recovery id
-                let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
-
-                // recover the public key
-                let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
-
-                // return its serialized value
-                Ok(recovered.serialize().to_vec())
-            }
-            _ => {
-                // parse the message
-                let message = libsecp256k1::Message::parse_slice(hash_)?;
-
-                // parse the signature as being (r, s, v) use only r and s
-                let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
-
-                // Note:
-                // See evm_signature_verify explanation
-                if signature.s.is_high() {
-                    return Err(anyhow!(
-                        "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
-                    ));
-                }
-
-                // parse v as a recovery id
-                let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?;
-
-                let recovery_id_: u8 = recovery_id.into();
-                if recovery_id_ != 0 && recovery_id_ != 1 {
-                    // Note:
-                    // See evm_signature_verify explanation
-                    return Err(anyhow!(
-                        "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
-                    ));
-                }
-
-                // recover the public key
-                let recovered = libsecp256k1::recover(&message, &signature, &recovery_id)?;
-
-                // return its serialized value
-                Ok(recovered.serialize().to_vec())
-            }
+        // Note:
+        // See evm_signature_verify explanation
+        if signature.s.is_high() {
+            return Err(
+                "High-Order s Value are prohibited in evm_get_pubkey_from_signature".into(),
+            );
         }
+
+        // parse v as a recovery id
+        let recovery_id =
+            libsecp256k1::RecoveryId::parse_rpc(signature_[64]).map_err(|e| e.to_string())?;
+
+        let recovery_id_: u8 = recovery_id.into();
+        if recovery_id_ != 0 && recovery_id_ != 1 {
+            // Note:
+            // See evm_signature_verify explanation
+            return Err(
+                "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
+                    .into(),
+            );
+        }
+
+        // recover the public key
+        let recovered =
+            libsecp256k1::recover(&message, &signature, &recovery_id).map_err(|e| e.to_string())?;
+
+        // return its serialized value
+        Ok(recovered.serialize().to_vec())
     }
 
     // Return true if the address is a User address, false if it is an SC address.
     fn is_address_eoa(&self, address_: &str) -> Result<bool> {
-        let address = Address::from_str(address_)?;
+        let address = Address::from_str(address_).map_err(|e| e.to_string())?;
         Ok(matches!(address, Address::User(..)))
     }
 
@@ -1121,11 +1158,19 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `transfer_coins_wasmv1`
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
-        let to_address = Address::from_str(to_address)?;
+        let to_address = Address::from_str(to_address).map_err(|e| e.to_string())?;
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
-        let from_address = context.get_current_address()?;
-        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
+        let from_address = context.get_current_address().map_err(|e| e.to_string())?;
+        context
+            .transfer_coins(
+                Some(from_address),
+                Some(to_address),
+                amount,
+                true,
+                TransferContext::AbiTransferCoins,
+            )
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -1143,11 +1188,19 @@ impl Interface for InterfaceImpl {
         to_address: &str,
         raw_amount: u64,
     ) -> Result<()> {
-        let from_address = Address::from_str(from_address)?;
-        let to_address = Address::from_str(to_address)?;
+        let from_address = Address::from_str(from_address).map_err(|e| e.to_string())?;
+        let to_address = Address::from_str(to_address).map_err(|e| e.to_string())?;
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
-        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
+        context
+            .transfer_coins(
+                Some(from_address),
+                Some(to_address),
+                amount,
+                true,
+                TransferContext::AbiTransferForCoins,
+            )
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -1163,15 +1216,23 @@ impl Interface for InterfaceImpl {
         raw_amount: NativeAmount,
         from_address: Option<String>,
     ) -> Result<()> {
-        let to_address = Address::from_str(&to_address)?;
+        let to_address = Address::from_str(&to_address).map_err(|e| e.to_string())?;
         let amount = amount_from_native_amount(&raw_amount)?;
 
         let mut context = context_guard!(self);
         let from_address = match from_address {
-            Some(from_address) => Address::from_str(&from_address)?,
-            None => context.get_current_address()?,
+            Some(from_address) => Address::from_str(&from_address).map_err(|e| e.to_string())?,
+            None => context.get_current_address().map_err(|e| e.to_string())?,
         };
-        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
+        context
+            .transfer_coins(
+                Some(from_address),
+                Some(to_address),
+                amount,
+                true,
+                TransferContext::AbiTransferCoins,
+            )
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -1185,7 +1246,8 @@ impl Interface for InterfaceImpl {
     /// Note that the ordering of this vector is deterministic and conserved.
     fn get_owned_addresses(&self) -> Result<Vec<String>> {
         Ok(context_guard!(self)
-            .get_current_owned_addresses()?
+            .get_current_owned_addresses()
+            .map_err(|e| e.to_string())?
             .into_iter()
             .map(|addr| addr.to_string())
             .collect())
@@ -1211,7 +1273,10 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_call_coins_wasmv1`
     fn get_call_coins(&self) -> Result<u64> {
-        Ok(context_guard!(self).get_current_call_coins()?.to_raw())
+        Ok(context_guard!(self)
+            .get_current_call_coins()
+            .map_err(|e| e.to_string())?
+            .to_raw())
     }
 
     /// Gets the amount of coins that have been transferred at the beginning of the call.
@@ -1220,7 +1285,9 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The amount of coins
     fn get_call_coins_wasmv1(&self) -> Result<NativeAmount> {
-        let amount = context_guard!(self).get_current_call_coins()?;
+        let amount = context_guard!(self)
+            .get_current_call_coins()
+            .map_err(|e| e.to_string())?;
         Ok(amount_to_native_amount(&amount))
     }
 
@@ -1229,16 +1296,14 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
-        let execution_component_version = self.get_interface_version()?;
         let mut context = context_guard!(self);
 
         let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
 
         // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
-        let max_event_size = match (execution_component_version, bypass_event_limitation) {
-            (0, _) => self.config.max_event_size_v0,
-            (_, true) => self.config.max_event_size_v0,
-            (_, false) => self.config.max_event_size_v1,
+        let max_event_size = match bypass_event_limitation {
+            true => self.config.max_event_size_v0,
+            false => self.config.max_event_size,
         };
 
         if data.len() > max_event_size {
@@ -1253,13 +1318,12 @@ impl Interface for InterfaceImpl {
                 context.user_event_count_in_current_exec.saturating_add(1);
         }
 
-        if execution_component_version > 0 {
-            let event_per_op = context.user_event_count_in_current_exec as usize;
+        let event_per_op = context.user_event_count_in_current_exec as usize;
 
-            if event_per_op > self.config.max_event_per_operation {
-                bail!("Too many event for this operation");
-            }
+        if event_per_op > self.config.max_event_per_operation {
+            bail!("Too many event for this operation");
         }
+
         context.event_emit(event);
         Ok(())
     }
@@ -1269,16 +1333,14 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the bytes_array data that is the payload of the event
     fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
-        let execution_component_version = self.get_interface_version()?;
         let mut context = context_guard!(self);
 
         let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
 
         // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
-        let max_event_size = match (execution_component_version, bypass_event_limitation) {
-            (0, _) => self.config.max_event_size_v0,
-            (_, true) => self.config.max_event_size_v0,
-            (_, false) => self.config.max_event_size_v1,
+        let max_event_size = match bypass_event_limitation {
+            true => self.config.max_event_size_v0,
+            false => self.config.max_event_size,
         };
 
         if data.len() > max_event_size {
@@ -1294,13 +1356,12 @@ impl Interface for InterfaceImpl {
                 context.user_event_count_in_current_exec.saturating_add(1);
         }
 
-        if execution_component_version > 0 {
-            let event_per_op = context.user_event_count_in_current_exec as usize;
+        let event_per_op = context.user_event_count_in_current_exec as usize;
 
-            if event_per_op > self.config.max_event_per_operation {
-                bail!("Too many event for this operation");
-            }
+        if event_per_op > self.config.max_event_per_operation {
+            bail!("Too many event for this operation");
         }
+
         context.event_emit(event);
 
         Ok(())
@@ -1315,7 +1376,8 @@ impl Interface for InterfaceImpl {
             self.config.t0,
             self.config.genesis_timestamp,
             slot,
-        )?;
+        )
+        .map_err(|e| e.to_string())?;
         Ok(ts.as_millis())
     }
 
@@ -1350,7 +1412,10 @@ impl Interface for InterfaceImpl {
     /// it can be both predicted and manipulated before the execution
     fn unsafe_random_wasmv1(&self, num_bytes: u64) -> Result<Vec<u8>> {
         let mut arr = vec![0u8; num_bytes as usize];
-        context_guard!(self).unsafe_rng.try_fill_bytes(&mut arr)?;
+        context_guard!(self)
+            .unsafe_rng
+            .try_fill_bytes(&mut arr)
+            .map_err(|e| e.to_string())?;
         Ok(arr)
     }
 
@@ -1384,7 +1449,7 @@ impl Interface for InterfaceImpl {
             bail!("validity end thread exceeds the configuration thread count")
         }
 
-        let target_addr = Address::from_str(target_address)?;
+        let target_addr = Address::from_str(target_address).map_err(|e| e.to_string())?;
 
         // check that the target address is an SC address
         if !matches!(target_addr, Address::SC(..)) {
@@ -1402,27 +1467,41 @@ impl Interface for InterfaceImpl {
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
 
-        let execution_component_version = execution_context.execution_component_version;
-        if execution_component_version > 0 {
-            if max_gas < self.config.gas_costs.max_instance_cost {
-                bail!("max gas is lower than the minimum instance cost")
-            }
-            if Slot::new(validity_end.0, validity_end.1)
-                < Slot::new(validity_start.0, validity_start.1)
-            {
-                bail!("validity end is earlier than the validity start")
-            }
-            if Slot::new(validity_end.0, validity_end.1) < emission_slot {
-                bail!("validity end is earlier than the current slot")
-            }
+        if max_gas < self.config.gas_costs.max_instance_cost {
+            bail!("max gas is lower than the minimum instance cost")
+        }
+        if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
+        {
+            bail!("validity end is earlier than the validity start")
+        }
+        if Slot::new(validity_end.0, validity_end.1) < emission_slot {
+            bail!("validity end is earlier than the current slot")
         }
 
         let emission_index = execution_context.created_message_index;
-        let sender = execution_context.get_current_address()?;
+        let sender = execution_context
+            .get_current_address()
+            .map_err(|e| e.to_string())?;
         let coins = Amount::from_raw(raw_coins);
-        execution_context.transfer_coins(Some(sender), None, coins, true)?;
+        execution_context
+            .transfer_coins(
+                Some(sender),
+                None,
+                coins,
+                true,
+                TransferContext::AbiSendMsgCoins,
+            )
+            .map_err(|e| e.to_string())?;
         let fee = Amount::from_raw(raw_fee);
-        execution_context.transfer_coins(Some(sender), None, fee, true)?;
+        execution_context
+            .transfer_coins(
+                Some(sender),
+                None,
+                fee,
+                true,
+                TransferContext::AbiSendMsgFee,
+            )
+            .map_err(|e| e.to_string())?;
         execution_context.push_new_message(AsyncMessage::new(
             emission_slot,
             emission_index,
@@ -1444,7 +1523,7 @@ impl Interface for InterfaceImpl {
                         }
                     }
                     Ok::<AsyncMessageTrigger, _>(AsyncMessageTrigger {
-                        address: Address::from_str(addr)?,
+                        address: Address::from_str(addr).map_err(|e| e.to_string())?,
                         datastore_key,
                     })
                 })
@@ -1490,7 +1569,9 @@ impl Interface for InterfaceImpl {
     /// [DeprecatedByNewRuntime] Replaced by `raw_set_bytecode_wasmv1`
     fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
         let mut execution_context = context_guard!(self);
-        let address = execution_context.get_current_address()?;
+        let address = execution_context
+            .get_current_address()
+            .map_err(|e| e.to_string())?;
         match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
             Ok(()) => Ok(()),
             Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
@@ -1502,7 +1583,8 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_set_bytecode_wasmv1`
     fn raw_set_bytecode_for(&self, address: &str, bytecode: &[u8]) -> Result<()> {
-        let address: Address = massa_models::address::Address::from_str(address)?;
+        let address: Address =
+            massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         let mut execution_context = context_guard!(self);
         match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
             Ok(()) => Ok(()),
@@ -1612,7 +1694,7 @@ impl Interface for InterfaceImpl {
             bail!("target slot thread exceeds the configuration thread count")
         }
 
-        let target_addr = Address::from_str(target_addr)?;
+        let target_addr = Address::from_str(target_addr).map_err(|e| e.to_string())?;
 
         // check that the target address is an SC address
         if !matches!(target_addr, Address::SC(..)) {
@@ -1640,11 +1722,26 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
 
         // get caller address
-        let sender_address = context.get_current_address()?;
+        let sender_address = context.get_current_address().map_err(|e| e.to_string())?;
+
+        let operation_id = context.origin_operation_id;
+        let async_message_id = context.async_msg_id;
 
         // make sender pay coins + fee
         // coins + cost for booking the deferred call
-        context.transfer_coins(Some(sender_address), None, coins.saturating_add(fee), true)?;
+        context
+            .transfer_coins(
+                Some(sender_address),
+                None,
+                coins.saturating_add(fee),
+                true,
+                TransferContext::DeferredCallRegister(OriginTransferContext {
+                    operation_id,
+                    async_message_id,
+                    ..Default::default()
+                }),
+            )
+            .map_err(|e| e.to_string())?;
 
         let call = DeferredCall::new(
             sender_address,
@@ -1658,7 +1755,9 @@ impl Interface for InterfaceImpl {
             false,
         );
 
-        let call_id = context.deferred_call_register(call)?;
+        let call_id = context
+            .deferred_call_register(call)
+            .map_err(|e| e.to_string())?;
         Ok(call_id.to_string())
     }
 
@@ -1673,7 +1772,7 @@ impl Interface for InterfaceImpl {
         // write-lock context
         let context = context_guard!(self);
 
-        let call_id = DeferredCallId::from_str(id)?;
+        let call_id = DeferredCallId::from_str(id).map_err(|e| e.to_string())?;
         Ok(context.deferred_call_exists(&call_id))
     }
 
@@ -1687,18 +1786,20 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
 
         // Can only be called by the creator of the deferred call.
-        let caller = context.get_current_address()?;
+        let caller = context.get_current_address().map_err(|e| e.to_string())?;
 
-        let call_id = DeferredCallId::from_str(id)?;
+        let call_id = DeferredCallId::from_str(id).map_err(|e| e.to_string())?;
 
-        context.deferred_call_cancel(&call_id, caller)?;
+        context
+            .deferred_call_cancel(&call_id, caller)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
     #[allow(unused_variables)]
     fn init_call_wasmv1(&self, address: &str, raw_coins: NativeAmount) -> Result<Vec<u8>> {
         // get target address
-        let to_address = Address::from_str(address)?;
+        let to_address = Address::from_str(address).map_err(|e| e.to_string())?;
 
         // check that the target address is an SC address
         if !matches!(to_address, Address::SC(..)) {
@@ -1724,8 +1825,13 @@ impl Interface for InterfaceImpl {
         let coins = amount_from_native_amount(&raw_coins)?;
         // note: rights are not checked here we checked that to_address is an SC address above
         // and we know that the sender is at the top of the call stack
-        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, false)
-        {
+        if let Err(err) = context.transfer_coins(
+            Some(from_address),
+            Some(to_address),
+            coins,
+            false,
+            TransferContext::AbiCallCoins,
+        ) {
             bail!(
                 "error transferring {} coins from {} to {}: {}",
                 coins,
@@ -1749,14 +1855,14 @@ impl Interface for InterfaceImpl {
 
     /// Returns a NativeAmount from a string
     fn native_amount_from_str_wasmv1(&self, amount: &str) -> Result<NativeAmount> {
-        let amount = Amount::from_str(amount).map_err(|err| anyhow!(format!("{}", err)))?;
+        let amount = Amount::from_str(amount).map_err(|err| format!("{}", err))?;
         Ok(amount_to_native_amount(&amount))
     }
 
     /// Returns a string from a NativeAmount
     fn native_amount_to_string_wasmv1(&self, amount: &NativeAmount) -> Result<String> {
         let amount = amount_from_native_amount(amount)
-            .map_err(|err| anyhow!(format!("Couldn't convert native amount to Amount: {}", err)))?;
+            .map_err(|err| format!("Couldn't convert native amount to Amount: {}", err))?;
         Ok(amount.to_string())
     }
 
@@ -1810,11 +1916,11 @@ impl Interface for InterfaceImpl {
 
         let quotient = dividend
             .checked_div_u64(divisor)
-            .ok_or_else(|| anyhow!(format!("Couldn't div_rem native amount")))?;
+            .ok_or("Couldn't div_rem native amount")?;
         // we can unwrap, we
         let remainder = dividend
             .checked_rem_u64(divisor)
-            .ok_or_else(|| anyhow!(format!("Couldn't checked_rem_u64 native amount")))?;
+            .ok_or("Couldn't checked_rem_u64 native amount")?;
 
         Ok((
             amount_to_native_amount(&quotient),
@@ -1833,21 +1939,21 @@ impl Interface for InterfaceImpl {
 
         let quotient = dividend
             .checked_div(divisor)
-            .ok_or_else(|| anyhow!(format!("Couldn't div_rem native amount")))?;
+            .ok_or("Couldn't div_rem native amount")?;
 
         let remainder = dividend
             .checked_rem(&divisor)
-            .ok_or_else(|| anyhow!(format!("Couldn't checked_rem native amount")))?;
+            .ok_or("Couldn't checked_rem native amount")?;
         let remainder = amount_to_native_amount(&remainder);
 
         Ok((quotient, remainder))
     }
 
     fn base58_check_to_bytes_wasmv1(&self, s: &str) -> Result<Vec<u8>> {
-        bs58::decode(s)
+        Ok(bs58::decode(s)
             .with_check(None)
             .into_vec()
-            .map_err(|err| anyhow!(format!("bs58 parsing error: {}", err)))
+            .map_err(|err| format!("bs58 parsing error: {}", err))?)
     }
 
     fn bytes_to_base58_check_wasmv1(&self, data: &[u8]) -> String {
@@ -1867,24 +1973,21 @@ impl Interface for InterfaceImpl {
     }
 
     fn get_address_category_wasmv1(&self, to_check: &str) -> Result<AddressCategory> {
-        let addr = Address::from_str(to_check)?;
-        let execution_component_version = context_guard!(self).execution_component_version;
+        let addr = Address::from_str(to_check).map_err(|e| e.to_string())?;
 
         // Fixed behavior for this ABI in https://github.com/massalabs/massa/pull/4728
         // We keep the previous (bugged) code if the execution component version is 0
         // to avoid a breaking change
-        match (addr, execution_component_version) {
-            (Address::User(_), 0) => Ok(AddressCategory::ScAddress),
-            (Address::SC(_), 0) => Ok(AddressCategory::UserAddress),
-            (Address::User(_), _) => Ok(AddressCategory::UserAddress),
-            (Address::SC(_), _) => Ok(AddressCategory::ScAddress),
+        match addr {
+            Address::User(_) => Ok(AddressCategory::UserAddress),
+            Address::SC(_) => Ok(AddressCategory::ScAddress),
             #[allow(unreachable_patterns)]
-            (_, _) => Ok(AddressCategory::Unspecified),
+            _ => Ok(AddressCategory::Unspecified),
         }
     }
 
     fn get_address_version_wasmv1(&self, address: &str) -> Result<u64> {
-        let address = Address::from_str(address)?;
+        let address = Address::from_str(address).map_err(|e| e.to_string())?;
         match address {
             Address::User(UserAddress::UserAddressV0(_)) => Ok(0),
             // Address::User(UserAddress::UserAddressV1(_)) => Ok(1),
@@ -1896,7 +1999,7 @@ impl Interface for InterfaceImpl {
     }
 
     fn get_pubkey_version_wasmv1(&self, pubkey: &str) -> Result<u64> {
-        let pubkey = PublicKey::from_str(pubkey)?;
+        let pubkey = PublicKey::from_str(pubkey).map_err(|e| e.to_string())?;
         match pubkey {
             PublicKey::PublicKeyV0(_) => Ok(0),
             #[allow(unreachable_patterns)]
@@ -1905,7 +2008,7 @@ impl Interface for InterfaceImpl {
     }
 
     fn get_signature_version_wasmv1(&self, signature: &str) -> Result<u64> {
-        let signature = Signature::from_str(signature)?;
+        let signature = Signature::from_str(signature).map_err(|e| e.to_string())?;
         match signature {
             Signature::SignatureV0(_) => Ok(0),
             #[allow(unreachable_patterns)]
@@ -1920,7 +2023,7 @@ impl Interface for InterfaceImpl {
     ) -> Result<NativeTime> {
         let time1 = massa_time_from_native_time(time1)?;
         let time2 = massa_time_from_native_time(time2)?;
-        let sum = time1.checked_add(time2)?;
+        let sum = time1.checked_add(time2).or_else(|e| bail!("{}", e))?;
         Ok(massa_time_to_native_time(&sum))
     }
 
@@ -1931,13 +2034,13 @@ impl Interface for InterfaceImpl {
     ) -> Result<NativeTime> {
         let time1 = massa_time_from_native_time(time1)?;
         let time2 = massa_time_from_native_time(time2)?;
-        let sub = time1.checked_sub(time2)?;
+        let sub = time1.checked_sub(time2).or_else(|e| bail!("{}", e))?;
         Ok(massa_time_to_native_time(&sub))
     }
 
     fn checked_mul_native_time_wasmv1(&self, time: &NativeTime, factor: u64) -> Result<NativeTime> {
         let time1 = massa_time_from_native_time(time)?;
-        let mul = time1.checked_mul(factor)?;
+        let mul = time1.checked_mul(factor).or_else(|e| bail!("{}", e))?;
         Ok(massa_time_to_native_time(&mul))
     }
 
@@ -1950,10 +2053,10 @@ impl Interface for InterfaceImpl {
 
         let quotient = dividend
             .checked_div_u64(divisor)
-            .or_else(|_| bail!(format!("Couldn't div_rem native time")))?;
+            .or_else(|_| bail!("Couldn't div_rem native time"))?;
         let remainder = dividend
             .checked_rem_u64(divisor)
-            .or_else(|_| bail!(format!("Couldn't checked_rem_u64 native time")))?;
+            .or_else(|_| bail!("Couldn't checked_rem_u64 native time"))?;
 
         Ok((
             massa_time_to_native_time(&quotient),
@@ -1971,19 +2074,19 @@ impl Interface for InterfaceImpl {
 
         let quotient = dividend
             .checked_div_time(divisor)
-            .or_else(|_| bail!(format!("Couldn't div_rem native time")))?;
+            .or_else(|_| bail!("Couldn't div_rem native time"))?;
 
         let remainder = dividend
             .checked_rem_time(divisor)
-            .or_else(|_| bail!(format!("Couldn't checked_rem native time")))?;
+            .or_else(|_| bail!("Couldn't checked_rem native time"))?;
         let remainder = massa_time_to_native_time(&remainder);
 
         Ok((quotient, remainder))
     }
 
     fn compare_address_wasmv1(&self, left: &str, right: &str) -> Result<ComparisonResult> {
-        let left = Address::from_str(left)?;
-        let right = Address::from_str(right)?;
+        let left = Address::from_str(left).map_err(|e| e.to_string())?;
+        let right = Address::from_str(right).map_err(|e| e.to_string())?;
 
         let res = match left.cmp(&right) {
             std::cmp::Ordering::Less => ComparisonResult::Lower,
@@ -2029,8 +2132,8 @@ impl Interface for InterfaceImpl {
     }
 
     fn compare_pub_key_wasmv1(&self, left: &str, right: &str) -> Result<ComparisonResult> {
-        let left = PublicKey::from_str(left)?;
-        let right = PublicKey::from_str(right)?;
+        let left = PublicKey::from_str(left).map_err(|e| e.to_string())?;
+        let right = PublicKey::from_str(right).map_err(|e| e.to_string())?;
 
         let res = match left.cmp(&right) {
             std::cmp::Ordering::Less => ComparisonResult::Lower,

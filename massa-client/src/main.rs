@@ -22,6 +22,7 @@ mod cmds;
 mod display;
 mod repl;
 mod settings;
+mod voting;
 
 #[cfg(test)]
 pub mod tests;

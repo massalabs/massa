@@ -37,8 +37,9 @@ use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElem
 #[cfg(feature = "execution-trace")]
 use massa_proto_rs::massa::api::v1::{
     AbiCallStack, AbiCallStackElement, AbiCallStackElementCall, AbiCallStackElementParent,
-    AscabiCallStack, GetOperationAbiCallStacksResponse, GetSlotAbiCallStacksResponse,
-    OperationAbiCallStack, SlotAbiCallStacks, TransferInfo, TransferInfos,
+    AscabiCallStack, DeferredCallAbiCallStack, GetOperationAbiCallStacksResponse,
+    GetSlotAbiCallStacksResponse, OperationAbiCallStack, SlotAbiCallStacks, TransferInfo,
+    TransferInfos,
 };
 
 /// Execute read only call (function or bytecode)
@@ -661,10 +662,19 @@ pub(crate) fn get_slot_abi_call_stacks(
 
         let mut slot_abi_call_stacks = SlotAbiCallStacks {
             asc_call_stacks: vec![],
+            deferred_call_stacks: vec![],
             operation_call_stacks: vec![],
         };
 
         if let Some(call_stack) = call_stack_ {
+            for (call_id, deferred_call_stack) in call_stack.deferred_call_stacks {
+                slot_abi_call_stacks
+                    .deferred_call_stacks
+                    .push(DeferredCallAbiCallStack {
+                        deferred_call_id: call_id.to_string(),
+                        call_stack: deferred_call_stack.iter().map(into_element).collect(),
+                    })
+            }
             for (i, asc_call_stack) in call_stack.asc_call_stacks.into_iter().enumerate() {
                 slot_abi_call_stacks.asc_call_stacks.push(AscabiCallStack {
                     index: i as u64,
@@ -993,24 +1003,26 @@ pub(crate) fn query_state(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::QueryStateRequest>,
 ) -> Result<grpc_api::QueryStateResponse, GrpcError> {
-    let current_network_version = grpc.keypair_factory.mip_store.get_network_version_current();
-
-    let queries = request
-        .into_inner()
-        .queries
-        .into_iter()
-        .map(|q| to_querystate_filter(q, current_network_version))
-        .collect::<Result<Vec<_>, _>>()?;
-
+    let queries = request.into_inner().queries;
     if queries.is_empty() {
         return Err(GrpcError::InvalidArgument(
             "no query items specified".to_string(),
         ));
     }
-
     if queries.len() as u32 > grpc.grpc_config.max_query_items_per_request {
         return Err(GrpcError::InvalidArgument(format!("too many query items received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_query_items_per_request)));
     }
+
+    let queries = queries
+        .into_iter()
+        .map(|q| {
+            to_querystate_filter(
+                q,
+                grpc.grpc_config.max_datastore_keys_queries,
+                grpc.grpc_config.max_datastore_key_length,
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     let response = grpc
         .execution_controller
