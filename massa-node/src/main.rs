@@ -487,6 +487,8 @@ async fn launch(
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
         max_event_cache_length: SETTINGS.execution.event_cache_size,
         snip_amount: SETTINGS.execution.event_snip_amount,
+        // Note: we still use the v0 event data size for the event cache to be able to deserialize
+        // events that bypass the v1 event limitation
         max_event_data_length: MAX_EVENT_DATA_SIZE_V0 as u64,
         thread_count: THREAD_COUNT,
         // Note: SCOutputEvent call stack comes from the execution module, and we assume
