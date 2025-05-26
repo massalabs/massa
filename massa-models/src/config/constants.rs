@@ -73,9 +73,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.28.13"
+            "SAND.28.14"
         } else {
-            "DEVN.28.13"
+            "DEVN.28.14"
         }
         .parse()
         .unwrap()

@@ -1,6 +1,6 @@
 [package]
 name = "massa_db_worker"
-version = "28.13.0"
+version = "28.14.0"
 edition = "2021"
 
 [features]

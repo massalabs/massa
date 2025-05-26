@@ -1,6 +1,6 @@
 [package]
 name = "massa_pool_exports"
-version = "28.13.0"
+version = "28.14.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
