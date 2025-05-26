@@ -155,16 +155,43 @@ impl MassaRpcServer for API<Public> {
                         let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
                         for transfer in only_transfer {
                             let (t_from, t_to, t_amount) = transfer.parse_transfer();
-                            transfers.push(Transfer {
-                                from: Address::from_str(&t_from).unwrap(),
-                                to: Address::from_str(&t_to).unwrap(),
-                                amount: Amount::from_raw(t_amount),
-                                effective_amount_received: Amount::from_raw(t_amount),
-                                context: TransferContext::ASC(i as u64),
-                                succeed: true,
-                                fee: Amount::from_raw(0),
-                                block_id,
-                            });
+                            if let (Ok(addr_from), Ok(addr_to)) =
+                                (Address::from_str(&t_from), Address::from_str(&t_to))
+                            {
+                                transfers.push(Transfer {
+                                    from: addr_from,
+                                    to: addr_to,
+                                    amount: Amount::from_raw(t_amount),
+                                    effective_amount_received: Amount::from_raw(t_amount),
+                                    context: TransferContext::ASC(i as u64),
+                                    succeed: true,
+                                    fee: Amount::from_raw(0),
+                                    block_id,
+                                });
+                            }
+                        }
+                    }
+                }
+
+                for (call_id, deferred_call_call_stack) in abi_calls.deferred_call_stacks {
+                    for abi_trace in deferred_call_call_stack {
+                        let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                        for transfer in only_transfer {
+                            let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                            if let (Ok(addr_from), Ok(addr_to)) =
+                                (Address::from_str(&t_from), Address::from_str(&t_to))
+                            {
+                                transfers.push(Transfer {
+                                    from: addr_from,
+                                    to: addr_to,
+                                    amount: Amount::from_raw(t_amount),
+                                    effective_amount_received: Amount::from_raw(t_amount),
+                                    context: TransferContext::DeferredCall(call_id.clone()),
+                                    succeed: true,
+                                    fee: Amount::from_raw(0),
+                                    block_id,
+                                });
+                            }
                         }
                     }
                 }
@@ -176,16 +203,20 @@ impl MassaRpcServer for API<Public> {
                         let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
                         for transfer in only_transfer {
                             let (t_from, t_to, t_amount) = transfer.parse_transfer();
-                            transfers.push(Transfer {
-                                from: Address::from_str(&t_from).unwrap(),
-                                to: Address::from_str(&t_to).unwrap(),
-                                amount: Amount::from_raw(t_amount),
-                                effective_amount_received: Amount::from_raw(t_amount),
-                                context: TransferContext::Operation(op_id),
-                                succeed: true,
-                                fee: Amount::from_raw(0),
-                                block_id,
-                            });
+                            if let (Ok(addr_from), Ok(addr_to)) =
+                                (Address::from_str(&t_from), Address::from_str(&t_to))
+                            {
+                                transfers.push(Transfer {
+                                    from: addr_from,
+                                    to: addr_to,
+                                    amount: Amount::from_raw(t_amount),
+                                    effective_amount_received: Amount::from_raw(t_amount),
+                                    context: TransferContext::Operation(op_id),
+                                    succeed: true,
+                                    fee: Amount::from_raw(0),
+                                    block_id,
+                                });
+                            }
                         }
                     }
                 }

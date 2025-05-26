@@ -2916,7 +2916,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?branch=mainnet_2_6#a55c02cfdc4fe0032925a57af2b1b94a6e8a59d1"
+source = "git+https://github.com/massalabs/massa-proto-rs?branch=mainnet_2_6#aac9a2ef5fd8882311f5e64cd76c6476c9f34a67"
 dependencies = [
  "glob",
  "prost",
@@ -2930,7 +2930,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=mainnet_2_6#4e7103acf58ca0f681a3a204efb28fe4bbb0dff7"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=mainnet_2_6#549ed9672e83da8da9d7ba4417f3b6536bfe64ae"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -4654,8 +4654,8 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.4.1",
- "itertools 0.10.5",
+ "heck 0.5.0",
+ "itertools 0.12.1",
  "log",
  "multimap",
  "once_cell",
@@ -4675,7 +4675,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools 0.12.1",
  "proc-macro2 1.0.94",
  "quote 1.0.40",
  "syn 2.0.100",
