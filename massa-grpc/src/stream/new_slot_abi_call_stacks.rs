@@ -13,7 +13,9 @@ use crate::public::into_element;
 #[cfg(not(feature = "execution-trace"))]
 use massa_models::slot::Slot;
 #[cfg(feature = "execution-trace")]
-use massa_proto_rs::massa::api::v1::{AscabiCallStack, OperationAbiCallStack, DeferredCallAbiCallStack};
+use massa_proto_rs::massa::api::v1::{
+    AscabiCallStack, DeferredCallAbiCallStack, OperationAbiCallStack,
+};
 #[cfg(not(feature = "execution-trace"))]
 #[derive(Clone)]
 struct SlotAbiCallStack {
@@ -100,7 +102,7 @@ pub(crate) async fn new_slot_abi_call_stacks(
                                         }
                                     )
                                 }
-                                
+
                             }
 
                             if let Err(e) = tx.send(Ok(ret)).await {

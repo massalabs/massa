@@ -79,6 +79,25 @@ pub(crate) async fn new_slot_transfers(
                                     }
                                 }
 
+                                for deferred_call_call_stack in massa_slot_execution_trace.deferred_call_stacks {
+                                    let deferred_call_id = deferred_call_call_stack.0;
+                                    let deferred_call_call_stack = deferred_call_call_stack.1;
+                                    for abi_trace in deferred_call_call_stack {
+                                        let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                                        for transfer in only_transfer {
+                                            let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                                            ret_transfers.push(TransferInfo {
+                                                from: t_from.clone(),
+                                                to: t_to.clone(),
+                                                amount: t_amount,
+                                                operation_id_or_asc_index: Some(
+                                                    grpc_api::transfer_info::OperationIdOrAscIndex::DeferredCallId(deferred_call_id.to_string()),
+                                                ),
+                                            });
+                                        }
+                                    }
+                                }
+
                                 for op_call_stack in massa_slot_execution_trace.operation_call_stacks {
                                     let op_id = op_call_stack.0;
                                     let op_call_stack = op_call_stack.1;
