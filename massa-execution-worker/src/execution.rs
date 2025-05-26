@@ -1572,24 +1572,24 @@ impl ExecutionState {
                     deferred_calls_stats.0 += 1;
                     info!("executed deferred call: {:?}", id);
                     cfg_if::cfg_if! {
-						if #[cfg(feature = "execution-trace")] {
-							// Safe to unwrap
-							slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().0);
-						} else if #[cfg(feature = "execution-info")] {
-							slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().0);
-							exec_info.deferred_calls_messages.push(Ok(_exec));
-						}
-					}
-				}
+                        if #[cfg(feature = "execution-trace")] {
+                            // Safe to unwrap
+                            slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().0);
+                        } else if #[cfg(feature = "execution-info")] {
+                            slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().0);
+                            exec_info.deferred_calls_messages.push(Ok(_exec));
+                        }
+                    }
+                }
                 Err(err) => {
                     deferred_calls_stats.1 += 1;
                     let msg = format!("failed executing deferred call: {}", err);
                     #[cfg(feature = "execution-info")]
                     exec_info.deferred_calls_messages.push(Err(msg.clone()));
                     debug!(msg);
-				}
-			}
-		}
+                }
+            }
+        }
 
         // Block execution
 
