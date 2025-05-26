@@ -1531,6 +1531,16 @@
 <a href="#1531" id="1531">1531</a>
 <a href="#1532" id="1532">1532</a>
 <a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
+<a href="#1537" id="1537">1537</a>
+<a href="#1538" id="1538">1538</a>
+<a href="#1539" id="1539">1539</a>
+<a href="#1540" id="1540">1540</a>
+<a href="#1541" id="1541">1541</a>
+<a href="#1542" id="1542">1542</a>
+<a href="#1543" id="1543">1543</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1570,8 +1580,9 @@
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">use </span>massa_proto_rs::massa::api::v1::{
     AbiCallStack, AbiCallStackElement, AbiCallStackElementCall, AbiCallStackElementParent,
-    AscabiCallStack, GetOperationAbiCallStacksResponse, GetSlotAbiCallStacksResponse,
-    OperationAbiCallStack, SlotAbiCallStacks, TransferInfo, TransferInfos,
+    AscabiCallStack, DeferredCallAbiCallStack, GetOperationAbiCallStacksResponse,
+    GetSlotAbiCallStacksResponse, OperationAbiCallStack, SlotAbiCallStacks, TransferInfo,
+    TransferInfos,
 };
 
 <span class="doccomment">/// Execute read only call (function or bytecode)
@@ -2194,10 +2205,19 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>slot_abi_call_stacks = SlotAbiCallStacks {
             asc_call_stacks: <span class="macro">vec!</span>[],
+            deferred_call_stacks: <span class="macro">vec!</span>[],
             operation_call_stacks: <span class="macro">vec!</span>[],
         };
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(call_stack) = call_stack_ {
+            <span class="kw">for </span>(call_id, deferred_call_stack) <span class="kw">in </span>call_stack.deferred_call_stacks {
+                slot_abi_call_stacks
+                    .deferred_call_stacks
+                    .push(DeferredCallAbiCallStack {
+                        deferred_call_id: call_id.to_string(),
+                        call_stack: deferred_call_stack.iter().map(into_element).collect(),
+                    })
+            }
             <span class="kw">for </span>(i, asc_call_stack) <span class="kw">in </span>call_stack.asc_call_stacks.into_iter().enumerate() {
                 slot_abi_call_stacks.asc_call_stacks.push(AscabiCallStack {
                     index: i <span class="kw">as </span>u64,

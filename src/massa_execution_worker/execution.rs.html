@@ -2675,6 +2675,8 @@
 <a href="#2675" id="2675">2675</a>
 <a href="#2676" id="2676">2676</a>
 <a href="#2677" id="2677">2677</a>
+<a href="#2678" id="2678">2678</a>
+<a href="#2679" id="2679">2679</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2750,6 +2752,8 @@
 </span><span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
 <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
 </span><span class="kw">use </span>prost::Message;
+<span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+</span><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>massa_execution_exports::execution_info::{
     AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult,
@@ -4202,7 +4206,7 @@
             slot: <span class="kw-2">*</span>slot,
             operation_call_stacks: PreHashMap::default(),
             asc_call_stacks: <span class="macro">vec!</span>[],
-            deferred_call_stacks: <span class="macro">vec!</span>[],
+            deferred_call_stacks: HashMap::default(),
         };
         <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
         </span><span class="kw">let </span><span class="kw-2">mut </span>transfers = <span class="macro">vec!</span>[];
@@ -4249,9 +4253,9 @@
                     <span class="macro">cfg_if::cfg_if!</span> {
                         <span class="kw">if </span><span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)] </span>{
                             <span class="comment">// Safe to unwrap
-                            </span>slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().<span class="number">0</span>);
+                            </span>slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().<span class="number">0</span>);
                         } <span class="kw">else if </span><span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)] </span>{
-                            slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().<span class="number">0</span>);
+                            slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().<span class="number">0</span>);
                             exec_info.deferred_calls_messages.push(<span class="prelude-val">Ok</span>(_exec));
                         }
                     }
