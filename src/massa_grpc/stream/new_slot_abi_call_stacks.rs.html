@@ -147,6 +147,8 @@
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc_api, FinalityLevel};
 <span class="kw">use </span>std::pin::Pin;
@@ -162,7 +164,9 @@
 <span class="attr">#[cfg(not(feature = <span class="string">"execution-trace"</span>))]
 </span><span class="kw">use </span>massa_models::slot::Slot;
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-</span><span class="kw">use </span>massa_proto_rs::massa::api::v1::{AscabiCallStack, OperationAbiCallStack, DeferredCallAbiCallStack};
+</span><span class="kw">use </span>massa_proto_rs::massa::api::v1::{
+    AscabiCallStack, DeferredCallAbiCallStack, OperationAbiCallStack,
+};
 <span class="attr">#[cfg(not(feature = <span class="string">"execution-trace"</span>))]
 #[derive(Clone)]
 </span><span class="kw">struct </span>SlotAbiCallStack {
@@ -249,7 +253,7 @@
                                         }
                                     )
                                 }
-                                
+
                             }
 
                             <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(ret)).<span class="kw">await </span>{
