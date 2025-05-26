@@ -1617,6 +1617,8 @@
 <a href="#1617" id="1617">1617</a>
 <a href="#1618" id="1618">1618</a>
 <a href="#1619" id="1619">1619</a>
+<a href="#1620" id="1620">1620</a>
+<a href="#1621" id="1621">1621</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2106,7 +2108,9 @@
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
         max_event_cache_length: SETTINGS.execution.event_cache_size,
         snip_amount: SETTINGS.execution.event_snip_amount,
-        max_event_data_length: MAX_EVENT_DATA_SIZE_V0 <span class="kw">as </span>u64,
+        <span class="comment">// Note: we still use the v0 event data size for the event cache to be able to deserialize
+        // events that bypass the v1 event limitation
+        </span>max_event_data_length: MAX_EVENT_DATA_SIZE_V0 <span class="kw">as </span>u64,
         thread_count: THREAD_COUNT,
         <span class="comment">// Note: SCOutputEvent call stack comes from the execution module, and we assume
         //       this should return a limited call stack length
