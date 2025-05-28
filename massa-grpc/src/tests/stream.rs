@@ -5,8 +5,14 @@ use core::panic;
 use massa_consensus_exports::MockConsensusController;
 use massa_execution_exports::{ExecutionOutput, MockExecutionController, SlotExecutionOutput};
 use massa_models::{
-    address::Address, amount::Amount, block::FilledBlock, secure_share::SecureShareSerializer,
-    slot::Slot, stats::ExecutionStats,
+    address::Address,
+    amount::Amount,
+    block::FilledBlock,
+    output_event::{EventExecutionContext, SCOutputEvent},
+    secure_share::SecureShareSerializer,
+    slot::Slot,
+    stats::ExecutionStats,
+    types::{SetOrKeep, SetUpdateOrDelete},
 };
 use massa_pool_exports::MockPoolController;
 use massa_proto_rs::massa::{
@@ -27,7 +33,13 @@ use massa_protocol_exports::{
 use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use std::{net::SocketAddr, ops::Add, str::FromStr, time::Duration};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    net::SocketAddr,
+    ops::Add,
+    str::FromStr,
+    time::Duration,
+};
 use tokio_stream::StreamExt;
 
 #[tokio::test]
@@ -1075,10 +1087,9 @@ async fn new_slot_execution_outputs() {
         deferred_credits_execution: vec![],
         cancel_async_message_execution: vec![],
         auto_sell_execution: vec![],
+        transfers_history: vec![],
     };
 
-    let (tx_request, rx) = tokio::sync::mpsc::channel(10);
-    let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
     let keypair = KeyPair::generate(0).unwrap();
     let _address = Address::from_public_key(&keypair.get_public_key());
 
@@ -1089,13 +1100,17 @@ async fn new_slot_execution_outputs() {
     .await
     .unwrap();
 
-    let mut resp_stream = public_client
-        .new_slot_execution_outputs(request_stream)
-        .await
-        .unwrap()
-        .into_inner();
+    {
+        let (tx_request, rx) = tokio::sync::mpsc::channel(10);
+        let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
-    let mut filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
+        let mut resp_stream = public_client
+            .new_slot_execution_outputs(request_stream)
+            .await
+            .unwrap()
+            .into_inner();
+
+        let mut filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
         filter: Some(
             massa_proto_rs::massa::api::v1::new_slot_execution_outputs_filter::Filter::SlotRange(
                 SlotRange {
@@ -1109,27 +1124,27 @@ async fn new_slot_execution_outputs() {
         ),
     };
 
-    tx_request
-        .send(NewSlotExecutionOutputsRequest {
-            filters: vec![filter],
-        })
-        .await
-        .unwrap();
-    tokio::time::sleep(Duration::from_millis(50)).await;
+        tx_request
+            .send(NewSlotExecutionOutputsRequest {
+                filters: vec![filter],
+            })
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
-    slot_tx
-        .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
-        .unwrap();
+        slot_tx
+            .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
+            .unwrap();
 
-    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
-        .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
+        let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
 
-    assert!(result.output.is_some());
+        assert!(result.output.is_some());
 
-    filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
+        filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
         filter: Some(
             massa_proto_rs::massa::api::v1::new_slot_execution_outputs_filter::Filter::SlotRange(
                 SlotRange {
@@ -1146,27 +1161,27 @@ async fn new_slot_execution_outputs() {
         ),
     };
 
-    tx_request
-        .send(NewSlotExecutionOutputsRequest {
-            filters: vec![filter],
-        })
-        .await
-        .unwrap();
-    tokio::time::sleep(Duration::from_millis(50)).await;
+        tx_request
+            .send(NewSlotExecutionOutputsRequest {
+                filters: vec![filter],
+            })
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
-    slot_tx
-        .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
-        .unwrap();
+        slot_tx
+            .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
+            .unwrap();
 
-    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
-        .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
-    // start slot and end slot are in range
-    assert!(result.output.is_some());
+        let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        // start slot and end slot are in range
+        assert!(result.output.is_some());
 
-    filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
+        filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
         filter: Some(
             massa_proto_rs::massa::api::v1::new_slot_execution_outputs_filter::Filter::SlotRange(
                 SlotRange {
@@ -1180,53 +1195,196 @@ async fn new_slot_execution_outputs() {
         ),
     };
 
-    tx_request
-        .send(NewSlotExecutionOutputsRequest {
-            filters: vec![filter],
-        })
-        .await
-        .unwrap();
-    tokio::time::sleep(Duration::from_millis(50)).await;
+        tx_request
+            .send(NewSlotExecutionOutputsRequest {
+                filters: vec![filter],
+            })
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
-    slot_tx
-        .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
-        .unwrap();
+        slot_tx
+            .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
+            .unwrap();
 
-    let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
-    // start slot is after block slot
-    assert!(result.is_err());
+        let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+        // start slot is after block slot
+        assert!(result.is_err());
+    }
 
-    // TODO add test when filter is updated
+    {
+        // reset filter by opening new stream
 
-    /*     filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
-        filter: Some(
-            massa_proto_rs::massa::api::v1::new_slot_execution_outputs_filter::Filter::EventFilter(
-                massa_proto_rs::massa::api::v1::ExecutionEventFilter {
-                    filter: Some(
-                        massa_proto_rs::massa::api::v1::execution_event_filter::Filter::OriginalOperationId( "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC"
-                                    .to_string()
-                        ),
-                    ),
-                },
+        let (tx_request, rx) = tokio::sync::mpsc::channel(10);
+        let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+        let mut resp_stream = public_client
+            .new_slot_execution_outputs(request_stream)
+            .await
+            .unwrap()
+            .into_inner();
+
+        let filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
+            filter: Some(
+                massa_proto_rs::massa::api::v1::new_slot_execution_outputs_filter::Filter::EventFilter(
+                    massa_proto_rs::massa::api::v1::ExecutionEventFilter { filter: Some(massa_proto_rs::massa::api::v1::execution_event_filter::Filter::EmitterAddress("AS12h4qdhDsYj7Tgaode7C7vWBTqJA1QLoAhsnaBgvkJSWmvh77p4".to_string()))
+                }),
             ),
-        ),
-    };
+        };
 
-    tx_request
-        .send(NewSlotExecutionOutputsRequest {
-            filters: vec![filter],
-        })
-        .await
-        .unwrap();
-    tokio::time::sleep(Duration::from_millis(50)).await;
+        tx_request
+            .send(NewSlotExecutionOutputsRequest {
+                filters: vec![filter],
+            })
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
-    slot_tx
-        .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
-        .unwrap();
+        slot_tx
+            .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
+            .unwrap();
 
-    let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
-    dbg!(&result);
-    assert!(result.is_err()); */
+        let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+
+        // error because exec_output_1 doesn"t have emitterAddress
+        assert!(result.is_err());
+
+        let mut exec_output_2 = exec_output_1.clone();
+
+        let mut store = massa_execution_exports::EventStore(VecDeque::new());
+        let mut call_stack = VecDeque::new();
+        call_stack.push_back(
+            Address::from_str("AS12h4qdhDsYj7Tgaode7C7vWBTqJA1QLoAhsnaBgvkJSWmvh77p4").unwrap(),
+        );
+
+        call_stack.push_front(
+            Address::from_str("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53").unwrap(),
+        );
+        store.push(SCOutputEvent {
+            context: EventExecutionContext {
+                slot: Slot::new(1, 0),
+                block: None,
+                read_only: false,
+                index_in_slot: 1,
+                call_stack: call_stack.clone(),
+                origin_operation_id: None,
+                is_final: true,
+                is_error: false,
+                async_msg_id: None,
+                deferred_call_id: None,
+            },
+            data: "my precious ring".to_string(),
+        });
+        exec_output_2.events = store;
+        slot_tx
+            .send(SlotExecutionOutput::ExecutedSlot(exec_output_2.clone()))
+            .unwrap();
+
+        let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+
+        assert!(result.output.is_some());
+
+        call_stack.clear();
+        exec_output_2.events.clear();
+        // inverse order of address
+        call_stack.push_front(
+            Address::from_str("AS12h4qdhDsYj7Tgaode7C7vWBTqJA1QLoAhsnaBgvkJSWmvh77p4").unwrap(),
+        );
+
+        call_stack.push_back(
+            Address::from_str("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53").unwrap(),
+        );
+
+        exec_output_2.events.push(SCOutputEvent {
+            context: EventExecutionContext {
+                slot: Slot::new(1, 0),
+                block: None,
+                read_only: false,
+                index_in_slot: 1,
+                call_stack,
+                origin_operation_id: None,
+                is_final: true,
+                is_error: false,
+                async_msg_id: None,
+                deferred_call_id: None,
+            },
+            data: "my precious".to_string(),
+        });
+
+        slot_tx
+            .send(SlotExecutionOutput::ExecutedSlot(exec_output_2.clone()))
+            .unwrap();
+
+        let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+
+        assert!(result.is_err());
+    }
+
+    {
+        // ledger change
+        let (tx_request, rx) = tokio::sync::mpsc::channel(10);
+        let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+        let mut resp_stream = public_client
+            .new_slot_execution_outputs(request_stream)
+            .await
+            .unwrap()
+            .into_inner();
+
+        let filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
+            filter: Some(
+                massa_proto_rs::massa::api::v1::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(
+                    massa_proto_rs::massa::api::v1::LedgerChangesFilter { filter: Some(massa_proto_rs::massa::api::v1::ledger_changes_filter::Filter::Address("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53".to_string()))
+                }),
+            ),
+        };
+
+        tx_request
+            .send(NewSlotExecutionOutputsRequest {
+                filters: vec![filter],
+            })
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        slot_tx
+            .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
+            .unwrap();
+
+        let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+
+        // nothing in stream because exec_output_1 doesn"t have ledger change
+        assert!(result.is_err());
+
+        let mut state_changes = massa_final_state::StateChanges::default();
+        state_changes.ledger_changes.0.insert(
+            Address::from_str("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53").unwrap(),
+            SetUpdateOrDelete::Update(massa_ledger_exports::LedgerEntryUpdate {
+                balance: SetOrKeep::Set(Amount::from_str("100").unwrap()),
+                bytecode: SetOrKeep::Keep,
+                datastore: BTreeMap::new(),
+            }),
+        );
+
+        let mut exec_output_2 = exec_output_1.clone();
+        exec_output_2.state_changes = state_changes;
+
+        slot_tx
+            .send(SlotExecutionOutput::ExecutedSlot(exec_output_2.clone()))
+            .unwrap();
+
+        let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+
+        assert!(result.output.is_some());
+    }
 
     stop_handle.stop();
 }

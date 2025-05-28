@@ -4,7 +4,7 @@ harness = false
 
 [package]
 name = "massa_execution_worker"
-version = "2.5.0"
+version = "3.0.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -41,7 +41,10 @@ benchmarking = [
     "tempfile",
 ]
 metrics = []
-execution-trace = ["massa_execution_exports/execution-trace"]
+execution-trace = [
+    "massa_execution_exports/execution-trace",
+    "schnellru"
+]
 dump-block = [
     "prost",
     "massa_execution_exports/dump-block",
@@ -49,7 +52,9 @@ dump-block = [
 ]
 db_storage_backend = []
 file_storage_backend = []
-execution-info = ["execution-trace"]
+execution-info = [
+    "execution-trace",
+]
 slot-replayer = []
 jemalloc = [
     "rocksdb/jemalloc",
@@ -58,7 +63,6 @@ jemalloc = [
 ]
 
 [dependencies]
-anyhow = { workspace = true }
 blake3 = { workspace = true }
 bs58 = { workspace = true }
 rand = { workspace = true }
@@ -97,7 +101,7 @@ massa_event_cache = { workspace = true }
 tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
-schnellru = { workspace = true }
+schnellru = { workspace = true, optional = true }
 prost = { workspace = true, optional = true }
 cfg-if = { workspace = true }
 rocksdb = { workspace = true }
@@ -119,5 +123,5 @@ massa_versioning = { workspace = true, "features" = ["test-exports"] }
 tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }
-assert_matches = { workspace = true }
 massa_event_cache = { workspace = true, features = ["test-exports"] }
+regex = { workspace = true }

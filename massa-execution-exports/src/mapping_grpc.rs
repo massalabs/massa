@@ -2,6 +2,10 @@
 
 use std::str::FromStr;
 
+use crate::execution_info::ExecutionInfoForSlot;
+
+#[cfg(feature = "execution-info")]
+use crate::execution_info::TransferContext;
 use crate::{
     ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryError, ExecutionQueryExecutionStatus,
     ExecutionQueryRequestItem, ExecutionQueryResponseItem, ExecutionQueryStakerInfo,
@@ -9,6 +13,7 @@ use crate::{
 };
 use grpc_api::execution_query_request_item as exec;
 use massa_models::address::Address;
+use massa_models::datastore::cleanup_datastore_key_range_query;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::error::ModelsError;
 use massa_models::execution::EventFilter;
@@ -16,12 +21,15 @@ use massa_models::mapping_grpc::to_denunciation_index;
 use massa_models::operation::OperationId;
 use massa_models::prehash::{CapacityAllocator, PreHashSet};
 use massa_proto_rs::massa::api::v1 as grpc_api;
-use massa_proto_rs::massa::model::v1 as grpc_model;
+#[cfg(feature = "execution-info")]
+use massa_proto_rs::massa::model::v1::CoinOrigin;
+use massa_proto_rs::massa::model::v1::{self as grpc_model};
 
 /// Convert a `grpc_api::ScExecutionEventsRequest` to a `ScExecutionEventsRequest`
 pub fn to_querystate_filter(
     query: grpc_api::ExecutionQueryRequestItem,
-    network_version: u32,
+    max_datastore_query_config: Option<u32>,
+    max_datastore_key_length: u8,
 ) -> Result<ExecutionQueryRequestItem, ModelsError> {
     if let Some(item) = query.request_item {
         match item {
@@ -50,15 +58,65 @@ pub fn to_querystate_filter(
                 ExecutionQueryRequestItem::AddressBytecodeFinal(Address::from_str(&value.address)?),
             ),
             exec::RequestItem::AddressDatastoreKeysCandidate(value) => {
+                let address = Address::from_str(&value.address)?;
+
+                let start_key = match (value.start_key, value.inclusive_start_key.unwrap_or(true)) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), true) => std::ops::Bound::Included(k),
+                    (Some(k), false) => std::ops::Bound::Excluded(k),
+                };
+                let end_key = match (value.end_key, value.inclusive_end_key.unwrap_or(true)) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), true) => std::ops::Bound::Included(k),
+                    (Some(k), false) => std::ops::Bound::Excluded(k),
+                };
+
+                let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+                    &value.prefix,
+                    start_key,
+                    end_key,
+                    value.limit,
+                    max_datastore_key_length,
+                    max_datastore_query_config,
+                )?;
+
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    addr: Address::from_str(&value.address)?,
-                    prefix: value.prefix,
+                    address,
+                    prefix,
+                    start_key,
+                    end_key,
+                    count: value.limit,
                 })
             }
             exec::RequestItem::AddressDatastoreKeysFinal(value) => {
+                let address = Address::from_str(&value.address)?;
+
+                let start_key = match (value.start_key, value.inclusive_start_key.unwrap_or(true)) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), true) => std::ops::Bound::Included(k),
+                    (Some(k), false) => std::ops::Bound::Excluded(k),
+                };
+                let end_key = match (value.end_key, value.inclusive_end_key.unwrap_or(true)) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), true) => std::ops::Bound::Included(k),
+                    (Some(k), false) => std::ops::Bound::Excluded(k),
+                };
+
+                let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+                    &value.prefix,
+                    start_key,
+                    end_key,
+                    value.limit,
+                    max_datastore_key_length,
+                    max_datastore_query_config,
+                )?;
+
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    addr: Address::from_str(&value.address)?,
-                    prefix: value.prefix,
+                    address,
+                    prefix,
+                    start_key,
+                    end_key,
+                    count: value.limit,
                 })
             }
             exec::RequestItem::AddressDatastoreValueCandidate(value) => {
@@ -136,12 +194,6 @@ pub fn to_querystate_filter(
                 Ok(ExecutionQueryRequestItem::Events(event_filter))
             }
             exec::RequestItem::DeferredCallQuote(value) => {
-                if network_version < 1 {
-                    return Err(ModelsError::InvalidVersionError(
-                        "deferred call quote is not supported in this network version".to_string(),
-                    ));
-                }
-
                 Ok(ExecutionQueryRequestItem::DeferredCallQuote {
                     target_slot: value
                         .target_slot
@@ -154,22 +206,10 @@ pub fn to_querystate_filter(
                 })
             }
             exec::RequestItem::DeferredCallInfo(info) => {
-                if network_version < 1 {
-                    return Err(ModelsError::InvalidVersionError(
-                        "deferred call quote is not supported in this network version".to_string(),
-                    ));
-                }
-
                 let id = DeferredCallId::from_str(&info.call_id)?;
                 Ok(ExecutionQueryRequestItem::DeferredCallInfo(id))
             }
             exec::RequestItem::DeferredCallsBySlot(value) => {
-                if network_version < 1 {
-                    return Err(ModelsError::InvalidVersionError(
-                        "deferred call quote is not supported in this network version".to_string(),
-                    ));
-                }
-
                 Ok(ExecutionQueryRequestItem::DeferredCallsBySlot(
                     value
                         .slot
@@ -262,7 +302,7 @@ fn to_execution_query_result(
         ExecutionQueryResponseItem::DatastoreValue(result) => {
             grpc_api::execution_query_response_item::ResponseItem::Bytes(result)
         }
-        ExecutionQueryResponseItem::KeyList(result) => {
+        ExecutionQueryResponseItem::AddressDatastoreKeys(result, _address, _is_final) => {
             grpc_api::execution_query_response_item::ResponseItem::VecBytes(
                 grpc_model::ArrayOfBytesWrapper {
                     items: result.into_iter().collect(),
@@ -422,6 +462,147 @@ impl From<ExecutionQueryError> for grpc_model::Error {
                 code: 404,
                 message: error,
             },
+        }
+    }
+}
+
+impl From<ExecutionInfoForSlot> for grpc_api::NewTransfersInfoServerResponse {
+    fn from(value: ExecutionInfoForSlot) -> Self {
+        #[cfg(feature = "execution-info")]
+        let transfers_info: Vec<grpc_model::ExecTransferInfo> = value
+            .transfers
+            .into_iter()
+            .map(|transfer| {
+                let id = transfer.id.unwrap_or("Unknown id".to_string());
+
+                let from_address = transfer.from.map(|a| a.to_string());
+                let to_address = transfer.to.map(|a| a.to_string());
+
+                let value = match transfer.value {
+                    crate::execution_info::TransferValue::Rolls(roll_count) => {
+                        grpc_model::TransferValue {
+                            value: Some(grpc_model::transfer_value::Value::Rolls(
+                                roll_count.into(),
+                            )),
+                        }
+                    }
+                    crate::execution_info::TransferValue::DeferredCredits(amount) => {
+                        grpc_model::TransferValue {
+                            value: Some(grpc_model::transfer_value::Value::DeferredCredits(
+                                amount.into(),
+                            )),
+                        }
+                    }
+                    crate::execution_info::TransferValue::Coins(amount) => {
+                        grpc_model::TransferValue {
+                            value: Some(grpc_model::transfer_value::Value::Coins(amount.into())),
+                        }
+                    }
+                };
+
+                let (origin, ctx) = match transfer.context {
+                    TransferContext::TransactionCoins(ctx) => {
+                        (CoinOrigin::OpTransactionCoins as i32, Some(ctx))
+                    }
+                    TransferContext::AyncMsgCancel(ctx) => {
+                        (CoinOrigin::AsyncMsgCancel as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCredits(ctx) => {
+                        (CoinOrigin::DeferredCredit as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallFail(ctx) => {
+                        (CoinOrigin::DeferredCallFail as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallCancel(ctx) => {
+                        (CoinOrigin::DeferredCallCancel as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallCoins(ctx) => {
+                        (CoinOrigin::DeferredCallCoins as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallRegister(ctx) => {
+                        (CoinOrigin::DeferredCallRegister as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallStorageRefund(ctx) => {
+                        (CoinOrigin::DeferredCallStorageRefund as i32, Some(ctx))
+                    }
+                    TransferContext::OperationFee(ctx) => {
+                        (CoinOrigin::OpTransactionFees as i32, Some(ctx))
+                    }
+                    TransferContext::RollBuy(ctx) => (CoinOrigin::OpRollBuy as i32, Some(ctx)),
+                    TransferContext::RollSell(ctx) => (CoinOrigin::OpRollSell as i32, Some(ctx)),
+                    TransferContext::RollSlash => (CoinOrigin::Slash as i32, None),
+                    TransferContext::CreateSCStorage => (CoinOrigin::CreateScStorage as i32, None),
+                    TransferContext::DatastoreStorage => {
+                        (CoinOrigin::DatastoreStorage as i32, None)
+                    }
+                    TransferContext::CallSCCoins(ctx) => {
+                        (CoinOrigin::OpCallscCoins as i32, Some(ctx))
+                    }
+                    TransferContext::AsyncMsgCoins(ctx) => {
+                        (CoinOrigin::AsyncMsgCoins as i32, Some(ctx))
+                    }
+                    TransferContext::EndorsementCreatorReward => {
+                        (CoinOrigin::EndorsementReward as i32, None)
+                    }
+                    TransferContext::EndorsementTargetReward => {
+                        (CoinOrigin::EndorsedReward as i32, None)
+                    }
+                    TransferContext::BlockCreatorReward => (CoinOrigin::BlockReward as i32, None),
+                    TransferContext::ReadOnlyBytecodeExecutionFee => {
+                        (CoinOrigin::ReadOnlyBytecodeExecFees as i32, None)
+                    }
+                    TransferContext::ReadOnlyFunctionCallFee => {
+                        (CoinOrigin::ReadOnlyFnCallFees as i32, None)
+                    }
+                    TransferContext::ReadOnlyFunctionCallCoins => {
+                        (CoinOrigin::ReadOnlyFnCallCoins as i32, None)
+                    }
+                    TransferContext::SetBytecodeStorage => {
+                        (CoinOrigin::SetBytecodeStorage as i32, None)
+                    }
+                    TransferContext::AbiCallCoins => (CoinOrigin::AbiCallCoins as i32, None),
+                    TransferContext::AbiTransferCoins => {
+                        (CoinOrigin::AbiTransferCoins as i32, None)
+                    }
+                    TransferContext::AbiTransferForCoins => {
+                        (CoinOrigin::AbiTransferForCoins as i32, None)
+                    }
+                    TransferContext::AbiSendMsgCoins => (CoinOrigin::AbiSendMsgCoins as i32, None),
+                    TransferContext::AbiSendMsgFee => (CoinOrigin::AbiSendMsgFees as i32, None),
+                };
+
+                let (operation_id, async_msg_id, deferred_call_id, denunciation_index) = match ctx {
+                    Some(ctx) => (
+                        ctx.operation_id.map(|id| id.to_string()),
+                        ctx.async_message_id_str,
+                        ctx.deferred_call_id.map(|id| id.to_string()),
+                        ctx.denunciation_index.map(|idx| idx.into()),
+                    ),
+                    None => (None, None, None, None),
+                };
+
+                grpc_model::ExecTransferInfo {
+                    id,
+                    from_address,
+                    to_address,
+                    origin,
+                    value: Some(value),
+                    operation_id,
+                    async_msg_id,
+                    deferred_call_id,
+                    denunciation_index,
+                }
+            })
+            .collect();
+
+        grpc_api::NewTransfersInfoServerResponse {
+            slot: Some(value.slot.into()),
+            timestamp: value.timestamp.as_millis() as i64,
+            block_id: value.opt_block_id.map(|b| b.to_string()),
+            #[cfg(feature = "execution-info")]
+            transfers_info,
+            #[cfg(not(feature = "execution-info"))]
+            transfers_info: vec![],
         }
     }
 }

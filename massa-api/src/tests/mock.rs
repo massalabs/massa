@@ -71,6 +71,9 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
         deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
         minimal_fees: Amount::zero(),
         deferred_calls_config: Default::default(),
+        max_datastore_keys_queries: Some(1000),
+        max_datastore_key_length: 255,
+        max_addresses_datastore_keys_query: Some(50),
     };
 
     // let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
@@ -148,6 +151,9 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
         minimal_fees: Amount::zero(),
         deferred_calls_config: Default::default(),
+        max_datastore_keys_queries: Some(1000),
+        max_datastore_key_length: 255,
+        max_addresses_datastore_keys_query: Some(50),
     };
 
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();

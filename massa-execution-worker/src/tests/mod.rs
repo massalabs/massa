@@ -35,4 +35,7 @@ mod universe;
 #[cfg(test)]
 mod tests_active_history;
 
+#[cfg(test)]
+mod tests_scan_datastore;
+
 mod interface;

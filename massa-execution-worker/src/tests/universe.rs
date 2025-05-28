@@ -13,6 +13,8 @@ use cfg_if::cfg_if;
 use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
 use massa_event_cache::MockEventCacheControllerWrapper;
+#[cfg(feature = "execution-info")]
+use massa_execution_exports::execution_info::ExecutionInfoForSlot;
 #[cfg(feature = "execution-trace")]
 use massa_execution_exports::types_trace_info::SlotAbiCallStack;
 use massa_execution_exports::{
@@ -168,6 +170,9 @@ pub struct ExecutionTestUniverse {
     #[cfg(feature = "execution-trace")]
     pub broadcast_traces_channel_receiver:
         Option<tokio::sync::broadcast::Receiver<(SlotAbiCallStack, bool)>>,
+    #[cfg(feature = "execution-info")]
+    pub broadcast_execution_info_channel_receiver:
+        Option<tokio::sync::broadcast::Receiver<ExecutionInfoForSlot>>,
 }
 
 impl TestUniverse for ExecutionTestUniverse {
@@ -189,10 +194,14 @@ impl TestUniverse for ExecutionTestUniverse {
         let (tx, rx) = broadcast::channel(16);
         #[cfg(feature = "execution-trace")]
         let (tx_traces, rx_traces) = broadcast::channel(16);
+        #[cfg(feature = "execution-info")]
+        let (tx_exec_info, rx_exec_info) = broadcast::channel(16);
         let exec_channels = ExecutionChannels {
             slot_execution_output_sender: tx,
             #[cfg(feature = "execution-trace")]
             slot_execution_traces_sender: tx_traces,
+            #[cfg(feature = "execution-info")]
+            slot_execution_info_sender: tx_exec_info,
         };
 
         cfg_if! {
@@ -239,6 +248,8 @@ impl TestUniverse for ExecutionTestUniverse {
             broadcast_channel_receiver: Some(rx),
             #[cfg(feature = "execution-trace")]
             broadcast_traces_channel_receiver: Some(rx_traces),
+            #[cfg(feature = "execution-info")]
+            broadcast_execution_info_channel_receiver: Some(rx_exec_info),
         };
         universe.initialize();
         universe

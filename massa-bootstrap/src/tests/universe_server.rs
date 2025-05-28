@@ -203,7 +203,7 @@ impl BootstrapServerTestUniverseBuilder {
         let mut batch = DBBatch::default();
         let versioning_batch = DBBatch::default();
         self.final_ledger
-            .apply_changes_to_batch(ledger_changes, &mut batch, 1);
+            .apply_changes_to_batch(ledger_changes, &mut batch);
         self.controllers
             .database
             .write()
@@ -217,7 +217,7 @@ impl BootstrapServerTestUniverseBuilder {
         let mut batch = DBBatch::default();
         let versioning_batch = DBBatch::default();
         self.final_ledger
-            .apply_changes_to_batch(ledger_changes, &mut batch, 1);
+            .apply_changes_to_batch(ledger_changes, &mut batch);
         self.controllers
             .database
             .write()
@@ -233,7 +233,7 @@ impl BootstrapServerTestUniverseBuilder {
         let mut batch = DBBatch::default();
         let versioning_batch = DBBatch::default();
         self.final_ledger
-            .apply_changes_to_batch(ledger_changes, &mut batch, 1);
+            .apply_changes_to_batch(ledger_changes, &mut batch);
         self.controllers
             .database
             .write()

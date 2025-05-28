@@ -5,7 +5,9 @@ use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
-    address::{AddressFilter, AddressInfo},
+    address::{
+        AddressFilter, AddressInfo, GetAddressDatastoreKeysRequest, GetAddressDatastoreKeysResponse,
+    },
     block::{BlockInfo, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -377,6 +379,13 @@ impl MassaRpcServer for API<Private> {
 
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {
         crate::wrong_api::<Value>()
+    }
+
+    async fn get_addresses_datastore_keys(
+        &self,
+        _arg: Vec<GetAddressDatastoreKeysRequest>,
+    ) -> RpcResult<Vec<GetAddressDatastoreKeysResponse>> {
+        crate::wrong_api::<Vec<_>>()
     }
 }
 

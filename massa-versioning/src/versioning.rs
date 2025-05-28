@@ -1172,7 +1172,9 @@ impl MipStoreRaw {
     // Network restart
 
     /// Check if store is consistent with given last network shutdown
-    /// On a network shutdown, the MIP infos will be edited, but we still need to check if this is consistent
+    /// On a network shutdown, the MIP infos will be edited but we still need to check if this is consistent
+    /// See https://github.com/massalabs/massa-functional-tests/blob/main/tests_versioning_network_restart.py
+    /// for an example
     fn is_consistent_with_shutdown_period(
         &self,
         shutdown_start: Slot,
