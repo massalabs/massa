@@ -224,7 +224,7 @@ jobs:
           version: "23.x"
           include-pre-releases: false
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: cargo install cargo-nextest --locked
+      - run: cargo install cargo-nextest --locked --version 0.9.97-b.2
       - run: cargo nextest run --retries 10 --profile ci --features=execution-trace,dump-block
       - run: cargo clean
       - run: cargo test --doc
