@@ -1,5 +1,5 @@
 use massa_models::{address::Address, amount::Amount, bytecode::Bytecode};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, ops::Bound};
 
 use crate::{LedgerChanges, LedgerError};
 use massa_db_exports::DBBatch;
@@ -44,19 +44,21 @@ pub trait LedgerController: Send + Sync {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    fn get_datastore_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>>;
+    fn get_datastore_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,
+        count: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>>;
 
     /// Reset the ledger
     ///
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self);
 
-    fn apply_changes_to_batch(
-        &mut self,
-        changes: LedgerChanges,
-        ledger_batch: &mut DBBatch,
-        final_state_component_version: u32,
-    );
+    fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch);
 
     /// Deserializes the key and value, useful after bootstrap
     fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool;

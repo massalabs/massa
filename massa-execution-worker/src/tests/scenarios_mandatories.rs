@@ -42,6 +42,7 @@ use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use mockall::predicate;
 use num::rational::Ratio;
 use parking_lot::RwLock;
+use regex::Regex;
 use std::sync::Arc;
 use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration};
 
@@ -573,6 +574,101 @@ fn test_nested_call_recursion_limit_reached() {
     assert!(events.len() >= 2);
     //println!("events: {:?}", events);
     assert!(events[1].data.contains("recursion depth limit reached"));
+}
+
+#[test]
+fn test_nested_call_recursion_limit_reached_10() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        max_recursive_calls_depth: 10, // This limit will be reached
+        ..Default::default()
+    };
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(1)
+                .returning(move |_| true);
+        });
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        Some(Slot::new(1, 1)),
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/nested_call.wasm"),
+        include_bytes!("./wasm/nested_calls_too_many.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let address = universe.get_address_sc_deployed(Slot::new(1, 0));
+
+    // Call the function test of the smart contract
+    let operation = ExecutionTestUniverse::create_call_sc_operation(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        10000000,
+        Amount::from_str("0").unwrap(),
+        Amount::from_str("0").unwrap(),
+        Address::from_str(&address).unwrap(),
+        String::from("test"),
+        address.as_bytes().to_vec(),
+    )
+    .unwrap();
+    universe.call_sc_block(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        Slot::new(1, 1),
+        operation,
+    );
+    finalized_waitpoint.wait();
+
+    // Get the events of the smart contract execution.
+    //We expect the call to have failed, so we check for the error message.
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            ..Default::default()
+        });
+    assert!(events.len() >= 2);
+    // println!("events[1].data: {:?}", events[1].data);
+    // we match the whole error message (but the operation id)
+    // to make sure both the message and its length are correct
+    let regex_str = r#"^\{"massa_execution_error":"Runtime error: runtime error when executing operation O[0-9A-Za-z]*: VM Error in CallSC context: Depth error: recursion depth limit reached"\}$"#;
+    let regex = Regex::new(regex_str).unwrap();
+    let data = &events[1].data;
+    // println!("regx: {:?}", regex_str);
+    // println!("data: {:?}", data);
+    assert!(regex.is_match(data));
 }
 
 /// Test the recursion depth limit in nested calls using call SC operation
@@ -2668,7 +2764,7 @@ fn send_and_receive_transaction() {
             );
             // block rewards computation
             let total_rewards = exec_cfg
-                .block_reward_v1
+                .block_reward
                 .saturating_add(Amount::from_str("20").unwrap()); // add 20 MAS for fees
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -2778,7 +2874,7 @@ fn roll_buy() {
 
             // address has 100 coins before buying roll
             // -> (100 (balance) - 100 (roll price)) + 1.02 / 17 * 3 (block reward)
-            let total_rewards = exec_cfg.block_reward_v1;
+            let total_rewards = exec_cfg.block_reward;
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
@@ -2888,7 +2984,7 @@ fn roll_sell() {
                 .get_balance_or_else(&address, || None)
                 .unwrap();
             // block rewards computation
-            let total_rewards = exec_cfg.block_reward_v1;
+            let total_rewards = exec_cfg.block_reward;
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
@@ -3148,7 +3244,7 @@ fn roll_slash() {
 
             // block rewards computation
             let total_rewards = exec_cfg
-                .block_reward_v1
+                .block_reward
                 .saturating_add(Amount::from_str("150").unwrap()); //reward of the 3 slash (50%)
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -3278,7 +3374,7 @@ fn roll_slash_2() {
                 .unwrap();
             // block rewards computation
             let total_rewards = exec_cfg
-                .block_reward_v1
+                .block_reward
                 .saturating_add(Amount::from_str("200").unwrap()); //reward of the 4 slash (50%)
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -3550,7 +3646,7 @@ fn datastore_manipulations() {
                 .returning(move |_, _| None);
             ledger_controller
                 .expect_get_datastore_keys()
-                .returning(move |_, _| None);
+                .returning(move |_, _, _, _, _| None);
             ledger_controller
                 .expect_get_bytecode()
                 .returning(move |_| None);
@@ -3585,7 +3681,7 @@ fn datastore_manipulations() {
                 .unwrap();
             // block rewards computation
             let total_rewards = exec_cfg
-                .block_reward_v1
+                .block_reward
                 .saturating_add(Amount::from_str("10").unwrap()); // 10 MAS for fees
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -3691,12 +3787,18 @@ fn datastore_manipulations() {
                 ExecutionQueryRequestItem::AddressBytecodeCandidate(addr),
                 ExecutionQueryRequestItem::AddressBytecodeFinal(addr),
                 ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    addr,
+                    address: addr,
                     prefix: vec![],
+                    start_key: std::ops::Bound::Unbounded,
+                    end_key: std::ops::Bound::Unbounded,
+                    count: None,
                 },
                 ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    addr,
+                    address: addr,
                     prefix: vec![],
+                    start_key: std::ops::Bound::Unbounded,
+                    end_key: std::ops::Bound::Unbounded,
+                    count: None,
                 },
                 ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
                     addr,
@@ -3982,7 +4084,7 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            let block_credits = exec_cfg.block_reward_v1;
+            let block_credits = exec_cfg.block_reward;
             let block_credit_part = block_credits
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: block_credits checked_div factor is 0");
@@ -4028,7 +4130,7 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
-            let block_credits = exec_cfg.block_reward_v1;
+            let block_credits = exec_cfg.block_reward;
             let block_credit_part = block_credits
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: block_credits checked_div factor is 0");
@@ -4616,7 +4718,7 @@ fn test_dump_block() {
             );
             // 1.02 for the block rewards
             let total_rewards = exec_cfg
-                .block_reward_v1
+                .block_reward
                 .saturating_add(Amount::from_str("10").unwrap()); // add 10 MAS for fees
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)

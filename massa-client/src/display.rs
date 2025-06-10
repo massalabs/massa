@@ -1,6 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::cmds::ExtendedWallet;
+use crate::voting::MasOGBalanceResponse;
 use console::style;
 use erased_serde::{Serialize, Serializer};
 use massa_api_exports::{
@@ -597,5 +598,30 @@ impl Output for PubkeySig {
 impl Output for ExecuteReadOnlyResponse {
     fn pretty_print(&self) {
         println!("{}", self);
+    }
+}
+
+impl Output for MasOGBalanceResponse {
+    fn pretty_print(&self) {
+        println!("{}", Style::Separator.style("========"));
+        println!(
+            "MASOG Total supply: {}",
+            Style::Coins.style(self.total_supply)
+        );
+        for balance in self.balances.iter() {
+            println!("{}", Style::Separator.style("========"));
+            println!("Address {} :", Style::Wallet.style(balance.address),);
+            println!(
+                "\tBalance: {}={}, {}={}",
+                Style::Finished.style("final"),
+                Style::Coins.style(balance.final_balance),
+                Style::Pending.style("candidate"),
+                Style::Coins.style(balance.candidate_balance),
+            );
+            println!(
+                "\tVoting power: {}%",
+                Style::Protocol.style(format!("{:.4}", balance.voting_power))
+            );
+        }
     }
 }

@@ -16,7 +16,8 @@ extend-ignore-re = [
     # Public key (P): 18 - 62 characters
     # NodeId (N)
     # OperationId (O)
-    "(AU|AS|N|S|P|O)\\d\\w{18,62}",
+    # BlockId (B)
+    "(AU|AS|N|S|P|O|B)\\d\\w{18,62}",
 ]
 
 [default.extend-words]

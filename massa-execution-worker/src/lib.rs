@@ -84,6 +84,7 @@
 mod active_history;
 mod context;
 mod controller;
+mod datastore_scan;
 mod execution;
 mod interface_impl;
 mod request_queue;
@@ -102,8 +103,6 @@ mod worker;
 
 #[cfg(feature = "execution-trace")]
 mod trace_history;
-
-mod execution_info;
 
 use massa_db_exports as _;
 pub use worker::start_execution_worker;

@@ -64,7 +64,9 @@ pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::{ExecutionError, ExecutionQueryError};
 pub use event_store::EventStore;
 pub use massa_sc_runtime::{CondomLimits, GasCosts};
+use massa_serialization as _;
 pub use settings::{ExecutionConfig, StorageCostsConstants};
+use tracing as _;
 pub use types::{
     ExecutedBlockInfo, ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionOutput,
     ExecutionQueryCycleInfos, ExecutionQueryExecutionStatus, ExecutionQueryRequest,
@@ -76,8 +78,11 @@ pub use types::{
 #[cfg(any(feature = "test-exports", feature = "gas_calibration"))]
 pub mod test_exports;
 
-/// types for execution-trace / execution-info
+/// types for execution-trace
 pub mod types_trace_info;
+
+/// types for execution-info
+pub mod execution_info;
 
 #[cfg(feature = "execution-trace")]
 pub use types_trace_info::{

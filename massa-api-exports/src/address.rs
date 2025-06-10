@@ -177,3 +177,35 @@ impl std::fmt::Display for AddressFilter {
         }
     }
 }
+
+/// Datastore keys entry query input structure
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GetAddressDatastoreKeysRequest {
+    /// The address for which to get the datastore keys
+    pub address: Address,
+    /// The prefix to filter the keys
+    pub prefix: Vec<u8>,
+    /// final true means final
+    pub is_final: bool,
+    /// The start key to filter the keys
+    pub start_key: Option<Vec<u8>>,
+    /// inclusive start key
+    pub inclusive_start_key: Option<bool>,
+    /// The end key to filter the keys
+    pub end_key: Option<Vec<u8>>,
+    /// inclusive end key
+    pub inclusive_end_key: Option<bool>,
+    /// The count of keys to return
+    pub count: Option<u32>,
+}
+
+/// Response object for datastore keys query
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GetAddressDatastoreKeysResponse {
+    /// The address for which to get the datastore keys
+    pub address: Address,
+    /// final true means final
+    pub is_final: bool,
+    /// keys list
+    pub keys: Vec<Vec<u8>>,
+}
