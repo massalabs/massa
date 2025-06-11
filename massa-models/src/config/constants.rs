@@ -73,9 +73,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.28.14"
+            "SAND.28.15"
         } else {
-            "DEVN.28.14"
+            "DEVN.28.15"
         }
         .parse()
         .unwrap()
@@ -122,9 +122,7 @@ pub fn get_period_from_args() -> u64 {
 /// Price of a roll in the network
 pub const ROLL_PRICE: Amount = Amount::const_init(100, 0);
 /// Block reward is given for each block creation
-pub const BLOCK_REWARD: Amount = Amount::const_init(102, 2);
-// Note: Desync between buildnet and mainnet block rewards
-//pub const BLOCK_REWARD: Amount = Amount::const_init(40001, 5);
+pub const BLOCK_REWARD: Amount = Amount::const_init(40001, 5);
 /// Cost to store one byte in the ledger
 pub const LEDGER_COST_PER_BYTE: Amount = Amount::const_init(1, 4);
 /// Cost for a base entry default 0.01 MASSA

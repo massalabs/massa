@@ -16,10 +16,19 @@ use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use nom::AsBytes;
 use std::collections::VecDeque;
-use std::ops::Bound::{Excluded, Included};
+use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::{collections::BTreeMap, path::PathBuf};
 use tracing::debug;
+
+// Helper function to convert a slice to an array of a given size, if possible,
+// and then returning it with the rest of the slice.
+fn buf_to_array_ctr<F: Fn(&[u8; N]) -> V, V, const N: usize>(
+    buf: &[u8],
+    ctr: F,
+) -> Option<(&[u8], V)> {
+    Some((&buf[N..], ctr(&buf.get(..N)?.try_into().ok()?)))
+}
 
 // General cycle info idents
 const COMPLETE_IDENT: u8 = 0u8;
@@ -27,7 +36,6 @@ const RNG_SEED_IDENT: u8 = 1u8;
 const FINAL_STATE_HASH_SNAPSHOT_IDENT: u8 = 2u8;
 const ROLL_COUNT_IDENT: u8 = 3u8;
 const PROD_STATS_IDENT: u8 = 4u8;
-const UPPER_LIMIT: u8 = u8::MAX;
 
 // Production stats idents
 const PROD_STATS_FAIL_IDENT: u8 = 0u8;
@@ -83,14 +91,6 @@ macro_rules! roll_count_key {
 macro_rules! prod_stats_prefix {
     ($cycle_prefix:expr) => {
         [&$cycle_prefix[..], &[PROD_STATS_IDENT]].concat()
-    };
-}
-
-/// Upper limit prefix macro for a given cycle
-#[macro_export]
-macro_rules! upper_limit_prefix {
-    ($cycle_prefix:expr) => {
-        [&$cycle_prefix[..], &[UPPER_LIMIT]].concat()
     };
 }
 
@@ -693,7 +693,13 @@ impl PoSFinalState {
     }
 
     /// Retrieves every deferred credit in a slot range
-    pub fn get_deferred_credits_range<R>(&self, range: R) -> DeferredCredits
+    /// Warning: this can be quite slow if there is tons of Deferred credits (e.g. just after genesis) to fetch
+    ///          so there is an option to filter by an address to improve the speed (cf json rpc api get_addresses)
+    pub fn get_deferred_credits_range<R>(
+        &self,
+        range: R,
+        addr_filter: Option<&Address>,
+    ) -> DeferredCredits
     where
         R: RangeBounds<Slot>,
     {
@@ -706,37 +712,32 @@ impl PoSFinalState {
 
         match range.start_bound() {
             Included(slot) => {
-                self.deferred_credits_serializer
-                    .slot_ser
-                    .serialize(slot, &mut start_key_buffer)
-                    .expect(DEFERRED_CREDITS_SER_ERROR);
+                start_key_buffer.extend_from_slice(&slot.to_bytes_key());
             }
             Excluded(slot) => {
-                self.deferred_credits_serializer
-                    .slot_ser
-                    .serialize(
-                        &slot
-                            .get_next_slot(self.config.thread_count)
-                            .expect(DEFERRED_CREDITS_SER_ERROR),
-                        &mut start_key_buffer,
-                    )
-                    .expect(DEFERRED_CREDITS_SER_ERROR);
+                start_key_buffer.extend_from_slice(
+                    &slot
+                        .get_next_slot(self.config.thread_count)
+                        .expect(DEFERRED_CREDITS_SER_ERROR)
+                        .to_bytes_key(),
+                );
             }
-            _ => {}
+            Unbounded => {}
         };
 
-        for (serialized_key, serialized_value) in db.iterator_cf(
-            STATE_CF,
-            MassaIteratorMode::From(&start_key_buffer, MassaDirection::Forward),
-        ) {
-            if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
-                break;
-            }
-            let (rest, slot) = self
-                .deferred_credits_deserializer
-                .slot_deserializer
-                .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
+        let iterator_cf = db
+            .iterator_cf(
+                STATE_CF,
+                MassaIteratorMode::From(&start_key_buffer, MassaDirection::Forward),
+            )
+            .take_while(|(k, _)| k.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()));
+
+        for (serialized_key, serialized_value) in iterator_cf {
+            // deserialize the slot
+            let rest_key = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
+            let (rest_key, slot) = buf_to_array_ctr(rest_key, Slot::from_bytes_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
+
             if !range.contains(&slot) {
                 break;
             }
@@ -745,8 +746,14 @@ impl PoSFinalState {
                 .deferred_credits_deserializer
                 .credit_deserializer
                 .address_deserializer
-                .deserialize::<DeserializeError>(rest)
+                .deserialize::<DeserializeError>(rest_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
+
+            if let Some(addr_filter_value) = &addr_filter {
+                if &&address != addr_filter_value {
+                    continue;
+                }
+            }
 
             let (_, amount) = self
                 .deferred_credits_deserializer
@@ -756,52 +763,6 @@ impl PoSFinalState {
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             deferred_credits.insert(slot, address, amount);
-        }
-
-        deferred_credits
-    }
-
-    /// Gets the deferred credits for an address
-    pub fn get_address_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
-        let db = self.db.read();
-
-        let mut deferred_credits = BTreeMap::new();
-
-        let start_key_buffer = DEFERRED_CREDITS_PREFIX.as_bytes().to_vec();
-
-        for (serialized_key, serialized_value) in db.iterator_cf(
-            STATE_CF,
-            MassaIteratorMode::From(&start_key_buffer, MassaDirection::Forward),
-        ) {
-            if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
-                break;
-            }
-            let (rest, slot) = self
-                .deferred_credits_deserializer
-                .slot_deserializer
-                .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            let (_, addr): (_, Address) = self
-                .deferred_credits_deserializer
-                .credit_deserializer
-                .address_deserializer
-                .deserialize::<DeserializeError>(rest)
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            if &addr != address {
-                // TODO improve performance
-                continue;
-            }
-
-            let (_, amount) = self
-                .deferred_credits_deserializer
-                .credit_deserializer
-                .amount_deserializer
-                .deserialize::<DeserializeError>(&serialized_value)
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            deferred_credits.insert(slot, amount);
         }
 
         deferred_credits
@@ -841,11 +802,9 @@ impl PoSFinalState {
                 break;
             }
 
-            let (rest, _cycle) = self
-                .cycle_info_deserializer
-                .cycle_info_deserializer
-                .u64_deser
-                .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..])
+            // deserialize the cycle
+            let rest_key = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+            let (rest_key, _cycle) = buf_to_array_ctr(rest_key, |v| u64::from_be_bytes(*v))
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
             let (_, address) = self
@@ -853,7 +812,7 @@ impl PoSFinalState {
                 .cycle_info_deserializer
                 .rolls_deser
                 .address_deserializer
-                .deserialize::<DeserializeError>(&rest[1..])
+                .deserialize::<DeserializeError>(&rest_key[1..])
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
             let (_, amount) = self
@@ -892,19 +851,18 @@ impl PoSFinalState {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
             }
-            let (rest, _cycle) = self
-                .cycle_info_deserializer
-                .cycle_info_deserializer
-                .u64_deser
-                .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..])
+
+            // deserialize the cycle
+            let rest_key = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+            let (rest_key, _cycle) = buf_to_array_ctr(rest_key, |v| u64::from_be_bytes(*v))
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
-            let (rest, address) = self
+            let (rest_key, address) = self
                 .cycle_info_deserializer
                 .cycle_info_deserializer
                 .production_stats_deser
                 .address_deserializer
-                .deserialize::<DeserializeError>(&rest[1..])
+                .deserialize::<DeserializeError>(&rest_key[1..])
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
             if cur_address != Some(address) {
@@ -920,9 +878,9 @@ impl PoSFinalState {
                 .deserialize::<DeserializeError>(&serialized_value)
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
-            if rest.len() == 1 && rest[0] == PROD_STATS_FAIL_IDENT {
+            if rest_key.len() == 1 && rest_key[0] == PROD_STATS_FAIL_IDENT {
                 cur_production_stat.block_failure_count = value;
-            } else if rest.len() == 1 && rest[0] == PROD_STATS_SUCCESS_IDENT {
+            } else if rest_key.len() == 1 && rest_key[0] == PROD_STATS_SUCCESS_IDENT {
                 cur_production_stat.block_success_count = value;
             } else {
                 panic!("{}", CYCLE_HISTORY_DESER_ERROR);
@@ -999,18 +957,15 @@ impl PoSFinalState {
             let db = self.db.read();
 
             while let Some((serialized_key, _)) = match found_cycles.last() {
-                Some(prev_cycle) => {
-                    let cycle_prefix = self.cycle_history_cycle_prefix(*prev_cycle);
-
-                    db.iterator_cf(
+                Some(prev_cycle) => db
+                    .iterator_cf(
                         STATE_CF,
                         MassaIteratorMode::From(
-                            &upper_limit_prefix!(cycle_prefix),
+                            &self.cycle_history_cycle_prefix(prev_cycle.saturating_add(1)),
                             MassaDirection::Forward,
                         ),
                     )
-                    .next()
-                }
+                    .next(),
                 None => db
                     .iterator_cf(
                         STATE_CF,
@@ -1024,19 +979,15 @@ impl PoSFinalState {
                 if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                     break;
                 }
-                let (_, cycle) = self
-                    .cycle_info_deserializer
-                    .cycle_info_deserializer
-                    .u64_deser
-                    .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..])
+
+                // deserialize the cycle
+                let rest_key = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+                let (_rest_key, cycle) = buf_to_array_ctr(rest_key, |v| u64::from_be_bytes(*v))
                     .expect(CYCLE_HISTORY_DESER_ERROR);
 
                 found_cycles.push(cycle);
             }
         }
-
-        // The cycles may not be in order, because they are sorted in the lexicographical order of their binary representation.
-        found_cycles.sort_unstable();
 
         found_cycles
             .into_iter()
@@ -1073,10 +1024,7 @@ impl PoSFinalState {
         let db = self.db.read();
 
         let mut serialized_key = Vec::new();
-        self.deferred_credits_serializer
-            .slot_ser
-            .serialize(slot, &mut serialized_key)
-            .expect(DEFERRED_CREDITS_SER_ERROR);
+        serialized_key.extend_from_slice(&slot.to_bytes_key());
         self.deferred_credits_serializer
             .credits_ser
             .address_ser
@@ -1324,10 +1272,7 @@ impl PoSFinalState {
         let db = self.db.read();
 
         let mut serialized_key = Vec::new();
-        self.deferred_credits_serializer
-            .slot_ser
-            .serialize(slot, &mut serialized_key)
-            .expect(DEFERRED_CREDITS_SER_ERROR);
+        serialized_key.extend_from_slice(&slot.to_bytes_key());
         self.deferred_credits_serializer
             .credits_ser
             .address_ser
@@ -1359,11 +1304,7 @@ impl PoSFinalState {
     fn cycle_history_cycle_prefix(&self, cycle: u64) -> Vec<u8> {
         let mut serialized_key = Vec::new();
         serialized_key.extend_from_slice(CYCLE_HISTORY_PREFIX.as_bytes());
-        self.cycle_info_serializer
-            .cycle_info_serializer
-            .u64_ser
-            .serialize(&cycle, &mut serialized_key)
-            .expect(CYCLE_HISTORY_SER_ERROR);
+        serialized_key.extend_from_slice(&cycle.to_be_bytes());
         serialized_key
     }
 
@@ -1377,22 +1318,20 @@ impl PoSFinalState {
             return false;
         }
 
-        let Ok((rest, _cycle)) = self
-            .cycle_info_deserializer
-            .cycle_info_deserializer
-            .u64_deser
-            .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..])
+        // deserialize the cycle
+        let rest_key = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+        let Some((rest_key, _cycle)) = buf_to_array_ctr(rest_key, |v| u64::from_be_bytes(*v))
         else {
             return false;
         };
 
-        if rest.is_empty() {
+        if rest_key.is_empty() {
             return false;
         }
 
-        match rest[0] {
+        match rest_key[0] {
             COMPLETE_IDENT => {
-                if rest.len() != 1 {
+                if rest_key.len() != 1 {
                     return false;
                 }
                 if serialized_value.len() != 1 {
@@ -1403,10 +1342,10 @@ impl PoSFinalState {
                 }
             }
             RNG_SEED_IDENT => {
-                if rest.len() != 1 {
+                if rest_key.len() != 1 {
                     return false;
                 }
-                let Ok((rest, _rng_seed)) = self
+                let Ok((rest_key, _rng_seed)) = self
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .bitvec_deser
@@ -1414,15 +1353,15 @@ impl PoSFinalState {
                 else {
                     return false;
                 };
-                if !rest.is_empty() {
+                if !rest_key.is_empty() {
                     return false;
                 }
             }
             FINAL_STATE_HASH_SNAPSHOT_IDENT => {
-                if rest.len() != 1 {
+                if rest_key.len() != 1 {
                     return false;
                 }
-                let Ok((rest, _final_state_hash)) = self
+                let Ok((rest_key, _final_state_hash)) = self
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .opt_hash_deser
@@ -1430,12 +1369,12 @@ impl PoSFinalState {
                 else {
                     return false;
                 };
-                if !rest.is_empty() {
+                if !rest_key.is_empty() {
                     return false;
                 }
             }
             ROLL_COUNT_IDENT => {
-                let Ok((rest, _addr)): std::result::Result<
+                let Ok((rest_key, _addr)): std::result::Result<
                     (&[u8], Address),
                     nom::Err<massa_serialization::DeserializeError<'_>>,
                 > = self
@@ -1443,14 +1382,14 @@ impl PoSFinalState {
                     .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
-                    .deserialize::<DeserializeError>(&rest[1..])
+                    .deserialize::<DeserializeError>(&rest_key[1..])
                 else {
                     return false;
                 };
-                if !rest.is_empty() {
+                if !rest_key.is_empty() {
                     return false;
                 }
-                let Ok((rest, _addr)) = self
+                let Ok((rest_key, _addr)) = self
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .rolls_deser
@@ -1459,12 +1398,12 @@ impl PoSFinalState {
                 else {
                     return false;
                 };
-                if !rest.is_empty() {
+                if !rest_key.is_empty() {
                     return false;
                 }
             }
             PROD_STATS_IDENT => {
-                let Ok((rest, _addr)): std::result::Result<
+                let Ok((rest_key, _addr)): std::result::Result<
                     (&[u8], Address),
                     nom::Err<massa_serialization::DeserializeError<'_>>,
                 > = self
@@ -1472,17 +1411,17 @@ impl PoSFinalState {
                     .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
-                    .deserialize::<DeserializeError>(&rest[1..])
+                    .deserialize::<DeserializeError>(&rest_key[1..])
                 else {
                     return false;
                 };
-                if rest.len() != 1 {
+                if rest_key.len() != 1 {
                     return false;
                 }
 
-                match rest[0] {
+                match rest_key[0] {
                     PROD_STATS_FAIL_IDENT => {
-                        let Ok((rest, _fail)) = self
+                        let Ok((rest_key, _fail)) = self
                             .cycle_info_deserializer
                             .cycle_info_deserializer
                             .production_stats_deser
@@ -1491,12 +1430,12 @@ impl PoSFinalState {
                         else {
                             return false;
                         };
-                        if !rest.is_empty() {
+                        if !rest_key.is_empty() {
                             return false;
                         }
                     }
                     PROD_STATS_SUCCESS_IDENT => {
-                        let Ok((rest, _success)) = self
+                        let Ok((rest_key, _success)) = self
                             .cycle_info_deserializer
                             .cycle_info_deserializer
                             .production_stats_deser
@@ -1505,7 +1444,7 @@ impl PoSFinalState {
                         else {
                             return false;
                         };
-                        if !rest.is_empty() {
+                        if !rest_key.is_empty() {
                             return false;
                         }
                     }
@@ -1532,14 +1471,269 @@ impl PoSFinalState {
             return false;
         }
 
-        let Ok((rest, _slot)) =
-            self.deferred_credits_deserializer
-                .slot_deserializer
-                .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
+        // deserialize the slot
+        let rest_key = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
+        let Some((rest_key, _slot)) = buf_to_array_ctr(rest_key, Slot::from_bytes_key) else {
+            return false;
+        };
+
+        let Ok((rest_key, _addr)): std::result::Result<
+            (&[u8], Address),
+            nom::Err<massa_serialization::DeserializeError<'_>>,
+        > = self
+            .deferred_credits_deserializer
+            .credit_deserializer
+            .address_deserializer
+            .deserialize::<DeserializeError>(rest_key)
         else {
             return false;
         };
-        let Ok((rest, _addr)): std::result::Result<
+        if !rest_key.is_empty() {
+            return false;
+        }
+
+        let Ok((rest_key, _amount)) = self
+            .deferred_credits_deserializer
+            .credit_deserializer
+            .amount_deserializer
+            .deserialize::<DeserializeError>(serialized_value)
+        else {
+            return false;
+        };
+        if !rest_key.is_empty() {
+            return false;
+        }
+
+        true
+    }
+
+    /// Deserializes the key and value and update it to fit new deserialization rules.
+    pub fn update_cycle_history_key_value_valid_from_u64_deserializer(
+        &mut self,
+        serialized_key: &[u8],
+        serialized_value: &[u8],
+        db_batch: &mut DBBatch,
+    ) -> Result<(), &str> {
+        if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+            return Err("Invalid key prefix");
+        }
+
+        let Ok((rest, cycle)) = self
+            .cycle_info_deserializer
+            .cycle_info_deserializer
+            .u64_deser
+            .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..])
+        else {
+            return Err("Invalid cycle prefix");
+        };
+
+        if rest.is_empty() {
+            return Err("rest not empty after address deserialization");
+        }
+
+        match rest[0] {
+            COMPLETE_IDENT => {
+                if rest.len() != 1 {
+                    return Err("COMPLETE_IDENT rest length mismatch");
+                }
+                if serialized_value.len() != 1 {
+                    return Err("COMPLETE_IDENT value length mismatch");
+                }
+                if serialized_value[0] > 1 {
+                    return Err("COMPLETE_IDENT value mismatch");
+                }
+
+                self.put_cycle_history_complete(cycle, serialized_value[0] == 1, db_batch);
+                db_batch.insert(serialized_key.to_vec(), None);
+                return Ok(());
+            }
+            RNG_SEED_IDENT => {
+                if rest.len() != 1 {
+                    return Err("RNG_SEED_IDENT rest length mismatch");
+                }
+                let Ok((rest, rng_seed)) = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .bitvec_deser
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
+                    return Err("RNG_SEED_IDENT Invalid value deserialization");
+                };
+                if !rest.is_empty() {
+                    return Err("RNG_SEED_IDENT rest not empty after value deserialization");
+                }
+
+                self.put_cycle_history_rng_seed(cycle, rng_seed, db_batch);
+                db_batch.insert(serialized_key.to_vec(), None);
+                return Ok(());
+            }
+            FINAL_STATE_HASH_SNAPSHOT_IDENT => {
+                if rest.len() != 1 {
+                    return Err("FINAL_STATE_HASH_SNAPSHOT_IDENT rest length mismatch");
+                }
+                let Ok((rest, final_state_hash)) = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .opt_hash_deser
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
+                    return Err("FINAL_STATE_HASH_SNAPSHOT_IDENT Invalid value deserialization");
+                };
+                if !rest.is_empty() {
+                    return Err("FINAL_STATE_HASH_SNAPSHOT_IDENT rest not empty after value deserialization");
+                }
+
+                self.put_cycle_history_final_state_hash_snapshot(cycle, final_state_hash, db_batch);
+                db_batch.insert(serialized_key.to_vec(), None);
+                return Ok(());
+            }
+            ROLL_COUNT_IDENT => {
+                let Ok((rest, addr)): std::result::Result<
+                    (&[u8], Address),
+                    nom::Err<massa_serialization::DeserializeError<'_>>,
+                > = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .rolls_deser
+                    .address_deserializer
+                    .deserialize::<DeserializeError>(&rest[1..])
+                else {
+                    return Err("ROLL_COUNT_IDENT Invalid address deserialization");
+                };
+                if !rest.is_empty() {
+                    return Err("ROLL_COUNT_IDENT rest not empty after address deserialization");
+                }
+                let Ok((rest, roll_count)) = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .rolls_deser
+                    .u64_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
+                    return Err("ROLL_COUNT_IDENT Invalid value deserialization");
+                };
+                if !rest.is_empty() {
+                    return Err("ROLL_COUNT_IDENT rest not empty after value deserialization");
+                }
+
+                self.put_cycle_history_address_entry(
+                    cycle,
+                    &addr,
+                    Some(&roll_count),
+                    None,
+                    db_batch,
+                );
+                db_batch.insert(serialized_key.to_vec(), None);
+                return Ok(());
+            }
+            PROD_STATS_IDENT => {
+                let Ok((rest, addr)): std::result::Result<
+                    (&[u8], Address),
+                    nom::Err<massa_serialization::DeserializeError<'_>>,
+                > = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .rolls_deser
+                    .address_deserializer
+                    .deserialize::<DeserializeError>(&rest[1..])
+                else {
+                    return Err("PROD_STATS_IDENT Invalid address deserialization");
+                };
+                if rest.len() != 1 {
+                    return Err("PROD_STATS_IDENT rest len mismatch after address deserialization");
+                }
+
+                match rest[0] {
+                    PROD_STATS_FAIL_IDENT => {
+                        let Ok((rest, fail)) = self
+                            .cycle_info_deserializer
+                            .cycle_info_deserializer
+                            .production_stats_deser
+                            .u64_deserializer
+                            .deserialize::<DeserializeError>(serialized_value)
+                        else {
+                            return Err(
+                                "PROD_STATS_FAIL_IDENT Invalid prod stats fail deserialization",
+                            );
+                        };
+                        if !rest.is_empty() {
+                            return Err("PROD_STATS_FAIL_IDENT rest not empty after prod stats fail deserialization");
+                        }
+
+                        let prefix = self.cycle_history_cycle_prefix(cycle);
+                        let mut serialized_prod_stats_fail = Vec::new();
+                        self.cycle_info_serializer
+                            .cycle_info_serializer
+                            .u64_ser
+                            .serialize(&fail, &mut serialized_prod_stats_fail)
+                            .expect(CYCLE_HISTORY_SER_ERROR);
+                        self.db.read().put_or_update_entry_value(
+                            db_batch,
+                            prod_stats_fail_key!(prefix, addr),
+                            &serialized_prod_stats_fail,
+                        );
+                        db_batch.insert(serialized_key.to_vec(), None);
+                        return Ok(());
+                    }
+                    PROD_STATS_SUCCESS_IDENT => {
+                        let Ok((rest, success)) = self
+                            .cycle_info_deserializer
+                            .cycle_info_deserializer
+                            .production_stats_deser
+                            .u64_deserializer
+                            .deserialize::<DeserializeError>(serialized_value)
+                        else {
+                            return Err("PROD_STATS_SUCCESS_IDENT Invalid prod stats success deserialization");
+                        };
+                        if !rest.is_empty() {
+                            return Err("PROD_STATS_SUCCESS_IDENT rest not empty after prod stats success deserialization");
+                        }
+
+                        let prefix = self.cycle_history_cycle_prefix(cycle);
+                        let mut serialized_prod_stats_success = Vec::new();
+                        self.cycle_info_serializer
+                            .cycle_info_serializer
+                            .u64_ser
+                            .serialize(&success, &mut serialized_prod_stats_success)
+                            .expect(CYCLE_HISTORY_SER_ERROR);
+                        self.db.read().put_or_update_entry_value(
+                            db_batch,
+                            prod_stats_success_key!(prefix, addr),
+                            &serialized_prod_stats_success,
+                        );
+                        db_batch.insert(serialized_key.to_vec(), None);
+                        return Ok(());
+                    }
+                    _ => {
+                        return Err("Invalid IDENT in PROD_STATS_IDENT");
+                    }
+                }
+            }
+            _ => {
+                return Err("Invalid IDENT in cycle history key");
+            }
+        }
+    }
+
+    /// Deserializes the key and value and update it to fit new deserialization rules.
+    pub fn update_deferred_credits_key_value_valid_from_slot_deserializer(
+        &self,
+        serialized_key: &[u8],
+        serialized_value: &[u8],
+        db_batch: &mut DBBatch,
+    ) -> Result<(), &str> {
+        if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
+            return Err("Invalid key prefix");
+        }
+
+        let Ok((rest, slot)) = self
+            .deferred_credits_deserializer
+            .slot_deserializer
+            .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
+        else {
+            return Err("Invalid slot deserialization");
+        };
+        let Ok((rest, addr)): std::result::Result<
             (&[u8], Address),
             nom::Err<massa_serialization::DeserializeError<'_>>,
         > = self
@@ -1548,25 +1742,28 @@ impl PoSFinalState {
             .address_deserializer
             .deserialize::<DeserializeError>(rest)
         else {
-            return false;
+            return Err("Invalid address deserialization");
         };
         if !rest.is_empty() {
-            return false;
+            return Err("rest not empty after address deserialization");
         }
 
-        let Ok((rest, _mount)) = self
+        let Ok((rest, amount)) = self
             .deferred_credits_deserializer
             .credit_deserializer
             .amount_deserializer
             .deserialize::<DeserializeError>(serialized_value)
         else {
-            return false;
+            return Err("Invalid value amount");
         };
         if !rest.is_empty() {
-            return false;
+            return Err("rest not empty after value amount deserialization");
         }
 
-        true
+        self.put_deferred_credits_entry(&slot, &addr, &amount, db_batch);
+        db_batch.insert(serialized_key.to_vec(), None);
+
+        Ok(())
     }
 }
 
@@ -1585,16 +1782,17 @@ impl PoSFinalState {
             if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 break;
             }
-            let (rest, slot) = self
-                .deferred_credits_deserializer
-                .slot_deserializer
-                .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
+
+            // deserialize the slot
+            let rest_key = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
+            let (rest_key, slot) = buf_to_array_ctr(rest_key, Slot::from_bytes_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
+
             let (_, address) = self
                 .deferred_credits_deserializer
                 .credit_deserializer
                 .address_deserializer
-                .deserialize::<DeserializeError>(rest)
+                .deserialize::<DeserializeError>(rest_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             let (_, amount) = self
@@ -1638,7 +1836,6 @@ mod tests {
     fn test_initial_deferred_credits_loading() {
         let initial_deferred_credits_file = tempfile::NamedTempFile::new()
             .expect("could not create temporary initial deferred credits file");
-
         // write down some deferred credits
         let deferred_credits_file_contents = "{
             \"AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa\": [
@@ -1648,6 +1845,14 @@ mod tests {
                 },
                 {
                     \"slot\": {\"period\": 4, \"thread\": 1},
+                    \"amount\": \"6.0\"
+                },
+                {
+                    \"slot\": {\"period\": 255, \"thread\": 0},
+                    \"amount\": \"5.01\"
+                },
+                {
+                    \"slot\": {\"period\": 256, \"thread\": 0},
                     \"amount\": \"6.0\"
                 }
             ],
@@ -1663,7 +1868,6 @@ mod tests {
             deferred_credits_file_contents.as_bytes(),
         )
         .expect("failed writing initial deferred credits file");
-
         let pos_config = PoSConfig {
             periods_per_cycle: 2,
             thread_count: 2,
@@ -1673,7 +1877,6 @@ mod tests {
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
             initial_deferred_credits_path: Some(initial_deferred_credits_file.path().to_path_buf()),
         };
-
         // initialize the database and pos_state
         let tempdir = tempfile::TempDir::new().expect("cannot create temp directory");
         let db_config = MassaDBConfig {
@@ -1691,7 +1894,6 @@ mod tests {
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
-
         let deferred_credits_deserializer =
             DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
@@ -1699,7 +1901,6 @@ mod tests {
             pos_config.max_rolls_length,
             pos_config.max_production_stats_length,
         );
-
         let mut pos_state = PoSFinalState {
             config: pos_config,
             db: db.clone(),
@@ -1713,16 +1914,13 @@ mod tests {
             cycle_info_serializer: CycleHistorySerializer::new(),
             cycle_info_deserializer,
         };
-
         let mut batch = DBBatch::new();
         // load initial deferred credits
         pos_state
             .load_initial_deferred_credits(&mut batch)
             .expect("error while loading initial deferred credits");
         db.write().write_batch(batch, DBBatch::new(), None);
-
         let deferred_credits = pos_state.get_deferred_credits().credits;
-
         let addr1 =
             Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa").unwrap();
         let a_a1_s3 = Amount::from_str("5.01").unwrap();
@@ -1742,20 +1940,30 @@ mod tests {
                     .into_iter()
                     .collect(),
             ),
+            (
+                Slot::new(255, 0),
+                vec![(addr1, Amount::from_str("5.01").unwrap())]
+                    .into_iter()
+                    .collect(),
+            ),
+            (
+                Slot::new(256, 0),
+                vec![(addr1, Amount::from_str("6.0").unwrap())]
+                    .into_iter()
+                    .collect(),
+            ),
         ]
         .into_iter()
         .collect();
-
         assert_eq!(
             deferred_credits, expected_credits,
             "deferred credits not loaded correctly"
         );
-
         let credits_range_1 =
-            pos_state.get_deferred_credits_range(Slot::new(4, 0)..Slot::new(4, 1));
+            pos_state.get_deferred_credits_range(Slot::new(4, 0)..Slot::new(4, 1), None);
         assert!(credits_range_1.is_empty());
         let credits_range_2 =
-            pos_state.get_deferred_credits_range(Slot::new(2, 0)..Slot::new(3, 1));
+            pos_state.get_deferred_credits_range(Slot::new(2, 0)..Slot::new(3, 1), None);
         let expected_credits_range_2 = vec![(
             Slot::new(3, 0),
             vec![(addr1, a_a1_s3), (addr2, a_a2_s3)]
@@ -1766,8 +1974,19 @@ mod tests {
         .collect();
         assert_eq!(credits_range_2.credits, expected_credits_range_2);
         let credits_range_3 =
-            pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(9, 5));
+            pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(9, 5), None);
         assert!(credits_range_3.is_empty());
+        let credits_range_4 =
+            pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(255, 1), None);
+
+        let a_a1_s255 = Amount::from_str("5.01").unwrap();
+        let expected_credits_range_4 = vec![(
+            Slot::new(255, 0),
+            vec![(addr1, a_a1_s255)].into_iter().collect(),
+        )]
+        .into_iter()
+        .collect();
+        assert_eq!(credits_range_4.credits, expected_credits_range_4);
     }
 
     // This test checks that the initial rolls are loaded correctly
@@ -1973,7 +2192,8 @@ mod tests {
     }
 
     // This test checks that the recompute_pos_cache function recovers every cycle and does return correctly.
-    // The test example is chosen so that the keys for the cycles are not in the same order than the cycles.
+    // The test example is chosen to have the cycles overlap a power of 2, to check that the order of cycles in the DB
+    // (lexicographical over bytes) is the same as the order of cycles in the cache (numerical).
     // If this is not handled properly, the node hangs as explained here: https://github.com/massalabs/massa/issues/4101
     #[test]
     fn test_pos_cache_recomputation() {
