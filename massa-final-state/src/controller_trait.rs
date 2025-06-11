@@ -41,7 +41,7 @@ pub trait FinalStateController: Send + Sync {
     fn recompute_caches(&mut self);
 
     /// Deserialize the entire DB and check the data. Useful to check after bootstrap.
-    fn is_db_valid(&self) -> bool;
+    fn is_db_valid(&mut self) -> bool;
 
     /// Initialize the execution trail hash to zero.
     fn init_execution_trail_hash_to_batch(&mut self, batch: &mut DBBatch);

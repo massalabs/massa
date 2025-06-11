@@ -539,6 +539,59 @@ impl FinalState {
         Ok(())
     }
 
+    fn _update_db(&mut self) {
+        let mut db_batch = DBBatch::new();
+        {
+            let db = self.db.read();
+
+            for (serialized_key, serialized_value) in
+                db.iterator_cf_for_full_db_traversal(STATE_CF, MassaIteratorMode::Start)
+            {
+                if serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
+                    match self
+                        .pos_state
+                        .update_deferred_credits_key_value_valid_from_slot_deserializer(
+                            &serialized_key,
+                            &serialized_value,
+                            &mut db_batch,
+                        ) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            warn!(
+                                "FAILED TO UPDATE: Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}, error: {}",
+                                serialized_key, serialized_value, err
+                            );
+                        }
+                    }
+                }
+
+                if serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+                    match self
+                        .pos_state
+                        .update_cycle_history_key_value_valid_from_u64_deserializer(
+                            &serialized_key,
+                            &serialized_value,
+                            &mut db_batch,
+                        ) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            warn!(
+                                "FAILED TO UPDATE: Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}, error: {}",
+                                serialized_key, serialized_value, err
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        self.db
+            .write()
+            .write_batch(db_batch, Default::default(), None);
+
+        println!("DONE UPDATING DEFERRED CREDITS KEYS");
+    }
+
     /// Internal function called by is_db_valid
     fn _is_db_valid(&self) -> AnyResult<()> {
         let db = self.db.read();
@@ -854,7 +907,8 @@ impl FinalStateController for FinalState {
         );
     }
 
-    fn is_db_valid(&self) -> bool {
+    fn is_db_valid(&mut self) -> bool {
+        self._update_db();
         self._is_db_valid().is_ok()
     }
 
