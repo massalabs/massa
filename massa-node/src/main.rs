@@ -428,7 +428,7 @@ async fn launch(
         Err(err) => panic!("critical error detected in the bootstrap process: {}", err),
     };
 
-    if !final_state.write().is_db_valid() {
+    if !final_state.read().is_db_valid() {
         // TODO: Bootstrap again instead of panicking
         panic!("critical: db is not valid after bootstrap");
     }
