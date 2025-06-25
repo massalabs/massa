@@ -70,6 +70,29 @@ jobs:
           use-cross: true
           command: build
           args: --profile release_prebuilt --target ${{ matrix.target }}
+
+      - name: Sign windows massa-node binary
+        if: ${{ runner.os == 'Windows' }}
+        uses: massalabs/station/.github/actions/sign-file-digicert@7481e2a05af97559568772dad473b923b37fbe34
+        with:
+          file: ./target/release_prebuilt/massa-node
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_FILE_B64: ${{ secrets.SM_CLIENT_CERT_FILE_B64 }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          SM_CERT_FINGERPRINT: ${{ secrets.SM_CERT_FINGERPRINT }}
+          SM_HOST: ${{ secrets.SM_HOST }}
+
+      - name: Sign windows massa-client binary
+        if: ${{ runner.os == 'Windows' }}
+        uses: massalabs/station/.github/actions/sign-file-digicert@7481e2a05af97559568772dad473b923b37fbe34
+        with:
+          file: ./target/release_prebuilt/massa-client
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_FILE_B64: ${{ secrets.SM_CLIENT_CERT_FILE_B64 }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          SM_CERT_FINGERPRINT: ${{ secrets.SM_CERT_FINGERPRINT }}
+          SM_HOST: ${{ secrets.SM_HOST }}
+
       - name: Package
         shell: bash
         run: |
