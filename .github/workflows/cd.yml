@@ -12,6 +12,11 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
 
+# Add permissions to access organization secrets
+permissions:
+  contents: write
+  id-token: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -70,18 +75,55 @@ jobs:
           use-cross: true
           command: build
           args: --profile release_prebuilt --target ${{ matrix.target }}
+
+      - name: Set binary paths
+        shell: bash
+        run: |
+          if [[ "${{ matrix.platform }}" == "arm64" ]]
+          then
+            echo "MASSA_NODE_PATH=target/${{ matrix.target }}/release_prebuilt/massa-node" >> $GITHUB_ENV
+            echo "MASSA_CLIENT_PATH=target/${{ matrix.target }}/release_prebuilt/massa-client" >> $GITHUB_ENV
+          else
+            echo "MASSA_NODE_PATH=target/release_prebuilt/massa-node" >> $GITHUB_ENV
+            echo "MASSA_CLIENT_PATH=target/release_prebuilt/massa-client" >> $GITHUB_ENV
+          fi
+
+
+      - name: Wait for file system locks to clear
+        if: ${{ runner.os == 'Windows' }}
+        shell: powershell
+        run: |
+          Write-Host "Waiting for file system locks to clear..."
+          Start-Sleep -Seconds 10
+          Write-Host "File system ready for signing operations"
+
+      - name: Sign windows massa-node binary
+        if: ${{ runner.os == 'Windows' }}
+        uses: massalabs/station/.github/actions/sign-file-digicert@413d4c0bbd042d5e797fbb66bcd2c96be5c3e71a
+        with:
+          files: "${{ env.MASSA_NODE_PATH }}.exe ${{ env.MASSA_CLIENT_PATH }}.exe"
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_FILE_B64: ${{ secrets.SM_CLIENT_CERT_FILE_B64 }}
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          SM_CERT_FINGERPRINT: ${{ secrets.SM_CERT_FINGERPRINT }}
+          SM_HOST: ${{ secrets.SM_HOST }}
+
+      - name: Sign Macos binaries
+        uses: ./.github/actions/sign-macos
+        if: ${{ runner.os == 'macOS' }}
+        with:
+          paths: "$MASSA_CLIENT_PATH $MASSA_NODE_PATH"
+          certificate-p12-base64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          certificate-password: ${{ secrets.APPLE_CERTIFICATE_P12_PASSWORD }}
+          signing-identity: ${{ vars.APPLE_DEVELOPER_ID_APPLICATION }}
+
       - name: Package
         shell: bash
         run: |
           mkdir massa && cd massa && mkdir massa-node && mkdir massa-client
-          if [[ "${{ matrix.platform }}" == "arm64" ]]
-          then
-            cp -v ../target/${{ matrix.target }}/release_prebuilt/massa-node massa-node/massa-node
-            cp -v ../target/${{ matrix.target }}/release_prebuilt/massa-client massa-client/massa-client
-          else
-            cp -v ../target/release_prebuilt/massa-node massa-node/massa-node
-            cp -v ../target/release_prebuilt/massa-client massa-client/massa-client
-          fi
+
+          cp -v "../$MASSA_NODE_PATH" massa-node/massa-node
+          cp -v "../$MASSA_CLIENT_PATH" massa-client/massa-client
           cp -rv ../massa-node/config massa-node/config
           cp -rv ../massa-node/base_config massa-node/base_config
           cp -rv ../massa-node/storage massa-node/storage
@@ -94,7 +136,7 @@ jobs:
           else
             tar czvf massa_${GITHUB_REF/refs\/tags\//}_${{ matrix.name }} massa
           fi
-          cd -
+
       - name: Upload ${{ matrix.os }}_${{ matrix.platform }} artifacts
         uses: actions/upload-artifact@v4
         with:

@@ -1,0 +1,40 @@
+name: Sign Multiple Universal macOS Binaries
+description: Sign multiple macOS binaries
+author: MassaLabs
+
+inputs:
+  paths:
+    description: Paths to binaries or app bundles to sign (space-separated)
+    required: true
+  certificate-p12-base64:
+    description: Base64 certificate
+    required: true
+  certificate-password:
+    description: Certificate password
+    required: true
+  signing-identity:
+    description: Signing identity
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Import Apple signing certificate
+      uses: Apple-Actions/import-codesign-certs@v3
+      with:
+        p12-file-base64: ${{ inputs.certificate-p12-base64 }}
+        p12-password: ${{ inputs.certificate-password }}
+
+    - name: Sign binaries and app bundles
+      run: |
+        echo "🔐 Starting signing process..."
+        for path in ${{ inputs.paths }}; do
+          echo "📝 Signing: $path"
+          codesign --force --options runtime --timestamp \
+            --sign "${{ inputs.signing-identity }}" "$path"
+
+          echo "🔍 Verifying signature for: $path"
+          codesign --verify --deep --strict --verbose=2 "$path"
+        done
+      shell: bash

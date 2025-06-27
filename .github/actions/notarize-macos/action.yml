@@ -1,0 +1,123 @@
+name: Notarize Archive or App Bundle
+description: Notarize ZIP archives, .app bundles, or other files by creating temporary zip
+author: MassaLabs
+
+inputs:
+  paths:
+    description: Files to notarize (space separated). If not .zip/.pkg/.dmg, creates temporary zip
+    required: true
+  apple-id:
+    description: Apple ID
+    required: true
+  apple-team-id:
+    description: Team ID
+    required: true
+  apple-app-password:
+    description: App password
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check file formats and create temporary zip if needed
+      run: |
+        echo "🔍 Checking file formats for notarization..."
+        temp_zip_created=false
+        unsupported_files=()
+
+        for path in ${{ inputs.paths }}; do
+          echo "📁 Processing: $path"
+
+          # Get file extension (only if it has one)
+          filename=$(basename "$path")
+          extension=""
+          if [[ "$filename" == *.* ]]; then
+            extension="${filename##*.}"
+          fi
+
+          # Check if file is already in supported format
+          if [[ "$extension" == "zip" || "$extension" == "pkg" || "$extension" == "dmg" ]]; then
+            echo "✅ File $path is already in supported format ($extension)"
+          else
+            echo "⚠️  File $path has unsupported extension ($extension) or no extension, will add to temporary zip..."
+            unsupported_files+=("$path")
+            temp_zip_created=true
+          fi
+        done
+
+        # Create single temporary zip for all unsupported files
+        if [[ "$temp_zip_created" == "true" ]]; then
+          echo "📦 Creating single temporary zip for all unsupported files..."
+          temp_zip="temp_notarization_package.zip"
+          
+          # Add all unsupported files to the zip
+          for file in "${unsupported_files[@]}"; do
+            echo "📁 Adding to zip: $file"
+            zip -r "$temp_zip" "$file"
+          done
+
+          echo "TEMP_ZIP_CREATED=true" >> $GITHUB_ENV
+          echo "TEMP_ZIP_FILE=$temp_zip" >> $GITHUB_ENV
+ 
+          # Store list of unsupported files for later stapling
+          printf "%s\n" "${unsupported_files[@]}" > unsupported_files_list.txt
+        fi
+      shell: bash
+
+    - name: Submit packages for notarization
+      run: |
+        # Process original supported files
+        for path in ${{ inputs.paths }}; do
+          filename=$(basename "$path")
+          extension=""
+          if [[ "$filename" == *.* ]]; then
+            extension="${filename##*.}"
+          fi
+
+          if [[ "$extension" == "zip" || "$extension" == "pkg" || "$extension" == "dmg" ]]; then
+            echo "📦 Submitting for notarization: $path"
+            xcrun notarytool submit "$path" \
+              --apple-id "${{ inputs.apple-id }}" \
+              --password "${{ inputs.apple-app-password }}" \
+              --team-id "${{ inputs.apple-team-id }}" \
+              --wait
+          fi
+        done
+
+        # Process single temporary zip file if created
+        if [[ "${{ env.TEMP_ZIP_CREATED }}" == "true" ]]; then
+          echo "📦 Submitting temporary zip for notarization: ${{ env.TEMP_ZIP_FILE }}"
+          xcrun notarytool submit "${{ env.TEMP_ZIP_FILE }}" \
+            --apple-id "${{ inputs.apple-id }}" \
+            --password "${{ inputs.apple-app-password }}" \
+            --team-id "${{ inputs.apple-team-id }}" \
+            --wait
+        fi
+      shell: bash
+
+    - name: Staple notarization tickets to original files
+      run: |
+        # Staple to original supported files (only .pkg and .dmg, not .zip)
+        for path in ${{ inputs.paths }}; do
+          filename=$(basename "$path")
+          extension=""
+          if [[ "$filename" == *.* ]]; then
+            extension="${filename##*.}"
+          fi
+
+          if [[ "$extension" == "pkg" || "$extension" == "dmg" ]]; then
+            echo "📎 Stapling to: $path"
+            xcrun stapler staple "$path"
+            xcrun stapler validate "$path"
+          elif [[ "$extension" == "zip" ]]; then
+            echo "⚠️  Skipping stapling for zip file: $path (Zip files cannot be stapled)"
+          elif [[ -z "$extension" ]]; then
+            echo "⚠️  Skipping stapling for binary: $path (Standalone binaries cannot be stapled)"
+          fi
+        done
+      shell: bash
+
+    - name: Clean up temporary files
+      run: |
+        rm -f temp_notarization_package.zip unsupported_files_list.txt
+      shell: bash
