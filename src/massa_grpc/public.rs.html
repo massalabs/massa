@@ -1541,6 +1541,9 @@
 <a href="#1541" id="1541">1541</a>
 <a href="#1542" id="1542">1542</a>
 <a href="#1543" id="1543">1543</a>
+<a href="#1544" id="1544">1544</a>
+<a href="#1545" id="1545">1545</a>
+<a href="#1546" id="1546">1546</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1687,17 +1690,20 @@
             .transpose()<span class="question-mark">?</span>,
     };
 
-    <span class="kw">if </span>read_only_call
-        .fee
-        .unwrap_or_default()
-        .checked_sub(grpc.grpc_config.minimal_fees)
-        .is_none()
-    {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-            <span class="string">"fee is too low provided: {} , minimal_fees required: {}"</span>,
-            read_only_call.fee.unwrap_or_default(),
-            grpc.grpc_config.minimal_fees
-        )));
+    <span class="comment">// check if fee is provided and if it is too low
+    </span><span class="kw">if </span>call.fee.is_some() {
+        <span class="kw">if </span>read_only_call
+            .fee
+            .unwrap_or_default()
+            .checked_sub(grpc.grpc_config.minimal_fees)
+            .is_none()
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                <span class="string">"fee is too low provided: {} , minimal_fees required: {}"</span>,
+                read_only_call.fee.unwrap_or_default(),
+                grpc.grpc_config.minimal_fees
+            )));
+        }
     }
 
     <span class="kw">let </span>output = grpc
