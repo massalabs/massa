@@ -251,10 +251,14 @@ pub fn to_event_filter(
                 }
                 grpc_api::sc_execution_events_filter::Filter::Status(status) => {
                     // See grpc_model::ScExecutionEventStatus
-                    match status {
-                        1 => event_filter.is_final = Some(true),
-                        2 => event_filter.is_final = Some(false),
-                        _ => event_filter.is_final = None,
+                    match grpc_model::ScExecutionEventStatus::try_from(status) {
+                        Ok(grpc_model::ScExecutionEventStatus::Final) => {
+                            event_filter.is_final = Some(true)
+                        }
+                        Ok(grpc_model::ScExecutionEventStatus::Candidate) => {
+                            event_filter.is_final = Some(false)
+                        }
+                        _ => {}
                     }
                 }
             }
