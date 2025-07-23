@@ -606,10 +606,6 @@
 <a href="#606" id="606">606</a>
 <a href="#607" id="607">607</a>
 <a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::str::FromStr;
@@ -863,14 +859,10 @@
                 }
                 grpc_api::sc_execution_events_filter::Filter::Status(status) =&gt; {
                     <span class="comment">// See grpc_model::ScExecutionEventStatus
-                    </span><span class="kw">match </span>grpc_model::ScExecutionEventStatus::try_from(status) {
-                        <span class="prelude-val">Ok</span>(grpc_model::ScExecutionEventStatus::Final) =&gt; {
-                            event_filter.is_final = <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
-                        }
-                        <span class="prelude-val">Ok</span>(grpc_model::ScExecutionEventStatus::Candidate) =&gt; {
-                            event_filter.is_final = <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)
-                        }
-                        <span class="kw">_ </span>=&gt; {}
+                    </span><span class="kw">match </span>status {
+                        <span class="number">1 </span>=&gt; event_filter.is_final = <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+                        <span class="number">2 </span>=&gt; event_filter.is_final = <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
+                        <span class="kw">_ </span>=&gt; event_filter.is_final = <span class="prelude-val">None</span>,
                     }
                 }
             }
