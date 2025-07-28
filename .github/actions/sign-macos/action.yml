@@ -15,6 +15,9 @@ inputs:
   signing-identity:
     description: Signing identity
     required: true
+  entitlements:
+    description: Path to entitlements file (optional)
+    required: false
 
 runs:
   using: "composite"
@@ -29,9 +32,21 @@ runs:
     - name: Sign binaries and app bundles
       run: |
         echo "🔐 Starting signing process..."
+
         for path in ${{ inputs.paths }}; do
           echo "📝 Signing: $path"
-          codesign --force --options runtime --timestamp \
+
+          ENTITLEMENTS_ARG=""
+          if [[ -n "${{ inputs.entitlements }}" ]]; then
+            echo "📄 Using entitlements file: ${{ inputs.entitlements }}"
+            if [[ ! -f "${{ inputs.entitlements }}" ]]; then
+              echo "❌ Error: Entitlements file '${{ inputs.entitlements }}' does not exist"
+            exit 1
+            fi
+            ENTITLEMENTS_ARG="--entitlements ${{ inputs.entitlements }}"
+          fi
+
+          codesign --force --options runtime --timestamp $ENTITLEMENTS_ARG\
             --sign "${{ inputs.signing-identity }}" "$path"
 
           echo "🔍 Verifying signature for: $path"
