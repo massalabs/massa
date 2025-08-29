@@ -988,6 +988,7 @@ pub(crate) fn get_status(
         chain_id: grpc.grpc_config.chain_id,
         minimal_fees: Some(grpc.grpc_config.minimal_fees.into()),
         current_mip_version,
+        max_datastore_keys_query: grpc.grpc_config.max_datastore_keys_queries,
     };
 
     Ok(grpc_api::GetStatusResponse {
