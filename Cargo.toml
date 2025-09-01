@@ -109,8 +109,8 @@ massa_wallet = { path = "./massa-wallet" }
 massa_event_cache = { path = "./massa-event-cache" }
 
 # Massa projects dependencies
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", "rev" = "9bfbbe1b5dc62815aa2b9f9c5b827b0198da65e3" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "a356943983c274436e6092399667f8ea505d3388" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", "rev" = "5e5b9494f5e4996a53c4ed0f47dae2e79cf9b9ef" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "fba1dbe2a87c58350db3037168fb464de2b3d673" }
 
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "04b05ddd320fbe76cc858115af7b5fc28bdb8310" }
 # Dev only - use local dependencies
