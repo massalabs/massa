@@ -1,4 +1,4 @@
-history = 10
+history = 10000
 history_file_path = "config/.massa_history"
 timeout = 1000
 

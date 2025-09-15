@@ -92,10 +92,10 @@ pub(crate) async fn run(
         validator: MatchingBracketValidator::new(),
     };
     let config = Config::builder()
-        .auto_add_history(true)
+        .auto_add_history(false)
         .completion_prompt_limit(100)
         .completion_type(CompletionType::List)
-        .max_history_size(10000)?
+        .max_history_size(SETTINGS.history)?
         .build();
 
     let mut rl = Editor::with_config(config)?;
@@ -113,19 +113,24 @@ pub(crate) async fn run(
                 if line.is_empty() {
                     continue;
                 }
-                if let Err(e) = rl.add_history_entry(line.as_str()) {
-                    println!("Failed to append commands history {}", e);
-                }
-                if let Err(e) = rl.append_history(&SETTINGS.history_file_path) {
-                    println!("Failed to append commands file history: {}", e);
-                }
                 let input: Vec<String> =
                     group_parameters(line.split_whitespace().map(|x| x.to_string()).collect());
                 let cmd: Result<Command, ParseError> = input[0].parse();
+
                 let parameters = input[1..].to_vec();
                 // Print result of evaluated command
                 match cmd {
                     Ok(command) => {
+                        // Only add to history if the command does not contain sensitive information
+                        if !command.hide_from_history() {
+                            if let Err(e) = rl.add_history_entry(line.as_str()) {
+                                println!("Failed to append commands history {}", e);
+                            }
+                            if let Err(e) = rl.append_history(&SETTINGS.history_file_path) {
+                                println!("Failed to append commands file history: {}", e);
+                            }
+                        }
+
                         // Check if we need to prompt the user for their wallet password
                         if command.is_pwd_needed() && wallet_opt.is_none() {
                             let password =
