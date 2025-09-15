@@ -62,7 +62,14 @@ impl Wallet {
             for entry in std::fs::read_dir(&path)? {
                 let entry = entry?;
                 let path = entry.path();
-                if path.is_file() && path.extension().map_or(false, |ext| ext == "yaml") {
+                if path.is_file() {
+                    const WALLET_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
+                    let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+                        continue;
+                    };
+                    if !WALLET_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str()) {
+                        continue;
+                    }
                     let content = &std::fs::read(&path)?[..];
                     let mut wallet = serde_yaml::from_slice::<WalletFileFormat>(content)?;
                     if wallet.version == 0 {
