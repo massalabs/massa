@@ -213,6 +213,11 @@
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ask_password;
@@ -307,10 +312,10 @@
         validator: MatchingBracketValidator::new(),
     };
     <span class="kw">let </span>config = Config::builder()
-        .auto_add_history(<span class="bool-val">true</span>)
+        .auto_add_history(<span class="bool-val">false</span>)
         .completion_prompt_limit(<span class="number">100</span>)
         .completion_type(CompletionType::List)
-        .max_history_size(<span class="number">10000</span>)<span class="question-mark">?
+        .max_history_size(SETTINGS.history)<span class="question-mark">?
         </span>.build();
 
     <span class="kw">let </span><span class="kw-2">mut </span>rl = Editor::with_config(config)<span class="question-mark">?</span>;
@@ -328,19 +333,24 @@
                 <span class="kw">if </span>line.is_empty() {
                     <span class="kw">continue</span>;
                 }
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rl.add_history_entry(line.as_str()) {
-                    <span class="macro">println!</span>(<span class="string">"Failed to append commands history {}"</span>, e);
-                }
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rl.append_history(<span class="kw-2">&amp;</span>SETTINGS.history_file_path) {
-                    <span class="macro">println!</span>(<span class="string">"Failed to append commands file history: {}"</span>, e);
-                }
                 <span class="kw">let </span>input: Vec&lt;String&gt; =
                     group_parameters(line.split_whitespace().map(|x| x.to_string()).collect());
                 <span class="kw">let </span>cmd: <span class="prelude-ty">Result</span>&lt;Command, ParseError&gt; = input[<span class="number">0</span>].parse();
+
                 <span class="kw">let </span>parameters = input[<span class="number">1</span>..].to_vec();
                 <span class="comment">// Print result of evaluated command
                 </span><span class="kw">match </span>cmd {
                     <span class="prelude-val">Ok</span>(command) =&gt; {
+                        <span class="comment">// Only add to history if the command does not contain sensitive information
+                        </span><span class="kw">if </span>!command.hide_from_history() {
+                            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rl.add_history_entry(line.as_str()) {
+                                <span class="macro">println!</span>(<span class="string">"Failed to append commands history {}"</span>, e);
+                            }
+                            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rl.append_history(<span class="kw-2">&amp;</span>SETTINGS.history_file_path) {
+                                <span class="macro">println!</span>(<span class="string">"Failed to append commands file history: {}"</span>, e);
+                            }
+                        }
+
                         <span class="comment">// Check if we need to prompt the user for their wallet password
                         </span><span class="kw">if </span>command.is_pwd_needed() &amp;&amp; wallet_opt.is_none() {
                             <span class="kw">let </span>password =

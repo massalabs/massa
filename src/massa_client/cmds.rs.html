@@ -1551,6 +1551,14 @@
 <a href="#1551" id="1551">1551</a>
 <a href="#1552" id="1552">1552</a>
 <a href="#1553" id="1553">1553</a>
+<a href="#1554" id="1554">1554</a>
+<a href="#1555" id="1555">1555</a>
+<a href="#1556" id="1556">1556</a>
+<a href="#1557" id="1557">1557</a>
+<a href="#1558" id="1558">1558</a>
+<a href="#1559" id="1559">1559</a>
+<a href="#1560" id="1560">1560</a>
+<a href="#1561" id="1561">1561</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -1594,6 +1602,7 @@
 /// the order they are defined is the order they are displayed in so be careful
 /// Maybe it would be worth renaming some of them for consistency
 /// Use props(pwd_not_needed = "true") if the command does not need an access to the wallet, to avoid unnecessary
+/// Use props(hide_from_history = "true") if the command contains sensitive information that should not be logged in the history file.
 /// prompting of the user.
 </span><span class="attr">#[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
@@ -1770,7 +1779,7 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">"SecretKey1 SecretKey2 ..."</span>),
+        props(args = <span class="string">"SecretKey1 SecretKey2 ..."</span>, hide_from_history = <span class="string">"true"</span>),
         message = <span class="string">"add a list of secret keys to the wallet"
     </span>)]
     </span>wallet_add_secret_keys,
@@ -1977,8 +1986,15 @@
 
     <span class="doccomment">/// Returns true if the command needs wallet access
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_pwd_needed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        !(<span class="self">self</span>.get_str(<span class="string">"pwd_not_needed"</span>).is_some()
-            &amp;&amp; <span class="self">self</span>.get_str(<span class="string">"pwd_not_needed"</span>).unwrap() == <span class="string">"true"</span>)
+        <span class="kw">let </span>pwd_not_needed = <span class="self">self</span>.get_str(<span class="string">"pwd_not_needed"</span>);
+        !pwd_not_needed.map_or(<span class="bool-val">false</span>, |f| f == <span class="string">"true"</span>)
+    }
+
+    <span class="doccomment">/// Returns true if the command should be hidden from history
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>hide_from_history(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">let </span>hide_from_history = <span class="self">self</span>.get_str(<span class="string">"hide_from_history"</span>);
+        <span class="macro">println!</span>(<span class="string">"hide_from_history: {:?}"</span>, hide_from_history);
+        hide_from_history.map_or(<span class="bool-val">false</span>, |f| f == <span class="string">"true"</span>)
     }
 
     <span class="doccomment">/// run a given command
