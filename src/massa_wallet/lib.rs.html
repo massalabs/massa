@@ -333,7 +333,7 @@
             <span class="kw">for </span>entry <span class="kw">in </span>std::fs::read_dir(<span class="kw-2">&amp;</span>path)<span class="question-mark">? </span>{
                 <span class="kw">let </span>entry = entry<span class="question-mark">?</span>;
                 <span class="kw">let </span>path = entry.path();
-                <span class="kw">if </span>path.is_file() {
+                <span class="kw">if </span>path.is_file() &amp;&amp; path.extension().map_or(<span class="bool-val">false</span>, |ext| ext == <span class="string">"yaml"</span>) {
                     <span class="kw">let </span>content = <span class="kw-2">&amp;</span>std::fs::read(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>[..];
                     <span class="kw">let </span><span class="kw-2">mut </span>wallet = serde_yaml::from_slice::&lt;WalletFileFormat&gt;(content)<span class="question-mark">?</span>;
                     <span class="kw">if </span>wallet.version == <span class="number">0 </span>{
