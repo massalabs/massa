@@ -116,7 +116,6 @@ pub(crate) async fn run(
                 let input: Vec<String> =
                     group_parameters(line.split_whitespace().map(|x| x.to_string()).collect());
                 let cmd: Result<Command, ParseError> = input[0].parse();
-
                 let parameters = input[1..].to_vec();
                 // Print result of evaluated command
                 match cmd {

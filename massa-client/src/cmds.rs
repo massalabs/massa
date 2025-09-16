@@ -425,14 +425,15 @@ impl Command {
 
     /// Returns true if the command needs wallet access
     pub(crate) fn is_pwd_needed(&self) -> bool {
-        let pwd_not_needed = self.get_str("pwd_not_needed");
-        !pwd_not_needed.map_or(false, |f| f == "true")
+        match self.get_str("pwd_not_needed") {
+            Some("true") => false, // pwd_not_needed is "true", so return false
+            _ => true,             // Otherwise, pwd is needed
+        }
     }
 
     /// Returns true if the command should be hidden from history
     pub(crate) fn hide_from_history(&self) -> bool {
         let hide_from_history = self.get_str("hide_from_history");
-        println!("hide_from_history: {:?}", hide_from_history);
         hide_from_history.map_or(false, |f| f == "true")
     }
 
