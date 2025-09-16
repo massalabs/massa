@@ -1559,6 +1559,7 @@
 <a href="#1559" id="1559">1559</a>
 <a href="#1560" id="1560">1560</a>
 <a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -1986,14 +1987,15 @@
 
     <span class="doccomment">/// Returns true if the command needs wallet access
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_pwd_needed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">let </span>pwd_not_needed = <span class="self">self</span>.get_str(<span class="string">"pwd_not_needed"</span>);
-        !pwd_not_needed.map_or(<span class="bool-val">false</span>, |f| f == <span class="string">"true"</span>)
+        <span class="kw">match </span><span class="self">self</span>.get_str(<span class="string">"pwd_not_needed"</span>) {
+            <span class="prelude-val">Some</span>(<span class="string">"true"</span>) =&gt; <span class="bool-val">false</span>, <span class="comment">// pwd_not_needed is "true", so return false
+            </span><span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,             <span class="comment">// Otherwise, pwd is needed
+        </span>}
     }
 
     <span class="doccomment">/// Returns true if the command should be hidden from history
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>hide_from_history(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">let </span>hide_from_history = <span class="self">self</span>.get_str(<span class="string">"hide_from_history"</span>);
-        <span class="macro">println!</span>(<span class="string">"hide_from_history: {:?}"</span>, hide_from_history);
         hide_from_history.map_or(<span class="bool-val">false</span>, |f| f == <span class="string">"true"</span>)
     }
 
