@@ -155,49 +155,57 @@ impl DenunciationPoolThread {
     pub(crate) fn spawn(
         receiver: Receiver<Command>,
         denunciation_pool: Arc<RwLock<DenunciationPool>>,
+        config: PoolConfig,
     ) -> JoinHandle<()> {
         let thread_builder = thread::Builder::new().name("denunciation-pool".into());
         thread_builder
-            .spawn(|| {
+            .spawn(move || {
                 let this = Self {
                     receiver,
                     denunciation_pool,
                 };
-                this.run()
+                this.run(config)
             })
             .expect("failed to spawn thread : denunciation-pool")
     }
 
     /// Run the thread.
-    fn run(self) {
+    fn run(self, config: PoolConfig) {
         let mut denunciation_pool_buffer = self.denunciation_pool.read().clone();
+        let mut start_time = Instant::now();
+        let tick = config.denunciation_pool_refresh_interval.to_duration();
         loop {
-            match self.receiver.recv() {
-                Err(RecvError) => {
-                    break;
+            let duration = (start_time + tick).saturating_duration_since(Instant::now());
+            if !duration.is_zero() {
+                match self.receiver.recv_timeout(duration) {
+                    Err(RecvTimeoutError::Disconnected) | Ok(Command::Stop) => break,
+                    Ok(Command::AddDenunciationPrecursor(de_p)) => {
+                        denunciation_pool_buffer.add_denunciation_precursor(de_p);
+                        self.denunciation_pool
+                            .write()
+                            .replace_with(&denunciation_pool_buffer);
+                    }
+                    Ok(Command::AddItems(endorsements)) => {
+                        denunciation_pool_buffer.add_endorsements(endorsements);
+                        self.denunciation_pool
+                            .write()
+                            .replace_with(&denunciation_pool_buffer);
+                    }
+                    Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
+                        denunciation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
+                        self.denunciation_pool
+                            .write()
+                            .replace_with(&denunciation_pool_buffer);
+                    }
+                    Err(RecvTimeoutError::Timeout) => {}
                 }
-                Ok(Command::Stop) => {
-                    break;
-                }
-                Ok(Command::AddDenunciationPrecursor(de_p)) => {
-                    denunciation_pool_buffer.add_denunciation_precursor(de_p);
-                    self.denunciation_pool
-                        .write()
-                        .replace_with(&denunciation_pool_buffer);
-                }
-                Ok(Command::AddItems(endorsements)) => {
-                    denunciation_pool_buffer.add_endorsements(endorsements);
-                    self.denunciation_pool
-                        .write()
-                        .replace_with(&denunciation_pool_buffer);
-                }
-                Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
-                    denunciation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
-                    self.denunciation_pool
-                        .write()
-                        .replace_with(&denunciation_pool_buffer);
-                }
-            };
+            } else {
+                denunciation_pool_buffer.refresh_execution_state();
+                self.denunciation_pool
+                    .write()
+                    .replace_with(&denunciation_pool_buffer);
+                start_time = Instant::now();
+            }
         }
     }
 }
@@ -245,7 +253,7 @@ pub fn start_pool_controller(
     let endorsements_thread_handle =
         EndorsementPoolThread::spawn(endorsements_input_receiver, endorsement_pool);
     let denunciations_thread_handle =
-        DenunciationPoolThread::spawn(denunciations_input_receiver, denunciation_pool);
+        DenunciationPoolThread::spawn(denunciations_input_receiver, denunciation_pool, config);
 
     let manager = PoolManagerImpl {
         operations_thread_handle: Some(operations_thread_handle),

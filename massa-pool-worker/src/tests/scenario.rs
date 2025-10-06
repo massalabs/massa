@@ -172,6 +172,8 @@ pub fn create_basic_get_block_operation_execution_mock(
                 addrs.len()
             ]
         });
+    res.expect_get_denunciation_execution_status()
+        .returning(|_| (false, false));
     res
 }
 

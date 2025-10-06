@@ -187,3 +187,116 @@ fn basic_creation_with_operation() {
     }
     test_factory.stop();
 }
+
+/// Test that the block factory produces a block even when all pools timeout.
+/// This tests the resilience of the block production system - it should never
+/// stop producing blocks just because pools are unresponsive.
+#[test]
+#[serial]
+fn test_block_production_with_all_pools_timeout() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+    let keypair = KeyPair::generate(0).unwrap();
+    let storage = Storage::create_root();
+    let staking_address = Address::from_public_key(&keypair.get_public_key());
+    let parent = BlockId::generate_from_hash(Hash::compute_from("test".as_bytes()));
+    let mut parents = Vec::new();
+    for i in 0..THREAD_COUNT as u64 {
+        parents.push((parent, i));
+    }
+    let pair = Arc::new((Mutex::new(false), Condvar::new()));
+    let pair2 = pair.clone();
+    
+    // Setup consensus controller
+    let mut consensus_controller = Box::new(MockConsensusController::new());
+    consensus_controller
+        .expect_get_best_parents()
+        .times(1)
+        .return_once(move || parents);
+    consensus_controller
+        .expect_register_block()
+        .times(1)
+        .return_once(move |_, _, storage, created| {
+            assert!(created);
+            let block_refs = storage.get_block_refs();
+            assert_eq!(block_refs.len(), 1, "Expected exactly one block to be created");
+            
+            // Get the block to verify its contents
+            let blocks = storage.read_blocks();
+            let block = blocks.get(block_refs.iter().next().unwrap()).unwrap();
+            
+            // Verify that the block has no operations, endorsements, or denunciations
+            assert_eq!(
+                block.content.operations.len(),
+                0,
+                "Expected no operations in block when operation pool times out"
+            );
+            assert_eq!(
+                block.content.header.content.endorsements.len(),
+                0,
+                "Expected no endorsements in block when endorsement pool times out"
+            );
+            assert_eq!(
+                block.content.header.content.denunciations.len(),
+                0,
+                "Expected no denunciations in block when denunciation pool times out"
+            );
+            
+            let (lock, cvar) = &*pair2;
+            let mut started = lock.lock();
+            *started = true;
+            cvar.notify_one();
+        });
+    
+    // Setup selector controller
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_get_producer()
+        .times(1)
+        .return_once(move |_| Ok(staking_address));
+    
+    // Setup pool controller that times out on all operations
+    use massa_pool_exports::PoolError;
+    let mut pool_controller = Box::new(MockPoolController::new());
+    
+    // All pool methods return timeout errors
+    pool_controller
+        .expect_get_block_denunciations()
+        .returning(|slot, _timeout| {
+            assert_eq!(*slot, Slot::new(1, 0));
+            Err(PoolError::LockTimeout)
+        });
+    pool_controller
+        .expect_get_block_operations()
+        .returning(|slot, _timeout| {
+            assert_eq!(*slot, Slot::new(1, 0));
+            Err(PoolError::LockTimeout)
+        });
+    pool_controller
+        .expect_get_block_endorsements()
+        .returning(|_, slot, _timeout| {
+            assert_eq!(*slot, Slot::new(1, 0));
+            Err(PoolError::LockTimeout)
+        });
+    
+    // Create and run the test factory
+    let mut test_factory = BlockTestFactory::new(
+        &keypair,
+        storage,
+        consensus_controller,
+        selector_controller,
+        pool_controller,
+    );
+    
+    // Wait for the block to be created
+    let (ref lock, ref cvar) = *pair;
+    let mut started = lock.lock();
+    if !*started {
+        cvar.wait(&mut started);
+    }
+    
+    test_factory.stop();
+}
