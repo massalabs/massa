@@ -8,10 +8,12 @@
 mod channels;
 mod config;
 mod controller_traits;
+mod error;
 
 pub use channels::{PoolBroadcasts, PoolChannels};
 pub use config::PoolConfig;
 pub use controller_traits::{PoolController, PoolManager};
+pub use error::PoolError;
 
 #[cfg(feature = "test-exports")]
 pub use controller_traits::{MockPoolController, MockPoolControllerWrapper};

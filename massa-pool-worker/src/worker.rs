@@ -48,6 +48,7 @@ impl EndorsementPoolThread {
 
     /// Runs the thread
     fn run(self) {
+        let mut endorsement_pool_buffer = self.endorsement_pool.read().clone();
         loop {
             match self.receiver.recv() {
                 Err(RecvError) => break,
@@ -55,12 +56,17 @@ impl EndorsementPoolThread {
                     break;
                 }
                 Ok(Command::AddItems(endorsements)) => {
-                    self.endorsement_pool.write().add_endorsements(endorsements)
+                    endorsement_pool_buffer.add_endorsements(endorsements);
+                    self.endorsement_pool
+                        .write()
+                        .replace_with(&endorsement_pool_buffer);
                 }
-                Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
-                    .endorsement_pool
-                    .write()
-                    .notify_final_cs_periods(&final_cs_periods),
+                Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
+                    endorsement_pool_buffer.notify_final_cs_periods(&final_cs_periods);
+                    self.endorsement_pool
+                        .write()
+                        .replace_with(&endorsement_pool_buffer);
+                }
                 _ => {
                     warn!("EndorsementPoolThread received an unexpected command");
                     continue;
@@ -99,6 +105,7 @@ impl OperationPoolThread {
 
     /// Run the thread.
     fn run(self, config: PoolConfig) {
+        let mut operation_pool_buffer = self.operation_pool.read().clone();
         let mut start_time = Instant::now();
         let tick = config.operation_pool_refresh_interval.to_duration();
         loop {
@@ -107,12 +114,17 @@ impl OperationPoolThread {
                 match self.receiver.recv_timeout(duration) {
                     Err(RecvTimeoutError::Disconnected) | Ok(Command::Stop) => break,
                     Ok(Command::AddItems(operations)) => {
-                        self.operation_pool.write().add_operations(operations)
+                        operation_pool_buffer.add_operations(operations);
+                        self.operation_pool
+                            .write()
+                            .replace_with(&operation_pool_buffer);
                     }
-                    Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
-                        .operation_pool
-                        .write()
-                        .notify_final_cs_periods(&final_cs_periods),
+                    Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
+                        operation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
+                        self.operation_pool
+                            .write()
+                            .replace_with(&operation_pool_buffer);
+                    }
                     Ok(_) => {
                         warn!("OperationPoolThread received an unexpected command");
                         continue;
@@ -120,7 +132,10 @@ impl OperationPoolThread {
                     Err(RecvTimeoutError::Timeout) => {}
                 };
             } else {
-                self.operation_pool.write().refresh();
+                operation_pool_buffer.refresh();
+                self.operation_pool
+                    .write()
+                    .replace_with(&operation_pool_buffer);
                 start_time = Instant::now();
             }
         }
@@ -155,6 +170,7 @@ impl DenunciationPoolThread {
 
     /// Run the thread.
     fn run(self) {
+        let mut denunciation_pool_buffer = self.denunciation_pool.read().clone();
         loop {
             match self.receiver.recv() {
                 Err(RecvError) => {
@@ -163,18 +179,24 @@ impl DenunciationPoolThread {
                 Ok(Command::Stop) => {
                     break;
                 }
-                Ok(Command::AddDenunciationPrecursor(de_p)) => self
-                    .denunciation_pool
-                    .write()
-                    .add_denunciation_precursor(de_p),
-                Ok(Command::AddItems(endorsements)) => self
-                    .denunciation_pool
-                    .write()
-                    .add_endorsements(endorsements),
-                Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
-                    .denunciation_pool
-                    .write()
-                    .notify_final_cs_periods(&final_cs_periods),
+                Ok(Command::AddDenunciationPrecursor(de_p)) => {
+                    denunciation_pool_buffer.add_denunciation_precursor(de_p);
+                    self.denunciation_pool
+                        .write()
+                        .replace_with(&denunciation_pool_buffer);
+                }
+                Ok(Command::AddItems(endorsements)) => {
+                    denunciation_pool_buffer.add_endorsements(endorsements);
+                    self.denunciation_pool
+                        .write()
+                        .replace_with(&denunciation_pool_buffer);
+                }
+                Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
+                    denunciation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
+                    self.denunciation_pool
+                        .write()
+                        .replace_with(&denunciation_pool_buffer);
+                }
             };
         }
     }

@@ -98,6 +98,10 @@ pub struct FactorySettings {
     pub staking_wallet_path: PathBuf,
     /// stop the production in case we are not connected to anyone
     pub stop_production_when_zero_connections: bool,
+    /// warn if block production is delayed by more than the given time in milliseconds
+    pub block_delay_warn_threshold: MassaTime,
+    /// timeout for optional channel calls in block production (in milliseconds)
+    pub block_opt_channel_timeout: MassaTime,
 }
 
 /// Pool configuration, read from a file configuration

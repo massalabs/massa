@@ -521,8 +521,14 @@ impl MassaRpcServer for API<Public> {
         };
 
         let pool_stats = (
-            self.0.pool_command_sender.get_operation_count(),
-            self.0.pool_command_sender.get_endorsement_count(),
+            self.0
+                .pool_command_sender
+                .get_operation_count(None)
+                .unwrap_or(0),
+            self.0
+                .pool_command_sender
+                .get_endorsement_count(None)
+                .unwrap_or(0),
         );
 
         let next_slot_result = last_slot
@@ -683,7 +689,11 @@ impl MassaRpcServer for API<Public> {
         }
 
         // ask pool whether it carries the operations
-        let in_pool = self.0.pool_command_sender.contains_operations(&ops);
+        let in_pool = self
+            .0
+            .pool_command_sender
+            .contains_operations(&ops, None)
+            .unwrap_or_else(|_| vec![false; ops.len()]);
 
         let op_exec_statuses = self.0.execution_controller.get_ops_exec_status(&ops);
 
@@ -797,7 +807,8 @@ impl MassaRpcServer for API<Public> {
         let in_pool = self
             .0
             .pool_command_sender
-            .contains_endorsements(&endorsement_ids);
+            .contains_endorsements(&endorsement_ids, None)
+            .unwrap_or_else(|_| vec![false; endorsement_ids.len()]);
 
         // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
         let is_final: Vec<bool> = {
