@@ -403,9 +403,9 @@ impl Storage {
         let orphaned_ids = Self::internal_drop_refs(ids, &mut owners, &mut self.local_used_ops);
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
-            let mut blocks = self.operations.write();
+            let mut ops = self.operations.write();
             for op_id in orphaned_ids {
-                blocks.remove(&op_id);
+                ops.remove(&op_id);
             }
         }
     }
@@ -478,9 +478,9 @@ impl Storage {
             Self::internal_drop_refs(ids, &mut owners, &mut self.local_used_endorsements);
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
-            let mut blocks = self.endorsements.write();
+            let mut endorsements = self.endorsements.write();
             for e_id in orphaned_ids {
-                blocks.remove(&e_id);
+                endorsements.remove(&e_id);
             }
         }
     }

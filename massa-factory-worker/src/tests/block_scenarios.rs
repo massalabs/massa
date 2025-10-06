@@ -209,7 +209,7 @@ fn test_block_production_with_all_pools_timeout() {
     }
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
     let pair2 = pair.clone();
-    
+
     // Setup consensus controller
     let mut consensus_controller = Box::new(MockConsensusController::new());
     consensus_controller
@@ -222,12 +222,16 @@ fn test_block_production_with_all_pools_timeout() {
         .return_once(move |_, _, storage, created| {
             assert!(created);
             let block_refs = storage.get_block_refs();
-            assert_eq!(block_refs.len(), 1, "Expected exactly one block to be created");
-            
+            assert_eq!(
+                block_refs.len(),
+                1,
+                "Expected exactly one block to be created"
+            );
+
             // Get the block to verify its contents
             let blocks = storage.read_blocks();
             let block = blocks.get(block_refs.iter().next().unwrap()).unwrap();
-            
+
             // Verify that the block has no operations, endorsements, or denunciations
             assert_eq!(
                 block.content.operations.len(),
@@ -244,24 +248,24 @@ fn test_block_production_with_all_pools_timeout() {
                 0,
                 "Expected no denunciations in block when denunciation pool times out"
             );
-            
+
             let (lock, cvar) = &*pair2;
             let mut started = lock.lock();
             *started = true;
             cvar.notify_one();
         });
-    
+
     // Setup selector controller
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller
         .expect_get_producer()
         .times(1)
         .return_once(move |_| Ok(staking_address));
-    
+
     // Setup pool controller that times out on all operations
     use massa_pool_exports::PoolError;
     let mut pool_controller = Box::new(MockPoolController::new());
-    
+
     // All pool methods return timeout errors
     pool_controller
         .expect_get_block_denunciations()
@@ -281,7 +285,7 @@ fn test_block_production_with_all_pools_timeout() {
             assert_eq!(*slot, Slot::new(1, 0));
             Err(PoolError::LockTimeout)
         });
-    
+
     // Create and run the test factory
     let mut test_factory = BlockTestFactory::new(
         &keypair,
@@ -290,13 +294,13 @@ fn test_block_production_with_all_pools_timeout() {
         selector_controller,
         pool_controller,
     );
-    
+
     // Wait for the block to be created
     let (ref lock, ref cvar) = *pair;
     let mut started = lock.lock();
     if !*started {
         cvar.wait(&mut started);
     }
-    
+
     test_factory.stop();
 }
