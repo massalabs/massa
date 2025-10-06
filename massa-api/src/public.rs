@@ -4,6 +4,7 @@
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use itertools::{izip, Itertools};
+use tracing::{debug, warn};
 use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
     address::{
@@ -253,19 +254,32 @@ impl MassaRpcServer for API<Public> {
         &self,
         reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> RpcResult<Vec<ExecuteReadOnlyResponse>> {
+        let api_start = std::time::Instant::now();
+        debug!(
+            "[API_TIMING] execute_read_only_bytecode called with {} requests",
+            reqs.len()
+        );
+        
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
 
         let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
-        for ReadOnlyBytecodeExecution {
+        for (req_idx, ReadOnlyBytecodeExecution {
             max_gas,
             address,
             bytecode,
             operation_datastore,
             fee,
-        } in reqs
+        }) in reqs.into_iter().enumerate()
         {
+            let req_start = std::time::Instant::now();
+            debug!(
+                "[API_TIMING] Processing bytecode request {}: max_gas={}, address={:?}",
+                req_idx + 1,
+                max_gas,
+                address
+            );
             let address = if let Some(addr) = address {
                 addr
             } else {
@@ -332,7 +346,15 @@ impl MassaRpcServer for API<Public> {
             }
 
             // run
+            let exec_start = std::time::Instant::now();
             let result = self.0.execution_controller.execute_readonly_request(req);
+            let exec_duration = exec_start.elapsed();
+            
+            debug!(
+                "[API_TIMING] Bytecode request {} execution took {}ms",
+                req_idx + 1,
+                exec_duration.as_millis()
+            );
 
             // map result
             let result = ExecuteReadOnlyResponse {
@@ -349,8 +371,31 @@ impl MassaRpcServer for API<Public> {
                     .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
                 state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
+            
+            let req_duration = req_start.elapsed();
+            debug!(
+                "[API_TIMING] Bytecode request {} completed in {}ms (exec={}ms)",
+                req_idx + 1,
+                req_duration.as_millis(),
+                exec_duration.as_millis()
+            );
 
             res.push(result);
+        }
+
+        let total_duration = api_start.elapsed();
+        debug!(
+            "[API_TIMING] execute_read_only_bytecode completed: {} requests in {}ms",
+            res.len(),
+            total_duration.as_millis()
+        );
+        
+        if total_duration.as_millis() > 1000 {
+            warn!(
+                "[API_TIMING] WARNING: execute_read_only_bytecode took {}ms for {} requests",
+                total_duration.as_millis(),
+                res.len()
+            );
         }
 
         // return result
@@ -362,12 +407,18 @@ impl MassaRpcServer for API<Public> {
         &self,
         reqs: Vec<ReadOnlyCall>,
     ) -> RpcResult<Vec<ExecuteReadOnlyResponse>> {
+        let api_start = std::time::Instant::now();
+        debug!(
+            "[API_TIMING] execute_read_only_call called with {} requests",
+            reqs.len()
+        );
+        
         if reqs.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
 
         let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
-        for ReadOnlyCall {
+        for (req_idx, ReadOnlyCall {
             max_gas,
             target_address,
             target_function,
@@ -375,8 +426,16 @@ impl MassaRpcServer for API<Public> {
             caller_address,
             coins,
             fee,
-        } in reqs
+        }) in reqs.into_iter().enumerate()
         {
+            let req_start = std::time::Instant::now();
+            debug!(
+                "[API_TIMING] Processing call request {}: target={}::{}, max_gas={}",
+                req_idx + 1,
+                target_address,
+                target_function,
+                max_gas
+            );
             let caller_address = if let Some(addr) = caller_address {
                 addr
             } else {
@@ -433,7 +492,15 @@ impl MassaRpcServer for API<Public> {
             }
 
             // run
+            let exec_start = std::time::Instant::now();
             let result = self.0.execution_controller.execute_readonly_request(req);
+            let exec_duration = exec_start.elapsed();
+            
+            debug!(
+                "[API_TIMING] Call request {} execution took {}ms",
+                req_idx + 1,
+                exec_duration.as_millis()
+            );
 
             // map result
             let result = ExecuteReadOnlyResponse {
@@ -450,8 +517,31 @@ impl MassaRpcServer for API<Public> {
                     .map_or_else(|_| Default::default(), |v| v.out.events.clone().0),
                 state_changes: result.map_or_else(|_| Default::default(), |v| v.out.state_changes),
             };
+            
+            let req_duration = req_start.elapsed();
+            debug!(
+                "[API_TIMING] Call request {} completed in {}ms (exec={}ms)",
+                req_idx + 1,
+                req_duration.as_millis(),
+                exec_duration.as_millis()
+            );
 
             res.push(result);
+        }
+
+        let total_duration = api_start.elapsed();
+        debug!(
+            "[API_TIMING] execute_read_only_call completed: {} requests in {}ms",
+            res.len(),
+            total_duration.as_millis()
+        );
+        
+        if total_duration.as_millis() > 1000 {
+            warn!(
+                "[API_TIMING] WARNING: execute_read_only_call took {}ms for {} requests",
+                total_duration.as_millis(),
+                res.len()
+            );
         }
 
         // return result

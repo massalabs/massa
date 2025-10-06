@@ -13,6 +13,8 @@ use massa_models::slot::Slot;
 use massa_models::types::{Applicable, SetUpdateOrDelete};
 use parking_lot::RwLock;
 use std::{collections::BTreeMap, sync::Arc};
+use tracing::{debug, warn};
+use std::time::Instant;
 
 pub(crate) struct SpeculativeAsyncPool {
     final_state: Arc<RwLock<dyn FinalStateController>>,
@@ -109,6 +111,14 @@ impl SpeculativeAsyncPool {
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        let start_time = Instant::now();
+        let pool_size = self.message_infos.len();
+        
+        debug!(
+            "take_batch_to_execute: slot={:?}, pool_size={}, max_gas={}, async_msg_cst_gas_cost={}",
+            slot, pool_size, max_gas, async_msg_cst_gas_cost
+        );
+
         let mut available_gas = max_gas;
 
         // Choose which messages to take based on self.message_infos
@@ -116,10 +126,40 @@ impl SpeculativeAsyncPool {
 
         let mut wanted_messages = Vec::new();
 
+        let clone_start = Instant::now();
         let message_infos = self.message_infos.clone();
+        let clone_duration = clone_start.elapsed();
+        
+        if clone_duration.as_millis() > 10 {
+            warn!(
+                "PERFORMANCE WARNING: Cloning message_infos took {}ms for {} messages at slot {:?}",
+                clone_duration.as_millis(),
+                pool_size,
+                slot
+            );
+        }
 
+        let iteration_start = Instant::now();
+        let mut checked_count = 0;
+        let mut ready_count = 0;
+        let mut executable_count = 0;
+        let mut invalid_count = 0;
+        
         for (message_id, message_info) in message_infos.iter() {
+            checked_count += 1;
+            
+            // DIAGNOSTIC: Log if we find messages with max_gas = 0 (but don't skip them)
+            if message_info.max_gas == 0 {
+                invalid_count += 1;
+                warn!(
+                    "DIAGNOSTIC: Found async message with max_gas=0 at slot {:?} (ID: {:?})",
+                    slot, message_id
+                );
+                // Don't skip - let it proceed so we can see what happens
+            }
+            
             let corrected_max_gas = message_info.max_gas.saturating_add(async_msg_cst_gas_cost);
+            
             // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
             //       so to be consistent here, use >= & <= checks
             if available_gas >= corrected_max_gas
@@ -128,15 +168,47 @@ impl SpeculativeAsyncPool {
                     &message_info.validity_start,
                     &message_info.validity_end,
                 )
-                && message_info.can_be_executed
             {
-                available_gas -= corrected_max_gas;
-
-                wanted_messages.push(*message_id);
+                ready_count += 1;
+                if message_info.can_be_executed {
+                    executable_count += 1;
+                    available_gas -= corrected_max_gas;
+                    wanted_messages.push(*message_id);
+                }
             }
         }
+        
+        if invalid_count > 0 {
+            warn!(
+                "Found {} invalid async messages with max_gas=0 in pool at slot {:?}. These should be cleaned up.",
+                invalid_count, slot
+            );
+        }
+        
+        let iteration_duration = iteration_start.elapsed();
+        if iteration_duration.as_millis() > 50 {
+            warn!(
+                "PERFORMANCE WARNING: Iterating over {} messages took {}ms (ready={}, executable={}) at slot {:?}",
+                checked_count,
+                iteration_duration.as_millis(),
+                ready_count,
+                executable_count,
+                slot
+            );
+        }
 
+        let fetch_start = Instant::now();
         let taken = self.fetch_msgs(wanted_messages);
+        let fetch_duration = fetch_start.elapsed();
+
+        if fetch_duration.as_millis() > 20 {
+            warn!(
+                "PERFORMANCE WARNING: Fetching {} messages took {}ms at slot {:?}",
+                taken.len(),
+                fetch_duration.as_millis(),
+                slot
+            );
+        }
 
         // Remove the messages_info of the taken messages, and push their deletion in the pool changes
         let taken_ids: Vec<_> = taken.iter().map(|(id, _)| *id).collect();
@@ -144,6 +216,35 @@ impl SpeculativeAsyncPool {
             self.message_infos.remove(message_id);
         }
         self.delete_messages(taken_ids);
+
+        let total_duration = start_time.elapsed();
+        
+        debug!(
+            "take_batch_to_execute completed: took {} messages from pool of {} (checked={}, ready={}, executable={}, invalid={}) in {}ms (clone={}ms, iterate={}ms, fetch={}ms) at slot {:?}",
+            taken.len(),
+            pool_size,
+            checked_count,
+            ready_count,
+            executable_count,
+            invalid_count,
+            total_duration.as_millis(),
+            clone_duration.as_millis(),
+            iteration_duration.as_millis(),
+            fetch_duration.as_millis(),
+            slot
+        );
+        
+        if total_duration.as_millis() > 100 {
+            warn!(
+                "PERFORMANCE WARNING: take_batch_to_execute took {}ms (clone={}ms, iterate={}ms, fetch={}ms) for pool_size={} at slot {:?}",
+                total_duration.as_millis(),
+                clone_duration.as_millis(),
+                iteration_duration.as_millis(),
+                fetch_duration.as_millis(),
+                pool_size,
+                slot
+            );
+        }
 
         taken
     }
@@ -163,6 +264,15 @@ impl SpeculativeAsyncPool {
         ledger_changes: &LedgerChanges,
         fix_eliminated_msg: bool,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        let start_time = Instant::now();
+        let initial_pool_size = self.message_infos.len();
+        
+        debug!(
+            "settle_slot: starting with {} messages in pool at slot {:?}",
+            initial_pool_size,
+            slot
+        );
+        
         // Update the messages_info: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
@@ -227,6 +337,10 @@ impl SpeculativeAsyncPool {
         }
 
         // Query eliminated messages
+        // Save counts before moving the data
+        let expired_count = eliminated_infos.len();
+        let triggered_count = triggered_msg.len();
+        
         let mut eliminated_msg =
             self.fetch_msgs(eliminated_infos.into_iter().map(|(id, _)| id).collect());
         // Push their deletion in the pool changes
@@ -239,6 +353,34 @@ impl SpeculativeAsyncPool {
                 SetUpdateOrDelete::Delete => None,
             }));
         }
+        
+        let settle_duration = start_time.elapsed();
+        let final_pool_size = self.message_infos.len();
+        let eliminated_count = eliminated_msg.len();
+        
+        debug!(
+            "settle_slot completed: pool {} -> {} messages (expired={}, triggered={}, eliminated={}) in {}ms at slot {:?}",
+            initial_pool_size,
+            final_pool_size,
+            expired_count,
+            triggered_count,
+            eliminated_count,
+            settle_duration.as_millis(),
+            slot
+        );
+        
+        if settle_duration.as_millis() > 100 {
+            warn!(
+                "PERFORMANCE WARNING: settle_slot took {}ms (pool: {} -> {}, expired={}, eliminated={}) at slot {:?}",
+                settle_duration.as_millis(),
+                initial_pool_size,
+                final_pool_size,
+                expired_count,
+                eliminated_count,
+                slot
+            );
+        }
+        
         eliminated_msg
     }
 
@@ -265,9 +407,15 @@ impl SpeculativeAsyncPool {
                     }
                     Some(SetUpdateOrDelete::Update(msg_update)) => {
                         if msg_opt.is_none() {
+                            // DIAGNOSTIC: Log when update is applied to non-existent message
+                            // This will create AsyncMessage::default() with max_gas=0
+                            warn!(
+                                "DIAGNOSTIC: Attempting to update non-existent async message {:?}. This will create a default message with max_gas=0!",
+                                id
+                            );
                             *msg_opt = Some(AsyncMessage::default());
                         }
-                        msg_opt.as_mut().unwrap().apply(msg_update.clone()); // unwrap checked above
+                        msg_opt.as_mut().unwrap().apply(msg_update.clone());
                     }
                     Some(SetUpdateOrDelete::Delete) => {
                         *msg_opt = None;

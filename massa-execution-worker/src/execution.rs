@@ -1078,6 +1078,8 @@ impl ExecutionState {
         sender_addr: Address,
         operation_id: OperationId,
     ) -> Result<ExecutionResultInner, ExecutionError> {
+        let exec_start = std::time::Instant::now();
+        
         // process CallSC operations only
         let (max_gas, target_addr, target_func, param, coins) = match &operation {
             OperationType::CallSC {
@@ -1090,8 +1092,14 @@ impl ExecutionState {
             } => (*max_gas, *target_addr, target_func, param, *coins),
             _ => panic!("unexpected operation type"),
         };
+        
+        debug!(
+            "[SC_EXEC_TIMING] START CallSC: sender={}, target={}, function={}, max_gas={}, coins={}",
+            sender_addr, target_addr, target_func, max_gas, coins
+        );
 
         // prepare the current slot context for executing the operation
+        let prep_start = std::time::Instant::now();
         let bytecode;
         let condom_limits;
         {
@@ -1148,14 +1156,30 @@ impl ExecutionState {
             // Load bytecode. Assume empty bytecode if not found.
             bytecode = context.get_bytecode(&target_addr).unwrap_or_default().0;
         }
+        
+        let prep_duration = prep_start.elapsed();
+        debug!(
+            "[SC_EXEC_TIMING] Context preparation took {}ms for CallSC to {}", 
+            prep_duration.as_millis(),
+            target_addr
+        );
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
 
+        let load_start = std::time::Instant::now();
         let module =
             self.module_cache
                 .write()
                 .load_module(&bytecode, max_gas, condom_limits.clone())?;
+        let load_duration = load_start.elapsed();
+        debug!(
+            "[SC_EXEC_TIMING] Module load took {}ms for CallSC to {}", 
+            load_duration.as_millis(),
+            target_addr
+        );
+        
+        let run_start = std::time::Instant::now();
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -1165,6 +1189,14 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
             condom_limits,
         );
+        let run_duration = run_start.elapsed();
+        debug!(
+            "[SC_EXEC_TIMING] Function '{}' execution took {}ms (max_gas={})", 
+            target_func,
+            run_duration.as_millis(),
+            max_gas
+        );
+        
         match response {
             Ok(Response { init_gas_cost, .. })
             | Err(VMError::ExecutionError { init_gas_cost, .. }) => {
@@ -1174,10 +1206,45 @@ impl ExecutionState {
             }
             _ => (),
         }
-        let _response = response.map_err(|error| ExecutionError::VMError {
-            context: "CallSC".to_string(),
-            error,
+        let _response = response.map_err(|error| {
+            let total_duration = exec_start.elapsed();
+            debug!(
+                "[SC_EXEC_TIMING] FAILED CallSC: Total={}ms (prep={}ms, load={}ms, run={}ms) for {} -> {}::{}",
+                total_duration.as_millis(),
+                prep_duration.as_millis(),
+                load_duration.as_millis(),
+                run_duration.as_millis(),
+                sender_addr,
+                target_addr,
+                target_func
+            );
+            ExecutionError::VMError {
+                context: "CallSC".to_string(),
+                error,
+            }
         })?;
+        
+        let total_duration = exec_start.elapsed();
+        debug!(
+            "[SC_EXEC_TIMING] SUCCESS CallSC: Total={}ms (prep={}ms, load={}ms, run={}ms) for {} -> {}::{}",
+            total_duration.as_millis(),
+            prep_duration.as_millis(),
+            load_duration.as_millis(),
+            run_duration.as_millis(),
+            sender_addr,
+            target_addr,
+            target_func
+        );
+        
+        if total_duration.as_millis() > 500 {
+            warn!(
+                "[SC_EXEC_TIMING] CallSC WARNING: Execution took {}ms for {}::{}",
+                total_duration.as_millis(),
+                target_addr,
+                target_func
+            );
+        }
+        
         #[cfg(feature = "execution-trace")]
         {
             Ok(_response.trace.into_iter().map(|t| t.into()).collect())
@@ -1199,6 +1266,13 @@ impl ExecutionState {
         message: AsyncMessage,
         bytecode: Option<Bytecode>,
     ) -> Result<AsyncMessageExecutionResult, ExecutionError> {
+        let exec_start = std::time::Instant::now();
+        
+        debug!(
+            "[ASYNC_EXEC_TIMING] START async message execution: sender={}, dest={}, function={}, max_gas={}, fee={}",
+            message.sender, message.destination, message.function, message.max_gas, message.fee
+        );
+        
         let mut result = AsyncMessageExecutionResult::new();
         #[cfg(feature = "execution-info")]
         {
@@ -1208,6 +1282,7 @@ impl ExecutionState {
         }
 
         // prepare execution context
+        let prep_start = std::time::Instant::now();
         let context_snapshot;
         let bytecode = {
             let mut context = context_guard!(self);
@@ -1278,9 +1353,17 @@ impl ExecutionState {
 
             bytecode.0
         };
+        
+        let prep_duration = prep_start.elapsed();
+        debug!(
+            "[ASYNC_EXEC_TIMING] Context preparation took {}ms for {}", 
+            prep_duration.as_millis(),
+            message.destination
+        );
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
+        let load_start = std::time::Instant::now();
         let module = match self.module_cache.write().load_module(
             &bytecode,
             message.max_gas,
@@ -1298,7 +1381,15 @@ impl ExecutionState {
                 return Err(err);
             }
         };
+        
+        let load_duration = load_start.elapsed();
+        debug!(
+            "[ASYNC_EXEC_TIMING] Module load took {}ms for {}", 
+            load_duration.as_millis(),
+            message.destination
+        );
 
+        let run_start = std::time::Instant::now();
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -1308,11 +1399,32 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
             self.config.condom_limits.clone(),
         );
+        let run_duration = run_start.elapsed();
+        debug!(
+            "[ASYNC_EXEC_TIMING] Function '{}' execution took {}ms (max_gas={})", 
+            message.function,
+            run_duration.as_millis(),
+            message.max_gas
+        );
+        
         match response {
             Ok(res) => {
                 self.module_cache
                     .write()
                     .set_init_cost(&bytecode, res.init_gas_cost);
+                    
+                let total_duration = exec_start.elapsed();
+                debug!(
+                    "[ASYNC_EXEC_TIMING] SUCCESS: Total={}ms (prep={}ms, load={}ms, run={}ms) for {} -> {}::{}",
+                    total_duration.as_millis(),
+                    prep_duration.as_millis(),
+                    load_duration.as_millis(),
+                    run_duration.as_millis(),
+                    message.sender,
+                    message.destination,
+                    message.function
+                );
+                
                 #[cfg(feature = "execution-trace")]
                 {
                     result.traces = Some((res.trace.into_iter().map(|t| t.into()).collect(), true));
@@ -1324,6 +1436,17 @@ impl ExecutionState {
                 Ok(result)
             }
             Err(error) => {
+                let total_duration = exec_start.elapsed();
+                debug!(
+                    "[ASYNC_EXEC_TIMING] FAILED: Total={}ms (prep={}ms, load={}ms, run={}ms) for {} -> {}::{}",
+                    total_duration.as_millis(),
+                    prep_duration.as_millis(),
+                    load_duration.as_millis(),
+                    run_duration.as_millis(),
+                    message.sender,
+                    message.destination,
+                    message.function
+                );
                 if let VMError::ExecutionError { init_gas_cost, .. } = error {
                     self.module_cache
                         .write()
@@ -1532,6 +1655,9 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         let mut transfers = vec![];
 
+        let slot_start = std::time::Instant::now();
+        debug!("SLOT EXECUTION START: slot={:?}", slot);
+
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
@@ -1599,6 +1725,8 @@ impl ExecutionState {
 
         // Check if there is a block at this slot
         if let Some((block_id, block_metadata)) = exec_target {
+            let block_start = std::time::Instant::now();
+            
             let block_store = block_metadata
                 .storage
                 .as_ref()
@@ -1632,7 +1760,12 @@ impl ExecutionState {
                     .collect::<Vec<_>>()
             };
 
-            debug!("executing {} operations at slot {}", operations.len(), slot);
+            debug!(
+                "BLOCK EXECUTION START: block={:?}, {} operations at slot {:?}", 
+                block_id, 
+                operations.len(), 
+                slot
+            );
 
             // gather all available endorsement creators and target blocks
             let endorsement_creators: Vec<Address> = stored_block
@@ -1870,6 +2003,22 @@ impl ExecutionState {
                         Some((block_creator_addr, block_producer_credit));
                 }
             }
+            
+            let block_duration = block_start.elapsed();
+            debug!(
+                "BLOCK EXECUTION END: block={:?} completed in {}ms at slot {:?}",
+                block_id,
+                block_duration.as_millis(),
+                slot
+            );
+            
+            if block_duration.as_millis() > 500 {
+                warn!(
+                    "PERFORMANCE WARNING: Block execution took {}ms at slot {:?}",
+                    block_duration.as_millis(),
+                    slot
+                );
+            }
         } else {
             // the slot is a miss, check who was supposed to be the creator and update production stats
             let producer_addr = selector
@@ -1889,19 +2038,72 @@ impl ExecutionState {
             .saturating_add(remaining_block_gas);
 
         // Get asynchronous messages to execute
+        let batch_start = std::time::Instant::now();
         let messages = context_guard!(self)
             .take_async_batch(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
+        let batch_duration = batch_start.elapsed();
+        
+        let message_count = messages.len();
+        debug!(
+            "[ASYNC_EXEC_TIMING] BATCH: Retrieved {} async messages for execution (took {}ms, available_gas={}) at slot {:?}",
+            message_count,
+            batch_duration.as_millis(),
+            async_msg_gas_available,
+            slot
+        );
+        
+        if batch_duration.as_millis() > 100 {
+            warn!(
+                "[ASYNC_EXEC_TIMING] BATCH WARNING: take_async_batch took {}ms to retrieve {} messages at slot {:?}",
+                batch_duration.as_millis(),
+                message_count,
+                slot
+            );
+        }
 
         // clear operation id (otherwise events will be generated using this operation id)
         self.execution_context.lock().origin_operation_id = None;
 
         // Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.
-        for (_message_id, message) in messages {
+        let execution_start = std::time::Instant::now();
+        let mut success_count = 0;
+        let mut failure_count = 0;
+        
+        for (message_idx, (_message_id, message)) in messages.into_iter().enumerate() {
+            debug!(
+                "[ASYNC_EXEC_TIMING] MESSAGE {}/{}: Starting execution",
+                message_idx + 1,
+                message_count
+            );
+            
+            let msg_exec_start = std::time::Instant::now();
             let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
 
-            match self.execute_async_message(message, opt_bytecode) {
+            match self.execute_async_message(message.clone(), opt_bytecode) {
                 Ok(_message_return) => {
+                    success_count += 1;
+                    let msg_exec_duration = msg_exec_start.elapsed();
+                    
+                    debug!(
+                        "[ASYNC_EXEC_TIMING] MESSAGE {}/{}: Completed in {}ms (sender={}, dest={})",
+                        message_idx + 1,
+                        message_count,
+                        msg_exec_duration.as_millis(),
+                        message.sender,
+                        message.destination
+                    );
+                    
+                    if msg_exec_duration.as_millis() > 100 {
+                        warn!(
+                            "[ASYNC_EXEC_TIMING] MESSAGE WARNING: Message {}/{} took {}ms at slot {:?}",
+                            message_idx + 1,
+                            message_count,
+                            msg_exec_duration.as_millis(),
+                            slot
+                        );
+                    }
+                    
                     cfg_if::cfg_if! {
                         if #[cfg(feature = "execution-trace")] {
                             // Safe to unwrap
@@ -1913,12 +2115,43 @@ impl ExecutionState {
                     }
                 }
                 Err(err) => {
-                    let msg = format!("failed executing async message: {}", err);
+                    failure_count += 1;
+                    let msg_exec_duration = msg_exec_start.elapsed();
+                    let msg = format!(
+                        "[ASYNC_EXEC_TIMING] MESSAGE {}/{}: FAILED after {}ms (sender={}, dest={}): {}",
+                        message_idx + 1,
+                        message_count,
+                        msg_exec_duration.as_millis(),
+                        message.sender,
+                        message.destination,
+                        err
+                    );
                     #[cfg(feature = "execution-info")]
                     exec_info.async_messages.push(Err(msg.clone()));
                     debug!(msg);
                 }
             }
+        }
+        
+        let total_execution_duration = execution_start.elapsed();
+        
+        debug!(
+            "[ASYNC_EXEC_TIMING] BATCH COMPLETE: {} success, {} failed, total {}ms at slot {:?}",
+            success_count,
+            failure_count,
+            total_execution_duration.as_millis(),
+            slot
+        );
+        
+        if total_execution_duration.as_millis() > 500 {
+            warn!(
+                "[ASYNC_EXEC_TIMING] BATCH WARNING: Total async execution took {}ms ({} messages: {} success, {} failed) at slot {:?}",
+                total_execution_duration.as_millis(),
+                success_count + failure_count,
+                success_count,
+                failure_count,
+                slot
+            );
         }
 
         #[cfg(feature = "execution-trace")]
@@ -1955,6 +2188,21 @@ impl ExecutionState {
                 std::mem::replace(&mut exec_out.auto_sell_execution, vec![]);
             // self.execution_info.write().save_for_slot(*slot, exec_info);
             context_guard!(self).execution_info = exec_info;
+        }
+
+        let slot_duration = slot_start.elapsed();
+        debug!(
+            "SLOT EXECUTION END: slot={:?} completed in {}ms",
+            slot,
+            slot_duration.as_millis()
+        );
+        
+        if slot_duration.as_millis() > 1000 {
+            warn!(
+                "PERFORMANCE WARNING: Slot execution took {}ms at slot {:?}",
+                slot_duration.as_millis(),
+                slot
+            );
         }
 
         // Broadcast a slot execution output to active channel subscribers.
@@ -2115,6 +2363,21 @@ impl ExecutionState {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
+        let exec_start = std::time::Instant::now();
+        
+        // Capture target info for logging before moving req
+        let target_info = match &req.target {
+            ReadOnlyExecutionTarget::BytecodeExecution(_) => "BytecodeExecution".to_string(),
+            ReadOnlyExecutionTarget::FunctionCall { target_addr, target_func, .. } => 
+                format!("{}::{}", target_addr, target_func),
+        };
+        
+        debug!(
+            "[READONLY_EXEC_TIMING] START readonly request: target={:?}, max_gas={}",
+            target_info,
+            req.max_gas
+        );
+        
         // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
         // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
 
@@ -2290,6 +2553,22 @@ impl ExecutionState {
             estimated_cost: {}",
             exec_response.remaining_gas, exact_exec_cost, corrected_cost, estimated_cost
         );
+
+        let total_duration = exec_start.elapsed();
+        debug!(
+            "[READONLY_EXEC_TIMING] SUCCESS: Total={}ms, gas_used={}/{}, target={:?}",
+            total_duration.as_millis(),
+            estimated_cost,
+            req.max_gas,
+            target_info
+        );
+        
+        if total_duration.as_millis() > 500 {
+            warn!(
+                "[READONLY_EXEC_TIMING] WARNING: Readonly execution took {}ms",
+                total_duration.as_millis()
+            );
+        }
 
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,

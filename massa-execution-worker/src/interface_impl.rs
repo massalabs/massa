@@ -1502,7 +1502,13 @@ impl Interface for InterfaceImpl {
                 TransferContext::AbiSendMsgFee,
             )
             .map_err(|e| e.to_string())?;
-        execution_context.push_new_message(AsyncMessage::new(
+        // Debug logging for async message creation
+        debug!(
+            "Creating async message: emission_slot={:?}, emission_index={}, sender={}, max_gas={}, fee={}, coins={}",
+            emission_slot, emission_index, sender, max_gas, fee, coins
+        );
+        
+        let new_message = AsyncMessage::new(
             emission_slot,
             emission_index,
             sender,
@@ -1529,7 +1535,17 @@ impl Interface for InterfaceImpl {
                 })
                 .transpose()?,
             None,
-        ));
+        );
+        
+        // Verify the message was created correctly
+        if new_message.max_gas == 0 {
+            warn!(
+                "BUG DETECTED: AsyncMessage created with max_gas=0 despite validation! emission_slot={:?}, emission_index={}, input_max_gas={}",
+                emission_slot, emission_index, max_gas
+            );
+        }
+        
+        execution_context.push_new_message(new_message);
         execution_context.created_message_index += 1;
         Ok(())
     }

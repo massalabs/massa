@@ -30,6 +30,7 @@ use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::Arc;
 use std::thread;
 use tracing::debug;
+use std::time::Instant;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
@@ -101,7 +102,25 @@ impl ExecutionThread {
             let (req, resp_tx) = req_resp.into_request_sender_pair();
 
             // Acquire write access to the execution state (for cache updates) and execute the read-only request
-            let outcome = self.execution_state.write().execute_readonly_request(req);
+            let lock_start = std::time::Instant::now();
+            tracing::debug!("[LOCK_TIMING] Worker trying to acquire execution_state.write() for readonly");
+            
+            let execution_state = self.execution_state.write();
+            let lock_duration = lock_start.elapsed();
+            
+            tracing::debug!(
+                "[LOCK_TIMING] Worker acquired execution_state.write() after {}ms",
+                lock_duration.as_millis()
+            );
+            
+            if lock_duration.as_millis() > 100 {
+                tracing::warn!(
+                    "[LOCK_TIMING] WARNING: Worker waited {}ms to acquire execution_state lock for readonly!",
+                    lock_duration.as_millis()
+                );
+            }
+            
+            let outcome = execution_state.execute_readonly_request(req);
 
             // Send the execution output through resp_tx.
             // Ignore errors because they just mean that the request emitter dropped the received
@@ -178,6 +197,7 @@ impl ExecutionThread {
         // 2 - speculative executions
         // 3 - read-only executions
         loop {
+            let start = Instant::now();
             let (input_data, stop) = self.wait_loop_event();
             debug!("Execution loop triggered, input_data = {}", input_data);
 
@@ -201,14 +221,34 @@ impl ExecutionThread {
                 |is_final: bool,
                  slot: &Slot,
                  content: Option<&(BlockId, ExecutionBlockMetadata)>| {
+                    let slot_lock_start = std::time::Instant::now();
+                    tracing::debug!(
+                        "[LOCK_TIMING] Slot execution trying to acquire execution_state.write() for slot {:?}",
+                        slot
+                    );
+                    
                     if is_final {
-                        self.execution_state.write().execute_final_slot(
+                        let mut execution_state = self.execution_state.write();
+                        let lock_duration = slot_lock_start.elapsed();
+                        tracing::debug!(
+                            "[LOCK_TIMING] Slot execution acquired execution_state.write() after {}ms for final slot {:?}",
+                            lock_duration.as_millis(),
+                            slot
+                        );
+                        execution_state.execute_final_slot(
                             slot,
                             content,
                             self.selector.clone(),
                         );
                     } else {
-                        self.execution_state.write().execute_candidate_slot(
+                        let mut execution_state = self.execution_state.write();
+                        let lock_duration = slot_lock_start.elapsed();
+                        tracing::debug!(
+                            "[LOCK_TIMING] Slot execution acquired execution_state.write() after {}ms for candidate slot {:?}",
+                            lock_duration.as_millis(),
+                            slot
+                        );
+                        execution_state.execute_candidate_slot(
                             slot,
                             content,
                             self.selector.clone(),
@@ -218,11 +258,15 @@ impl ExecutionThread {
             );
             if let Some(_res) = run_result {
                 // A slot was executed: continue.
+                tracing::debug!("[LOCK_TIMING] Slot execution completed, loop will restart (readonly requests will wait)");
                 continue;
             }
 
             // low priority: execute a read-only request (note that the queue is of finite length), if there is one ready.
+            tracing::debug!("[LOCK_TIMING] No slot to execute, checking for readonly requests");
             self.execute_one_readonly_request();
+            let duration = start.elapsed();
+            debug!("Execution loop triggered, duration = {:?}", duration);
         }
 
         // We are quitting the loop.

@@ -445,8 +445,18 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
+        use tracing::debug;
+        let queue_start = std::time::Instant::now();
+        debug!("[LOCK_TIMING] API trying to queue readonly request");
+        
         let resp_rx = {
             let mut input_data = self.input_data.1.lock();
+            let queue_duration = queue_start.elapsed();
+            
+            debug!(
+                "[LOCK_TIMING] API acquired input_data lock after {}ms",
+                queue_duration.as_millis()
+            );
 
             // if the read-only queue is already full, return an error
             if input_data.readonly_requests.is_full() {
@@ -465,18 +475,38 @@ impl ExecutionController for ExecutionControllerImpl {
 
             // wake up the execution main loop
             self.input_data.0.notify_one();
+            
+            debug!("[LOCK_TIMING] API queued readonly request, waiting for execution worker to process it");
 
             resp_rx
         };
 
         // Wait for the result of the execution
-        match resp_rx.recv() {
+        let wait_start = std::time::Instant::now();
+        debug!("[LOCK_TIMING] API waiting for readonly execution result");
+        
+        let result = match resp_rx.recv() {
             Ok(result) => result,
             Err(err) => Err(ExecutionError::ChannelError(format!(
                 "readonly execution response channel readout failed: {}",
                 err
             ))),
+        };
+        
+        let wait_duration = wait_start.elapsed();
+        debug!(
+            "[LOCK_TIMING] API received readonly execution result after {}ms",
+            wait_duration.as_millis()
+        );
+        
+        if wait_duration.as_millis() > 1000 {
+            tracing::warn!(
+                "[LOCK_TIMING] WARNING: API waited {}ms for readonly execution (possible lock contention!)",
+                wait_duration.as_millis()
+            );
         }
+        
+        result
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
