@@ -40,6 +40,7 @@ impl Default for PoolConfig {
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: 0,
             operation_pool_refresh_interval: MassaTime::from_millis(2000),
+            denunciation_pool_refresh_interval: MassaTime::from_millis(2000),
             operation_max_future_start_delay: T0.saturating_mul(5),
             minimal_fees: Amount::zero(),
         }

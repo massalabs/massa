@@ -23,6 +23,8 @@ pub struct PoolConfig {
     pub operation_validity_periods: u64,
     /// operation pool refresh interval
     pub operation_pool_refresh_interval: MassaTime,
+    /// denunciation pool refresh interval
+    pub denunciation_pool_refresh_interval: MassaTime,
     /// max delay in the future for operation validity start
     pub operation_max_future_start_delay: MassaTime,
     /// max operations per block
