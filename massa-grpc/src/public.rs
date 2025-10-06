@@ -342,7 +342,10 @@ pub(crate) fn get_endorsements(
     };
 
     // ask pool whether it carries the endorsements
-    let in_pool = grpc.pool_controller.contains_endorsements(&endorsement_ids);
+    let in_pool = grpc
+        .pool_controller
+        .contains_endorsements(&endorsement_ids, None)
+        .unwrap_or_else(|_| vec![false; endorsement_ids.len()]);
 
     // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     let is_final: Vec<bool> = {
@@ -1355,7 +1358,10 @@ pub(crate) fn search_endorsements(
     let e_ids: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| *ed).collect();
 
     // ask pool whether it carries the endorsements
-    let in_pool = grpc.pool_controller.contains_endorsements(&e_ids);
+    let in_pool = grpc
+        .pool_controller
+        .contains_endorsements(&e_ids, None)
+        .unwrap_or_else(|_| vec![false; e_ids.len()]);
 
     // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     let is_final: Vec<bool> = {

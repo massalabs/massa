@@ -895,6 +895,8 @@ async fn launch(
             .factory
             .stop_production_when_zero_connections,
         chain_id: *CHAINID,
+        block_delay_warn: SETTINGS.factory.block_delay_warn_threshold,
+        block_opt_channel_timeout: SETTINGS.factory.block_opt_channel_timeout,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),

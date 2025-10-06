@@ -17,6 +17,8 @@ massa_storage = {workspace = true}
 massa_time = {workspace = true}
 massa_pos_exports = {workspace = true}
 massa_execution_exports = {workspace = true}
+displaydoc = {workspace = true}
+thiserror = {workspace = true}
 
 [dev-dependencies]
 mockall = {workspace = true}
