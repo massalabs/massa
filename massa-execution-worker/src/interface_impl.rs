@@ -301,6 +301,9 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The target bytecode or an error
     fn init_call(&self, address: &str, raw_coins: u64) -> Result<Vec<u8>> {
+        let abi_start = std::time::Instant::now();
+        tracing::debug!("[ABI_TIMING] init_call: target={}, coins={}", address, raw_coins);
+        
         // get target address
         let to_address = Address::from_str(address).map_err(|e| e.to_string())?;
 
@@ -351,6 +354,21 @@ impl Interface for InterfaceImpl {
             owned_addresses: vec![to_address],
             operation_datastore: None,
         });
+
+        let abi_duration = abi_start.elapsed();
+        tracing::debug!(
+            "[ABI_TIMING] init_call completed in {}ms for {}",
+            abi_duration.as_millis(),
+            to_address
+        );
+        
+        if abi_duration.as_millis() > 10 {
+            tracing::warn!(
+                "[ABI_TIMING] WARNING: init_call took {}ms for {}",
+                abi_duration.as_millis(),
+                to_address
+            );
+        }
 
         // return the target bytecode
         Ok(bytecode.0)

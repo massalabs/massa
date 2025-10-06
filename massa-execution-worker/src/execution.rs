@@ -1390,6 +1390,7 @@ impl ExecutionState {
         );
 
         let run_start = std::time::Instant::now();
+        let gas_before = message.max_gas;
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -1400,10 +1401,20 @@ impl ExecutionState {
             self.config.condom_limits.clone(),
         );
         let run_duration = run_start.elapsed();
+        
+        // Log gas usage details
+        let gas_used = match &response {
+            Ok(res) => gas_before.saturating_sub(res.remaining_gas),
+            Err(_) => gas_before, // All gas consumed on error
+        };
+        
         debug!(
-            "[ASYNC_EXEC_TIMING] Function '{}' execution took {}ms (max_gas={})", 
+            "[ASYNC_EXEC_TIMING] Function '{}' execution: time={}ms, gas_used={}/{} ({}%), max_gas={}",
             message.function,
             run_duration.as_millis(),
+            gas_used,
+            gas_before,
+            (gas_used as f64 / gas_before as f64 * 100.0) as u64,
             message.max_gas
         );
         
@@ -1414,16 +1425,33 @@ impl ExecutionState {
                     .set_init_cost(&bytecode, res.init_gas_cost);
                     
                 let total_duration = exec_start.elapsed();
+                let gas_pct = (gas_used as f64 / gas_before as f64 * 100.0) as u64;
+                
                 debug!(
-                    "[ASYNC_EXEC_TIMING] SUCCESS: Total={}ms (prep={}ms, load={}ms, run={}ms) for {} -> {}::{}",
+                    "[ASYNC_EXEC_TIMING] SUCCESS: Total={}ms (prep={}ms, load={}ms, run={}ms), gas={}% ({}/{}) for {} -> {}::{}",
                     total_duration.as_millis(),
                     prep_duration.as_millis(),
                     load_duration.as_millis(),
                     run_duration.as_millis(),
+                    gas_pct,
+                    gas_used,
+                    gas_before,
                     message.sender,
                     message.destination,
                     message.function
                 );
+                
+                if run_duration.as_millis() > 100 {
+                    warn!(
+                        "[ASYNC_EXEC_TIMING] SLOW EXECUTION: {}::{}() took {}ms, used {}% gas ({}/{})",
+                        message.destination,
+                        message.function,
+                        run_duration.as_millis(),
+                        gas_pct,
+                        gas_used,
+                        gas_before
+                    );
+                }
                 
                 #[cfg(feature = "execution-trace")]
                 {
