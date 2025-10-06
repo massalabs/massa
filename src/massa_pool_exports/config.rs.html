@@ -65,6 +65,8 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::amount::Amount;
@@ -90,6 +92,8 @@
     </span><span class="kw">pub </span>operation_validity_periods: u64,
     <span class="doccomment">/// operation pool refresh interval
     </span><span class="kw">pub </span>operation_pool_refresh_interval: MassaTime,
+    <span class="doccomment">/// denunciation pool refresh interval
+    </span><span class="kw">pub </span>denunciation_pool_refresh_interval: MassaTime,
     <span class="doccomment">/// max delay in the future for operation validity start
     </span><span class="kw">pub </span>operation_max_future_start_delay: MassaTime,
     <span class="doccomment">/// max operations per block
