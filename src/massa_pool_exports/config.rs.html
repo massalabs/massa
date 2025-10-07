@@ -67,6 +67,12 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::amount::Amount;
@@ -92,8 +98,14 @@
     </span><span class="kw">pub </span>operation_validity_periods: u64,
     <span class="doccomment">/// operation pool refresh interval
     </span><span class="kw">pub </span>operation_pool_refresh_interval: MassaTime,
+    <span class="doccomment">/// operation pool buffer swap interval
+    </span><span class="kw">pub </span>operation_pool_swap_interval: MassaTime,
+    <span class="doccomment">/// endorsement pool buffer swap interval
+    </span><span class="kw">pub </span>endorsement_pool_swap_interval: MassaTime,
     <span class="doccomment">/// denunciation pool refresh interval
     </span><span class="kw">pub </span>denunciation_pool_refresh_interval: MassaTime,
+    <span class="doccomment">/// denunciation pool buffer swap interval
+    </span><span class="kw">pub </span>denunciation_pool_swap_interval: MassaTime,
     <span class="doccomment">/// max delay in the future for operation validity start
     </span><span class="kw">pub </span>operation_max_future_start_delay: MassaTime,
     <span class="doccomment">/// max operations per block
@@ -114,9 +126,9 @@
     </span><span class="kw">pub </span>denunciations_channel_size: usize,
     <span class="doccomment">/// whether operations broadcast is enabled
     </span><span class="kw">pub </span>broadcast_enabled: bool,
-    <span class="doccomment">/// endorsements channel capacity
+    <span class="doccomment">/// broadcast endorsements channel capacity
     </span><span class="kw">pub </span>broadcast_endorsements_channel_capacity: usize,
-    <span class="doccomment">/// operations channel capacity
+    <span class="doccomment">/// broadcast operations channel capacity
     </span><span class="kw">pub </span>broadcast_operations_channel_capacity: usize,
     <span class="doccomment">/// genesis timestamp
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
