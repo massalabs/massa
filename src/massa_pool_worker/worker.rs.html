@@ -597,7 +597,7 @@
 
             <span class="comment">// On a regular basis, swap buffers if we haven't for a while.
             // This is useful under heavy congestion. Otherwise we swap as soon as the queue is empty.
-            </span><span class="kw">if </span>Instant::now().saturating_duration_since(last_buffer_swap) &gt;= buffer_swap_interval {
+            </span><span class="kw">if </span>last_buffer_swap.elapsed() &gt;= buffer_swap_interval {
                 <span class="kw">if </span>modified {
                     <span class="self">self</span>.operation_pool
                         .write()
@@ -649,7 +649,7 @@
             <span class="comment">// refresh if needed
             </span><span class="kw">let </span>duration = (start_time + tick).saturating_duration_since(Instant::now());
             <span class="kw">if </span>duration.is_zero() {
-                denunciation_pool_buffer.refresh_execution_state();
+                denunciation_pool_buffer.refresh_execution_cache();
                 start_time = Instant::now();
                 modified = <span class="bool-val">true</span>;
             }
