@@ -207,7 +207,7 @@ impl DenunciationPool {
     }
 
     /// Refresh the executed denunciations cache by querying the execution controller
-    pub(crate) fn refresh_execution_state(&mut self) {
+    pub(crate) fn refresh_execution_cache(&mut self) {
         // Query execution status for all denunciations in the cache
         for de_idx in self.denunciations_cache.keys() {
             // already executed as final

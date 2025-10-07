@@ -208,7 +208,7 @@ impl OperationPoolThread {
 
             // On a regular basis, swap buffers if we haven't for a while.
             // This is useful under heavy congestion. Otherwise we swap as soon as the queue is empty.
-            if Instant::now().saturating_duration_since(last_buffer_swap) >= buffer_swap_interval {
+            if last_buffer_swap.elapsed() >= buffer_swap_interval {
                 if modified {
                     self.operation_pool
                         .write()
@@ -260,7 +260,7 @@ impl DenunciationPoolThread {
             // refresh if needed
             let duration = (start_time + tick).saturating_duration_since(Instant::now());
             if duration.is_zero() {
-                denunciation_pool_buffer.refresh_execution_state();
+                denunciation_pool_buffer.refresh_execution_cache();
                 start_time = Instant::now();
                 modified = true;
             }
