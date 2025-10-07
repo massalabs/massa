@@ -829,6 +829,21 @@ impl ExecutionContext {
     /// # Arguments
     /// * `msg`: asynchronous message to add
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
+        use tracing::{debug, warn};
+        
+        let msg_id = msg.compute_id();
+        debug!(
+            "[MAX_GAS_TRACE] push_new_message: max_gas={}, msg_id={:?}",
+            msg.max_gas, msg_id
+        );
+        
+        if msg.max_gas == 0 {
+            warn!(
+                "[MAX_GAS_TRACE] BUG: Pushing message with max_gas=0! msg_id={:?}, sender={}, dest={}",
+                msg_id, msg.sender, msg.destination
+            );
+        }
+        
         self.speculative_async_pool.push_new_message(msg);
     }
 

@@ -1268,10 +1268,24 @@ impl ExecutionState {
     ) -> Result<AsyncMessageExecutionResult, ExecutionError> {
         let exec_start = std::time::Instant::now();
         
+        let msg_id = message.compute_id();
+        
         debug!(
             "[ASYNC_EXEC_TIMING] START async message execution: sender={}, dest={}, function={}, max_gas={}, fee={}",
             message.sender, message.destination, message.function, message.max_gas, message.fee
         );
+        
+        debug!(
+            "[MAX_GAS_TRACE] execute_async_message: max_gas={}, msg_id={:?}",
+            message.max_gas, msg_id
+        );
+        
+        if message.max_gas == 0 {
+            warn!(
+                "[MAX_GAS_TRACE] BUG: Executing async message with max_gas=0! msg_id={:?}, sender={}, dest={}",
+                msg_id, message.sender, message.destination
+            );
+        }
         
         let mut result = AsyncMessageExecutionResult::new();
         #[cfg(feature = "execution-info")]
@@ -1391,6 +1405,12 @@ impl ExecutionState {
 
         let run_start = std::time::Instant::now();
         let gas_before = message.max_gas;
+        
+        debug!(
+            "[WASM_PROFILE] Entering WASM execution for function '{}' with max_gas={}",
+            message.function, message.max_gas
+        );
+        
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -1402,11 +1422,19 @@ impl ExecutionState {
         );
         let run_duration = run_start.elapsed();
         
+        debug!(
+            "[WASM_PROFILE] Exited WASM execution for function '{}' after {}ms",
+            message.function,
+            run_duration.as_millis()
+        );
+        
         // Log gas usage details
         let gas_used = match &response {
             Ok(res) => gas_before.saturating_sub(res.remaining_gas),
             Err(_) => gas_before, // All gas consumed on error
         };
+        
+        let gas_pct = (gas_used as f64 / gas_before as f64 * 100.0) as u64;
         
         debug!(
             "[ASYNC_EXEC_TIMING] Function '{}' execution: time={}ms, gas_used={}/{} ({}%), max_gas={}",
@@ -1414,9 +1442,19 @@ impl ExecutionState {
             run_duration.as_millis(),
             gas_used,
             gas_before,
-            (gas_used as f64 / gas_before as f64 * 100.0) as u64,
+            gas_pct,
             message.max_gas
         );
+        
+        // If execution is slow but gas usage is low, something is taking wall-clock time
+        if run_duration.as_millis() > 100 && gas_pct < 10 {
+            warn!(
+                "[WASM_PROFILE] INEFFICIENT: Function '{}' took {}ms but only used {}% gas - possible hot loop or inefficient algorithm!",
+                message.function,
+                run_duration.as_millis(),
+                gas_pct
+            );
+        }
         
         match response {
             Ok(res) => {

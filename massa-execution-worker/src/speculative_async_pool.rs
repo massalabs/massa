@@ -91,8 +91,37 @@ impl SpeculativeAsyncPool {
 
     /// Add a new message to the list of changes of this `SpeculativeAsyncPool`
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
-        self.pool_changes.push_add(msg.compute_id(), msg.clone());
-        self.message_infos.insert(msg.compute_id(), msg.into());
+        let msg_id = msg.compute_id();
+        let max_gas = msg.max_gas;
+        
+        debug!(
+            "[MAX_GAS_TRACE] speculative_async_pool.push_new_message: max_gas={}, msg_id={:?}",
+            max_gas, msg_id
+        );
+        
+        if max_gas == 0 {
+            warn!(
+                "[MAX_GAS_TRACE] BUG: Adding message to pool with max_gas=0! msg_id={:?}",
+                msg_id
+            );
+        }
+        
+        self.pool_changes.push_add(msg_id, msg.clone());
+        
+        let msg_info: AsyncMessageInfo = msg.into();
+        if msg_info.max_gas != max_gas {
+            warn!(
+                "[MAX_GAS_TRACE] BUG: max_gas CHANGED during AsyncMessageInfo conversion! before={}, after={}",
+                max_gas, msg_info.max_gas
+            );
+        }
+        
+        debug!(
+            "[MAX_GAS_TRACE] Inserting into message_infos: max_gas={}",
+            msg_info.max_gas
+        );
+        
+        self.message_infos.insert(msg_id, msg_info);
     }
 
     /// Takes a batch of asynchronous messages to execute,
@@ -268,7 +297,7 @@ impl SpeculativeAsyncPool {
         let initial_pool_size = self.message_infos.len();
         
         debug!(
-            "settle_slot: starting with {} messages in pool at slot {:?}",
+            "[SETTLE_TIMING] async_pool.settle_slot: starting with {} messages in pool at slot {:?}",
             initial_pool_size,
             slot
         );
@@ -277,6 +306,7 @@ impl SpeculativeAsyncPool {
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
 
+        let expire_start = Instant::now();
         let mut eliminated_infos = Vec::new();
         self.message_infos.retain(|id, info| {
             if Self::is_message_expired(slot, &info.validity_end) {
@@ -286,7 +316,9 @@ impl SpeculativeAsyncPool {
                 true
             }
         });
+        let expire_duration = expire_start.elapsed();
 
+        let expire_new_start = Instant::now();
         let mut eliminated_new_messages = Vec::new();
         self.pool_changes.0.retain(|k, v| match v {
             SetUpdateOrDelete::Set(message) => {
@@ -300,14 +332,18 @@ impl SpeculativeAsyncPool {
             SetUpdateOrDelete::Update(_v) => true,
             SetUpdateOrDelete::Delete => true,
         });
+        let expire_new_duration = expire_new_start.elapsed();
 
+        let extend_start = Instant::now();
         eliminated_infos.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
             SetUpdateOrDelete::Set(v) => Some((*k, AsyncMessageInfo::from(v.clone()))),
             SetUpdateOrDelete::Update(_v) => None,
             SetUpdateOrDelete::Delete => None,
         }));
+        let extend_duration = extend_start.elapsed();
 
         // Truncate message pool to its max size, removing non-priority items
+        let truncate_start = Instant::now();
         let excess_count = self
             .message_infos
             .len()
@@ -317,8 +353,10 @@ impl SpeculativeAsyncPool {
         for _ in 0..excess_count {
             eliminated_infos.push(self.message_infos.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
+        let truncate_duration = truncate_start.elapsed();
 
         // Activate the messages that can be activated (triggered)
+        let trigger_start = Instant::now();
         let mut triggered_info = Vec::new();
         for (id, message_info) in self.message_infos.iter_mut() {
             if let Some(filter) = &message_info.trigger {
@@ -328,24 +366,35 @@ impl SpeculativeAsyncPool {
                 }
             }
         }
+        let trigger_duration = trigger_start.elapsed();
 
         // Query triggered messages
+        let fetch_trigger_start = Instant::now();
         let triggered_msg = self.fetch_msgs(triggered_info.into_iter().map(|(id, _)| id).collect());
+        let fetch_trigger_duration = fetch_trigger_start.elapsed();
 
+        let activate_start = Instant::now();
         for (msg_id, _msg) in triggered_msg.iter() {
             self.pool_changes.push_activate(*msg_id);
         }
+        let activate_duration = activate_start.elapsed();
 
         // Query eliminated messages
         // Save counts before moving the data
         let expired_count = eliminated_infos.len();
         let triggered_count = triggered_msg.len();
         
+        let fetch_elim_start = Instant::now();
         let mut eliminated_msg =
             self.fetch_msgs(eliminated_infos.into_iter().map(|(id, _)| id).collect());
+        let fetch_elim_duration = fetch_elim_start.elapsed();
+        
         // Push their deletion in the pool changes
+        let delete_start = Instant::now();
         self.delete_messages(eliminated_msg.iter().map(|(id, _)| *id).collect());
+        let delete_duration = delete_start.elapsed();
 
+        let fix_start = Instant::now();
         if fix_eliminated_msg {
             eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
                 SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
@@ -353,30 +402,44 @@ impl SpeculativeAsyncPool {
                 SetUpdateOrDelete::Delete => None,
             }));
         }
+        let fix_duration = fix_start.elapsed();
         
         let settle_duration = start_time.elapsed();
         let final_pool_size = self.message_infos.len();
         let eliminated_count = eliminated_msg.len();
         
         debug!(
-            "settle_slot completed: pool {} -> {} messages (expired={}, triggered={}, eliminated={}) in {}ms at slot {:?}",
+            "[SETTLE_TIMING] async_pool.settle_slot completed: pool {} -> {} (expired={}, triggered={}, eliminated={}) in {}ms (expire={}ms, expire_new={}ms, extend={}ms, truncate={}ms, trigger={}ms, fetch_trigger={}ms, activate={}ms, fetch_elim={}ms, delete={}ms, fix={}ms) at slot {:?}",
             initial_pool_size,
             final_pool_size,
             expired_count,
             triggered_count,
             eliminated_count,
             settle_duration.as_millis(),
+            expire_duration.as_millis(),
+            expire_new_duration.as_millis(),
+            extend_duration.as_millis(),
+            truncate_duration.as_millis(),
+            trigger_duration.as_millis(),
+            fetch_trigger_duration.as_millis(),
+            activate_duration.as_millis(),
+            fetch_elim_duration.as_millis(),
+            delete_duration.as_millis(),
+            fix_duration.as_millis(),
             slot
         );
         
-        if settle_duration.as_millis() > 100 {
+        if settle_duration.as_millis() > 10 {
             warn!(
-                "PERFORMANCE WARNING: settle_slot took {}ms (pool: {} -> {}, expired={}, eliminated={}) at slot {:?}",
+                "[SETTLE_TIMING] SLOW async_pool.settle_slot: {}ms (pool {} -> {}, expire={}ms, trigger={}ms, fetch_trigger={}ms, fetch_elim={}ms, delete={}ms) at slot {:?}",
                 settle_duration.as_millis(),
                 initial_pool_size,
                 final_pool_size,
-                expired_count,
-                eliminated_count,
+                expire_duration.as_millis(),
+                trigger_duration.as_millis(),
+                fetch_trigger_duration.as_millis(),
+                fetch_elim_duration.as_millis(),
+                delete_duration.as_millis(),
                 slot
             );
         }
@@ -397,25 +460,78 @@ impl SpeculativeAsyncPool {
             .read()
             .get_async_pool()
             .fetch_messages(&wanted_ids);
+        
+        // Trace messages fetched from final state (deserialized from DB)
+        for (id, msg_opt) in &retrieved {
+            if let Some(msg) = msg_opt {
+                debug!(
+                    "[MAX_GAS_TRACE] Fetched from final_state: msg_id={:?}, max_gas={}",
+                    id, msg.max_gas
+                );
+                if msg.max_gas == 0 {
+                    warn!(
+                        "[MAX_GAS_TRACE] BUG: Message fetched from final_state has max_gas=0! msg_id={:?}",
+                        id
+                    );
+                }
+            }
+        }
 
         // function to accumulate changes to the retrieved list
         let mut apply_changes = |changes: &AsyncPoolChanges| {
             for (id, msg_opt) in retrieved.iter_mut() {
                 match changes.0.get(id) {
                     Some(SetUpdateOrDelete::Set(msg)) => {
+                        debug!(
+                            "[MAX_GAS_TRACE] Applying Set change: msg_id={:?}, max_gas={}",
+                            id, msg.max_gas
+                        );
+                        if msg.max_gas == 0 {
+                            warn!(
+                                "[MAX_GAS_TRACE] BUG: Set change has max_gas=0! msg_id={:?}",
+                                id
+                            );
+                        }
                         *msg_opt = Some(msg.clone());
                     }
                     Some(SetUpdateOrDelete::Update(msg_update)) => {
+                        debug!(
+                            "[MAX_GAS_TRACE] Applying Update change: msg_id={:?}, update.max_gas={:?}",
+                            id, msg_update.max_gas
+                        );
+                        
+                        let before_max_gas = msg_opt.as_ref().map(|m| m.max_gas);
+                        
                         if msg_opt.is_none() {
                             // DIAGNOSTIC: Log when update is applied to non-existent message
                             // This will create AsyncMessage::default() with max_gas=0
                             warn!(
-                                "DIAGNOSTIC: Attempting to update non-existent async message {:?}. This will create a default message with max_gas=0!",
+                                "[MAX_GAS_TRACE] DIAGNOSTIC: Attempting to update non-existent async message {:?}. This will create a default message with max_gas=0!",
                                 id
                             );
                             *msg_opt = Some(AsyncMessage::default());
                         }
                         msg_opt.as_mut().unwrap().apply(msg_update.clone());
+                        
+                        let after_max_gas = msg_opt.as_ref().map(|m| m.max_gas);
+                        debug!(
+                            "[MAX_GAS_TRACE] After applying update: msg_id={:?}, max_gas before={:?}, after={:?}",
+                            id, before_max_gas, after_max_gas
+                        );
+                        
+                        if before_max_gas != after_max_gas {
+                            debug!(
+                                "[MAX_GAS_TRACE] max_gas CHANGED by update: {:?} -> {:?}",
+                                before_max_gas, after_max_gas
+                            );
+                        }
+                        
+                        if after_max_gas == Some(0) && before_max_gas != Some(0) {
+                            warn!(
+                                "[MAX_GAS_TRACE] BUG: Update changed max_gas to 0! msg_id={:?}, before={:?}",
+                                id, before_max_gas
+                            );
+                        }
                     }
                     Some(SetUpdateOrDelete::Delete) => {
                         *msg_opt = None;

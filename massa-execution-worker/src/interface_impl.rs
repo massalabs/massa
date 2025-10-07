@@ -30,6 +30,7 @@ use massa_proto_rs::massa::model::v1::{
 use massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, Result, RuntimeModule};
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
+use tracing::{debug, warn};
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
@@ -44,8 +45,6 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::debug;
-use tracing::warn;
 
 #[cfg(any(
     feature = "gas_calibration",
@@ -1522,9 +1521,16 @@ impl Interface for InterfaceImpl {
             .map_err(|e| e.to_string())?;
         // Debug logging for async message creation
         debug!(
-            "Creating async message: emission_slot={:?}, emission_index={}, sender={}, max_gas={}, fee={}, coins={}",
+            "[MAX_GAS_TRACE] send_message ABI called: emission_slot={:?}, emission_index={}, sender={}, max_gas={}, fee={}, coins={}",
             emission_slot, emission_index, sender, max_gas, fee, coins
         );
+        
+        if max_gas == 0 {
+            tracing::warn!(
+                "[MAX_GAS_TRACE] BUG: send_message called with max_gas=0! emission_slot={:?}, emission_index={}, sender={}",
+                emission_slot, emission_index, sender
+            );
+        }
         
         let new_message = AsyncMessage::new(
             emission_slot,
@@ -1556,12 +1562,29 @@ impl Interface for InterfaceImpl {
         );
         
         // Verify the message was created correctly
+        debug!(
+            "[MAX_GAS_TRACE] AsyncMessage created: max_gas={} (input was {})",
+            new_message.max_gas, max_gas
+        );
+        
         if new_message.max_gas == 0 {
             warn!(
-                "BUG DETECTED: AsyncMessage created with max_gas=0 despite validation! emission_slot={:?}, emission_index={}, input_max_gas={}",
+                "[MAX_GAS_TRACE] BUG: AsyncMessage created with max_gas=0 despite validation! emission_slot={:?}, emission_index={}, input_max_gas={}",
                 emission_slot, emission_index, max_gas
             );
         }
+        
+        if new_message.max_gas != max_gas {
+            warn!(
+                "[MAX_GAS_TRACE] BUG: max_gas CHANGED during AsyncMessage::new! input={}, output={}",
+                max_gas, new_message.max_gas
+            );
+        }
+        
+        debug!(
+            "[MAX_GAS_TRACE] Pushing message to context: msg_id will be computed from max_gas={}",
+            new_message.max_gas
+        );
         
         execution_context.push_new_message(new_message);
         execution_context.created_message_index += 1;
