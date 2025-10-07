@@ -1044,51 +1044,100 @@ impl ExecutionContext {
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
     pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
+        use tracing::debug;
+        let settle_start = std::time::Instant::now();
         let slot = self.slot;
+        
+        debug!("[SETTLE_TIMING] Starting settle_slot for slot {:?}", slot);
 
         // execute the deferred credits coming from roll sells
+        let deferred_credits_start = std::time::Instant::now();
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
+        let deferred_credits_duration = deferred_credits_start.elapsed();
+        
+        debug!(
+            "[SETTLE_TIMING] execute_deferred_credits took {}ms for slot {:?}",
+            deferred_credits_duration.as_millis(),
+            slot
+        );
 
         // settle emitted async messages and reimburse the senders of deleted messages
+        let async_settle_start = std::time::Instant::now();
         let deleted_messages = self.speculative_async_pool.settle_slot(
             &slot,
             &self.speculative_ledger.added_changes,
             true,
         );
+        let async_settle_duration = async_settle_start.elapsed();
+        
+        debug!(
+            "[SETTLE_TIMING] speculative_async_pool.settle_slot took {}ms for slot {:?}",
+            async_settle_duration.as_millis(),
+            slot
+        );
 
+        let cancel_start = std::time::Instant::now();
         let mut cancel_async_message_transfers = vec![];
         for (_msg_id, msg) in deleted_messages {
             if let Some(t) = self.cancel_async_message(&msg) {
                 cancel_async_message_transfers.push(t)
             }
         }
+        let cancel_duration = cancel_start.elapsed();
+        
+        debug!(
+            "[SETTLE_TIMING] cancel_async_message processing took {}ms for slot {:?}",
+            cancel_duration.as_millis(),
+            slot
+        );
 
         // update module cache
+        let cache_start = std::time::Instant::now();
         let bc_updates = self.speculative_ledger.added_changes.get_bytecode_updates();
+        let bc_count = bc_updates.len();
         {
             let mut cache_write_lock = self.module_cache.write();
             for bytecode in bc_updates {
                 cache_write_lock.save_module(&bytecode.0, self.config.condom_limits.clone());
             }
         }
+        let cache_duration = cache_start.elapsed();
+        
+        debug!(
+            "[SETTLE_TIMING] module cache update took {}ms ({} modules) for slot {:?}",
+            cache_duration.as_millis(),
+            bc_count,
+            slot
+        );
 
         // if the current slot is last in cycle check the production stats and act accordingly
+        let production_start = std::time::Instant::now();
         let auto_sell_rolls = if self
             .slot
             .is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count)
         {
-            self.speculative_roll_state.settle_production_stats(
+            let rolls = self.speculative_roll_state.settle_production_stats(
                 &slot,
                 self.config.periods_per_cycle,
                 self.config.thread_count,
                 self.config.roll_price,
                 self.config.max_miss_ratio,
-            )
+            );
+            
+            let production_duration = production_start.elapsed();
+            debug!(
+                "[SETTLE_TIMING] production stats settlement (last cycle) took {}ms for slot {:?}",
+                production_duration.as_millis(),
+                slot
+            );
+            
+            rolls
         } else {
             vec![]
         };
 
         // generate the execution output
+        let state_gen_start = std::time::Instant::now();
         let state_changes = StateChanges {
             ledger_changes: self.speculative_ledger.take(),
             async_pool_changes: self.speculative_async_pool.take(),
@@ -1099,9 +1148,37 @@ impl ExecutionContext {
             execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
         };
 
+        let state_gen_duration = state_gen_start.elapsed();
+        debug!(
+            "[SETTLE_TIMING] state changes generation took {}ms for slot {:?}",
+            state_gen_duration.as_millis(),
+            slot
+        );
+
         let transfers_history = std::mem::take(&mut *self.transfers_history.write());
 
         std::mem::take(&mut self.opt_block_id);
+        
+        let total_settle_duration = settle_start.elapsed();
+        debug!(
+            "[SETTLE_TIMING] COMPLETE: settle_slot took {}ms total (deferred={}ms, async={}ms, cancel={}ms, cache={}ms, state={}ms) for slot {:?}",
+            total_settle_duration.as_millis(),
+            deferred_credits_duration.as_millis(),
+            async_settle_duration.as_millis(),
+            cancel_duration.as_millis(),
+            cache_duration.as_millis(),
+            state_gen_duration.as_millis(),
+            slot
+        );
+        
+        if total_settle_duration.as_millis() > 1000 {
+            tracing::warn!(
+                "[SETTLE_TIMING] WARNING: settle_slot took {}ms (>1s) for slot {:?}",
+                total_settle_duration.as_millis(),
+                slot
+            );
+        }
+        
         ExecutionOutput {
             slot,
             block_info,

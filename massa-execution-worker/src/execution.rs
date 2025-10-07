@@ -2183,17 +2183,46 @@ impl ExecutionState {
         }
 
         #[cfg(feature = "execution-trace")]
-        self.trace_history
-            .write()
-            .save_traces_for_slot(*slot, slot_trace.clone());
-        #[cfg(feature = "execution-trace")]
-        self.trace_history
-            .write()
-            .save_transfers_for_slot(*slot, transfers.clone());
+        {
+            let trace_start = std::time::Instant::now();
+            debug!("[SLOT_TIMING] Saving execution traces for slot {:?}", slot);
+            
+            self.trace_history
+                .write()
+                .save_traces_for_slot(*slot, slot_trace.clone());
+            self.trace_history
+                .write()
+                .save_transfers_for_slot(*slot, transfers.clone());
+            
+            let trace_duration = trace_start.elapsed();
+            debug!(
+                "[SLOT_TIMING] Trace saving took {}ms for slot {:?}",
+                trace_duration.as_millis(),
+                slot
+            );
+        }
 
         // Finish slot
+        let settle_start = std::time::Instant::now();
+        debug!("[SLOT_TIMING] Starting settle_slot for slot {:?}", slot);
+        
         #[allow(unused_mut)]
         let mut exec_out = context_guard!(self).settle_slot(block_info);
+        
+        let settle_duration = settle_start.elapsed();
+        debug!(
+            "[SLOT_TIMING] settle_slot completed in {}ms for slot {:?}",
+            settle_duration.as_millis(),
+            slot
+        );
+        
+        if settle_duration.as_millis() > 1000 {
+            warn!(
+                "[SLOT_TIMING] WARNING: settle_slot took {}ms at slot {:?}",
+                settle_duration.as_millis(),
+                slot
+            );
+        }
         #[cfg(feature = "execution-trace")]
         {
             exec_out.slot_trace = Some((slot_trace, transfers));
@@ -2208,6 +2237,9 @@ impl ExecutionState {
 
         #[cfg(feature = "execution-info")]
         {
+            let exec_info_start = std::time::Instant::now();
+            debug!("[SLOT_TIMING] Processing execution-info for slot {:?}", slot);
+            
             exec_info.deferred_credits_execution =
                 std::mem::replace(&mut exec_out.deferred_credits_execution, vec![]);
             exec_info.cancel_async_message_execution =
@@ -2216,6 +2248,13 @@ impl ExecutionState {
                 std::mem::replace(&mut exec_out.auto_sell_execution, vec![]);
             // self.execution_info.write().save_for_slot(*slot, exec_info);
             context_guard!(self).execution_info = exec_info;
+            
+            let exec_info_duration = exec_info_start.elapsed();
+            debug!(
+                "[SLOT_TIMING] execution-info processing took {}ms for slot {:?}",
+                exec_info_duration.as_millis(),
+                slot
+            );
         }
 
         let slot_duration = slot_start.elapsed();
@@ -2235,6 +2274,9 @@ impl ExecutionState {
 
         // Broadcast a slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
+            let broadcast_start = std::time::Instant::now();
+            debug!("[SLOT_TIMING] Broadcasting slot execution output for slot {:?}", slot);
+            
             let slot_exec_out = SlotExecutionOutput::ExecutedSlot(exec_out.clone());
             if let Err(err) = self
                 .channels
@@ -2245,6 +2287,21 @@ impl ExecutionState {
                     "error, failed to broadcast execution output for slot {} due to: {}",
                     exec_out.slot.clone(),
                     err
+                );
+            }
+            
+            let broadcast_duration = broadcast_start.elapsed();
+            debug!(
+                "[SLOT_TIMING] Broadcast took {}ms for slot {:?}",
+                broadcast_duration.as_millis(),
+                slot
+            );
+            
+            if broadcast_duration.as_millis() > 1000 {
+                warn!(
+                    "[SLOT_TIMING] WARNING: Broadcast took {}ms at slot {:?}",
+                    broadcast_duration.as_millis(),
+                    slot
                 );
             }
         }
