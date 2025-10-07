@@ -430,8 +430,14 @@
     max_operation_pool_excess_items = 100000
     # refresh interval of the operation pool scoring (milliseconds)
     operation_pool_refresh_interval = 5000
+    # buffer swap interval for the operation pool (milliseconds)
+    operation_pool_swap_interval = 100
+    # buffer swap interval for the endorsement pool (milliseconds)
+    endorsement_pool_swap_interval = 100
     # refresh interval of the denunciation pool execution cache (milliseconds)
     denunciation_pool_refresh_interval = 5000
+    # buffer swap interval for the denunciation pool (milliseconds)
+    denunciation_pool_swap_interval = 100
     # if an operation is too much in the future it will be ignored (milliseconds)
     operation_max_future_start_delay = 50000
     # max number of endorsements kept per thread
