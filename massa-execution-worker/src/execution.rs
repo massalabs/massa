@@ -1523,6 +1523,7 @@ impl ExecutionState {
         exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
     ) -> ExecutionOutput {
+        // Start slot execution timer
         let slot_start_time = Instant::now();
         #[cfg(feature = "execution-trace")]
         let mut slot_trace = SlotAbiCallStack {
@@ -1977,6 +1978,7 @@ impl ExecutionState {
 
         exec_out.state_changes.deferred_call_changes.exec_stats = deferred_calls_stats;
 
+        // Warn if the slot execution took more than the maximum slot duration
         let max_slote_duration = self
             .config
             .t0
