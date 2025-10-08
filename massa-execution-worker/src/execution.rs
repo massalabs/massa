@@ -1983,7 +1983,8 @@ impl ExecutionState {
             .config
             .t0
             .checked_div_u64(self.config.thread_count as u64)
-            .expect("could not deduce slot duration").to_duration();
+            .expect("could not deduce slot duration")
+            .to_duration();
         let total_slot_duration = slot_start_time.elapsed();
         if total_slot_duration > max_slot_duration {
             warn!(
