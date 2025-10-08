@@ -1157,6 +1157,16 @@ impl ExecutionState {
             self.module_cache
                 .write()
                 .load_module(&bytecode, max_gas, condom_limits.clone())?;
+
+        let gas_before = max_gas;
+        
+        warn!(
+            "[GAS_PROFILE] Entering WASM execution for function '{}' with max_gas={}",
+            target_func, max_gas
+        );
+
+        let run_start: std::time::Instant = std::time::Instant::now();
+
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -1166,6 +1176,46 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
             condom_limits,
         );
+
+        let run_duration = run_start.elapsed();
+        
+        warn!(
+            "[GAS_PROFILE] Exited WASM execution for function '{}' after {}ms",
+            target_func,
+            run_duration.as_millis()
+        );
+        
+        // Log gas usage details
+        let gas_used = match &response {
+            Ok(res) => gas_before.saturating_sub(res.remaining_gas),
+            Err(_) => gas_before, // All gas consumed on error
+        };
+        
+        let gas_pct = (gas_used as f64 / gas_before as f64 * 100.0) as u64;
+        
+        warn!(
+            "[GAS_PROFILE] Function '{}' execution: time={}ms, gas_used={}/{} ({}%), max_gas={}",
+            target_func,
+            run_duration.as_millis(),
+            gas_used,
+            gas_before,
+            gas_pct,
+            max_gas
+        );
+
+        // If execution failed, log error details at warn level so it's visible
+        if let Err(err) = &response {
+            warn!(
+                "[GAS_PROFILE] Execution FAILED for function '{}': error={:?}, time={}ms, gas_used={}/{} ({}%)",
+                target_func,
+                err,
+                run_duration.as_millis(),
+                gas_used,
+                gas_before,
+                gas_pct
+            );
+        }
+
         match response {
             Ok(Response { init_gas_cost, .. })
             | Err(VMError::ExecutionError { init_gas_cost, .. }) => {
