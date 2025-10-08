@@ -51,6 +51,7 @@ use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound;
 use std::sync::Arc;
+use std::time::Instant;
 use tracing::{debug, info, trace, warn};
 
 #[cfg(feature = "execution-info")]
@@ -1522,6 +1523,7 @@ impl ExecutionState {
         exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
     ) -> ExecutionOutput {
+        let slot_start_time = Instant::now();
         #[cfg(feature = "execution-trace")]
         let mut slot_trace = SlotAbiCallStack {
             slot: *slot,
@@ -1974,6 +1976,19 @@ impl ExecutionState {
         }
 
         exec_out.state_changes.deferred_call_changes.exec_stats = deferred_calls_stats;
+
+        let max_slote_duration = self
+            .config
+            .t0
+            .checked_div_u64(self.config.thread_count as u64)
+            .expect("could not deduce slot duration");
+        let total_slot_duration = slot_start_time.elapsed();
+        if total_slot_duration > max_slote_duration {
+            warn!(
+                "slot {} execution took {:?} (above the {:?} maximum slot duration)",
+                slot, total_slot_duration, max_slote_duration
+            );
+        }
 
         // Return the execution output
         exec_out
