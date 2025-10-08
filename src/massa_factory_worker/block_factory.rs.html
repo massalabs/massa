@@ -275,106 +275,6 @@
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -499,12 +399,8 @@
 
     <span class="doccomment">/// Process a slot: produce a block at that slot if one of the managed keys is drawn.
     </span><span class="kw">fn </span>process_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
-        <span class="kw">let </span><span class="kw-2">mut </span>timings = Vec::new();
-        <span class="kw">let </span>channel_timeout = <span class="self">self</span>.cfg.block_opt_channel_timeout;
-
         <span class="comment">// get block producer address for that slot
-        </span>timings.push((<span class="string">"get_producer START"</span>, MassaTime::now()));
-        <span class="kw">let </span>block_producer_addr = <span class="kw">match </span><span class="self">self</span>.channels.selector.get_producer(slot) {
+        </span><span class="kw">let </span>block_producer_addr = <span class="kw">match </span><span class="self">self</span>.channels.selector.get_producer(slot) {
             <span class="prelude-val">Ok</span>(addr) =&gt; addr,
             <span class="prelude-val">Err</span>(err) =&gt; {
                 <span class="macro">warn!</span>(
@@ -514,26 +410,18 @@
                 <span class="kw">return</span>;
             }
         };
-        timings.push((<span class="string">"get_producer END"</span>, MassaTime::now()));
 
         <span class="comment">// check if the block producer address is handled by the wallet
-        </span>timings.push((<span class="string">"wallet retrieval START"</span>, MassaTime::now()));
-        <span class="kw">let </span>block_producer_keypair;
+        </span><span class="kw">let </span>block_producer_keypair_ref = <span class="self">self</span>.wallet.read();
+        <span class="kw">let </span>block_producer_keypair = <span class="kw">if let </span><span class="prelude-val">Some</span>(kp) =
+            block_producer_keypair_ref.find_associated_keypair(<span class="kw-2">&amp;</span>block_producer_addr)
         {
-            <span class="kw">let </span>block_producer_keypair_ref = <span class="self">self</span>.wallet.read();
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(kp) =
-                block_producer_keypair_ref.find_associated_keypair(<span class="kw-2">&amp;</span>block_producer_addr)
-            {
-                <span class="comment">// the selected block producer is managed locally =&gt; continue to attempt block production
-                </span>block_producer_keypair = kp.clone();
-            } <span class="kw">else </span>{
-                <span class="comment">// the selected block producer is not managed locally =&gt; quit
-                </span><span class="kw">return</span>;
-            }
-        }
-        timings.push((<span class="string">"wallet retrieval END"</span>, MassaTime::now()));
-
-        timings.push((<span class="string">"double-staking check START"</span>, MassaTime::now()));
+            <span class="comment">// the selected block producer is managed locally =&gt; continue to attempt block production
+            </span>kp
+        } <span class="kw">else </span>{
+            <span class="comment">// the selected block producer is not managed locally =&gt; quit
+            </span><span class="kw">return</span>;
+        };
         <span class="kw">let </span><span class="kw-2">mut </span>block_storage = <span class="self">self</span>.channels.storage.clone_without_refs();
         {
             <span class="kw">let </span>block_lock = block_storage.read_blocks();
@@ -547,52 +435,33 @@
                 }
             }
         }
-        timings.push((<span class="string">"double-staking check END"</span>, MassaTime::now()));
 
         <span class="comment">// check if we need to have connections to produce a block and in this case, check if we have enough.
         </span><span class="attr">#[cfg(not(feature = <span class="string">"sandbox"</span>))]
         </span><span class="kw">if </span><span class="self">self</span>.cfg.stop_production_when_zero_connections {
-            timings.push((<span class="string">"connectivity check START"</span>, MassaTime::now()));
             <span class="kw">if let </span><span class="prelude-val">Ok</span>(stats) = <span class="self">self</span>.channels.protocol.get_stats() {
                 <span class="kw">if </span>stats.<span class="number">1</span>.is_empty() {
                     <span class="macro">warn!</span>(<span class="string">"block factory could not produce block for slot {} because there are no connections"</span>, slot);
                     <span class="kw">return</span>;
                 }
             }
-            timings.push((<span class="string">"connectivity check END"</span>, MassaTime::now()));
         }
 
         <span class="comment">// get best parents and their periods
-        </span>timings.push((<span class="string">"get_best_parents START"</span>, MassaTime::now()));
-        <span class="kw">let </span>parents: Vec&lt;(BlockId, u64)&gt; = <span class="self">self</span>.channels.consensus.get_best_parents(); <span class="comment">// Vec&lt;(parent_id, parent_period)&gt;
-        </span>timings.push((<span class="string">"get_best_parents END"</span>, MassaTime::now()));
-        <span class="comment">// generate the local storage object
+        </span><span class="kw">let </span>parents: Vec&lt;(BlockId, u64)&gt; = <span class="self">self</span>.channels.consensus.get_best_parents(); <span class="comment">// Vec&lt;(parent_id, parent_period)&gt;
+                                                                                       // generate the local storage object
 
         // get the parent in the same thread, with its period
         // will not panic because the thread is validated before the call
         </span><span class="kw">let </span>(same_thread_parent_id, <span class="kw">_</span>) = parents[slot.thread <span class="kw">as </span>usize];
 
         <span class="comment">// gather endorsements
-        </span>timings.push((<span class="string">"get_block_endorsements START"</span>, MassaTime::now()));
-        <span class="kw">let </span>(endorsements_ids, endo_storage) = <span class="kw">match </span><span class="self">self</span>.channels.pool.get_block_endorsements(
-            <span class="kw-2">&amp;</span>same_thread_parent_id,
-            <span class="kw-2">&amp;</span>slot,
-            <span class="prelude-val">Some</span>(channel_timeout),
-        ) {
-            <span class="prelude-val">Ok</span>(result) =&gt; result,
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(
-                    <span class="string">"Channel timeout: get_block_endorsements took &gt;{}ms for slot {}: {:?}. Proceeding with empty endorsements."</span>,
-                    channel_timeout.as_millis(), slot, e
-                );
-                (<span class="macro">vec!</span>[], massa_storage::Storage::create_root())
-            }
-        };
-        timings.push((<span class="string">"get_block_endorsements END"</span>, MassaTime::now()));
-
+        </span><span class="kw">let </span>(endorsements_ids, endo_storage) = <span class="self">self
+            </span>.channels
+            .pool
+            .get_block_endorsements(<span class="kw-2">&amp;</span>same_thread_parent_id, <span class="kw-2">&amp;</span>slot);
         <span class="comment">//TODO: Do we want to populate only with endorsement id in the future ?
-        </span>timings.push((<span class="string">"add endorsements START"</span>, MassaTime::now()));
-        <span class="kw">let </span>endorsements: Vec&lt;SecureShareEndorsement&gt; = {
+        </span><span class="kw">let </span>endorsements: Vec&lt;SecureShareEndorsement&gt; = {
             <span class="kw">let </span>endo_read = endo_storage.read_endorsements();
             endorsements_ids
                 .into_iter()
@@ -606,58 +475,19 @@
                 .collect()
         };
         block_storage.extend(endo_storage);
-        timings.push((<span class="string">"add endorsements END"</span>, MassaTime::now()));
 
         <span class="comment">// gather operations and compute global operations hash
-        </span>timings.push((<span class="string">"get_block_operations START"</span>, MassaTime::now()));
-        <span class="kw">let </span>(op_ids, op_storage) = <span class="kw">match </span><span class="self">self
-            </span>.channels
-            .pool
-            .get_block_operations(<span class="kw-2">&amp;</span>slot, <span class="prelude-val">Some</span>(channel_timeout))
-        {
-            <span class="prelude-val">Ok</span>(result) =&gt; result,
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(
-                    <span class="string">"Channel timeout: get_block_operations took &gt;{}ms for slot {}: {:?}. Proceeding without operations."</span>,
-                    channel_timeout.as_millis(), slot, e
-                );
-                (<span class="macro">vec!</span>[], massa_storage::Storage::create_root())
-            }
-        };
+        </span><span class="kw">let </span>(op_ids, op_storage) = <span class="self">self</span>.channels.pool.get_block_operations(<span class="kw-2">&amp;</span>slot);
         <span class="kw">if </span>op_ids.len() &gt; <span class="self">self</span>.cfg.max_operations_per_block <span class="kw">as </span>usize {
             <span class="macro">warn!</span>(<span class="string">"Too many operations returned"</span>);
             <span class="kw">return</span>;
         }
-        timings.push((<span class="string">"get_block_operations END"</span>, MassaTime::now()));
 
-        timings.push((<span class="string">"add operations START"</span>, MassaTime::now()));
         block_storage.extend(op_storage);
-        timings.push((<span class="string">"add operations END"</span>, MassaTime::now()));
 
         <span class="comment">// create header
-        </span>timings.push((<span class="string">"mip data START"</span>, MassaTime::now()));
-        <span class="kw">let </span>current_version = <span class="self">self</span>.mip_store.get_network_version_current();
+        </span><span class="kw">let </span>current_version = <span class="self">self</span>.mip_store.get_network_version_current();
         <span class="kw">let </span>announced_version = <span class="self">self</span>.mip_store.get_network_version_to_announce();
-        timings.push((<span class="string">"mip data END"</span>, MassaTime::now()));
-
-        timings.push((<span class="string">"get_block_denunciations START"</span>, MassaTime::now()));
-        <span class="kw">let </span>denunciations = <span class="kw">match </span><span class="self">self
-            </span>.channels
-            .pool
-            .get_block_denunciations(<span class="kw-2">&amp;</span>slot, <span class="prelude-val">Some</span>(channel_timeout))
-        {
-            <span class="prelude-val">Ok</span>(result) =&gt; result,
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(
-                    <span class="string">"Channel timeout: get_block_denunciations took &gt;{}ms for slot {}: {:?}. Proceeding without denunciations."</span>,
-                    channel_timeout.as_millis(), slot, e
-                );
-                <span class="macro">vec!</span>[]
-            }
-        };
-        timings.push((<span class="string">"get_block_denunciations END"</span>, MassaTime::now()));
-
-        timings.push((<span class="string">"block creation START"</span>, MassaTime::now()));
         <span class="kw">let </span>header: SecuredHeader = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
             BlockHeader {
                 current_version,
@@ -666,10 +496,10 @@
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: compute_operations_hash(<span class="kw-2">&amp;</span>op_ids, <span class="kw-2">&amp;</span><span class="self">self</span>.op_id_serializer),
                 endorsements,
-                denunciations,
+                denunciations: <span class="self">self</span>.channels.pool.get_block_denunciations(<span class="kw-2">&amp;</span>slot),
             },
             BlockHeaderSerializer::new(), <span class="comment">// TODO reuse self.block_header_serializer
-            </span><span class="kw-2">&amp;</span>block_producer_keypair,
+            </span>block_producer_keypair,
             <span class="self">self</span>.cfg.chain_id,
         )
         .expect(<span class="string">"error while producing block header"</span>);
@@ -678,20 +508,17 @@
             header,
             operations: op_ids.into_iter().collect(),
         };
+
         <span class="kw">let </span>block = Block::new_verifiable(
             block_,
             BlockSerializer::new(), <span class="comment">// TODO reuse self.block_serializer
-            </span><span class="kw-2">&amp;</span>block_producer_keypair,
+            </span>block_producer_keypair,
             <span class="self">self</span>.cfg.chain_id,
         )
         .expect(<span class="string">"error while producing block"</span>);
         <span class="kw">let </span>block_id = block.id;
-        timings.push((<span class="string">"block creation END"</span>, MassaTime::now()));
-
         <span class="comment">// store block in storage
-        </span>timings.push((<span class="string">"block store START"</span>, MassaTime::now()));
-        block_storage.store_block(block);
-        timings.push((<span class="string">"block store END"</span>, MassaTime::now()));
+        </span>block_storage.store_block(block);
 
         <span class="comment">// log block creation
         </span><span class="macro">info!</span>(
@@ -700,36 +527,9 @@
         );
 
         <span class="comment">// send full block to consensus
-        </span>timings.push((<span class="string">"register_block START"</span>, MassaTime::now()));
-        <span class="self">self</span>.channels
+        </span><span class="self">self</span>.channels
             .consensus
             .register_block(block_id, slot, block_storage, <span class="bool-val">true</span>);
-        timings.push((<span class="string">"register_block END"</span>, MassaTime::now()));
-
-        <span class="comment">// Check block latency
-        </span><span class="kw">let </span>block_timestamp = get_block_slot_timestamp(
-            <span class="self">self</span>.cfg.thread_count,
-            <span class="self">self</span>.cfg.t0,
-            <span class="self">self</span>.cfg.genesis_timestamp,
-            slot,
-        )
-        .expect(<span class="string">"could not get block slot timestamp"</span>);
-        <span class="kw">let </span>cur_timestamp = MassaTime::now();
-        <span class="kw">let </span>delay = cur_timestamp.saturating_sub(block_timestamp);
-        <span class="kw">if </span>delay &gt; <span class="self">self</span>.cfg.block_delay_warn {
-            <span class="kw">let </span><span class="kw-2">mut </span>timing_details = String::new();
-            <span class="kw">for </span>(step_name, step_t) <span class="kw">in </span><span class="kw-2">&amp;</span>timings {
-                timing_details.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">" / {} at ts={}"</span>, step_name, step_t));
-            }
-            <span class="macro">warn!</span>(
-                <span class="string">"Block {} production at slot {} was delayed by {}ms (threshold: {}ms) [{}]"</span>,
-                block_id,
-                slot,
-                delay.as_millis(),
-                <span class="self">self</span>.cfg.block_delay_warn.as_millis(),
-                timing_details
-            );
-        }
     }
 
     <span class="doccomment">/// main run loop of the block creator thread

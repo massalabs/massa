@@ -76,26 +76,6 @@
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -106,9 +86,6 @@
     slot::Slot,
 };
 <span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>massa_time::MassaTime;
-
-<span class="kw">use </span><span class="kw">crate</span>::error::PoolError;
 
 <span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
 </span><span class="kw">use </span>std::sync::{Arc, RwLock};
@@ -129,49 +106,32 @@
     </span><span class="kw">fn </span>notify_final_cs_periods(<span class="kw-2">&amp;mut </span><span class="self">self</span>, final_cs_periods: <span class="kw-2">&amp;</span>[u64]);
 
     <span class="doccomment">/// Get operations for block creation.
-    </span><span class="kw">fn </span>get_block_operations(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        slot: <span class="kw-2">&amp;</span>Slot,
-        timeout: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;OperationId&gt;, Storage), PoolError&gt;;
+    </span><span class="kw">fn </span>get_block_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; (Vec&lt;OperationId&gt;, Storage);
 
     <span class="doccomment">/// Get endorsements for a block.
     </span><span class="kw">fn </span>get_block_endorsements(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         target_block: <span class="kw-2">&amp;</span>BlockId,
         slot: <span class="kw-2">&amp;</span>Slot,
-        timeout: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;<span class="prelude-ty">Option</span>&lt;EndorsementId&gt;&gt;, Storage), PoolError&gt;;
+    ) -&gt; (Vec&lt;<span class="prelude-ty">Option</span>&lt;EndorsementId&gt;&gt;, Storage);
 
     <span class="doccomment">/// Get denunciations for a block header.
-    </span><span class="kw">fn </span>get_block_denunciations(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        target_slot: <span class="kw-2">&amp;</span>Slot,
-        timeout: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Denunciation&gt;, PoolError&gt;;
+    </span><span class="kw">fn </span>get_block_denunciations(<span class="kw-2">&amp;</span><span class="self">self</span>, target_slot: <span class="kw-2">&amp;</span>Slot) -&gt; Vec&lt;Denunciation&gt;;
 
     <span class="doccomment">/// Get the number of endorsements in the pool
-    </span><span class="kw">fn </span>get_endorsement_count(<span class="kw-2">&amp;</span><span class="self">self</span>, timeout: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;usize, PoolError&gt;;
+    </span><span class="kw">fn </span>get_endorsement_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 
     <span class="doccomment">/// Get the number of operations in the pool
-    </span><span class="kw">fn </span>get_operation_count(<span class="kw-2">&amp;</span><span class="self">self</span>, timeout: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;usize, PoolError&gt;;
+    </span><span class="kw">fn </span>get_operation_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 
     <span class="doccomment">/// Check if the pool contains a list of endorsements. Returns one boolean per item.
-    </span><span class="kw">fn </span>contains_endorsements(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        endorsements: <span class="kw-2">&amp;</span>[EndorsementId],
-        timeout: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;bool&gt;, PoolError&gt;;
+    </span><span class="kw">fn </span>contains_endorsements(<span class="kw-2">&amp;</span><span class="self">self</span>, endorsements: <span class="kw-2">&amp;</span>[EndorsementId]) -&gt; Vec&lt;bool&gt;;
 
     <span class="doccomment">/// Check if the pool contains a list of operations. Returns one boolean per item.
-    </span><span class="kw">fn </span>contains_operations(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        operations: <span class="kw-2">&amp;</span>[OperationId],
-        timeout: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;bool&gt;, PoolError&gt;;
+    </span><span class="kw">fn </span>contains_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, operations: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;bool&gt;;
 
     <span class="doccomment">/// Get the number of denunciations in the pool
-    </span><span class="kw">fn </span>get_denunciation_count(<span class="kw-2">&amp;</span><span class="self">self</span>, timeout: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;usize, PoolError&gt;;
+    </span><span class="kw">fn </span>get_denunciation_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 
     <span class="doccomment">/// Returns a boxed clone of self.
     /// Useful to allow cloning `Box&lt;dyn PoolController&gt;`.

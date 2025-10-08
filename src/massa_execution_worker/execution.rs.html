@@ -2677,6 +2677,24 @@
 <a href="#2677" id="2677">2677</a>
 <a href="#2678" id="2678">2678</a>
 <a href="#2679" id="2679">2679</a>
+<a href="#2680" id="2680">2680</a>
+<a href="#2681" id="2681">2681</a>
+<a href="#2682" id="2682">2682</a>
+<a href="#2683" id="2683">2683</a>
+<a href="#2684" id="2684">2684</a>
+<a href="#2685" id="2685">2685</a>
+<a href="#2686" id="2686">2686</a>
+<a href="#2687" id="2687">2687</a>
+<a href="#2688" id="2688">2688</a>
+<a href="#2689" id="2689">2689</a>
+<a href="#2690" id="2690">2690</a>
+<a href="#2691" id="2691">2691</a>
+<a href="#2692" id="2692">2692</a>
+<a href="#2693" id="2693">2693</a>
+<a href="#2694" id="2694">2694</a>
+<a href="#2695" id="2695">2695</a>
+<a href="#2696" id="2696">2696</a>
+<a href="#2697" id="2697">2697</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2730,6 +2748,7 @@
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::ops::Bound;
 <span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::time::Instant;
 <span class="kw">use </span>tracing::{debug, info, trace, warn};
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
@@ -4201,6 +4220,8 @@
         exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) -&gt; ExecutionOutput {
+        <span class="comment">// Start slot execution timer
+        </span><span class="kw">let </span>slot_start_time = Instant::now();
         <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
         </span><span class="kw">let </span><span class="kw-2">mut </span>slot_trace = SlotAbiCallStack {
             slot: <span class="kw-2">*</span>slot,
@@ -4653,6 +4674,21 @@
         }
 
         exec_out.state_changes.deferred_call_changes.exec_stats = deferred_calls_stats;
+
+        <span class="comment">// Warn if the slot execution took more than the maximum slot duration
+        </span><span class="kw">let </span>max_slot_duration = <span class="self">self
+            </span>.config
+            .t0
+            .checked_div_u64(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
+            .expect(<span class="string">"could not deduce slot duration"</span>)
+            .to_duration();
+        <span class="kw">let </span>total_slot_duration = slot_start_time.elapsed();
+        <span class="kw">if </span>total_slot_duration &gt; max_slot_duration {
+            <span class="macro">warn!</span>(
+                <span class="string">"slot {} execution took {:?} (above the {:?} maximum slot duration)"</span>,
+                slot, total_slot_duration, max_slot_duration
+            );
+        }
 
         <span class="comment">// Return the execution output
         </span>exec_out

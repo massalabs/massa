@@ -1543,12 +1543,6 @@
 <a href="#1543" id="1543">1543</a>
 <a href="#1544" id="1544">1544</a>
 <a href="#1545" id="1545">1545</a>
-<a href="#1546" id="1546">1546</a>
-<a href="#1547" id="1547">1547</a>
-<a href="#1548" id="1548">1548</a>
-<a href="#1549" id="1549">1549</a>
-<a href="#1550" id="1550">1550</a>
-<a href="#1551" id="1551">1551</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1893,10 +1887,7 @@
     };
 
     <span class="comment">// ask pool whether it carries the endorsements
-    </span><span class="kw">let </span>in_pool = grpc
-        .pool_controller
-        .contains_endorsements(<span class="kw-2">&amp;</span>endorsement_ids, <span class="prelude-val">None</span>)
-        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="bool-val">false</span>; endorsement_ids.len()]);
+    </span><span class="kw">let </span>in_pool = grpc.pool_controller.contains_endorsements(<span class="kw-2">&amp;</span>endorsement_ids);
 
     <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
@@ -2909,10 +2900,7 @@
     </span><span class="kw">let </span>e_ids: Vec&lt;EndorsementId&gt; = storage_info.iter().map(|(ed, <span class="kw">_</span>)| <span class="kw-2">*</span>ed).collect();
 
     <span class="comment">// ask pool whether it carries the endorsements
-    </span><span class="kw">let </span>in_pool = grpc
-        .pool_controller
-        .contains_endorsements(<span class="kw-2">&amp;</span>e_ids, <span class="prelude-val">None</span>)
-        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="bool-val">false</span>; e_ids.len()]);
+    </span><span class="kw">let </span>in_pool = grpc.pool_controller.contains_endorsements(<span class="kw-2">&amp;</span>e_ids);
 
     <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
