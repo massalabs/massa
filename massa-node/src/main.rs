@@ -892,6 +892,7 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        endorsement_count: ENDORSEMENT_COUNT,
         last_start_period: final_state.read().get_last_start_period(),
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
