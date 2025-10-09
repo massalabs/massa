@@ -23,14 +23,8 @@ pub struct PoolConfig {
     pub operation_validity_periods: u64,
     /// operation pool refresh interval
     pub operation_pool_refresh_interval: MassaTime,
-    /// operation pool buffer swap interval
-    pub operation_pool_swap_interval: MassaTime,
-    /// endorsement pool buffer swap interval
-    pub endorsement_pool_swap_interval: MassaTime,
     /// denunciation pool refresh interval
     pub denunciation_pool_refresh_interval: MassaTime,
-    /// denunciation pool buffer swap interval
-    pub denunciation_pool_swap_interval: MassaTime,
     /// max delay in the future for operation validity start
     pub operation_max_future_start_delay: MassaTime,
     /// max operations per block
@@ -51,9 +45,9 @@ pub struct PoolConfig {
     pub denunciations_channel_size: usize,
     /// whether operations broadcast is enabled
     pub broadcast_enabled: bool,
-    /// broadcast endorsements channel capacity
+    /// endorsements channel capacity
     pub broadcast_endorsements_channel_capacity: usize,
-    /// broadcast operations channel capacity
+    /// operations channel capacity
     pub broadcast_operations_channel_capacity: usize,
     /// genesis timestamp
     pub genesis_timestamp: MassaTime,

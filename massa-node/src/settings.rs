@@ -112,10 +112,7 @@ pub struct PoolSettings {
     pub max_operation_pool_excess_items: usize,
     pub operation_max_future_start_delay: MassaTime,
     pub operation_pool_refresh_interval: MassaTime,
-    pub operation_pool_swap_interval: MassaTime,
-    pub endorsement_pool_swap_interval: MassaTime,
     pub denunciation_pool_refresh_interval: MassaTime,
-    pub denunciation_pool_swap_interval: MassaTime,
     pub max_endorsements_pool_size_per_thread: usize,
     pub max_item_return_count: usize,
     /// endorsements channel capacity

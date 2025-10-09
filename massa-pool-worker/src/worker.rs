@@ -11,10 +11,9 @@ use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::sync::mpsc::TryRecvError;
 use std::time::Instant;
 use std::{
-    sync::mpsc::{sync_channel, Receiver, RecvTimeoutError},
+    sync::mpsc::{sync_channel, Receiver, RecvError, RecvTimeoutError},
     sync::Arc,
     thread,
     thread::JoinHandle,
@@ -34,82 +33,44 @@ impl EndorsementPoolThread {
     pub(crate) fn spawn(
         receiver: Receiver<Command>,
         endorsement_pool: Arc<RwLock<EndorsementPool>>,
-        config: PoolConfig,
     ) -> JoinHandle<()> {
         let thread_builder = thread::Builder::new().name("endorsement-pool".into());
         thread_builder
-            .spawn(move || {
+            .spawn(|| {
                 let this = Self {
                     receiver,
                     endorsement_pool,
                 };
-                this.run(config)
+                this.run()
             })
             .expect("failed to spawn thread : endorsement-pool")
     }
 
     /// Runs the thread
-    fn run(self, config: PoolConfig) {
-        let buffer_swap_interval = config.endorsement_pool_swap_interval.to_duration();
+    fn run(self) {
         let mut endorsement_pool_buffer = self.endorsement_pool.read().clone();
-        let mut modified = false;
-        let mut last_buffer_swap = Instant::now();
         loop {
-            // try to get pending messages to process
-            let mut cmd = match self.receiver.try_recv() {
-                Err(TryRecvError::Disconnected) => break,
-                Err(TryRecvError::Empty) => None,
-                Ok(Command::Stop) => break,
-                Ok(c) => Some(c),
-            };
-
-            // Swap buffers asap if there are no messages to process.
-            // This avoids waiting when we have cpu time now for swapping.
-            if cmd.is_none() {
-                if modified {
-                    self.endorsement_pool
-                        .write()
-                        .replace_with(&endorsement_pool_buffer);
-                    modified = false;
+            match self.receiver.recv() {
+                Err(RecvError) => break,
+                Ok(Command::Stop) => {
+                    break;
                 }
-                last_buffer_swap = Instant::now();
-            }
-
-            // wait for new command if none found
-            if cmd.is_none() {
-                cmd = match self.receiver.recv_timeout(buffer_swap_interval) {
-                    Err(RecvTimeoutError::Disconnected) => break,
-                    Err(RecvTimeoutError::Timeout) => None,
-                    Ok(Command::Stop) => break,
-                    Ok(c) => Some(c),
-                }
-            }
-
-            match cmd {
-                Some(Command::AddItems(endorsements)) => {
+                Ok(Command::AddItems(endorsements)) => {
                     endorsement_pool_buffer.add_endorsements(endorsements);
-                    modified = true;
-                }
-                Some(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
-                    endorsement_pool_buffer.notify_final_cs_periods(&final_cs_periods);
-                    modified = true;
-                }
-                Some(_) => {
-                    warn!("EndorsementPoolThread received an unexpected command");
-                }
-                None => {}
-            }
-
-            // On a regular basis, swap buffers if we haven't for a while.
-            // This is useful under heavy congestion. Otherwise we swap as soon as the queue is empty.
-            if Instant::now().saturating_duration_since(last_buffer_swap) >= buffer_swap_interval {
-                if modified {
                     self.endorsement_pool
                         .write()
                         .replace_with(&endorsement_pool_buffer);
-                    modified = false;
                 }
-                last_buffer_swap = Instant::now();
+                Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
+                    endorsement_pool_buffer.notify_final_cs_periods(&final_cs_periods);
+                    self.endorsement_pool
+                        .write()
+                        .replace_with(&endorsement_pool_buffer);
+                }
+                _ => {
+                    warn!("EndorsementPoolThread received an unexpected command");
+                    continue;
+                }
             }
         }
     }
@@ -144,78 +105,38 @@ impl OperationPoolThread {
 
     /// Run the thread.
     fn run(self, config: PoolConfig) {
-        let buffer_swap_interval = config.operation_pool_swap_interval.to_duration();
         let mut operation_pool_buffer = self.operation_pool.read().clone();
         let mut start_time = Instant::now();
         let tick = config.operation_pool_refresh_interval.to_duration();
-        let mut modified = false;
-        let mut last_buffer_swap = Instant::now();
         loop {
-            // refresh if needed
             let duration = (start_time + tick).saturating_duration_since(Instant::now());
-            if duration.is_zero() {
-                operation_pool_buffer.refresh();
-                start_time = Instant::now();
-                modified = true;
-            }
-
-            // try to get pending messages to process
-            let mut cmd = match self.receiver.try_recv() {
-                Err(TryRecvError::Disconnected) => break,
-                Err(TryRecvError::Empty) => None,
-                Ok(Command::Stop) => break,
-                Ok(c) => Some(c),
-            };
-
-            // swap buffers asap if there are no messages to process
-            if cmd.is_none() {
-                if modified {
-                    self.operation_pool
-                        .write()
-                        .replace_with(&operation_pool_buffer);
-                    modified = false;
-                }
-                last_buffer_swap = Instant::now();
-            }
-
-            // wait for new command if none found
-            if cmd.is_none() {
-                cmd = match self
-                    .receiver
-                    .recv_timeout(std::cmp::min(buffer_swap_interval, duration))
-                {
-                    Err(RecvTimeoutError::Disconnected) => break,
-                    Err(RecvTimeoutError::Timeout) => None,
-                    Ok(Command::Stop) => break,
-                    Ok(c) => Some(c),
+            if !duration.is_zero() {
+                match self.receiver.recv_timeout(duration) {
+                    Err(RecvTimeoutError::Disconnected) | Ok(Command::Stop) => break,
+                    Ok(Command::AddItems(operations)) => {
+                        operation_pool_buffer.add_operations(operations);
+                        self.operation_pool
+                            .write()
+                            .replace_with(&operation_pool_buffer);
+                    }
+                    Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
+                        operation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
+                        self.operation_pool
+                            .write()
+                            .replace_with(&operation_pool_buffer);
+                    }
+                    Ok(_) => {
+                        warn!("OperationPoolThread received an unexpected command");
+                        continue;
+                    }
+                    Err(RecvTimeoutError::Timeout) => {}
                 };
-            }
-
-            match cmd {
-                Some(Command::AddItems(operations)) => {
-                    operation_pool_buffer.add_operations(operations);
-                    modified = true;
-                }
-                Some(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
-                    operation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
-                    modified = true;
-                }
-                Some(_) => {
-                    warn!("OperationPoolThread received an unexpected command");
-                }
-                None => {}
-            };
-
-            // On a regular basis, swap buffers if we haven't for a while.
-            // This is useful under heavy congestion. Otherwise we swap as soon as the queue is empty.
-            if Instant::now().saturating_duration_since(last_buffer_swap) >= buffer_swap_interval {
-                if modified {
-                    self.operation_pool
-                        .write()
-                        .replace_with(&operation_pool_buffer);
-                    modified = false;
-                }
-                last_buffer_swap = Instant::now();
+            } else {
+                operation_pool_buffer.refresh();
+                self.operation_pool
+                    .write()
+                    .replace_with(&operation_pool_buffer);
+                start_time = Instant::now();
             }
         }
     }
@@ -245,88 +166,45 @@ impl DenunciationPoolThread {
                 };
                 this.run(config)
             })
-            .expect("failed to spawn thread: denunciation-pool")
+            .expect("failed to spawn thread : denunciation-pool")
     }
 
     /// Run the thread.
     fn run(self, config: PoolConfig) {
-        let buffer_swap_interval = config.denunciation_pool_swap_interval.to_duration();
         let mut denunciation_pool_buffer = self.denunciation_pool.read().clone();
         let mut start_time = Instant::now();
         let tick = config.denunciation_pool_refresh_interval.to_duration();
-        let mut modified = false;
-        let mut last_buffer_swap = Instant::now();
         loop {
-            // refresh if needed
             let duration = (start_time + tick).saturating_duration_since(Instant::now());
-            if duration.is_zero() {
+            if !duration.is_zero() {
+                match self.receiver.recv_timeout(duration) {
+                    Err(RecvTimeoutError::Disconnected) | Ok(Command::Stop) => break,
+                    Ok(Command::AddDenunciationPrecursor(de_p)) => {
+                        denunciation_pool_buffer.add_denunciation_precursor(de_p);
+                        self.denunciation_pool
+                            .write()
+                            .replace_with(&denunciation_pool_buffer);
+                    }
+                    Ok(Command::AddItems(endorsements)) => {
+                        denunciation_pool_buffer.add_endorsements(endorsements);
+                        self.denunciation_pool
+                            .write()
+                            .replace_with(&denunciation_pool_buffer);
+                    }
+                    Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
+                        denunciation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
+                        self.denunciation_pool
+                            .write()
+                            .replace_with(&denunciation_pool_buffer);
+                    }
+                    Err(RecvTimeoutError::Timeout) => {}
+                }
+            } else {
                 denunciation_pool_buffer.refresh_execution_state();
+                self.denunciation_pool
+                    .write()
+                    .replace_with(&denunciation_pool_buffer);
                 start_time = Instant::now();
-                modified = true;
-            }
-
-            // try to get pending messages to process
-            let mut cmd = match self.receiver.try_recv() {
-                Err(TryRecvError::Disconnected) => break,
-                Err(TryRecvError::Empty) => None,
-                Ok(Command::Stop) => break,
-                Ok(c) => Some(c),
-            };
-
-            // Swap buffers asap if there are no messages to process.
-            // This avoids waiting when we have cpu time now for swapping.
-            if cmd.is_none() {
-                if modified {
-                    self.denunciation_pool
-                        .write()
-                        .replace_with(&denunciation_pool_buffer);
-                    modified = false;
-                }
-                last_buffer_swap = Instant::now();
-            }
-
-            // wait for new command if none found
-            if cmd.is_none() {
-                cmd = match self
-                    .receiver
-                    .recv_timeout(std::cmp::min(buffer_swap_interval, duration))
-                {
-                    Err(RecvTimeoutError::Disconnected) => break,
-                    Err(RecvTimeoutError::Timeout) => None,
-                    Ok(Command::Stop) => break,
-                    Ok(c) => Some(c),
-                };
-            }
-
-            match cmd {
-                Some(Command::AddDenunciationPrecursor(de_p)) => {
-                    denunciation_pool_buffer.add_denunciation_precursor(de_p);
-                    modified = true;
-                }
-                Some(Command::AddItems(endorsements)) => {
-                    denunciation_pool_buffer.add_endorsements(endorsements);
-                    modified = true;
-                }
-                Some(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
-                    denunciation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
-                    modified = true;
-                }
-                Some(_) => {
-                    warn!("DenunciationPoolThread received an unexpected command");
-                }
-                None => {}
-            }
-
-            // On a regular basis, swap buffers if we haven't for a while.
-            // This is useful under heavy congestion. Otherwise we swap as soon as the queue is empty.
-            if Instant::now().saturating_duration_since(last_buffer_swap) >= buffer_swap_interval {
-                if modified {
-                    self.denunciation_pool
-                        .write()
-                        .replace_with(&denunciation_pool_buffer);
-                    modified = false;
-                }
-                last_buffer_swap = Instant::now();
             }
         }
     }
@@ -373,7 +251,7 @@ pub fn start_pool_controller(
     let operations_thread_handle =
         OperationPoolThread::spawn(operations_input_receiver, operation_pool, config);
     let endorsements_thread_handle =
-        EndorsementPoolThread::spawn(endorsements_input_receiver, endorsement_pool, config);
+        EndorsementPoolThread::spawn(endorsements_input_receiver, endorsement_pool);
     let denunciations_thread_handle =
         DenunciationPoolThread::spawn(denunciations_input_receiver, denunciation_pool, config);
 
