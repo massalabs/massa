@@ -368,7 +368,7 @@ dependencies = [
  "bitflags 2.9.0",
  "cexpr",
  "clang-sys",
- "itertools 0.12.1",
+ "itertools 0.10.5",
  "lazy_static",
  "lazycell",
  "proc-macro2 1.0.94",
@@ -2915,7 +2915,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=optimize_abi_calls#79879fe1c737bdc5361157cccec6c00665f0e020"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=optimize_abi_calls#846ef19d6a967a391549d92e21648e02f0c7ab63"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -4638,8 +4638,8 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.5.0",
- "itertools 0.12.1",
+ "heck 0.4.1",
+ "itertools 0.10.5",
  "log",
  "multimap",
  "once_cell",
@@ -4659,7 +4659,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.12.1",
+ "itertools 0.10.5",
  "proc-macro2 1.0.94",
  "quote 1.0.40",
  "syn 2.0.100",
