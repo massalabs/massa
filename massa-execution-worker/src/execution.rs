@@ -1042,6 +1042,16 @@ impl ExecutionState {
             self.module_cache
                 .read()
                 .load_tmp_module(bytecode, *max_gas, condom_limits.clone())?;
+
+        let gas_before = *max_gas;
+
+        warn!(
+            "[GAS_PROFILE] Entering WASM execution for ExecuteSC with max_gas={}",
+            max_gas
+        );
+
+        let run_start: std::time::Instant = std::time::Instant::now();
+
         // run the VM
         let _res = massa_sc_runtime::run_main(
             &*self.execution_interface,
@@ -1054,6 +1064,26 @@ impl ExecutionState {
             context: "ExecuteSC".to_string(),
             error,
         })?;
+
+        let run_duration = run_start.elapsed();
+
+        warn!(
+            "[GAS_PROFILE] Exited WASM execution for ExecuteSC after {}ns",
+            run_duration.as_nanos()
+        );
+
+        // Log gas usage details
+        let gas_used = gas_before; // ExecuteSC consumes all gas on success
+        let gas_pct = 100u64;
+
+        warn!(
+            "[GAS_PROFILE] ExecuteSC execution: time={}ns, gas_used={}/{} ({}%), max_gas={}",
+            run_duration.as_nanos(),
+            gas_used,
+            gas_before,
+            gas_pct,
+            max_gas
+        );
 
         #[cfg(feature = "execution-trace")]
         {
@@ -1350,6 +1380,15 @@ impl ExecutionState {
             }
         };
 
+        let gas_before = message.max_gas;
+
+        warn!(
+            "[GAS_PROFILE] Entering WASM execution for async message '{}' with max_gas={}",
+            message.function, message.max_gas
+        );
+
+        let run_start: std::time::Instant = std::time::Instant::now();
+
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -1359,6 +1398,45 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
             self.config.condom_limits.clone(),
         );
+
+        let run_duration = run_start.elapsed();
+
+        warn!(
+            "[GAS_PROFILE] Exited WASM execution for async message '{}' after {}ns",
+            message.function,
+            run_duration.as_nanos()
+        );
+
+        // Log gas usage details
+        let gas_used = match &response {
+            Ok(res) => gas_before.saturating_sub(res.remaining_gas),
+            Err(_) => gas_before, // All gas consumed on error
+        };
+
+        let gas_pct = (gas_used as f64 / gas_before as f64 * 100.0) as u64;
+
+        warn!(
+            "[GAS_PROFILE] Async message '{}' execution: time={}ns, gas_used={}/{} ({}%), max_gas={}",
+            message.function,
+            run_duration.as_nanos(),
+            gas_used,
+            gas_before,
+            gas_pct,
+            message.max_gas
+        );
+
+        // If execution failed, log error details at warn level so it's visible
+        if let Err(err) = &response {
+            warn!(
+                "[GAS_PROFILE] Async message execution FAILED for '{}': error={:?}, time={}ns, gas_used={}/{} ({}%)",
+                message.function,
+                err,
+                run_duration.as_nanos(),
+                gas_used,
+                gas_before,
+                gas_pct
+            );
+        }
         match response {
             Ok(res) => {
                 self.module_cache
@@ -1503,6 +1581,17 @@ impl ExecutionState {
                     call.get_effective_gas(self.config.deferred_calls_config.call_cst_gas_cost),
                     self.config.condom_limits.clone(),
                 )?;
+
+                let gas_before =
+                    call.get_effective_gas(self.config.deferred_calls_config.call_cst_gas_cost);
+
+                warn!(
+                    "[GAS_PROFILE] Entering WASM execution for deferred call '{}' with max_gas={}",
+                    call.target_function, gas_before
+                );
+
+                let run_start: std::time::Instant = std::time::Instant::now();
+
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
                     module,
@@ -1512,6 +1601,45 @@ impl ExecutionState {
                     self.config.gas_costs.clone(),
                     self.config.condom_limits.clone(),
                 );
+
+                let run_duration = run_start.elapsed();
+
+                warn!(
+                    "[GAS_PROFILE] Exited WASM execution for deferred call '{}' after {}ns",
+                    call.target_function,
+                    run_duration.as_nanos()
+                );
+
+                // Log gas usage details
+                let gas_used = match &response {
+                    Ok(res) => gas_before.saturating_sub(res.remaining_gas),
+                    Err(_) => gas_before, // All gas consumed on error
+                };
+
+                let gas_pct = (gas_used as f64 / gas_before as f64 * 100.0) as u64;
+
+                warn!(
+                    "[GAS_PROFILE] Deferred call '{}' execution: time={}ns, gas_used={}/{} ({}%), max_gas={}",
+                    call.target_function,
+                    run_duration.as_nanos(),
+                    gas_used,
+                    gas_before,
+                    gas_pct,
+                    gas_before
+                );
+
+                // If execution failed, log error details at warn level so it's visible
+                if let Err(err) = &response {
+                    warn!(
+                        "[GAS_PROFILE] Deferred call execution FAILED for '{}': error={:?}, time={}ns, gas_used={}/{} ({}%)",
+                        call.target_function,
+                        err,
+                        run_duration.as_nanos(),
+                        gas_used,
+                        gas_before,
+                        gas_pct
+                    );
+                }
 
                 match response {
                     Ok(res) => {
@@ -1575,6 +1703,13 @@ impl ExecutionState {
     ) -> ExecutionOutput {
         // Start slot execution timer
         let slot_start_time = Instant::now();
+
+        // Log slot execution entry
+        let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
+        warn!(
+            "[SLOT_PROFILE] Starting slot execution: slot={}, target_block={:?}, thread={}",
+            slot, target_id, slot.thread
+        );
         #[cfg(feature = "execution-trace")]
         let mut slot_trace = SlotAbiCallStack {
             slot: *slot,
@@ -2028,17 +2163,43 @@ impl ExecutionState {
 
         exec_out.state_changes.deferred_call_changes.exec_stats = deferred_calls_stats;
 
-        // Warn if the slot execution took more than the maximum slot duration
+        // Calculate slot execution duration
+        let total_slot_duration = slot_start_time.elapsed();
         let max_slot_duration = self
             .config
             .t0
             .checked_div_u64(self.config.thread_count as u64)
             .expect("could not deduce slot duration")
             .to_duration();
-        let total_slot_duration = slot_start_time.elapsed();
+
+        // Log slot execution completion with detailed timing
+        warn!(
+            "[SLOT_PROFILE] Completed slot execution: slot={}, duration={}ns, max_allowed={}ns, thread={}, target_block={:?}",
+            slot,
+            total_slot_duration.as_nanos(),
+            max_slot_duration.as_nanos(),
+            slot.thread,
+            target_id
+        );
+
+        // Log slot execution summary
+        let duration_pct = (total_slot_duration.as_nanos() as f64
+            / max_slot_duration.as_nanos() as f64
+            * 100.0) as u64;
+        warn!(
+            "[SLOT_PROFILE] Slot {} execution summary: time={}ns ({}% of max), operations={}, deferred_calls={}, async_messages={}",
+            slot,
+            total_slot_duration.as_nanos(),
+            duration_pct,
+            exec_out.state_changes.executed_ops_changes.len(),
+            deferred_calls_stats.0 + deferred_calls_stats.1 + deferred_calls_stats.2,
+            exec_out.state_changes.async_pool_changes.0.len()
+        );
+
+        // Warn if the slot execution took more than the maximum slot duration
         if total_slot_duration > max_slot_duration {
             warn!(
-                "slot {} execution took {:?} (above the {:?} maximum slot duration)",
+                "[SLOT_PROFILE] SLOW SLOT: slot {} execution took {:?} (above the {:?} maximum slot duration)",
                 slot, total_slot_duration, max_slot_duration
             );
         }
@@ -2055,6 +2216,13 @@ impl ExecutionState {
         selector: Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
+        let candidate_slot_start_time = Instant::now();
+
+        warn!(
+            "[SLOT_PROFILE] Starting CANDIDATE slot execution: slot={}, target_block={:?}, thread={}",
+            slot, target_id, slot.thread
+        );
+
         debug!(
             "execute_candidate_slot: executing slot={} target={:?}",
             slot, target_id
@@ -2104,6 +2272,12 @@ impl ExecutionState {
         // apply execution output to active state
         self.apply_active_execution_output(exec_out);
 
+        let candidate_slot_duration = candidate_slot_start_time.elapsed();
+        warn!(
+            "[SLOT_PROFILE] Completed CANDIDATE slot execution: slot={}, duration={}ns, thread={}, target_block={:?}",
+            slot, candidate_slot_duration.as_nanos(), slot.thread, target_id
+        );
+
         debug!("execute_candidate_slot: execution finished & state applied");
     }
 
@@ -2115,6 +2289,13 @@ impl ExecutionState {
         selector: Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
+        let final_slot_start_time = Instant::now();
+
+        warn!(
+            "[SLOT_PROFILE] Starting FINAL slot execution: slot={}, target_block={:?}, thread={}",
+            slot, target_id, slot.thread
+        );
+
         debug!(
             "execute_final_slot: executing slot={} target={:?}",
             slot, target_id
@@ -2163,6 +2344,12 @@ impl ExecutionState {
 
         // apply execution output to final state
         self.apply_final_execution_output(exec_out);
+
+        let final_slot_duration = final_slot_start_time.elapsed();
+        warn!(
+            "[SLOT_PROFILE] Completed FINAL slot execution: slot={}, duration={}ns, thread={}, target_block={:?}",
+            slot, final_slot_duration.as_nanos(), slot.thread, target_id
+        );
 
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
