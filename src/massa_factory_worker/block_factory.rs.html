@@ -585,7 +585,7 @@
                     <span class="string">"Channel timeout: get_block_endorsements took &gt;{}ms for slot {}: {:?}. Proceeding with empty endorsements."</span>,
                     channel_timeout.as_millis(), slot, e
                 );
-                (<span class="macro">vec!</span>[], massa_storage::Storage::create_root())
+                (<span class="macro">vec!</span>[<span class="prelude-val">None </span>; <span class="self">self</span>.cfg.endorsement_count <span class="kw">as </span>usize], <span class="self">self</span>.channels.storage.clone_without_refs())
             }
         };
         timings.push((<span class="string">"get_block_endorsements END"</span>, MassaTime::now()));
