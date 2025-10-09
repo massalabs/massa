@@ -665,7 +665,6 @@ async fn launch(
         max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
         max_operation_pool_excess_items: SETTINGS.pool.max_operation_pool_excess_items,
         operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
-        denunciation_pool_refresh_interval: SETTINGS.pool.denunciation_pool_refresh_interval,
         operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
         operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,

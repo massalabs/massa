@@ -214,9 +214,6 @@ fn create_recursive_exec_mock() -> MockExecutionController {
             ]
         });
     story
-        .expect_get_denunciation_execution_status()
-        .returning(|_| (false, false));
-    story
 }
 
 // Create a execution controller that will return the same result for all as it's not always used
