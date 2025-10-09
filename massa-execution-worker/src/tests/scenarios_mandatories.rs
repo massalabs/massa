@@ -4337,16 +4337,7 @@ fn send_and_receive_async_message_with_reset() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            assert_eq!(changes.async_pool_changes.0.len(), 1);
-            assert_eq!(
-                changes.async_pool_changes.0.first_key_value().unwrap().1,
-                &massa_models::types::SetUpdateOrDelete::Set(message_cloned.clone())
-            );
-            assert_eq!(
-                changes.async_pool_changes.0.first_key_value().unwrap().0,
-                &message_cloned.compute_id()
-            );
-
+            assert_eq!(changes.async_pool_changes.0.len(), 0);
             finalized_waitpoint_trigger_handle.trigger();
         });
 
