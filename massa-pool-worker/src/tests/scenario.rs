@@ -31,61 +31,6 @@ use massa_signature::KeyPair;
 
 use super::tools::PoolTestBoilerPlate;
 
-// Helper to create a recursive execution mock for scenarios
-fn create_recursive_execution_mock(
-    max_ops: usize,
-    addr: Address,
-    balances: Vec<(Option<Amount>, Option<Amount>)>,
-    owned_ops: &PreHashSet<OperationId>,
-) -> MockExecutionController {
-    let owned_ops = owned_ops.clone();
-    let mut mock =
-        create_basic_get_block_operation_execution_mock(max_ops, addr, balances, &owned_ops);
-    mock.expect_clone_box().returning(move || {
-        Box::new(create_recursive_execution_mock(
-            max_ops,
-            addr,
-            vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
-            &owned_ops,
-        ))
-    });
-    mock
-}
-
-// Helper to create a recursive selector mock for scenarios
-fn create_recursive_selector_mock(addr: Address) -> MockSelectorController {
-    let mut story = MockSelectorController::new();
-    story
-        .expect_clone_box()
-        .returning(move || Box::new(create_recursive_selector_mock(addr)));
-    story
-        .expect_get_available_selections_in_range()
-        .returning(move |slot_range, opt_addrs| {
-            let mut all_slots = BTreeMap::new();
-            let address = *opt_addrs
-                .expect("No addresses filter given")
-                .iter()
-                .next()
-                .expect("No addresses given");
-            for i in 0..15 {
-                for j in 0..32 {
-                    let s = Slot::new(i, j);
-                    if slot_range.contains(&s) {
-                        all_slots.insert(
-                            s,
-                            Selection {
-                                producer: address,
-                                endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
-                            },
-                        );
-                    }
-                }
-            }
-            Ok(all_slots)
-        });
-    story
-}
-
 /// # Test simple get operation
 /// Just try to get some operations stored in pool
 ///
@@ -110,15 +55,51 @@ fn test_simple_get_operations() {
     let ops = create_some_operations(10, &op_gen);
     let mock_owned_ops = ops.iter().map(|op| op.id).collect();
 
-    let execution_controller = Box::new(create_recursive_execution_mock(
-        10,
-        addr,
-        vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
-        &mock_owned_ops,
-    ));
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller.expect_clone_box().returning(move || {
+        Box::new(create_basic_get_block_operation_execution_mock(
+            10,
+            addr,
+            vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
+            &mock_owned_ops,
+        ))
+    });
 
     // Provide the selector boilerplate
-    let selector_controller = Box::new(create_recursive_selector_mock(addr));
+    let selector_controller = {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_clone_box().times(2).returning(|| {
+            //TODO: Add sequence
+            let mut story = MockSelectorController::new();
+            story
+                .expect_get_available_selections_in_range()
+                .returning(|slot_range, opt_addrs| {
+                    let mut all_slots = BTreeMap::new();
+                    let addr = *opt_addrs
+                        .expect("No addresses filter given")
+                        .iter()
+                        .next()
+                        .expect("No addresses given");
+                    for i in 0..15 {
+                        for j in 0..32 {
+                            let s = Slot::new(i, j);
+                            if slot_range.contains(&s) {
+                                all_slots.insert(
+                                    s,
+                                    Selection {
+                                        producer: addr,
+                                        endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    Ok(all_slots)
+                });
+            Box::new(story)
+        });
+        res
+    };
 
     // Setup the pool controller
     let config = PoolConfig::default();
@@ -142,8 +123,7 @@ fn test_simple_get_operations() {
     };
     // This is what we are testing....
     let block_operations_storage = pool_controller
-        .get_block_operations(&Slot::new(1, creator_thread), None)
-        .expect("Failed to get block operations")
+        .get_block_operations(&Slot::new(1, creator_thread))
         .1;
 
     pool_manager.stop();
@@ -208,15 +188,51 @@ fn test_get_operations_overflow() {
     };
     let creator_thread = creator_address.get_thread(config.thread_count);
 
-    let execution_controller = Box::new(create_recursive_execution_mock(
-        MAX_OP_LEN,
-        creator_address,
-        vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
-        &operations.iter().take(MAX_OP_LEN).map(|op| op.id).collect(),
-    ));
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller.expect_clone_box().returning(move || {
+        Box::new(create_basic_get_block_operation_execution_mock(
+            MAX_OP_LEN,
+            creator_address,
+            vec![(Some(Amount::from_raw(1)), Some(Amount::from_raw(1)))],
+            &operations.iter().take(MAX_OP_LEN).map(|op| op.id).collect(),
+        ))
+    });
 
     // Provide the selector boilerplate
-    let selector_controller = Box::new(create_recursive_selector_mock(creator_address));
+    let selector_controller = {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_clone_box().times(2).returning(|| {
+            //TODO: Add sequence
+            let mut story = MockSelectorController::new();
+            story
+                .expect_get_available_selections_in_range()
+                .returning(|slot_range, opt_addrs| {
+                    let mut all_slots = BTreeMap::new();
+                    let addr = *opt_addrs
+                        .expect("No addresses filter given")
+                        .iter()
+                        .next()
+                        .expect("No addresses given");
+                    for i in 0..15 {
+                        for j in 0..32 {
+                            let s = Slot::new(i, j);
+                            if slot_range.contains(&s) {
+                                all_slots.insert(
+                                    s,
+                                    Selection {
+                                        producer: addr,
+                                        endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    Ok(all_slots)
+                });
+            Box::new(story)
+        });
+        res
+    };
 
     let PoolTestBoilerPlate {
         mut pool_manager,
@@ -231,8 +247,7 @@ fn test_get_operations_overflow() {
 
     // This is what we are testing....
     let block_operations_storage = pool_controller
-        .get_block_operations(&Slot::new(1, creator_thread), None)
-        .expect("Failed to get block operations")
+        .get_block_operations(&Slot::new(1, creator_thread))
         .1;
     pool_manager.stop();
 
@@ -350,7 +365,7 @@ fn test_get_operations_overflow() {
 //         // Provide the selector boilerplate
 //         let selector_controller = {
 //             let mut res = Box::new(MockSelectorController::new());
-//             res.expect_clone_box().returning(|| {
+//             res.expect_clone_box().times(2).returning(|| {
 //                 //TODO: Add sequence
 //                 let mut story = MockSelectorController::new();
 //                 story.expect_get_address_selections().returning(|_, _, _| {

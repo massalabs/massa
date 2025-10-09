@@ -3553,7 +3553,6 @@ dependencies = [
 name = "massa_pool_exports"
 version = "28.16.0"
 dependencies = [
- "displaydoc",
  "massa_execution_exports",
  "massa_models",
  "massa_pos_exports",
@@ -3562,7 +3561,6 @@ dependencies = [
  "mockall",
  "mockall_wrap",
  "serde",
- "thiserror 1.0.69",
  "tokio",
 ]
 

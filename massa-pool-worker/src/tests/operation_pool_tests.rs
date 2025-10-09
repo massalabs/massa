@@ -22,53 +22,47 @@ use crate::tests::tools::OpGenerator;
 use super::tools::{
     create_some_operations, default_mock_execution_controller, pool_test, PoolTestBoilerPlate,
 };
-use massa_models::{
-    address::Address, amount::Amount, config::ENDORSEMENT_COUNT, operation::OperationId, slot::Slot,
-};
+use massa_models::{amount::Amount, config::ENDORSEMENT_COUNT, operation::OperationId, slot::Slot};
 use massa_pool_exports::PoolConfig;
 use massa_pos_exports::{MockSelectorController, Selection};
 use std::{collections::BTreeMap, time::Duration};
 
-// Helper to create a recursive selector mock for operation pool tests
-fn create_recursive_selector_for_ops(addr: Address) -> MockSelectorController {
-    let mut story = MockSelectorController::new();
-    story
-        .expect_clone_box()
-        .returning(move || Box::new(create_recursive_selector_for_ops(addr)));
-    story
-        .expect_get_available_selections_in_range()
-        .returning(move |slot_range, opt_addrs| {
-            let mut all_slots = BTreeMap::new();
-            let address = *opt_addrs
-                .expect("No addresses filter given")
-                .iter()
-                .next()
-                .expect("No addresses given");
-            for i in 0..15 {
-                for j in 0..32 {
-                    let s = Slot::new(i, j);
-                    if slot_range.contains(&s) {
-                        all_slots.insert(
-                            s,
-                            Selection {
-                                producer: address,
-                                endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
-                            },
-                        );
-                    }
-                }
-            }
-            Ok(all_slots)
-        });
-    story
-}
-
 #[test]
 fn test_add_operation() {
-    use massa_signature::KeyPair;
     let execution_controller = default_mock_execution_controller();
-    let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-    let selector_controller = Box::new(create_recursive_selector_for_ops(addr));
+    let selector_controller = {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_clone_box().times(2).returning(|| {
+            let mut story = MockSelectorController::new();
+            story
+                .expect_get_available_selections_in_range()
+                .returning(|slot_range, opt_addrs| {
+                    let mut all_slots = BTreeMap::new();
+                    let addr = *opt_addrs
+                        .expect("No addresses filter given")
+                        .iter()
+                        .next()
+                        .expect("No addresses given");
+                    for i in 0..15 {
+                        for j in 0..32 {
+                            let s = Slot::new(i, j);
+                            if slot_range.contains(&s) {
+                                all_slots.insert(
+                                    s,
+                                    Selection {
+                                        producer: addr,
+                                        endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    Ok(all_slots)
+                });
+            Box::new(story)
+        });
+        res
+    };
     pool_test(
         PoolConfig::default(),
         execution_controller,
@@ -80,12 +74,7 @@ fn test_add_operation() {
             operation_pool.add_operations(storage);
             // Allow some time for the pool to add the operations
             std::thread::sleep(Duration::from_secs(3));
-            assert_eq!(
-                operation_pool
-                    .get_operation_count(None)
-                    .expect("Failed to get operation count"),
-                10
-            );
+            assert_eq!(operation_pool.get_operation_count(), 10);
         },
     );
 }
@@ -94,12 +83,42 @@ fn test_add_operation() {
 /// # Initialization
 #[test]
 fn test_add_irrelevant_operation() {
-    use massa_signature::KeyPair;
     let pool_config = PoolConfig::default();
     let thread_count = pool_config.thread_count;
     let execution_controller = default_mock_execution_controller();
-    let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-    let selector_controller = Box::new(create_recursive_selector_for_ops(addr));
+    let selector_controller = {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_clone_box().times(2).returning(|| {
+            let mut story = MockSelectorController::new();
+            story
+                .expect_get_available_selections_in_range()
+                .returning(|slot_range, opt_addrs| {
+                    let mut all_slots = BTreeMap::new();
+                    let addr = *opt_addrs
+                        .expect("No addresses filter given")
+                        .iter()
+                        .next()
+                        .expect("No addresses given");
+                    for i in 0..15 {
+                        for j in 0..32 {
+                            let s = Slot::new(i, j);
+                            if slot_range.contains(&s) {
+                                all_slots.insert(
+                                    s,
+                                    Selection {
+                                        producer: addr,
+                                        endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    Ok(all_slots)
+                });
+            Box::new(story)
+        });
+        res
+    };
     pool_test(
         PoolConfig::default(),
         execution_controller,
@@ -112,26 +131,51 @@ fn test_add_irrelevant_operation() {
             operation_pool.add_operations(storage);
             // Allow some time for the pool to add the operations
             std::thread::sleep(Duration::from_secs(3));
-            assert_eq!(
-                operation_pool
-                    .get_operation_count(None)
-                    .expect("Failed to get operation count"),
-                0
-            );
+            assert_eq!(operation_pool.get_operation_count(), 0);
         },
     );
 }
 
 #[test]
 fn test_pool() {
-    use massa_signature::KeyPair;
     let pool_config = PoolConfig {
         max_operations_per_block: 10,
         ..Default::default()
     };
     let execution_controller = default_mock_execution_controller();
-    let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-    let selector_controller = Box::new(create_recursive_selector_for_ops(addr));
+    let selector_controller = {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_clone_box().times(2).returning(|| {
+            let mut story = MockSelectorController::new();
+            story
+                .expect_get_available_selections_in_range()
+                .returning(|slot_range, opt_addrs| {
+                    let mut all_slots = BTreeMap::new();
+                    let addr = *opt_addrs
+                        .expect("No addresses filter given")
+                        .iter()
+                        .next()
+                        .expect("No addresses given");
+                    for i in 0..15 {
+                        for j in 0..32 {
+                            let s = Slot::new(i, j);
+                            if slot_range.contains(&s) {
+                                all_slots.insert(
+                                    s,
+                                    Selection {
+                                        producer: addr,
+                                        endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    Ok(all_slots)
+                });
+            Box::new(story)
+        });
+        res
+    };
     let PoolTestBoilerPlate {
         mut pool_manager,
         mut pool_controller,
@@ -170,9 +214,7 @@ fn test_pool() {
     // // checks ops are the expected ones for thread 0 and 1 and various periods
     for thread in 0u8..pool_config.thread_count {
         let target_slot = Slot::new(0, thread);
-        let (ids, storage) = pool_controller
-            .get_block_operations(&target_slot, None)
-            .expect("Failed to get block operations");
+        let (ids, storage) = pool_controller.get_block_operations(&target_slot);
 
         assert_eq!(
             ids.iter()

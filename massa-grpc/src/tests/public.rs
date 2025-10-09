@@ -497,7 +497,7 @@ async fn get_endorsements() {
     let mut pool_ctrl = Box::new(MockPoolController::new());
     pool_ctrl
         .expect_contains_endorsements()
-        .returning(|ids, _| Ok(ids.iter().map(|_| true).collect::<Vec<bool>>()));
+        .returning(|ids| ids.iter().map(|_| true).collect::<Vec<bool>>());
 
     public_server.pool_controller = pool_ctrl;
 
@@ -1241,7 +1241,7 @@ async fn search_endorsements() {
     let mut pool_ctrl = Box::new(MockPoolController::new());
     pool_ctrl
         .expect_contains_endorsements()
-        .returning(|ids, _| Ok(ids.iter().map(|_| true).collect::<Vec<bool>>()));
+        .returning(|ids| ids.iter().map(|_| true).collect::<Vec<bool>>());
 
     let mut consensus_ctrl = Box::new(MockConsensusController::new());
     consensus_ctrl.expect_get_block_statuses().returning(|ids| {

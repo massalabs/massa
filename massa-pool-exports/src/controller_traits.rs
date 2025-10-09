@@ -8,9 +8,6 @@ use massa_models::{
     slot::Slot,
 };
 use massa_storage::Storage;
-use massa_time::MassaTime;
-
-use crate::error::PoolError;
 
 #[cfg(feature = "test-exports")]
 use std::sync::{Arc, RwLock};
@@ -31,49 +28,32 @@ pub trait PoolController: Send + Sync {
     fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]);
 
     /// Get operations for block creation.
-    fn get_block_operations(
-        &self,
-        slot: &Slot,
-        timeout: Option<MassaTime>,
-    ) -> Result<(Vec<OperationId>, Storage), PoolError>;
+    fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage);
 
     /// Get endorsements for a block.
     fn get_block_endorsements(
         &self,
         target_block: &BlockId,
         slot: &Slot,
-        timeout: Option<MassaTime>,
-    ) -> Result<(Vec<Option<EndorsementId>>, Storage), PoolError>;
+    ) -> (Vec<Option<EndorsementId>>, Storage);
 
     /// Get denunciations for a block header.
-    fn get_block_denunciations(
-        &self,
-        target_slot: &Slot,
-        timeout: Option<MassaTime>,
-    ) -> Result<Vec<Denunciation>, PoolError>;
+    fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation>;
 
     /// Get the number of endorsements in the pool
-    fn get_endorsement_count(&self, timeout: Option<MassaTime>) -> Result<usize, PoolError>;
+    fn get_endorsement_count(&self) -> usize;
 
     /// Get the number of operations in the pool
-    fn get_operation_count(&self, timeout: Option<MassaTime>) -> Result<usize, PoolError>;
+    fn get_operation_count(&self) -> usize;
 
     /// Check if the pool contains a list of endorsements. Returns one boolean per item.
-    fn contains_endorsements(
-        &self,
-        endorsements: &[EndorsementId],
-        timeout: Option<MassaTime>,
-    ) -> Result<Vec<bool>, PoolError>;
+    fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool>;
 
     /// Check if the pool contains a list of operations. Returns one boolean per item.
-    fn contains_operations(
-        &self,
-        operations: &[OperationId],
-        timeout: Option<MassaTime>,
-    ) -> Result<Vec<bool>, PoolError>;
+    fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool>;
 
     /// Get the number of denunciations in the pool
-    fn get_denunciation_count(&self, timeout: Option<MassaTime>) -> Result<usize, PoolError>;
+    fn get_denunciation_count(&self) -> usize;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.

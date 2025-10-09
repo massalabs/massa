@@ -64,21 +64,21 @@ fn basic_creation() {
     let mut pool_controller = Box::new(MockPoolController::new());
     pool_controller
         .expect_get_block_denunciations()
-        .returning(|slot, _timeout| {
+        .returning(|slot| {
             assert_eq!(*slot, Slot::new(1, 0));
-            Ok(vec![])
+            vec![]
         });
     pool_controller
         .expect_get_block_operations()
-        .returning(|slot, _timeout| {
+        .returning(|slot| {
             assert_eq!(*slot, Slot::new(1, 0));
-            Ok((vec![], Storage::create_root()))
+            (vec![], Storage::create_root())
         });
     pool_controller
         .expect_get_block_endorsements()
-        .returning(|_, slot, _timeout| {
+        .returning(|_, slot| {
             assert_eq!(*slot, Slot::new(1, 0));
-            Ok((vec![], Storage::create_root()))
+            (vec![], Storage::create_root())
         });
     let mut test_factory = BlockTestFactory::new(
         &keypair,
@@ -119,16 +119,16 @@ fn basic_creation_with_operation() {
     let mut pool_controller = Box::new(MockPoolController::new());
     pool_controller
         .expect_get_block_denunciations()
-        .returning(|slot, _timeout| {
+        .returning(|slot| {
             assert_eq!(*slot, Slot::new(1, 0));
-            Ok(vec![])
+            vec![]
         });
     let storage = Storage::create_root();
     let keypair_clone = keypair.clone();
     let mut pool_storage = storage.clone_without_refs();
     pool_controller
         .expect_get_block_operations()
-        .returning(move |slot, _timeout| {
+        .returning(move |slot| {
             assert_eq!(*slot, Slot::new(1, 0));
             let content = Operation {
                 fee: Amount::from_str("0.01").unwrap(),
@@ -143,14 +143,14 @@ fn basic_creation_with_operation() {
             )
             .unwrap();
             pool_storage.store_operations(vec![operation.clone()]);
-            Ok((vec![operation.id], pool_storage.clone()))
+            (vec![operation.id], pool_storage.clone())
         });
     let pool_storage_2 = storage.clone_without_refs();
     pool_controller
         .expect_get_block_endorsements()
-        .returning(move |_, slot, _timeout| {
+        .returning(move |_, slot| {
             assert_eq!(*slot, Slot::new(1, 0));
-            Ok((vec![], pool_storage_2.clone()))
+            (vec![], pool_storage_2.clone())
         });
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
     let pair2 = pair.clone();

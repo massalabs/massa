@@ -7,72 +7,42 @@ use massa_signature::KeyPair;
 
 use super::tools::{create_endorsement, default_mock_execution_controller, pool_test};
 
-fn create_selector_mock_with_address(address: Address) -> MockSelectorController {
-    let mut res = MockSelectorController::new();
-    res.expect_clone_box()
-        .returning(move || Box::new(create_selector_mock_with_address(address)));
+fn default_mock_selector(address: Address) -> Box<MockSelectorController> {
+    let mut res = Box::new(MockSelectorController::new());
+    res.expect_clone_box().returning(move || {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_get_selection().returning(move |_| {
+            Ok(Selection {
+                producer: address,
+                endorsements: vec![address; 16],
+            })
+        });
+        res.expect_get_available_selections_in_range()
+            .returning(move |slots, _| {
+                let mut res = BTreeMap::default();
+                let start = slots.start();
+                let end = slots.end();
+                let mut current = *start;
+                while current <= *end {
+                    res.insert(
+                        current,
+                        Selection {
+                            producer: address,
+                            endorsements: vec![address; 16],
+                        },
+                    );
+                    current = current.get_next_slot(THREAD_COUNT).unwrap();
+                }
+                Ok(res)
+            });
+        res
+    });
     res.expect_get_selection().returning(move |_| {
         Ok(Selection {
             producer: address,
             endorsements: vec![address; 16],
         })
     });
-    res.expect_get_available_selections_in_range()
-        .returning(move |slots, _| {
-            let mut result = BTreeMap::default();
-            let start = slots.start();
-            let end = slots.end();
-            let mut current = *start;
-            while current <= *end {
-                result.insert(
-                    current,
-                    Selection {
-                        producer: address,
-                        endorsements: vec![address; 16],
-                    },
-                );
-                current = current.get_next_slot(THREAD_COUNT).unwrap();
-            }
-            Ok(result)
-        });
-    res
-}
-
-fn default_mock_selector(address: Address) -> Box<MockSelectorController> {
-    Box::new(create_selector_mock_with_address(address))
-}
-
-fn create_selector_mock_bad_pos(address: Address) -> MockSelectorController {
-    let mut res = MockSelectorController::new();
-    res.expect_clone_box()
-        .returning(move || Box::new(create_selector_mock_bad_pos(address)));
-    res.expect_get_selection().returning(move |_| {
-        // We make a new address and so the PoS draw isn't correct
-        let sender_keypair = KeyPair::generate(0).unwrap();
-        let address2 = Address::from_public_key(&sender_keypair.get_public_key());
-        Ok(Selection {
-            producer: address,
-            endorsements: vec![address2; 16],
-        })
-    });
-    res.expect_get_available_selections_in_range()
-        .returning(move |slots, _| {
-            let mut result = BTreeMap::default();
-            let start = slots.start();
-            let end = slots.end();
-            let mut current = *start;
-            while current <= *end {
-                result.insert(
-                    current,
-                    Selection {
-                        producer: address,
-                        endorsements: vec![address; 16],
-                    },
-                );
-                current = current.get_next_slot(THREAD_COUNT).unwrap();
-            }
-            Ok(result)
-        });
     res
 }
 
@@ -96,11 +66,7 @@ fn test_add_endorsements() {
             pool.add_endorsements(storage.clone());
             // Allow some time for the pool to add the endorsements
             std::thread::sleep(Duration::from_secs(2));
-            assert_eq!(
-                pool.get_endorsement_count(None)
-                    .expect("Failed to get endorsement count"),
-                2
-            );
+            assert_eq!(pool.get_endorsement_count(), 2);
         },
     );
 }
@@ -110,7 +76,47 @@ fn test_dont_add_endorsements_bad_pos() {
     let sender_keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&sender_keypair.get_public_key());
     let execution_controller = default_mock_execution_controller();
-    let selector_controller = Box::new(create_selector_mock_bad_pos(address));
+    let selector_controller = {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_clone_box().returning(move || {
+            let mut res = Box::new(MockSelectorController::new());
+            res.expect_get_selection().returning(move |_| {
+                // We make a new address and so the PoS draw isn't correct
+                let sender_keypair = KeyPair::generate(0).unwrap();
+                let address2 = Address::from_public_key(&sender_keypair.get_public_key());
+                Ok(Selection {
+                    producer: address,
+                    endorsements: vec![address2; 16],
+                })
+            });
+            res.expect_get_available_selections_in_range()
+                .returning(move |slots, _| {
+                    let mut res = BTreeMap::default();
+                    let start = slots.start();
+                    let end = slots.end();
+                    let mut current = *start;
+                    while current <= *end {
+                        res.insert(
+                            current,
+                            Selection {
+                                producer: address,
+                                endorsements: vec![address; 16],
+                            },
+                        );
+                        current = current.get_next_slot(THREAD_COUNT).unwrap();
+                    }
+                    Ok(res)
+                });
+            res
+        });
+        res.expect_get_selection().returning(move |_| {
+            Ok(Selection {
+                producer: address,
+                endorsements: vec![address; 16],
+            })
+        });
+        res
+    };
 
     pool_test(
         PoolConfig::default(),
@@ -126,11 +132,7 @@ fn test_dont_add_endorsements_bad_pos() {
             pool.add_endorsements(storage.clone());
             // Allow some time for the pool to add the endorsements
             std::thread::sleep(Duration::from_secs(2));
-            assert_eq!(
-                pool.get_endorsement_count(None)
-                    .expect("Failed to get endorsement count"),
-                0
-            );
+            assert_eq!(pool.get_endorsement_count(), 0);
         },
     );
 }
@@ -158,11 +160,7 @@ fn test_dont_add_endorsements_outdated() {
             pool.add_endorsements(storage.clone());
             // Allow some time for the pool to add the endorsements
             std::thread::sleep(Duration::from_secs(2));
-            assert_eq!(
-                pool.get_endorsement_count(None)
-                    .expect("Failed to get endorsement count"),
-                0
-            );
+            assert_eq!(pool.get_endorsement_count(), 0);
         },
     );
 }
@@ -191,11 +189,7 @@ fn test_dont_add_endorsements_pool_full() {
             pool.add_endorsements(storage.clone());
             // Allow some time for the pool to add the endorsements
             std::thread::sleep(Duration::from_secs(2));
-            assert_eq!(
-                pool.get_endorsement_count(None)
-                    .expect("Failed to get endorsement count"),
-                1
-            );
+            assert_eq!(pool.get_endorsement_count(), 1);
         },
     );
 }
@@ -223,15 +217,10 @@ fn test_remove_endorsements_pool_outdated() {
             pool.notify_final_cs_periods(&vec![1; THREAD_COUNT as usize]);
             std::thread::sleep(Duration::from_secs(2));
             assert_eq!(
-                pool.contains_endorsements(&[endorsements[0].id, endorsements[1].id], None)
-                    .expect("Failed to check contains endorsements"),
+                pool.contains_endorsements(&[endorsements[0].id, endorsements[1].id]),
                 vec![false, true]
             );
-            assert_eq!(
-                pool.get_endorsement_count(None)
-                    .expect("Failed to get endorsement count"),
-                1
-            );
+            assert_eq!(pool.get_endorsement_count(), 1);
         },
     );
 }
@@ -258,12 +247,7 @@ fn test_get_block_endorsements_works() {
             // Allow some time for the pool to add the endorsements
             std::thread::sleep(Duration::from_secs(2));
             let (endorsement_ids, endorsements_storage) = pool
-                .get_block_endorsements(
-                    &endorsements[0].content.endorsed_block,
-                    &Slot::new(1, 2),
-                    None,
-                )
-                .expect("Failed to get block endorsements");
+                .get_block_endorsements(&endorsements[0].content.endorsed_block, &Slot::new(1, 2));
             assert_eq!(endorsement_ids.iter().filter(|id| id.is_some()).count(), 2);
             assert!(endorsement_ids[0].is_some());
             assert!(endorsement_ids[1].is_some());

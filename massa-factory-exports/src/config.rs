@@ -31,8 +31,4 @@ pub struct FactoryConfig {
     pub stop_production_when_zero_connections: bool,
     /// chain id
     pub chain_id: u64,
-    /// warn if block production is delayed by more than this
-    pub block_delay_warn: MassaTime,
-    /// timeout for optional channel calls in block production
-    pub block_opt_channel_timeout: MassaTime,
 }

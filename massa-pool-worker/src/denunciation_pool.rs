@@ -14,7 +14,6 @@ use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 
-#[derive(Clone)]
 pub struct DenunciationPool {
     /// pool configuration
     config: PoolConfig,
@@ -34,13 +33,6 @@ impl DenunciationPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             denunciations_cache: Default::default(),
         }
-    }
-
-    /// Replace the current denunciation pool contents with the contents of another one.
-    /// This is used for double buffering.
-    pub(crate) fn replace_with(&mut self, other: &DenunciationPool) {
-        self.last_cs_final_periods = other.last_cs_final_periods.clone();
-        self.denunciations_cache = other.denunciations_cache.clone();
     }
 
     /// Get the number of stored elements

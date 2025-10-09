@@ -450,10 +450,6 @@
     staking_wallet_path = "config/staking_wallets"
     # stop or not the production in case we are not connected to anyone
     stop_production_when_zero_connections = true
-    # warn if block production is delayed by more than the given time in milliseconds
-    block_delay_warn_threshold = 500
-    # timeout for optional channel calls in block production (in milliseconds)
-    block_opt_channel_timeout = 1000
 
 [versioning]
     # Warn user to update its node if we reach this percentage for announced network versions

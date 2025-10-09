@@ -16,7 +16,6 @@ use std::{
 };
 use tracing::{trace, warn};
 
-#[derive(Clone)]
 pub struct EndorsementPool {
     /// configuration
     config: PoolConfig,
@@ -57,15 +56,6 @@ impl EndorsementPool {
             channels,
             wallet,
         }
-    }
-
-    /// Replace the current endorsement pool contents with the contents of another one.
-    /// This is used for double buffering.
-    pub(crate) fn replace_with(&mut self, other: &EndorsementPool) {
-        self.last_cs_final_periods = other.last_cs_final_periods.clone();
-        self.endorsements_indexed = other.endorsements_indexed.clone();
-        self.endorsements_sorted = other.endorsements_sorted.clone();
-        self.storage.replace_with(&other.storage);
     }
 
     /// Get the number of stored elements

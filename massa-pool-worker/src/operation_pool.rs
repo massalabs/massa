@@ -18,7 +18,6 @@ use tracing::{debug, trace, warn};
 
 use crate::types::OperationInfo;
 
-#[derive(Clone)]
 pub struct OperationPool {
     /// configuration
     config: PoolConfig,
@@ -58,14 +57,6 @@ impl OperationPool {
             channels,
             wallet,
         }
-    }
-
-    /// Replace the current operation pool contents with the contents of another one.
-    /// This is used for double buffering.
-    pub(crate) fn replace_with(&mut self, other: &OperationPool) {
-        self.sorted_ops = other.sorted_ops.clone();
-        self.last_cs_final_periods = other.last_cs_final_periods.clone();
-        self.storage.replace_with(&other.storage);
     }
 
     /// Get the relevant PoS draws of our staking addresses
