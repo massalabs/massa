@@ -16,6 +16,8 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
             components: BTreeMap::from([
                 (MipComponent::Execution, 1),
                 (MipComponent::FinalState, 1),
+                (MipComponent::Execution, 1),
+                (MipComponent::FinalState, 1),
             ]),
             // Note: All bootstrap servers should have been updated to the latest version before the start time
             start: MassaTime::from_utc_ymd_hms(2025, 01, 13, 14, 0, 0).unwrap(), // Monday, January 13, 2025 2:00:00 PM UTC

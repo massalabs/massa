@@ -368,7 +368,7 @@ dependencies = [
  "bitflags 2.9.0",
  "cexpr",
  "clang-sys",
- "itertools 0.12.1",
+ "itertools 0.10.5",
  "lazy_static",
  "lazycell",
  "proc-macro2 1.0.94",
@@ -1572,21 +1572,6 @@ name = "fragile"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa"
-
-[[package]]
-name = "function_name"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1ab577a896d09940b5fe12ec5ae71f9d8211fff62c919c03a3750a9901e98a7"
-dependencies = [
- "function_name-proc-macro",
-]
-
-[[package]]
-name = "function_name-proc-macro"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "673464e1e314dd67a0fd9544abc99e8eb28d0c7e3b69b033bcff9b2d00b87333"
 
 [[package]]
 name = "funty"
@@ -2916,7 +2901,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?branch=mainnet_2_6#aac9a2ef5fd8882311f5e64cd76c6476c9f34a67"
+source = "git+https://github.com/massalabs/massa-proto-rs.git?rev=9bfbbe1b5dc62815aa2b9f9c5b827b0198da65e3#9bfbbe1b5dc62815aa2b9f9c5b827b0198da65e3"
 dependencies = [
  "glob",
  "prost",
@@ -2930,14 +2915,13 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=mainnet_2_6#549ed9672e83da8da9d7ba4417f3b6536bfe64ae"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=optimize_abi_calls#a9a16d03a794b451a526c10cb1f0c445e90712c8"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
  "base64 0.21.7",
  "chrono",
  "displaydoc",
- "function_name",
  "loupe",
  "massa-proto-rs",
  "more-asserts 0.3.1",
@@ -3569,6 +3553,7 @@ dependencies = [
 name = "massa_pool_exports"
 version = "28.16.0"
 dependencies = [
+ "displaydoc",
  "massa_execution_exports",
  "massa_models",
  "massa_pos_exports",
@@ -3577,6 +3562,7 @@ dependencies = [
  "mockall",
  "mockall_wrap",
  "serde",
+ "thiserror 1.0.69",
  "tokio",
 ]
 
@@ -4654,8 +4640,8 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.5.0",
- "itertools 0.12.1",
+ "heck 0.4.1",
+ "itertools 0.10.5",
  "log",
  "multimap",
  "once_cell",
@@ -4675,7 +4661,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.12.1",
+ "itertools 0.10.5",
  "proc-macro2 1.0.94",
  "quote 1.0.40",
  "syn 2.0.100",

@@ -5,29 +5,36 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-test-exports = ["crossbeam-channel", "massa_models/test-exports", "mockall", "mockall_wrap"]
+test-exports = [
+    "crossbeam-channel",
+    "massa_models/test-exports",
+    "mockall",
+    "mockall_wrap",
+]
 
 [dependencies]
-bitvec = {workspace = true, "features" = ["serde"]}
-displaydoc = {workspace = true}
-nom = {workspace = true}
-serde = {workspace = true, "features" = ["derive"]}
-serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
-thiserror = {workspace = true}
-tracing = {workspace = true}
-num = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
-parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
-crossbeam-channel = {workspace = true, "optional" = true}
-mockall = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.11.4", "optional": true} if problem
-mockall_wrap = {workspace = true, "optional" = true}
-massa_hash = {workspace = true}
-massa_models = {workspace = true}
-massa_serialization = {workspace = true}
-massa_signature = {workspace = true}
-massa_db_exports = {workspace = true}
+bitvec = { workspace = true, "features" = ["serde"] }
+displaydoc = { workspace = true }
+nom = { workspace = true }
+serde = { workspace = true, "features" = ["derive"] }
+serde_json = { workspace = true } # BOM UPGRADE     Revert to "1.0" if problem
+thiserror = { workspace = true }
+tracing = { workspace = true }
+num = { workspace = true, "features" = [
+    "serde",
+] } # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
+parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
+crossbeam-channel = { workspace = true, "optional" = true }
+mockall = { workspace = true, "optional" = true } # BOM UPGRADE     Revert to {"version": "0.11.4", "optional": true} if problem
+mockall_wrap = { workspace = true, "optional" = true }
+massa_hash = { workspace = true }
+massa_models = { workspace = true }
+massa_serialization = { workspace = true }
+massa_signature = { workspace = true }
+massa_db_exports = { workspace = true }
 
 [dev-dependencies]
-mockall = {workspace = true}
-tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
-assert_matches = {workspace = true}
-massa_db_worker = {workspace = true}
+mockall = { workspace = true }
+tempfile = { workspace = true }        # BOM UPGRADE     Revert to "3.3" if problem
+assert_matches = { workspace = true }
+massa_db_worker = { workspace = true }

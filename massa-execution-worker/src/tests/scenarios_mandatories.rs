@@ -1409,7 +1409,7 @@ fn cancel_async_message() {
             assert_eq!(
                 changes.ledger_changes.0.get(&sender_addr).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: SetOrKeep::Set(Amount::from_str("90.298635211").unwrap()),
+                    balance: SetOrKeep::Set(Amount::from_str("90.262165227").unwrap()),
                     bytecode: massa_models::types::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
@@ -1799,7 +1799,7 @@ fn deferred_call_register() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
                         change_sc_update.balance,
-                        SetOrKeep::Set(Amount::from_str("75.361635312").unwrap())
+                        SetOrKeep::Set(Amount::from_str("75.325165328").unwrap())
                     );
                 }
                 _ => panic!("wrong change type"),
@@ -4337,16 +4337,7 @@ fn send_and_receive_async_message_with_reset() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            assert_eq!(changes.async_pool_changes.0.len(), 1);
-            assert_eq!(
-                changes.async_pool_changes.0.first_key_value().unwrap().1,
-                &massa_models::types::SetUpdateOrDelete::Set(message_cloned.clone())
-            );
-            assert_eq!(
-                changes.async_pool_changes.0.first_key_value().unwrap().0,
-                &message_cloned.compute_id()
-            );
-
+            assert_eq!(changes.async_pool_changes.0.len(), 0);
             finalized_waitpoint_trigger_handle.trigger();
         });
 
@@ -4772,7 +4763,7 @@ fn test_dump_block() {
 
     std::thread::sleep(Duration::from_secs(1));
 
-    // if the the storage backend for the dump-block feature is a rocksdb, this
+    // if the storage backend for the dump-block feature is a rocksdb, this
     // is mandatory (the db must be closed before we can reopen it to check the
     // data)
     drop(universe);

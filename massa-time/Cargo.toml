@@ -5,10 +5,10 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
-time = {workspace = true, "features" = ["serde", "formatting"]}
-displaydoc = {workspace = true}
-serde = {workspace = true, "features" = ["derive"]}
-thiserror = {workspace = true}
-nom = {workspace = true}
-massa-proto-rs = {workspace = true, "features" = ["tonic"]}
-massa_serialization = {workspace = true}
+time = { workspace = true, "features" = ["serde", "formatting"] }
+displaydoc = { workspace = true }
+serde = { workspace = true, "features" = ["derive"] }
+thiserror = { workspace = true }
+nom = { workspace = true }
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
+massa_serialization = { workspace = true }

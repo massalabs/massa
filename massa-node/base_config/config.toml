@@ -425,6 +425,14 @@
     max_operation_pool_excess_items = 100000
     # refresh interval of the operation pool scoring (milliseconds)
     operation_pool_refresh_interval = 5000
+    # buffer swap interval for the operation pool (milliseconds)
+    operation_pool_swap_interval = 100
+    # buffer swap interval for the endorsement pool (milliseconds)
+    endorsement_pool_swap_interval = 100
+    # refresh interval of the denunciation pool execution cache (milliseconds)
+    denunciation_pool_refresh_interval = 5000
+    # buffer swap interval for the denunciation pool (milliseconds)
+    denunciation_pool_swap_interval = 100
     # if an operation is too much in the future it will be ignored (milliseconds)
     operation_max_future_start_delay = 50000
     # max number of endorsements kept per thread
@@ -450,6 +458,10 @@
     staking_wallet_path = "config/staking_wallets"
     # stop or not the production in case we are not connected to anyone
     stop_production_when_zero_connections = true
+    # warn if block production is delayed by more than the given time in milliseconds
+    block_delay_warn_threshold = 500
+    # timeout for optional channel calls in block production (in milliseconds)
+    block_opt_channel_timeout = 1000
 
 [versioning]
     # Warn user to update its node if we reach this percentage for announced network versions

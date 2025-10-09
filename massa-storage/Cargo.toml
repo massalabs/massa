@@ -5,13 +5,16 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-test-exports = ["massa_factory_exports/test-exports", "massa_metrics/test-exports"]
+test-exports = [
+    "massa_factory_exports/test-exports",
+    "massa_metrics/test-exports",
+]
 
 [dependencies]
-parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
-massa_models = {workspace = true}
-massa_metrics = {workspace = true}
+parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
+massa_models = { workspace = true }
+massa_metrics = { workspace = true }
 
 [dev-dependencies]
-massa_factory_exports = {workspace = true, "features" = ["test-exports"]}
-massa_signature = {workspace = true}
+massa_factory_exports = { workspace = true, "features" = ["test-exports"] }
+massa_signature = { workspace = true }

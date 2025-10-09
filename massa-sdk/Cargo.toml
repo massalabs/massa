@@ -4,15 +4,19 @@ version = "28.16.0"
 edition = "2021"
 
 [dependencies]
-jsonrpsee = {workspace = true, "features" = ["client"]}
-jsonrpsee-http-client = {workspace = true}
-jsonrpsee-ws-client = {workspace = true}
-http = {workspace = true}
-tonic = {workspace = true, "features" = ["gzip"]}   # BOM UPGRADE     Revert to {"version": "0.9.1", "features": ["gzip"]} if problem
-thiserror = {workspace = true}
-tracing = {workspace = true, "features" = ["log"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["log"]} if problem
-massa_api_exports = {workspace = true}
-massa_models = {workspace = true}
-massa_time = {workspace = true}
-massa-proto-rs = {workspace = true, "features" = ["tonic"]}
-rcgen = {workspace = true , features = ["pem", "x509-parser"]}
+jsonrpsee = { workspace = true, "features" = ["client"] }
+jsonrpsee-http-client = { workspace = true }
+jsonrpsee-ws-client = { workspace = true }
+http = { workspace = true }
+tonic = { workspace = true, "features" = [
+    "gzip",
+] } # BOM UPGRADE     Revert to {"version": "0.9.1", "features": ["gzip"]} if problem
+thiserror = { workspace = true }
+tracing = { workspace = true, "features" = [
+    "log",
+] } # BOM UPGRADE     Revert to {"version": "0.1", "features": ["log"]} if problem
+massa_api_exports = { workspace = true }
+massa_models = { workspace = true }
+massa_time = { workspace = true }
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
+rcgen = { workspace = true, features = ["pem", "x509-parser"] }

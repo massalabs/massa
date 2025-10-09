@@ -144,11 +144,13 @@ pub(crate) fn execute_read_only_call(
             .transpose()?,
     };
 
-    if read_only_call
-        .fee
-        .unwrap_or_default()
-        .checked_sub(grpc.grpc_config.minimal_fees)
-        .is_none()
+    // check if fee is provided and if it is too low
+    if call.fee.is_some()
+        && read_only_call
+            .fee
+            .unwrap_or_default()
+            .checked_sub(grpc.grpc_config.minimal_fees)
+            .is_none()
     {
         return Err(GrpcError::InvalidArgument(format!(
             "fee is too low provided: {} , minimal_fees required: {}",
@@ -340,7 +342,10 @@ pub(crate) fn get_endorsements(
     };
 
     // ask pool whether it carries the endorsements
-    let in_pool = grpc.pool_controller.contains_endorsements(&endorsement_ids);
+    let in_pool = grpc
+        .pool_controller
+        .contains_endorsements(&endorsement_ids, None)
+        .unwrap_or_else(|_| vec![false; endorsement_ids.len()]);
 
     // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     let is_final: Vec<bool> = {
@@ -957,6 +962,8 @@ pub(crate) fn get_status(
     let empty_request = ExecutionQueryRequest { requests: vec![] };
     let state = grpc.execution_controller.query_state(empty_request);
 
+    let current_mip_version = grpc.keypair_factory.mip_store.get_network_version_current();
+
     let status = grpc_model::PublicStatus {
         node_id: grpc.node_id.to_string(),
         version: grpc.version.to_string(),
@@ -970,7 +977,7 @@ pub(crate) fn get_status(
         config: Some(config.into()),
         chain_id: grpc.grpc_config.chain_id,
         minimal_fees: Some(grpc.grpc_config.minimal_fees.into()),
-        current_mip_version: grpc.keypair_factory.mip_store.get_network_version_current(),
+        current_mip_version,
     };
 
     Ok(grpc_api::GetStatusResponse {
@@ -1351,7 +1358,10 @@ pub(crate) fn search_endorsements(
     let e_ids: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| *ed).collect();
 
     // ask pool whether it carries the endorsements
-    let in_pool = grpc.pool_controller.contains_endorsements(&e_ids);
+    let in_pool = grpc
+        .pool_controller
+        .contains_endorsements(&e_ids, None)
+        .unwrap_or_else(|_| vec![false; e_ids.len()]);
 
     // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     let is_final: Vec<bool> = {

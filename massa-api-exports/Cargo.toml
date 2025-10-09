@@ -9,20 +9,25 @@ sandbox = []
 test-exports = []
 
 [dependencies]
-paginate = {workspace = true}
-displaydoc = {workspace = true}
-thiserror = {workspace = true}
-jsonrpsee = {workspace = true, "features" = ["jsonrpsee-core", "jsonrpsee-types"]}
-serde = {workspace = true, "features" = ["derive"]}
-strum = {workspace = true, "features" = ["derive"]}   # BOM UPGRADE     Revert to {"version": "0.24", "features": ["derive"]} if problem
-massa_signature = {workspace = true}
-massa_time = {workspace = true}
-massa_models = {workspace = true}
-massa_final_state = {workspace = true}
-massa_hash = {workspace = true}
-massa_wallet = {workspace = true}
-massa_versioning = {workspace = true}
+paginate = { workspace = true }
+displaydoc = { workspace = true }
+thiserror = { workspace = true }
+jsonrpsee = { workspace = true, "features" = [
+    "jsonrpsee-core",
+    "jsonrpsee-types",
+] }
+serde = { workspace = true, "features" = ["derive"] }
+strum = { workspace = true, "features" = [
+    "derive",
+] } # BOM UPGRADE     Revert to {"version": "0.24", "features": ["derive"]} if problem
+massa_signature = { workspace = true }
+massa_time = { workspace = true }
+massa_models = { workspace = true }
+massa_final_state = { workspace = true }
+massa_hash = { workspace = true }
+massa_wallet = { workspace = true }
+massa_versioning = { workspace = true }
 massa_deferred_calls = { workspace = true }
 
 [dev-dependencies]
-serial_test = {workspace = true}
+serial_test = { workspace = true }

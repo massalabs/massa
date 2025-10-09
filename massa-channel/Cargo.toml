@@ -7,6 +7,6 @@ edition = "2021"
 test-exports = []
 
 [dependencies]
-prometheus = {workspace = true}
-crossbeam = {workspace = true}   # BOM UPGRADE     Revert to "0.8.0" if problem
-tracing = {workspace = true}
+prometheus = { workspace = true }
+crossbeam = { workspace = true }  # BOM UPGRADE     Revert to "0.8.0" if problem
+tracing = { workspace = true }

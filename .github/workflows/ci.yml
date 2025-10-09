@@ -4,14 +4,14 @@ on:
   push:
     branches: [main, staging, trying]
   pull_request:
-    branches: [main, 'main_*', 'mainnet_*']
+    branches: [main, "main_*", "mainnet_*"]
     types:
-    - opened
-    - reopened
-    - synchronize
-    - ready_for_review
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
   merge_group:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -66,7 +66,7 @@ jobs:
           save-if: ${{ github.ref_name == 'main' }}
       - uses: arduino/setup-protoc@v3
         with:
-          version: '23.x'
+          version: "23.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo check
 
@@ -89,7 +89,7 @@ jobs:
           save-if: ${{ github.ref_name == 'main' }}
       - uses: arduino/setup-protoc@v3
         with:
-          version: '23.x'
+          version: "23.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo clippy --no-deps --all-targets
 
@@ -224,7 +224,7 @@ jobs:
           version: "23.x"
           include-pre-releases: false
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: cargo install cargo-nextest --locked
+      - run: cargo install cargo-nextest --locked --version 0.9.97-b.2
       - run: cargo nextest run --retries 10 --profile ci --features=execution-trace,dump-block
       - run: cargo clean
       - run: cargo test --doc
@@ -273,7 +273,6 @@ jobs:
       #    cd gas-calibration &&
       #    cargo run -r -- --nb-scs-by-abi=1 --as-sdk-env-path=../massa-as-sdk/assembly/env/env.ts --only-generate
 
-
   doc:
     runs-on: ubuntu-latest
     steps:
@@ -290,7 +289,7 @@ jobs:
           save-if: ${{ github.ref_name == 'main' }}
       - uses: arduino/setup-protoc@v3
         with:
-          version: '23.x'
+          version: "23.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo doc --no-deps --document-private-items
       - uses: JamesIves/github-pages-deploy-action@v4

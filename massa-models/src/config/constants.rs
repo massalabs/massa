@@ -81,6 +81,16 @@ lazy_static::lazy_static! {
         .unwrap()
     };
     /// node chain id (to avoid replay attacks)
+    ///
+    /// By signing an operation with an ID of the target chain
+    /// (e.g. whether the operation targets LABNET, BUILDNET or MAINNET), the user is protected from
+    /// a malicious actor that could steal operations created on BUILDNET / LABNET and try to replay
+    /// them on the Massa MAINNET (and potentially stealing real coins)
+    /// Chain id idea and implementation come from Ethereum EIPs:
+    /// * https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
+    /// * https://eips.ethereum.org/EIPS/eip-1344
+    /// Chain id can be queried in Smart contracts (AssemblyScript: chain_id call) and in the
+    /// jsonrpc get_status call
     pub static ref CHAINID: u64 = {
         // MASM (MainNet):           77658377
         // MASS (SecureNet):         77658383
@@ -378,7 +388,7 @@ pub const MAX_LISTENERS_PER_PEER: u64 = 100;
 // Constants used in versioning
 //
 /// Threshold to accept a new versioning
-pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio<u64> = Ratio::new_raw(75, 100);
+pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio<u64> = Ratio::new_raw(50, 100);
 /// Block count to process in MipStoreStats (for state change threshold)
 pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
 /// Minimum value allowed for activation delay (in MIP info)

@@ -19,6 +19,8 @@ impl Default for FactoryConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             stop_production_when_zero_connections: false,
             chain_id: *CHAINID,
+            block_delay_warn: MassaTime::from_millis(500),
+            block_opt_channel_timeout: MassaTime::from_millis(1000),
         }
     }
 }

@@ -4,8 +4,8 @@ version = "28.16.0"
 edition = "2021"
 
 [dependencies]
-displaydoc = {workspace = true}
-thiserror = {workspace = true}
-aes-gcm = {workspace = true}
-pbkdf2 = {workspace = true}
-rand = {workspace = true}
+displaydoc = { workspace = true }
+thiserror = { workspace = true }
+aes-gcm = { workspace = true }
+pbkdf2 = { workspace = true }
+rand = { workspace = true }

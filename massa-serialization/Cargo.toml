@@ -7,11 +7,11 @@ edition = "2021"
 [features]
 
 [dependencies]
-displaydoc = {workspace = true}
-thiserror = {workspace = true}
-nom = {workspace = true}
-unsigned-varint = {workspace = true, "features" = ["nom"]}
-num = {workspace = true}
+displaydoc = { workspace = true }
+thiserror = { workspace = true }
+nom = { workspace = true }
+unsigned-varint = { workspace = true, "features" = ["nom"] }
+num = { workspace = true }
 
 [dev-dependencies]
-paste = {workspace = true}
+paste = { workspace = true }

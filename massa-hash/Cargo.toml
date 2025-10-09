@@ -5,14 +5,14 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
-blake3 = {workspace = true}
-bs58 = {workspace = true, "features" = ["check"]}
-displaydoc = {workspace = true}
-serde = {workspace = true, "features" = ["derive"]}
-thiserror = {workspace = true}
-nom = {workspace = true}
-massa_serialization = {workspace = true}
+blake3 = { workspace = true }
+bs58 = { workspace = true, "features" = ["check"] }
+displaydoc = { workspace = true }
+serde = { workspace = true, "features" = ["derive"] }
+thiserror = { workspace = true }
+nom = { workspace = true }
+massa_serialization = { workspace = true }
 
 [dev-dependencies]
-serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
-serial_test = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+serde_json = { workspace = true }  # BOM UPGRADE     Revert to "1.0" if problem
+serial_test = { workspace = true } # BOM UPGRADE     Revert to "1.0" if problem

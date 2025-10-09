@@ -5,5 +5,5 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
-serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
-tracing = {workspace = true}
+serde_json = { workspace = true } # BOM UPGRADE     Revert to "1.0" if problem
+tracing = { workspace = true }

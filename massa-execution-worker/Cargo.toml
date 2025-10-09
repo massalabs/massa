@@ -41,10 +41,7 @@ benchmarking = [
     "tempfile",
 ]
 metrics = []
-execution-trace = [
-    "massa_execution_exports/execution-trace",
-    "schnellru"
-]
+execution-trace = ["massa_execution_exports/execution-trace", "schnellru"]
 dump-block = [
     "prost",
     "massa_execution_exports/dump-block",
@@ -52,14 +49,12 @@ dump-block = [
 ]
 db_storage_backend = []
 file_storage_backend = []
-execution-info = [
-    "execution-trace",
-]
+execution-info = ["execution-trace"]
 slot-replayer = []
 jemalloc = [
     "rocksdb/jemalloc",
     "massa_event_cache/jemalloc",
-    "massa_module_cache/jemalloc"
+    "massa_module_cache/jemalloc",
 ]
 
 [dependencies]

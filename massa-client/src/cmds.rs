@@ -41,6 +41,7 @@ use strum_macros::{Display, EnumIter, EnumString};
 /// the order they are defined is the order they are displayed in so be careful
 /// Maybe it would be worth renaming some of them for consistency
 /// Use props(pwd_not_needed = "true") if the command does not need an access to the wallet, to avoid unnecessary
+/// Use props(hide_from_history = "true") if the command contains sensitive information that should not be logged in the history file.
 /// prompting of the user.
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
@@ -217,7 +218,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SecretKey1 SecretKey2 ..."),
+        props(args = "SecretKey1 SecretKey2 ...", hide_from_history = "true"),
         message = "add a list of secret keys to the wallet"
     )]
     wallet_add_secret_keys,
@@ -424,8 +425,16 @@ impl Command {
 
     /// Returns true if the command needs wallet access
     pub(crate) fn is_pwd_needed(&self) -> bool {
-        !(self.get_str("pwd_not_needed").is_some()
-            && self.get_str("pwd_not_needed").unwrap() == "true")
+        match self.get_str("pwd_not_needed") {
+            Some("true") => false, // pwd_not_needed is "true", so return false
+            _ => true,             // Otherwise, pwd is needed
+        }
+    }
+
+    /// Returns true if the command should be hidden from history
+    pub(crate) fn hide_from_history(&self) -> bool {
+        let hide_from_history = self.get_str("hide_from_history");
+        hide_from_history.map_or(false, |f| f == "true")
     }
 
     /// run a given command

@@ -5,20 +5,25 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-test-exports = ["tempfile", "massa_models/test-exports", "massa_ledger_exports/test-exports", "massa_db_worker"]
+test-exports = [
+    "tempfile",
+    "massa_models/test-exports",
+    "massa_ledger_exports/test-exports",
+    "massa_db_worker",
+]
 
 [dependencies]
-serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
-tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
-massa_ledger_exports = {workspace = true}
-massa_models = {workspace = true}
-massa_serialization = {workspace = true}
-massa_db_exports = {workspace = true}
-massa_db_worker = {workspace = true, "optional" = true}
-parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
+serde_json = { workspace = true }                                       # BOM UPGRADE     Revert to "1.0" if problem
+tempfile = { workspace = true, "optional" = true }                      # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
+massa_ledger_exports = { workspace = true }
+massa_models = { workspace = true }
+massa_serialization = { workspace = true }
+massa_db_exports = { workspace = true }
+massa_db_worker = { workspace = true, "optional" = true }
+parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
 
 [dev-dependencies]
-massa_signature = {workspace = true}
-massa_hash = {workspace = true}
-massa_db_worker = {workspace = true}
-tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
+massa_signature = { workspace = true }
+massa_hash = { workspace = true }
+massa_db_worker = { workspace = true }
+tempfile = { workspace = true }        # BOM UPGRADE     Revert to "3.3" if problem

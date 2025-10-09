@@ -7,21 +7,21 @@ edition = "2021"
 jemalloc = ["rocksdb/jemalloc"]
 
 [dependencies]
-schnellru = {workspace = true}
-rand = {workspace = true}   # BOM UPGRADE     Revert to "0.8.5" if problem
-num_enum = {workspace = true}
-nom = {workspace = true}
-displaydoc = {workspace = true}
-thiserror = {workspace = true}
-anyhow = {workspace = true}
-tracing = {workspace = true}
-rocksdb = {workspace = true}
-massa_hash = {workspace = true}
-massa_models = {workspace = true}
-massa_serialization = {workspace = true}
-massa-sc-runtime = {workspace = true}
+schnellru = { workspace = true }
+rand = { workspace = true }                # BOM UPGRADE     Revert to "0.8.5" if problem
+num_enum = { workspace = true }
+nom = { workspace = true }
+displaydoc = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+rocksdb = { workspace = true }
+massa_hash = { workspace = true }
+massa_models = { workspace = true }
+massa_serialization = { workspace = true }
+massa-sc-runtime = { workspace = true }
 
 [dev-dependencies]
-tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
-serial_test = {workspace = true}
-massa-sc-runtime = {workspace = true, "features" = ["testing"]}
+tempfile = { workspace = true }                                   # BOM UPGRADE     Revert to "3.3" if problem
+serial_test = { workspace = true }
+massa-sc-runtime = { workspace = true, "features" = ["testing"] }

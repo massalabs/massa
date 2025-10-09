@@ -17,8 +17,6 @@
 //!
 //! # A note on finality
 //!
-//!
-//!
 //! The operations contained in a final slot are ready to be executed as final
 //! only once all the previous slots are final and their operations are executed as final or ready to be so.
 //! This ensures the sequential order of the final executions of operations,
@@ -75,6 +73,10 @@
 //!
 //! ## `stats.rs`
 //! Defines a structure that gathers execution statistics.
+//!
+//! ## execution-info
+//!
+//! See documentation in execution_info.rs file.
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
