@@ -241,11 +241,15 @@ pub(crate) fn get_node_status(
     let pool_stats = grpc_model::PoolStats {
         operations_count: grpc
             .pool_controller
-            .get_denunciation_count(None)
+            .get_denunciation_count(Some(MassaTime::from_millis(
+                grpc.grpc_config.timeout.as_millis() as u64,
+            )))
             .unwrap_or(0) as u64,
         endorsements_count: grpc
             .pool_controller
-            .get_endorsement_count(None)
+            .get_endorsement_count(Some(MassaTime::from_millis(
+                grpc.grpc_config.timeout.as_millis() as u64,
+            )))
             .unwrap_or(0) as u64,
     };
 

@@ -23,6 +23,7 @@ massa_hash = {workspace = true}
 massa_wallet = {workspace = true}
 massa_versioning = {workspace = true}
 massa_deferred_calls = { workspace = true }
+massa_pool_exports = { workspace = true }
 
 [dev-dependencies]
 serial_test = {workspace = true}

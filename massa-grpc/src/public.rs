@@ -344,7 +344,12 @@ pub(crate) fn get_endorsements(
     // ask pool whether it carries the endorsements
     let in_pool = grpc
         .pool_controller
-        .contains_endorsements(&endorsement_ids, None)
+        .contains_endorsements(
+            &endorsement_ids,
+            Some(MassaTime::from_millis(
+                grpc.grpc_config.timeout.as_millis() as u64
+            )),
+        )
         .unwrap_or_else(|_| vec![false; endorsement_ids.len()]);
 
     // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
@@ -1360,7 +1365,12 @@ pub(crate) fn search_endorsements(
     // ask pool whether it carries the endorsements
     let in_pool = grpc
         .pool_controller
-        .contains_endorsements(&e_ids, None)
+        .contains_endorsements(
+            &e_ids,
+            Some(MassaTime::from_millis(
+                grpc.grpc_config.timeout.as_millis() as u64
+            )),
+        )
         .unwrap_or_else(|_| vec![false; e_ids.len()]);
 
     // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement

@@ -521,14 +521,22 @@ impl MassaRpcServer for API<Public> {
         };
 
         let pool_stats = (
-            self.0
+            match self
+                .0
                 .pool_command_sender
-                .get_operation_count(None)
-                .unwrap_or(0),
-            self.0
+                .get_operation_count(Some(self.0.api_settings.pool_api_timeout))
+            {
+                Ok(count) => count,
+                Err(e) => return Err(ApiError::PoolError(e).into()),
+            },
+            match self
+                .0
                 .pool_command_sender
-                .get_endorsement_count(None)
-                .unwrap_or(0),
+                .get_endorsement_count(Some(self.0.api_settings.pool_api_timeout))
+            {
+                Ok(count) => count,
+                Err(e) => return Err(ApiError::PoolError(e).into()),
+            },
         );
 
         let next_slot_result = last_slot
@@ -692,8 +700,8 @@ impl MassaRpcServer for API<Public> {
         let in_pool = self
             .0
             .pool_command_sender
-            .contains_operations(&ops, None)
-            .unwrap_or_else(|_| vec![false; ops.len()]);
+            .contains_operations(&ops, Some(api_cfg.pool_api_timeout))
+            .map_err(|e| ApiError::InternalServerError(format!("Pool error: {}", e)))?;
 
         let op_exec_statuses = self.0.execution_controller.get_ops_exec_status(&ops);
 
@@ -807,8 +815,8 @@ impl MassaRpcServer for API<Public> {
         let in_pool = self
             .0
             .pool_command_sender
-            .contains_endorsements(&endorsement_ids, None)
-            .unwrap_or_else(|_| vec![false; endorsement_ids.len()]);
+            .contains_endorsements(&endorsement_ids, Some(self.0.api_settings.pool_api_timeout))
+            .map_err(|e| ApiError::InternalServerError(format!("Pool error: {}", e)))?;
 
         // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
         let is_final: Vec<bool> = {

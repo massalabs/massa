@@ -46,6 +46,8 @@
     max_datastore_keys_query = 500
     # max number of addresses that can be included in a single request
     max_addresses_datastore_keys_query = 50
+    # timeout for API calls to pools (in milliseconds)
+    pool_api_timeout = 1000
 
 [grpc]
     [grpc.public]

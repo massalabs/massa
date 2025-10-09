@@ -981,6 +981,7 @@ async fn launch(
         max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_addresses_datastore_keys_query: SETTINGS.api.max_addresses_datastore_keys_query,
+        pool_api_timeout: SETTINGS.api.pool_api_timeout,
     };
 
     // spawn Massa API

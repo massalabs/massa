@@ -74,6 +74,7 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
         max_datastore_keys_queries: Some(1000),
         max_datastore_key_length: 255,
         max_addresses_datastore_keys_query: Some(50),
+        pool_api_timeout: MassaTime::from_millis(1000),
     };
 
     // let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
@@ -154,6 +155,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         max_datastore_keys_queries: Some(1000),
         max_datastore_key_length: 255,
         max_addresses_datastore_keys_query: Some(50),
+        pool_api_timeout: MassaTime::from_millis(1000),
     };
 
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();

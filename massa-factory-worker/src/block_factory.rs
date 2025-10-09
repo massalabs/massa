@@ -208,7 +208,10 @@ impl BlockFactoryWorker {
                     "Channel timeout: get_block_endorsements took >{}ms for slot {}: {:?}. Proceeding with empty endorsements.",
                     channel_timeout.as_millis(), slot, e
                 );
-                (vec![None ; self.cfg.endorsement_count as usize], self.channels.storage.clone_without_refs())
+                (
+                    vec![None; self.cfg.endorsement_count as usize],
+                    self.channels.storage.clone_without_refs(),
+                )
             }
         };
         timings.push(("get_block_endorsements END", MassaTime::now()));

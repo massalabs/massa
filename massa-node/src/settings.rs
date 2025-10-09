@@ -150,6 +150,7 @@ pub struct APISettings {
     pub deferred_credits_delta: MassaTime,
     pub max_datastore_keys_query: Option<u32>,
     pub max_addresses_datastore_keys_query: Option<u32>,
+    pub pool_api_timeout: MassaTime,
 }
 
 #[derive(Debug, Deserialize, Clone)]
