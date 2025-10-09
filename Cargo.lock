@@ -2915,7 +2915,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=optimize_abi_calls#846ef19d6a967a391549d92e21648e02f0c7ab63"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=optimize_abi_calls#a9a16d03a794b451a526c10cb1f0c445e90712c8"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
