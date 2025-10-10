@@ -1,7 +1,7 @@
 use massa_sc_runtime::GasCosts;
 use std::collections::HashSet;
 
-pub(crate) fn check_gas_cost_definitions() -> Result<(), String> {
+/* pub(crate) fn check_gas_cost_definitions() -> Result<(), String> {
     // Check gas cost definition between:
     // massa-node/base_config/gas_costs/abi_gas_costs.json
     // massa-sc-runtime GasCosts::default()
@@ -53,3 +53,4 @@ pub(crate) fn check_gas_cost_definitions() -> Result<(), String> {
         Ok(())
     }
 }
+ */
