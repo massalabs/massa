@@ -1801,7 +1801,7 @@ impl ExecutionState {
 
             for endorsement_creator in endorsement_creators {
                 // Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
-                // and dissuade from emitting the block too early (before the endorsements have propageted).
+                // and dissuade from emitting the block too early (before the endorsements have propagated).
                 block_producer_credit = block_producer_credit.saturating_add(block_credit_part);
 
                 // Credit creator of the endorsement with 1 part to stimulate the production of endorsements.

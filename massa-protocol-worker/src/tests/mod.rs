@@ -19,7 +19,7 @@ mod ban_nodes_scenarios;
 mod block_scenarios;
 mod endorsements_scenarios;
 mod operations_scenarios;
-mod peer_priorization;
+mod peer_prioritization;
 mod universe;
 
 #[test]
