@@ -93,7 +93,7 @@ impl Ord for ConnectionMetadata {
     }
 }
 
-// Priorisation of a peer compared to another one
+// Prioritization of a peer compared to another one
 // Greater = Less Prio        Lesser = More prio
 impl PartialOrd for ConnectionMetadata {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
