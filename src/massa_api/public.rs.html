@@ -1649,17 +1649,6 @@
 <a href="#1649" id="1649">1649</a>
 <a href="#1650" id="1650">1650</a>
 <a href="#1651" id="1651">1651</a>
-<a href="#1652" id="1652">1652</a>
-<a href="#1653" id="1653">1653</a>
-<a href="#1654" id="1654">1654</a>
-<a href="#1655" id="1655">1655</a>
-<a href="#1656" id="1656">1656</a>
-<a href="#1657" id="1657">1657</a>
-<a href="#1658" id="1658">1658</a>
-<a href="#1659" id="1659">1659</a>
-<a href="#1660" id="1660">1660</a>
-<a href="#1661" id="1661">1661</a>
-<a href="#1662" id="1662">1662</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -2183,14 +2172,8 @@
         };
 
         <span class="kw">let </span>pool_stats = (
-            <span class="self">self</span>.<span class="number">0
-                </span>.pool_command_sender
-                .get_operation_count(<span class="prelude-val">None</span>)
-                .unwrap_or(<span class="number">0</span>),
-            <span class="self">self</span>.<span class="number">0
-                </span>.pool_command_sender
-                .get_endorsement_count(<span class="prelude-val">None</span>)
-                .unwrap_or(<span class="number">0</span>),
+            <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.get_operation_count(),
+            <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.get_endorsement_count(),
         );
 
         <span class="kw">let </span>next_slot_result = last_slot
@@ -2351,11 +2334,7 @@
         }
 
         <span class="comment">// ask pool whether it carries the operations
-        </span><span class="kw">let </span>in_pool = <span class="self">self
-            </span>.<span class="number">0
-            </span>.pool_command_sender
-            .contains_operations(<span class="kw-2">&amp;</span>ops, <span class="prelude-val">None</span>)
-            .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="bool-val">false</span>; ops.len()]);
+        </span><span class="kw">let </span>in_pool = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.contains_operations(<span class="kw-2">&amp;</span>ops);
 
         <span class="kw">let </span>op_exec_statuses = <span class="self">self</span>.<span class="number">0</span>.execution_controller.get_ops_exec_status(<span class="kw-2">&amp;</span>ops);
 
@@ -2469,8 +2448,7 @@
         </span><span class="kw">let </span>in_pool = <span class="self">self
             </span>.<span class="number">0
             </span>.pool_command_sender
-            .contains_endorsements(<span class="kw-2">&amp;</span>endorsement_ids, <span class="prelude-val">None</span>)
-            .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="bool-val">false</span>; endorsement_ids.len()]);
+            .contains_endorsements(<span class="kw-2">&amp;</span>endorsement_ids);
 
         <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
         </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {

@@ -472,12 +472,6 @@
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::net::IpAddr;
@@ -719,14 +713,8 @@
     <span class="kw">let </span>consensus_stats = grpc.consensus_controller.get_stats()<span class="question-mark">?</span>;
     <span class="kw">let </span>(network_stats, peers) = grpc.protocol_controller.get_stats()<span class="question-mark">?</span>;
     <span class="kw">let </span>pool_stats = grpc_model::PoolStats {
-        operations_count: grpc
-            .pool_controller
-            .get_denunciation_count(<span class="prelude-val">None</span>)
-            .unwrap_or(<span class="number">0</span>) <span class="kw">as </span>u64,
-        endorsements_count: grpc
-            .pool_controller
-            .get_endorsement_count(<span class="prelude-val">None</span>)
-            .unwrap_or(<span class="number">0</span>) <span class="kw">as </span>u64,
+        operations_count: grpc.pool_controller.get_denunciation_count() <span class="kw">as </span>u64,
+        endorsements_count: grpc.pool_controller.get_endorsement_count() <span class="kw">as </span>u64,
     };
 
     <span class="kw">let </span><span class="kw-2">mut </span>connected_nodes = peers
