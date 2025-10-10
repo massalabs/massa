@@ -73,9 +73,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.3.0"
+            "SAND.4.0"
         } else {
-            "MAIN.3.0"
+            "MAIN.4.0"
         }
         .parse()
         .unwrap()
@@ -154,7 +154,7 @@ pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
 pub const MAX_BLOCK_SIZE: u32 = 300_000;
 /// Maximum capacity of the asynchronous messages pool
-pub const MAX_ASYNC_POOL_LENGTH: u64 = 1_000;
+pub const MAX_ASYNC_POOL_LENGTH: u64 = 500;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// Number of periods of executed operation and denunciation history to keep
@@ -318,7 +318,7 @@ pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 /// Constant cost applied to asynchronous messages (to take into account some costs related to snapshot)
-pub const ASYNC_MSG_CST_GAS_COST: u64 = 750_000;
+pub const ASYNC_MSG_CST_GAS_COST: u64 = 1_000_000;
 /// Gas used by a base operation (transaction, roll buy, roll sell)
 pub const BASE_OPERATION_GAS_COST: u64 = 800_000; // approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
 /// Maximum event size in bytes
