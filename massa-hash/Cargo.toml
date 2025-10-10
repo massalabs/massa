@@ -1,6 +1,6 @@
 [package]
 name = "massa_hash"
-version = "3.0.0"
+version = "4.0.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
