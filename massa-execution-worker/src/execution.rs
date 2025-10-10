@@ -51,6 +51,7 @@ use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound;
 use std::sync::Arc;
+use std::time::Instant;
 use tracing::{debug, info, trace, warn};
 
 #[cfg(feature = "execution-info")]
@@ -1522,6 +1523,8 @@ impl ExecutionState {
         exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
     ) -> ExecutionOutput {
+        // Start slot execution timer
+        let slot_start_time = Instant::now();
         #[cfg(feature = "execution-trace")]
         let mut slot_trace = SlotAbiCallStack {
             slot: *slot,
@@ -1798,7 +1801,7 @@ impl ExecutionState {
 
             for endorsement_creator in endorsement_creators {
                 // Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
-                // and dissuade from emitting the block too early (before the endorsements have propageted).
+                // and dissuade from emitting the block too early (before the endorsements have propagated).
                 block_producer_credit = block_producer_credit.saturating_add(block_credit_part);
 
                 // Credit creator of the endorsement with 1 part to stimulate the production of endorsements.
@@ -1974,6 +1977,21 @@ impl ExecutionState {
         }
 
         exec_out.state_changes.deferred_call_changes.exec_stats = deferred_calls_stats;
+
+        // Warn if the slot execution took more than the maximum slot duration
+        let max_slot_duration = self
+            .config
+            .t0
+            .checked_div_u64(self.config.thread_count as u64)
+            .expect("could not deduce slot duration")
+            .to_duration();
+        let total_slot_duration = slot_start_time.elapsed();
+        if total_slot_duration > max_slot_duration {
+            warn!(
+                "slot {} execution took {:?} (above the {:?} maximum slot duration)",
+                slot, total_slot_duration, max_slot_duration
+            );
+        }
 
         // Return the execution output
         exec_out
