@@ -32,6 +32,12 @@
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the factory settings
@@ -55,6 +61,8 @@
     </span><span class="kw">pub </span>max_block_gas: u64,
     <span class="doccomment">/// maximum number of operation ids in block
     </span><span class="kw">pub </span>max_operations_per_block: u32,
+    <span class="doccomment">/// max number of endorsements per block
+    </span><span class="kw">pub </span>endorsement_count: u32,
     <span class="doccomment">/// last start period, to deduce genesis blocks
     </span><span class="kw">pub </span>last_start_period: u64,
     <span class="doccomment">/// cycle duration in periods
@@ -65,5 +73,9 @@
     </span><span class="kw">pub </span>stop_production_when_zero_connections: bool,
     <span class="doccomment">/// chain id
     </span><span class="kw">pub </span>chain_id: u64,
+    <span class="doccomment">/// warn if block production is delayed by more than this
+    </span><span class="kw">pub </span>block_delay_warn: MassaTime,
+    <span class="doccomment">/// timeout for optional channel calls in block production
+    </span><span class="kw">pub </span>block_opt_channel_timeout: MassaTime,
 }
 </code></pre></div></section></main></body></html>
