@@ -665,6 +665,10 @@ async fn launch(
         max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
         max_operation_pool_excess_items: SETTINGS.pool.max_operation_pool_excess_items,
         operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
+        operation_pool_swap_interval: SETTINGS.pool.operation_pool_swap_interval,
+        endorsement_pool_swap_interval: SETTINGS.pool.endorsement_pool_swap_interval,
+        denunciation_pool_refresh_interval: SETTINGS.pool.denunciation_pool_refresh_interval,
+        denunciation_pool_swap_interval: SETTINGS.pool.denunciation_pool_swap_interval,
         operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
         operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
@@ -895,6 +899,8 @@ async fn launch(
             .factory
             .stop_production_when_zero_connections,
         chain_id: *CHAINID,
+        block_delay_warn: SETTINGS.factory.block_delay_warn_threshold,
+        block_opt_channel_timeout: SETTINGS.factory.block_opt_channel_timeout,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
