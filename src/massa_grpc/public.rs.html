@@ -1895,7 +1895,7 @@
     <span class="comment">// ask pool whether it carries the endorsements
     </span><span class="kw">let </span>in_pool = grpc
         .pool_controller
-        .contains_endorsements(<span class="kw-2">&amp;</span>endorsement_ids, <span class="prelude-val">None</span>)
+        .contains_endorsements(<span class="kw-2">&amp;</span>endorsement_ids, <span class="prelude-val">Some</span>(MassaTime::from_millis(grpc.grpc_config.timeout.as_millis() <span class="kw">as </span>u64)))
         .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="bool-val">false</span>; endorsement_ids.len()]);
 
     <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
@@ -2911,7 +2911,7 @@
     <span class="comment">// ask pool whether it carries the endorsements
     </span><span class="kw">let </span>in_pool = grpc
         .pool_controller
-        .contains_endorsements(<span class="kw-2">&amp;</span>e_ids, <span class="prelude-val">None</span>)
+        .contains_endorsements(<span class="kw-2">&amp;</span>e_ids, <span class="prelude-val">Some</span>(MassaTime::from_millis(grpc.grpc_config.timeout.as_millis() <span class="kw">as </span>u64)))
         .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="bool-val">false</span>; e_ids.len()]);
 
     <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
