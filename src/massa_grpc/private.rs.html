@@ -478,6 +478,10 @@
 <a href="#478" id="478">478</a>
 <a href="#479" id="479">479</a>
 <a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::net::IpAddr;
@@ -721,11 +725,15 @@
     <span class="kw">let </span>pool_stats = grpc_model::PoolStats {
         operations_count: grpc
             .pool_controller
-            .get_denunciation_count(<span class="prelude-val">Some</span>(MassaTime::from_millis(grpc.grpc_config.timeout.as_millis() <span class="kw">as </span>u64)))
+            .get_denunciation_count(<span class="prelude-val">Some</span>(MassaTime::from_millis(
+                grpc.grpc_config.timeout.as_millis() <span class="kw">as </span>u64,
+            )))
             .unwrap_or(<span class="number">0</span>) <span class="kw">as </span>u64,
         endorsements_count: grpc
             .pool_controller
-            .get_endorsement_count(<span class="prelude-val">Some</span>(MassaTime::from_millis(grpc.grpc_config.timeout.as_millis() <span class="kw">as </span>u64)))
+            .get_endorsement_count(<span class="prelude-val">Some</span>(MassaTime::from_millis(
+                grpc.grpc_config.timeout.as_millis() <span class="kw">as </span>u64,
+            )))
             .unwrap_or(<span class="number">0</span>) <span class="kw">as </span>u64,
     };
 
