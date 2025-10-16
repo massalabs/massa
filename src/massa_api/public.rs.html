@@ -1660,6 +1660,14 @@
 <a href="#1660" id="1660">1660</a>
 <a href="#1661" id="1661">1661</a>
 <a href="#1662" id="1662">1662</a>
+<a href="#1663" id="1663">1663</a>
+<a href="#1664" id="1664">1664</a>
+<a href="#1665" id="1665">1665</a>
+<a href="#1666" id="1666">1666</a>
+<a href="#1667" id="1667">1667</a>
+<a href="#1668" id="1668">1668</a>
+<a href="#1669" id="1669">1669</a>
+<a href="#1670" id="1670">1670</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -2183,14 +2191,22 @@
         };
 
         <span class="kw">let </span>pool_stats = (
-            <span class="self">self</span>.<span class="number">0
+            <span class="kw">match </span><span class="self">self
+                </span>.<span class="number">0
                 </span>.pool_command_sender
                 .get_operation_count(<span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="number">0</span>.api_settings.pool_api_timeout))
-                .unwrap_or(<span class="number">0</span>),
-            <span class="self">self</span>.<span class="number">0
+            {
+                <span class="prelude-val">Ok</span>(count) =&gt; count,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::PoolError(e).into()),
+            },
+            <span class="kw">match </span><span class="self">self
+                </span>.<span class="number">0
                 </span>.pool_command_sender
                 .get_endorsement_count(<span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="number">0</span>.api_settings.pool_api_timeout))
-                .unwrap_or(<span class="number">0</span>),
+            {
+                <span class="prelude-val">Ok</span>(count) =&gt; count,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::PoolError(e).into()),
+            },
         );
 
         <span class="kw">let </span>next_slot_result = last_slot

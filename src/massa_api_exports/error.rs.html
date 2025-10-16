@@ -75,6 +75,10 @@
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>displaydoc::Display;
@@ -82,6 +86,7 @@
 
 <span class="kw">use </span>massa_hash::MassaHashError;
 <span class="kw">use </span>massa_models::error::ModelsError;
+<span class="kw">use </span>massa_pool_exports::PoolError;
 <span class="kw">use </span>massa_time::TimeError;
 <span class="kw">use </span>massa_versioning::versioning_factory::FactoryError;
 <span class="kw">use </span>massa_wallet::WalletError;
@@ -124,6 +129,8 @@
     </span>InternalServerError(String),
     <span class="doccomment">/// Versioning Factory error: {0}
     </span>FactoryError(<span class="attr">#[from] </span>FactoryError),
+    <span class="doccomment">/// Pool error: {0}
+    </span>PoolError(<span class="attr">#[from] </span>PoolError),
 }
 
 <span class="kw">impl </span>From&lt;ApiError&gt; <span class="kw">for </span>ErrorObjectOwned {
@@ -147,6 +154,7 @@
             ApiError::MissingConfig(<span class="kw">_</span>) =&gt; -<span class="number">32018</span>,
             ApiError::WrongAPI =&gt; -<span class="number">32019</span>,
             ApiError::FactoryError(<span class="kw">_</span>) =&gt; -<span class="number">32020</span>,
+            ApiError::PoolError(<span class="kw">_</span>) =&gt; -<span class="number">32021</span>,
         };
 
         ErrorObject::owned(code, err.to_string(), <span class="prelude-val">None</span>::&lt;()&gt;)
