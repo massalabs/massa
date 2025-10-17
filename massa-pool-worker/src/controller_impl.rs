@@ -6,8 +6,9 @@ use massa_models::{
     block_id::BlockId, denunciation::Denunciation, denunciation::DenunciationPrecursor,
     endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
-use massa_pool_exports::{PoolConfig, PoolController, PoolManager};
+use massa_pool_exports::{PoolConfig, PoolController, PoolError, PoolManager};
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::sync::mpsc::TrySendError;
 use std::sync::{mpsc::SyncSender, Arc};
@@ -172,8 +173,19 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// get operations for block creation
-    fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
-        self.operation_pool.read().get_block_operations(slot)
+    fn get_block_operations(
+        &self,
+        slot: &Slot,
+        timeout: Option<MassaTime>,
+    ) -> Result<(Vec<OperationId>, Storage), PoolError> {
+        let guard = if let Some(timeout) = timeout {
+            self.operation_pool
+                .try_read_for(timeout.to_duration())
+                .ok_or(PoolError::LockTimeout)?
+        } else {
+            self.operation_pool.read()
+        };
+        Ok(guard.get_block_operations(slot))
     }
 
     /// get endorsements for a block
@@ -181,44 +193,100 @@ impl PoolController for PoolControllerImpl {
         &self,
         target_block: &BlockId,
         target_slot: &Slot,
-    ) -> (Vec<Option<EndorsementId>>, Storage) {
-        self.endorsement_pool
-            .read()
-            .get_block_endorsements(target_slot, target_block)
+        timeout: Option<MassaTime>,
+    ) -> Result<(Vec<Option<EndorsementId>>, Storage), PoolError> {
+        let guard = if let Some(timeout) = timeout {
+            self.endorsement_pool
+                .try_read_for(timeout.to_duration())
+                .ok_or(PoolError::LockTimeout)?
+        } else {
+            self.endorsement_pool.read()
+        };
+        Ok(guard.get_block_endorsements(target_slot, target_block))
     }
 
     /// get denunciationsq for a block
-    fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation> {
-        self.denunciation_pool
-            .read()
-            .get_block_denunciations(target_slot)
+    fn get_block_denunciations(
+        &self,
+        target_slot: &Slot,
+        timeout: Option<MassaTime>,
+    ) -> Result<Vec<Denunciation>, PoolError> {
+        let guard = if let Some(timeout) = timeout {
+            self.denunciation_pool
+                .try_read_for(timeout.to_duration())
+                .ok_or(PoolError::LockTimeout)?
+        } else {
+            self.denunciation_pool.read()
+        };
+        Ok(guard.get_block_denunciations(target_slot))
     }
 
     /// Get the number of endorsements in the pool
-    fn get_endorsement_count(&self) -> usize {
-        self.endorsement_pool.read().len()
+    fn get_endorsement_count(&self, timeout: Option<MassaTime>) -> Result<usize, PoolError> {
+        let guard = if let Some(timeout) = timeout {
+            self.endorsement_pool
+                .try_read_for(timeout.to_duration())
+                .ok_or(PoolError::LockTimeout)?
+        } else {
+            self.endorsement_pool.read()
+        };
+        Ok(guard.len())
     }
 
     /// Get the number of operations in the pool
-    fn get_operation_count(&self) -> usize {
-        self.operation_pool.read().len()
+    fn get_operation_count(&self, timeout: Option<MassaTime>) -> Result<usize, PoolError> {
+        let guard = if let Some(timeout) = timeout {
+            self.operation_pool
+                .try_read_for(timeout.to_duration())
+                .ok_or(PoolError::LockTimeout)?
+        } else {
+            self.operation_pool.read()
+        };
+        Ok(guard.len())
     }
 
     /// Check if the pool contains a list of endorsements. Returns one boolean per item.
-    fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool> {
-        let lck = self.endorsement_pool.read();
-        endorsements.iter().map(|id| lck.contains(id)).collect()
+    fn contains_endorsements(
+        &self,
+        endorsements: &[EndorsementId],
+        timeout: Option<MassaTime>,
+    ) -> Result<Vec<bool>, PoolError> {
+        let guard = if let Some(timeout) = timeout {
+            self.endorsement_pool
+                .try_read_for(timeout.to_duration())
+                .ok_or(PoolError::LockTimeout)?
+        } else {
+            self.endorsement_pool.read()
+        };
+        Ok(endorsements.iter().map(|id| guard.contains(id)).collect())
     }
 
     /// Check if the pool contains a list of operations. Returns one boolean per item.
-    fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
-        let lck = self.operation_pool.read();
-        operations.iter().map(|id| lck.contains(id)).collect()
+    fn contains_operations(
+        &self,
+        operations: &[OperationId],
+        timeout: Option<MassaTime>,
+    ) -> Result<Vec<bool>, PoolError> {
+        let guard = if let Some(timeout) = timeout {
+            self.operation_pool
+                .try_read_for(timeout.to_duration())
+                .ok_or(PoolError::LockTimeout)?
+        } else {
+            self.operation_pool.read()
+        };
+        Ok(operations.iter().map(|id| guard.contains(id)).collect())
     }
 
     /// Get the number of denunciations in the pool
-    fn get_denunciation_count(&self) -> usize {
-        self.denunciation_pool.read().len()
+    fn get_denunciation_count(&self, timeout: Option<MassaTime>) -> Result<usize, PoolError> {
+        let guard = if let Some(timeout) = timeout {
+            self.denunciation_pool
+                .try_read_for(timeout.to_duration())
+                .ok_or(PoolError::LockTimeout)?
+        } else {
+            self.denunciation_pool.read()
+        };
+        Ok(guard.len())
     }
 
     /// Returns a boxed clone of self.

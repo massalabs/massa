@@ -2995,6 +2995,7 @@ dependencies = [
  "massa_final_state",
  "massa_hash",
  "massa_models",
+ "massa_pool_exports",
  "massa_signature",
  "massa_time",
  "massa_versioning",
@@ -3553,6 +3554,7 @@ dependencies = [
 name = "massa_pool_exports"
 version = "4.0.0"
 dependencies = [
+ "displaydoc",
  "massa_execution_exports",
  "massa_models",
  "massa_pos_exports",
@@ -3561,6 +3563,7 @@ dependencies = [
  "mockall",
  "mockall_wrap",
  "serde",
+ "thiserror 1.0.69",
  "tokio",
 ]
 

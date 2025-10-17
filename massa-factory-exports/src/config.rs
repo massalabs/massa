@@ -21,6 +21,8 @@ pub struct FactoryConfig {
     pub max_block_gas: u64,
     /// maximum number of operation ids in block
     pub max_operations_per_block: u32,
+    /// max number of endorsements per block
+    pub endorsement_count: u32,
     /// last start period, to deduce genesis blocks
     pub last_start_period: u64,
     /// cycle duration in periods
@@ -31,4 +33,8 @@ pub struct FactoryConfig {
     pub stop_production_when_zero_connections: bool,
     /// chain id
     pub chain_id: u64,
+    /// warn if block production is delayed by more than this
+    pub block_delay_warn: MassaTime,
+    /// timeout for optional channel calls in block production
+    pub block_opt_channel_timeout: MassaTime,
 }

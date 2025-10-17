@@ -14,11 +14,14 @@ impl Default for FactoryConfig {
             max_block_size: MAX_BLOCK_SIZE as u64,
             max_block_gas: MAX_GAS_PER_BLOCK,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
             last_start_period: 0,
             periods_per_cycle: PERIODS_PER_CYCLE,
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             stop_production_when_zero_connections: false,
             chain_id: *CHAINID,
+            block_delay_warn: MassaTime::from_millis(500),
+            block_opt_channel_timeout: MassaTime::from_millis(1000),
         }
     }
 }

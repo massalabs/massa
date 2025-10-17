@@ -1,5 +1,6 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use std::collections::HashMap;
 use std::collections::{btree_map::Entry, BTreeMap};
 use tracing::debug;
 
@@ -14,6 +15,7 @@ use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 
+#[derive(Clone)]
 pub struct DenunciationPool {
     /// pool configuration
     config: PoolConfig,
@@ -23,6 +25,8 @@ pub struct DenunciationPool {
     last_cs_final_periods: Vec<u64>,
     /// Internal cache for denunciations
     denunciations_cache: BTreeMap<DenunciationIndex, DenunciationStatus>,
+    /// Cache of executed denunciations (boolean is whether it is executed in the final state)
+    executed_cache: HashMap<DenunciationIndex, bool>,
 }
 
 impl DenunciationPool {
@@ -32,7 +36,16 @@ impl DenunciationPool {
             channels,
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             denunciations_cache: Default::default(),
+            executed_cache: Default::default(),
         }
+    }
+
+    /// Replace the current denunciation pool contents with the contents of another one.
+    /// This is used for double buffering.
+    pub(crate) fn replace_with(&mut self, other: &DenunciationPool) {
+        self.last_cs_final_periods = other.last_cs_final_periods.clone();
+        self.denunciations_cache = other.denunciations_cache.clone();
+        self.executed_cache = other.executed_cache.clone();
     }
 
     /// Get the number of stored elements
@@ -187,9 +200,33 @@ impl DenunciationPool {
     fn cleanup_caches(&mut self) {
         cleanup_cache(
             &mut self.denunciations_cache,
+            &mut self.executed_cache,
             self.last_cs_final_periods.iter().min().unwrap_or(&0),
             &self.config.denunciation_expire_periods,
         );
+    }
+
+    /// Refresh the executed denunciations cache by querying the execution controller
+    pub(crate) fn refresh_execution_cache(&mut self) {
+        // Query execution status for all denunciations in the cache
+        for de_idx in self.denunciations_cache.keys() {
+            // already executed as final
+            if self.executed_cache.get(de_idx) == Some(&true) {
+                continue;
+            }
+
+            let (spec_status, final_status) = self
+                .channels
+                .execution_controller
+                .get_denunciation_execution_status(de_idx);
+
+            // If executed (even speculatively), add to cache, otherwise remove from cache
+            if spec_status || final_status {
+                self.executed_cache.insert(*de_idx, final_status);
+            } else {
+                self.executed_cache.remove(de_idx);
+            }
+        }
     }
 
     /// get denunciations for block creation
@@ -198,15 +235,11 @@ impl DenunciationPool {
         for (de_idx, de_status) in &self.denunciations_cache {
             if let DenunciationStatus::DenunciationEmitted(de) = de_status {
                 // Checks
-                // 1. the denunciation has not been executed already
+                // 1. the denunciation has not been executed already (using cache)
                 // 2. Denounced item slot is equal or before target slot of block header
                 // 3. Denounced item slot is not too old
                 let de_slot = de.get_slot();
-                if !self
-                    .channels
-                    .execution_controller
-                    .get_denunciation_execution_status(de_idx)
-                    .0
+                if !self.executed_cache.contains_key(de_idx)
                     && de_slot <= target_slot
                     && !Denunciation::is_expired(
                         &de_slot.period,
@@ -259,6 +292,7 @@ impl DenunciationPool {
 /// Internal function to cleanup the denunciation cache
 fn cleanup_cache(
     cache: &mut BTreeMap<DenunciationIndex, DenunciationStatus>,
+    executed_cache: &mut HashMap<DenunciationIndex, bool>,
     slot_period: &u64,
     denunciation_expire_periods: &u64,
 ) {
@@ -271,6 +305,14 @@ fn cleanup_cache(
     let de_idx = DenunciationIndex::BlockHeader {
         slot: Slot::new(earliest_allowed_period, 0),
     };
+
+    // Collect expired keys before removing them
+    let expired_keys: Vec<DenunciationIndex> = cache.range(..de_idx).map(|(k, _)| *k).collect();
+
+    // Remove expired items from executed_cache
+    for key in &expired_keys {
+        executed_cache.remove(key);
+    }
 
     // Keep only non expired items
     *cache = cache.split_off(&de_idx);
@@ -388,9 +430,11 @@ mod tests {
         // println!("Elapsed time: {:.6?}", bench_time_start_1.elapsed());
 
         let mut de_cache_cleanup_2 = de_cache.clone();
+        let mut executed_cache = HashMap::new();
         // let bench_time_start_2 = Instant::now();
         cleanup_cache(
             &mut de_cache_cleanup_2,
+            &mut executed_cache,
             &last_slot_period,
             &denunciation_expire_periods,
         );

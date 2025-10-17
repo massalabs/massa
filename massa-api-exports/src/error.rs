@@ -5,6 +5,7 @@ use jsonrpsee::types::{ErrorObject, ErrorObjectOwned};
 
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
+use massa_pool_exports::PoolError;
 use massa_time::TimeError;
 use massa_versioning::versioning_factory::FactoryError;
 use massa_wallet::WalletError;
@@ -47,6 +48,8 @@ pub enum ApiError {
     InternalServerError(String),
     /// Versioning Factory error: {0}
     FactoryError(#[from] FactoryError),
+    /// Pool error: {0}
+    PoolError(#[from] PoolError),
 }
 
 impl From<ApiError> for ErrorObjectOwned {
@@ -70,6 +73,7 @@ impl From<ApiError> for ErrorObjectOwned {
             ApiError::MissingConfig(_) => -32018,
             ApiError::WrongAPI => -32019,
             ApiError::FactoryError(_) => -32020,
+            ApiError::PoolError(_) => -32021,
         };
 
         ErrorObject::owned(code, err.to_string(), None::<()>)

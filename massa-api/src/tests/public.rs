@@ -102,8 +102,12 @@ async fn get_status() {
     });
 
     let mut pool_ctrl = MockPoolController::new();
-    pool_ctrl.expect_get_operation_count().returning(|| 1024);
-    pool_ctrl.expect_get_endorsement_count().returning(|| 2048);
+    pool_ctrl
+        .expect_get_operation_count()
+        .returning(|_| Ok(1024));
+    pool_ctrl
+        .expect_get_endorsement_count()
+        .returning(|_| Ok(2048));
 
     api_public.0.pool_command_sender = Box::new(pool_ctrl);
     api_public.0.protocol_controller = Box::new(protocol_ctrl);
@@ -178,7 +182,7 @@ async fn get_operations() {
     let mut pool_ctrl = MockPoolController::new();
     pool_ctrl
         .expect_contains_operations()
-        .returning(|ids| ids.iter().map(|_id| true).collect());
+        .returning(|ids, _| Ok(ids.iter().map(|_id| true).collect()));
 
     let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
@@ -221,7 +225,7 @@ async fn get_endorsements() {
     let mut pool_ctrl = MockPoolController::new();
     pool_ctrl
         .expect_contains_endorsements()
-        .returning(|ids| ids.iter().map(|_| true).collect::<Vec<bool>>());
+        .returning(|ids, _| Ok(ids.iter().map(|_| true).collect::<Vec<bool>>()));
 
     let mut consensus_ctrl = MockConsensusController::new();
     consensus_ctrl

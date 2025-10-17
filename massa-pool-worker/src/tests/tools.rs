@@ -192,29 +192,35 @@ pub fn create_endorsement(
     .unwrap()
 }
 
+// Helper to create a fully configured recursive execution mock
+fn create_recursive_exec_mock() -> MockExecutionController {
+    let mut story = MockExecutionController::new();
+    story
+        .expect_clone_box()
+        .returning(|| Box::new(create_recursive_exec_mock()));
+    story
+        .expect_get_ops_exec_status()
+        .returning(|ops| vec![(None, None); ops.len()]);
+    story
+        .expect_get_final_and_candidate_balance()
+        .returning(|addrs| {
+            vec![
+                (
+                    // Operations need to be paid for
+                    Some(Amount::const_init(1_000_000_000, 0)),
+                    Some(Amount::const_init(1_000_000_000, 0)),
+                );
+                addrs.len()
+            ]
+        });
+    story
+        .expect_get_denunciation_execution_status()
+        .returning(|_| (false, false));
+    story
+}
+
 // Create a execution controller that will return the same result for all as it's not always used
 // but as the others pools are running also, we need to return something
 pub fn default_mock_execution_controller() -> Box<MockExecutionController> {
-    let mut res = Box::new(MockExecutionController::new());
-    res.expect_clone_box().returning(|| {
-        let mut story = MockExecutionController::new();
-        story
-            .expect_get_ops_exec_status()
-            .returning(|ops| vec![(None, None); ops.len()]);
-        story
-            .expect_get_final_and_candidate_balance()
-            .returning(|addrs| {
-                vec![
-                    (
-                        // Operations need to be paid for
-                        Some(Amount::const_init(1_000_000_000, 0)),
-                        Some(Amount::const_init(1_000_000_000, 0)),
-                    );
-                    addrs.len()
-                ]
-            });
-
-        Box::new(story)
-    });
-    res
+    Box::new(create_recursive_exec_mock())
 }
