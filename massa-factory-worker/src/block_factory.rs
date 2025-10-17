@@ -122,7 +122,11 @@ impl BlockFactoryWorker {
 
     /// Process a slot: produce a block at that slot if one of the managed keys is drawn.
     fn process_slot(&mut self, slot: Slot) {
+        let mut timings = Vec::new();
+        let channel_timeout = self.cfg.block_opt_channel_timeout;
+
         // get block producer address for that slot
+        timings.push(("get_producer START", MassaTime::now()));
         let block_producer_addr = match self.channels.selector.get_producer(slot) {
             Ok(addr) => addr,
             Err(err) => {
@@ -133,18 +137,26 @@ impl BlockFactoryWorker {
                 return;
             }
         };
+        timings.push(("get_producer END", MassaTime::now()));
 
         // check if the block producer address is handled by the wallet
-        let block_producer_keypair_ref = self.wallet.read();
-        let block_producer_keypair = if let Some(kp) =
-            block_producer_keypair_ref.find_associated_keypair(&block_producer_addr)
+        timings.push(("wallet retrieval START", MassaTime::now()));
+        let block_producer_keypair;
         {
-            // the selected block producer is managed locally => continue to attempt block production
-            kp
-        } else {
-            // the selected block producer is not managed locally => quit
-            return;
-        };
+            let block_producer_keypair_ref = self.wallet.read();
+            if let Some(kp) =
+                block_producer_keypair_ref.find_associated_keypair(&block_producer_addr)
+            {
+                // the selected block producer is managed locally => continue to attempt block production
+                block_producer_keypair = kp.clone();
+            } else {
+                // the selected block producer is not managed locally => quit
+                return;
+            }
+        }
+        timings.push(("wallet retrieval END", MassaTime::now()));
+
+        timings.push(("double-staking check START", MassaTime::now()));
         let mut block_storage = self.channels.storage.clone_without_refs();
         {
             let block_lock = block_storage.read_blocks();
@@ -158,32 +170,54 @@ impl BlockFactoryWorker {
                 }
             }
         }
+        timings.push(("double-staking check END", MassaTime::now()));
 
         // check if we need to have connections to produce a block and in this case, check if we have enough.
         #[cfg(not(feature = "sandbox"))]
         if self.cfg.stop_production_when_zero_connections {
+            timings.push(("connectivity check START", MassaTime::now()));
             if let Ok(stats) = self.channels.protocol.get_stats() {
                 if stats.1.is_empty() {
                     warn!("block factory could not produce block for slot {} because there are no connections", slot);
                     return;
                 }
             }
+            timings.push(("connectivity check END", MassaTime::now()));
         }
 
         // get best parents and their periods
+        timings.push(("get_best_parents START", MassaTime::now()));
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
-                                                                                       // generate the local storage object
+        timings.push(("get_best_parents END", MassaTime::now()));
+        // generate the local storage object
 
         // get the parent in the same thread, with its period
         // will not panic because the thread is validated before the call
         let (same_thread_parent_id, _) = parents[slot.thread as usize];
 
         // gather endorsements
-        let (endorsements_ids, endo_storage) = self
-            .channels
-            .pool
-            .get_block_endorsements(&same_thread_parent_id, &slot);
+        timings.push(("get_block_endorsements START", MassaTime::now()));
+        let (endorsements_ids, endo_storage) = match self.channels.pool.get_block_endorsements(
+            &same_thread_parent_id,
+            &slot,
+            Some(channel_timeout),
+        ) {
+            Ok(result) => result,
+            Err(e) => {
+                warn!(
+                    "Channel timeout: get_block_endorsements took >{}ms for slot {}: {:?}. Proceeding with empty endorsements.",
+                    channel_timeout.as_millis(), slot, e
+                );
+                (
+                    vec![None; self.cfg.endorsement_count as usize],
+                    self.channels.storage.clone_without_refs(),
+                )
+            }
+        };
+        timings.push(("get_block_endorsements END", MassaTime::now()));
+
         //TODO: Do we want to populate only with endorsement id in the future ?
+        timings.push(("add endorsements START", MassaTime::now()));
         let endorsements: Vec<SecureShareEndorsement> = {
             let endo_read = endo_storage.read_endorsements();
             endorsements_ids
@@ -198,19 +232,58 @@ impl BlockFactoryWorker {
                 .collect()
         };
         block_storage.extend(endo_storage);
+        timings.push(("add endorsements END", MassaTime::now()));
 
         // gather operations and compute global operations hash
-        let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
+        timings.push(("get_block_operations START", MassaTime::now()));
+        let (op_ids, op_storage) = match self
+            .channels
+            .pool
+            .get_block_operations(&slot, Some(channel_timeout))
+        {
+            Ok(result) => result,
+            Err(e) => {
+                warn!(
+                    "Channel timeout: get_block_operations took >{}ms for slot {}: {:?}. Proceeding without operations.",
+                    channel_timeout.as_millis(), slot, e
+                );
+                (vec![], massa_storage::Storage::create_root())
+            }
+        };
         if op_ids.len() > self.cfg.max_operations_per_block as usize {
             warn!("Too many operations returned");
             return;
         }
+        timings.push(("get_block_operations END", MassaTime::now()));
 
+        timings.push(("add operations START", MassaTime::now()));
         block_storage.extend(op_storage);
+        timings.push(("add operations END", MassaTime::now()));
 
         // create header
+        timings.push(("mip data START", MassaTime::now()));
         let current_version = self.mip_store.get_network_version_current();
         let announced_version = self.mip_store.get_network_version_to_announce();
+        timings.push(("mip data END", MassaTime::now()));
+
+        timings.push(("get_block_denunciations START", MassaTime::now()));
+        let denunciations = match self
+            .channels
+            .pool
+            .get_block_denunciations(&slot, Some(channel_timeout))
+        {
+            Ok(result) => result,
+            Err(e) => {
+                warn!(
+                    "Channel timeout: get_block_denunciations took >{}ms for slot {}: {:?}. Proceeding without denunciations.",
+                    channel_timeout.as_millis(), slot, e
+                );
+                vec![]
+            }
+        };
+        timings.push(("get_block_denunciations END", MassaTime::now()));
+
+        timings.push(("block creation START", MassaTime::now()));
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
                 current_version,
@@ -219,10 +292,10 @@ impl BlockFactoryWorker {
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: compute_operations_hash(&op_ids, &self.op_id_serializer),
                 endorsements,
-                denunciations: self.channels.pool.get_block_denunciations(&slot),
+                denunciations,
             },
             BlockHeaderSerializer::new(), // TODO reuse self.block_header_serializer
-            block_producer_keypair,
+            &block_producer_keypair,
             self.cfg.chain_id,
         )
         .expect("error while producing block header");
@@ -231,17 +304,20 @@ impl BlockFactoryWorker {
             header,
             operations: op_ids.into_iter().collect(),
         };
-
         let block = Block::new_verifiable(
             block_,
             BlockSerializer::new(), // TODO reuse self.block_serializer
-            block_producer_keypair,
+            &block_producer_keypair,
             self.cfg.chain_id,
         )
         .expect("error while producing block");
         let block_id = block.id;
+        timings.push(("block creation END", MassaTime::now()));
+
         // store block in storage
+        timings.push(("block store START", MassaTime::now()));
         block_storage.store_block(block);
+        timings.push(("block store END", MassaTime::now()));
 
         // log block creation
         info!(
@@ -250,9 +326,36 @@ impl BlockFactoryWorker {
         );
 
         // send full block to consensus
+        timings.push(("register_block START", MassaTime::now()));
         self.channels
             .consensus
             .register_block(block_id, slot, block_storage, true);
+        timings.push(("register_block END", MassaTime::now()));
+
+        // Check block latency
+        let block_timestamp = get_block_slot_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            slot,
+        )
+        .expect("could not get block slot timestamp");
+        let cur_timestamp = MassaTime::now();
+        let delay = cur_timestamp.saturating_sub(block_timestamp);
+        if delay > self.cfg.block_delay_warn {
+            let mut timing_details = String::new();
+            for (step_name, step_t) in &timings {
+                timing_details.push_str(&format!(" / {} at ts={}", step_name, step_t));
+            }
+            warn!(
+                "Block {} production at slot {} was delayed by {}ms (threshold: {}ms) [{}]",
+                block_id,
+                slot,
+                delay.as_millis(),
+                self.cfg.block_delay_warn.as_millis(),
+                timing_details
+            );
+        }
     }
 
     /// main run loop of the block creator thread

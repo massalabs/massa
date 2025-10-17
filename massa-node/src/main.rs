@@ -665,6 +665,10 @@ async fn launch(
         max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
         max_operation_pool_excess_items: SETTINGS.pool.max_operation_pool_excess_items,
         operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
+        operation_pool_swap_interval: SETTINGS.pool.operation_pool_swap_interval,
+        endorsement_pool_swap_interval: SETTINGS.pool.endorsement_pool_swap_interval,
+        denunciation_pool_refresh_interval: SETTINGS.pool.denunciation_pool_refresh_interval,
+        denunciation_pool_swap_interval: SETTINGS.pool.denunciation_pool_swap_interval,
         operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
         operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
@@ -888,6 +892,7 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        endorsement_count: ENDORSEMENT_COUNT,
         last_start_period: final_state.read().get_last_start_period(),
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
@@ -895,6 +900,8 @@ async fn launch(
             .factory
             .stop_production_when_zero_connections,
         chain_id: *CHAINID,
+        block_delay_warn: SETTINGS.factory.block_delay_warn_threshold,
+        block_opt_channel_timeout: SETTINGS.factory.block_opt_channel_timeout,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -974,6 +981,7 @@ async fn launch(
         max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_addresses_datastore_keys_query: SETTINGS.api.max_addresses_datastore_keys_query,
+        pool_api_timeout: SETTINGS.api.pool_api_timeout,
     };
 
     // spawn Massa API

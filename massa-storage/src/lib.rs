@@ -129,6 +129,79 @@ impl Storage {
         }
     }
 
+    /// replace the current storage with a copy of the other one
+    pub fn replace_with(&mut self, other: &Storage) {
+        // compute the diff between the two storages in terms of operations
+        {
+            let added_ops = other.get_op_refs() - self.get_op_refs();
+            let removed_ops = self.get_op_refs() - other.get_op_refs();
+            {
+                let owners = &mut self.operation_owners.write();
+                // removed objects
+                let orphaned_ids =
+                    Self::internal_drop_refs(&removed_ops, owners, &mut self.local_used_ops);
+                // if there are orphaned objects, remove them from storage
+                if !orphaned_ids.is_empty() {
+                    let mut ops = self.operations.write();
+                    for op_id in orphaned_ids {
+                        ops.remove(&op_id);
+                    }
+                }
+                // claim the added objects
+                Self::internal_claim_refs(&added_ops, owners, &mut self.local_used_ops);
+            }
+        }
+
+        // compute the diff between the two storages in terms of blocks
+        {
+            let added_blocks = other.get_block_refs() - self.get_block_refs();
+            let removed_blocks = self.get_block_refs() - other.get_block_refs();
+            {
+                let owners = &mut self.block_owners.write();
+                // removed objects
+                let orphaned_ids =
+                    Self::internal_drop_refs(&removed_blocks, owners, &mut self.local_used_blocks);
+                // if there are orphaned objects, remove them from storage
+                if !orphaned_ids.is_empty() {
+                    let mut blocks = self.blocks.write();
+                    for block_id in orphaned_ids {
+                        blocks.remove(&block_id);
+                    }
+                }
+                // claim the added objects
+                Self::internal_claim_refs(&added_blocks, owners, &mut self.local_used_blocks);
+            }
+        }
+
+        // compute the diff between the two storages in terms of endorsements
+        {
+            let added_endorsements = other.get_endorsement_refs() - self.get_endorsement_refs();
+            let removed_endorsements = self.get_endorsement_refs() - other.get_endorsement_refs();
+            {
+                let owners = &mut self.endorsement_owners.write();
+                // removed objects
+                let orphaned_ids = Self::internal_drop_refs(
+                    &removed_endorsements,
+                    owners,
+                    &mut self.local_used_endorsements,
+                );
+                // if there are orphaned objects, remove them from storage
+                if !orphaned_ids.is_empty() {
+                    let mut endorsements = self.endorsements.write();
+                    for endorsement_id in orphaned_ids {
+                        endorsements.remove(&endorsement_id);
+                    }
+                }
+                // claim the added objects
+                Self::internal_claim_refs(
+                    &added_endorsements,
+                    owners,
+                    &mut self.local_used_endorsements,
+                );
+            }
+        }
+    }
+
     /// Efficiently extends the current Storage by consuming the refs of another storage.
     pub fn extend(&mut self, mut other: Storage) {
         // Take ownership of `other`'s references.
@@ -228,15 +301,14 @@ impl Storage {
         claimed
     }
 
-    /// Drop block references
-    pub fn drop_block_refs(&mut self, ids: &PreHashSet<BlockId>) {
-        if ids.is_empty() {
-            return;
-        }
-        let mut owners = self.block_owners.write();
+    fn internal_drop_refs<IdT: Id + PartialEq + Eq + Hash + PreHashed + Copy>(
+        ids: &PreHashSet<IdT>,
+        owners: &mut RwLockWriteGuard<PreHashMap<IdT, usize>>,
+        local_used_ids: &mut PreHashSet<IdT>,
+    ) -> Vec<IdT> {
         let mut orphaned_ids = Vec::new();
         for id in ids {
-            if !self.local_used_blocks.remove(id) {
+            if !local_used_ids.remove(id) {
                 // the object was already not referenced locally
                 continue;
             }
@@ -259,6 +331,16 @@ impl Storage {
                 }
             }
         }
+        orphaned_ids
+    }
+
+    /// Drop block references
+    pub fn drop_block_refs(&mut self, ids: &PreHashSet<BlockId>) {
+        if ids.is_empty() {
+            return;
+        }
+        let mut owners = self.block_owners.write();
+        let orphaned_ids = Self::internal_drop_refs(ids, &mut owners, &mut self.local_used_blocks);
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
             let mut blocks = self.blocks.write();
@@ -318,36 +400,12 @@ impl Storage {
             return;
         }
         let mut owners = self.operation_owners.write();
-        let mut orphaned_ids = Vec::new();
-        for id in ids {
-            if !self.local_used_ops.remove(id) {
-                // the object was already not referenced locally
-                continue;
-            }
-            match owners.entry(*id) {
-                hash_map::Entry::Occupied(mut occ) => {
-                    let res_count = {
-                        let cnt = occ.get_mut();
-                        *cnt = cnt
-                            .checked_sub(1)
-                            .expect("less than 1 owner on storage object reference drop");
-                        *cnt
-                    };
-                    if res_count == 0 {
-                        orphaned_ids.push(*id);
-                        occ.remove();
-                    }
-                }
-                hash_map::Entry::Vacant(_vac) => {
-                    panic!("missing object in storage on storage object reference drop");
-                }
-            }
-        }
+        let orphaned_ids = Self::internal_drop_refs(ids, &mut owners, &mut self.local_used_ops);
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
             let mut ops = self.operations.write();
-            for id in orphaned_ids {
-                ops.remove(&id);
+            for op_id in orphaned_ids {
+                ops.remove(&op_id);
             }
         }
     }
@@ -416,36 +474,13 @@ impl Storage {
             return;
         }
         let mut owners = self.endorsement_owners.write();
-        let mut orphaned_ids = Vec::new();
-        for id in ids {
-            if !self.local_used_endorsements.remove(id) {
-                // the object was already not referenced locally
-                continue;
-            }
-            match owners.entry(*id) {
-                hash_map::Entry::Occupied(mut occ) => {
-                    let res_count = {
-                        let cnt = occ.get_mut();
-                        *cnt = cnt
-                            .checked_sub(1)
-                            .expect("less than 1 owner on storage object reference drop");
-                        *cnt
-                    };
-                    if res_count == 0 {
-                        orphaned_ids.push(*id);
-                        occ.remove();
-                    }
-                }
-                hash_map::Entry::Vacant(_vac) => {
-                    panic!("missing object in storage on storage object reference drop");
-                }
-            }
-        }
+        let orphaned_ids =
+            Self::internal_drop_refs(ids, &mut owners, &mut self.local_used_endorsements);
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
-            let mut endos = self.endorsements.write();
-            for id in orphaned_ids {
-                endos.remove(&id);
+            let mut endorsements = self.endorsements.write();
+            for e_id in orphaned_ids {
+                endorsements.remove(&e_id);
             }
         }
     }

@@ -98,6 +98,10 @@ pub struct FactorySettings {
     pub staking_wallet_path: PathBuf,
     /// stop the production in case we are not connected to anyone
     pub stop_production_when_zero_connections: bool,
+    /// warn if block production is delayed by more than the given time in milliseconds
+    pub block_delay_warn_threshold: MassaTime,
+    /// timeout for optional channel calls in block production (in milliseconds)
+    pub block_opt_channel_timeout: MassaTime,
 }
 
 /// Pool configuration, read from a file configuration
@@ -108,6 +112,10 @@ pub struct PoolSettings {
     pub max_operation_pool_excess_items: usize,
     pub operation_max_future_start_delay: MassaTime,
     pub operation_pool_refresh_interval: MassaTime,
+    pub operation_pool_swap_interval: MassaTime,
+    pub endorsement_pool_swap_interval: MassaTime,
+    pub denunciation_pool_refresh_interval: MassaTime,
+    pub denunciation_pool_swap_interval: MassaTime,
     pub max_endorsements_pool_size_per_thread: usize,
     pub max_item_return_count: usize,
     /// endorsements channel capacity
@@ -142,6 +150,7 @@ pub struct APISettings {
     pub deferred_credits_delta: MassaTime,
     pub max_datastore_keys_query: Option<u32>,
     pub max_addresses_datastore_keys_query: Option<u32>,
+    pub pool_api_timeout: MassaTime,
 }
 
 #[derive(Debug, Deserialize, Clone)]
