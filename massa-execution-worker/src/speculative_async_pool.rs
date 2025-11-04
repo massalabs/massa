@@ -12,7 +12,7 @@ use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::slot::Slot;
 use massa_models::types::{Applicable, SetUpdateOrDelete};
 use parking_lot::RwLock;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc, time::Instant};
 
 pub(crate) struct SpeculativeAsyncPool {
     final_state: Arc<RwLock<dyn FinalStateController>>,
@@ -167,6 +167,9 @@ impl SpeculativeAsyncPool {
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
 
+        let start = Instant::now();
+        let init_time = Instant::now();
+
         let mut eliminated_infos = Vec::new();
         self.message_infos.retain(|id, info| {
             if Self::is_message_expired(slot, &info.validity_end) {
@@ -176,7 +179,14 @@ impl SpeculativeAsyncPool {
                 true
             }
         });
+        let duration = start.elapsed();
+        tracing::info!(
+            "message_infos retain iteration: message_infos_size={}, duration={:?}",
+            self.message_infos.len(),
+            duration
+        );
 
+        let start = Instant::now();
         let mut eliminated_new_messages = Vec::new();
         self.pool_changes.0.retain(|k, v| match v {
             SetUpdateOrDelete::Set(message) => {
@@ -196,7 +206,14 @@ impl SpeculativeAsyncPool {
             SetUpdateOrDelete::Update(_v) => None,
             SetUpdateOrDelete::Delete => None,
         }));
+        let duration = start.elapsed();
+        tracing::info!(
+            "eliminated_new_messages retain iteration: eliminated_new_messages_size={}, duration={:?}",
+            eliminated_new_messages.len(),
+            duration
+        );
 
+        let start = Instant::now();
         // Truncate message pool to its max size, removing non-priority items
         let excess_count = self
             .message_infos
@@ -207,7 +224,14 @@ impl SpeculativeAsyncPool {
         for _ in 0..excess_count {
             eliminated_infos.push(self.message_infos.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
+        let duration = start.elapsed();
+        tracing::info!(
+            "eliminated_infos retain iteration: eliminated_infos_size={}, duration={:?}",
+            eliminated_infos.len(),
+            duration
+        );
 
+        let start = Instant::now();
         // Activate the messages that can be activated (triggered)
         let mut triggered_info = Vec::new();
         for (id, message_info) in self.message_infos.iter_mut() {
@@ -218,19 +242,56 @@ impl SpeculativeAsyncPool {
                 }
             }
         }
+        let duration = start.elapsed();
+        tracing::info!(
+            "triggered_info : triggered_info_size={}, duration={:?}",
+            triggered_info.len(),
+            duration
+        );
 
+        let start = Instant::now();
         // Query triggered messages
         let triggered_msg = self.fetch_msgs(triggered_info.into_iter().map(|(id, _)| id).collect());
 
+        let duration = start.elapsed();
+        tracing::info!(
+            "triggered_msg fetch_msgs iteration: triggered_msg_size={}, duration={:?}",
+            triggered_msg.len(),
+            duration
+        );
+
+        let start = Instant::now();
         for (msg_id, _msg) in triggered_msg.iter() {
             self.pool_changes.push_activate(*msg_id);
         }
+        let duration = start.elapsed();
+        tracing::info!(
+            "triggered_msg push_activate iteration: triggered_msg_size={}, duration={:?}",
+            triggered_msg.len(),
+            duration
+        );
 
+        let start = Instant::now();
         // Query eliminated messages
         let mut eliminated_msg =
             self.fetch_msgs(eliminated_infos.into_iter().map(|(id, _)| id).collect());
+        let duration = start.elapsed();
+        tracing::info!(
+            "eliminated_msg fetch_msgs iteration: eliminated_msg_size={}, duration={:?}",
+            eliminated_msg.len(),
+            duration
+        );
+
+        let start = Instant::now();
         // Push their deletion in the pool changes
         self.delete_messages(eliminated_msg.iter().map(|(id, _)| *id).collect());
+
+        let duration = start.elapsed();
+        tracing::info!(
+            "eliminated_msg delete_messages iteration: eliminated_msg_size={}, duration={:?}",
+            eliminated_msg.len(),
+            duration
+        );
 
         if fix_eliminated_msg {
             eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
@@ -238,6 +299,15 @@ impl SpeculativeAsyncPool {
                 SetUpdateOrDelete::Update(_v) => None,
                 SetUpdateOrDelete::Delete => None,
             }));
+        }
+
+        let duration = init_time.elapsed();
+        tracing::info!("settle_slot iteration: duration={:?}", duration);
+        if duration.as_millis() > 500 {
+            tracing::warn!(
+                "WARNING DURATION: settle_slot iteration: duration={:?}",
+                duration
+            );
         }
         eliminated_msg
     }
@@ -278,9 +348,22 @@ impl SpeculativeAsyncPool {
         };
 
         // fetch active history
-        for hist_item in self.active_history.read().0.iter() {
+        let start = Instant::now();
+        let active_history = self.active_history.read();
+        let active_history_size = active_history.0.len();
+        let mut total_async_changes = 0;
+        for hist_item in active_history.0.iter() {
+            total_async_changes += hist_item.state_changes.async_pool_changes.0.len();
             apply_changes(&hist_item.state_changes.async_pool_changes);
         }
+        drop(active_history);
+        let duration = start.elapsed();
+        tracing::info!(
+            "active_history apply_changes iteration: active_history_size={}, async_changes={}, duration={:?}",
+            active_history_size,
+            total_async_changes,
+            duration
+        );
 
         // fetch current changes
         apply_changes(&self.pool_changes);
