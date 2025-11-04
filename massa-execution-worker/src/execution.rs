@@ -1986,6 +1986,7 @@ impl ExecutionState {
             .expect("could not deduce slot duration")
             .to_duration();
         let total_slot_duration = slot_start_time.elapsed();
+        tracing::info!("slot {} execution took in_millis {:?}", slot, total_slot_duration.as_millis());
         if total_slot_duration > max_slot_duration {
             warn!(
                 "slot {} execution took {:?} (above the {:?} maximum slot duration)",

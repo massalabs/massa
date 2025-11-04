@@ -181,7 +181,8 @@ impl SpeculativeAsyncPool {
         });
         let duration = start.elapsed();
         tracing::info!(
-            "message_infos retain iteration: message_infos_size={}, duration={:?}",
+            "slot {:?} message_infos retain iteration: message_infos_size={}, duration={:?}",
+            slot,
             self.message_infos.len(),
             duration
         );
@@ -208,7 +209,8 @@ impl SpeculativeAsyncPool {
         }));
         let duration = start.elapsed();
         tracing::info!(
-            "eliminated_new_messages retain iteration: eliminated_new_messages_size={}, duration={:?}",
+            "slot {:?} eliminated_new_messages retain iteration: eliminated_new_messages_size={}, duration={:?}",
+            slot,
             eliminated_new_messages.len(),
             duration
         );
@@ -226,7 +228,8 @@ impl SpeculativeAsyncPool {
         }
         let duration = start.elapsed();
         tracing::info!(
-            "eliminated_infos retain iteration: eliminated_infos_size={}, duration={:?}",
+            "slot {:?} eliminated_infos retain iteration: eliminated_infos_size={}, duration={:?}",
+            slot,
             eliminated_infos.len(),
             duration
         );
@@ -244,7 +247,8 @@ impl SpeculativeAsyncPool {
         }
         let duration = start.elapsed();
         tracing::info!(
-            "triggered_info : triggered_info_size={}, duration={:?}",
+            "slot {:?} triggered_info : triggered_info_size={}, duration={:?}",
+            slot,
             triggered_info.len(),
             duration
         );
@@ -255,7 +259,8 @@ impl SpeculativeAsyncPool {
 
         let duration = start.elapsed();
         tracing::info!(
-            "triggered_msg fetch_msgs iteration: triggered_msg_size={}, duration={:?}",
+            "slot {:?} triggered_msg fetch_msgs iteration: triggered_msg_size={}, duration={:?}",
+            slot,
             triggered_msg.len(),
             duration
         );
@@ -266,7 +271,8 @@ impl SpeculativeAsyncPool {
         }
         let duration = start.elapsed();
         tracing::info!(
-            "triggered_msg push_activate iteration: triggered_msg_size={}, duration={:?}",
+            "slot {:?} triggered_msg push_activate iteration: triggered_msg_size={}, duration={:?}",
+            slot,
             triggered_msg.len(),
             duration
         );
@@ -277,7 +283,8 @@ impl SpeculativeAsyncPool {
             self.fetch_msgs(eliminated_infos.into_iter().map(|(id, _)| id).collect());
         let duration = start.elapsed();
         tracing::info!(
-            "eliminated_msg fetch_msgs iteration: eliminated_msg_size={}, duration={:?}",
+            "slot {:?} eliminated_msg fetch_msgs iteration: eliminated_msg_size={}, duration={:?}",
+            slot,
             eliminated_msg.len(),
             duration
         );
@@ -288,7 +295,8 @@ impl SpeculativeAsyncPool {
 
         let duration = start.elapsed();
         tracing::info!(
-            "eliminated_msg delete_messages iteration: eliminated_msg_size={}, duration={:?}",
+            "slot {:?} eliminated_msg delete_messages iteration: eliminated_msg_size={}, duration={:?}",
+            slot,
             eliminated_msg.len(),
             duration
         );
@@ -302,7 +310,8 @@ impl SpeculativeAsyncPool {
         }
 
         let duration = init_time.elapsed();
-        tracing::info!("settle_slot iteration: duration={:?}", duration);
+        tracing::info!("slot {:?} settle_slot iteration: duration={:?}", slot, duration);
+        tracing::info!("slot {:?} settle_slot as_millis: duration={:?}", slot, duration.as_millis());
         if duration.as_millis() > 500 {
             tracing::warn!(
                 "WARNING DURATION: settle_slot iteration: duration={:?}",
