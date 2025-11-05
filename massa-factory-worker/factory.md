@@ -12,7 +12,7 @@ The factory module will function in separate, independent threads.
 ### Inputs
 
 The factory controller will allow acting on the factory from other modules:
-* staking keys management: add, list, remove keys dynamically like it's done currently in consensus
+* staking keys management: add, list, remove keys dynamically like it's currently done in consensus
 * enable/disable block and endorsement production dynamically
 * the API can query the factory to get production history and past/future draw slots and timestamps
 
@@ -102,7 +102,7 @@ At each endorsement time tick encorsing slot `S`, we do the following:
   * there can be multiple draws for different endorsement indices at the same slot with the same or different addresses 
 * ask consensus to give the block ID of a block `B` of the blockclique at slot `S`
   * if there is none, do nothing for this tick
-* for each endorsement `endo` that is supposed to be created by address `A` and endorse the block `B`:
+* for each endorsement `endo` that is supposed to be created by address `A` and to endorse the block `B`:
   * create an endorsement endorsing `B.id` at slot `S`, signed with `A`
 * send all created endorsements to `storage` and `protocol` for propagation
 
