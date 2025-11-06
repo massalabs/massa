@@ -7,7 +7,7 @@ use crate::active_history::ActiveHistory;
 use massa_async_pool::AsyncPoolChanges;
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::LedgerChanges;
-use massa_models::async_msg::{AsyncMessage, AsyncMessageInfo, AsyncMessageTrigger};
+use massa_models::async_msg::{AsyncMessage, AsyncMessageTrigger};
 use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::slot::Slot;
 use massa_models::types::{Applicable, SetUpdateOrDelete};
@@ -15,12 +15,12 @@ use parking_lot::RwLock;
 use std::{collections::BTreeMap, sync::Arc};
 
 pub(crate) struct SpeculativeAsyncPool {
-    final_state: Arc<RwLock<dyn FinalStateController>>,
-    active_history: Arc<RwLock<ActiveHistory>>,
+    /// Async pool max length
+    async_pool_max_length: u64,
     // current speculative pool changes
     pool_changes: AsyncPoolChanges,
-    // Used to know which messages we want to take (contains active and final messages)
-    message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
+    // Local cache of async messages
+    message_cache: BTreeMap<AsyncMessageId, AsyncMessage>,
 }
 
 impl SpeculativeAsyncPool {
@@ -31,37 +31,41 @@ impl SpeculativeAsyncPool {
         final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
-        let mut message_infos = final_state
-            .read()
-            .get_async_pool()
-            .message_info_cache
-            .clone();
+        // fetch final state
+        let async_pool_max_length;
+        let mut message_cache;
+        {
+            let final_state_lock = final_state.read();
+            let async_pool = final_state_lock.get_async_pool();
+            async_pool_max_length = async_pool.config.max_length;
+            message_cache = async_pool.message_cache.clone();
+        }
 
+        // apply history
         for history_item in active_history.read().0.iter() {
             for change in history_item.state_changes.async_pool_changes.0.iter() {
                 match change {
                     (id, SetUpdateOrDelete::Set(message)) => {
-                        message_infos.insert(*id, AsyncMessageInfo::from(message.clone()));
+                        message_cache.insert(*id, message.clone());
                     }
 
                     (id, SetUpdateOrDelete::Update(message_update)) => {
-                        message_infos.entry(*id).and_modify(|message_info| {
+                        message_cache.entry(*id).and_modify(|message_info| {
                             message_info.apply(message_update.clone());
                         });
                     }
 
                     (id, SetUpdateOrDelete::Delete) => {
-                        message_infos.remove(id);
+                        message_cache.remove(id);
                     }
                 }
             }
         }
 
         SpeculativeAsyncPool {
-            final_state,
-            active_history,
+            async_pool_max_length,
             pool_changes: Default::default(),
-            message_infos,
+            message_cache,
         }
     }
 
@@ -74,23 +78,23 @@ impl SpeculativeAsyncPool {
     }
 
     /// Takes a snapshot (clone) of the emitted messages
-    pub fn get_snapshot(&self) -> (AsyncPoolChanges, BTreeMap<AsyncMessageId, AsyncMessageInfo>) {
-        (self.pool_changes.clone(), self.message_infos.clone())
+    pub fn get_snapshot(&self) -> (AsyncPoolChanges, BTreeMap<AsyncMessageId, AsyncMessage>) {
+        (self.pool_changes.clone(), self.message_cache.clone())
     }
 
     /// Resets the `SpeculativeAsyncPool` emitted messages to a snapshot (see `get_snapshot` method)
     pub fn reset_to_snapshot(
         &mut self,
-        snapshot: (AsyncPoolChanges, BTreeMap<AsyncMessageId, AsyncMessageInfo>),
+        snapshot: (AsyncPoolChanges, BTreeMap<AsyncMessageId, AsyncMessage>),
     ) {
         self.pool_changes = snapshot.0;
-        self.message_infos = snapshot.1;
+        self.message_cache = snapshot.1;
     }
 
     /// Add a new message to the list of changes of this `SpeculativeAsyncPool`
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
         self.pool_changes.push_add(msg.compute_id(), msg.clone());
-        self.message_infos.insert(msg.compute_id(), msg.into());
+        self.message_cache.insert(msg.compute_id(), msg);
     }
 
     /// Takes a batch of asynchronous messages to execute,
@@ -114,11 +118,9 @@ impl SpeculativeAsyncPool {
         // Choose which messages to take based on self.message_infos
         // (all messages are considered: finals, in active_history and in speculative)
 
-        let mut wanted_messages = Vec::new();
+        let mut wanted_ids = Vec::new();
 
-        let message_infos = self.message_infos.clone();
-
-        for (message_id, message_info) in message_infos.iter() {
+        for (message_id, message_info) in self.message_cache.iter() {
             let corrected_max_gas = message_info.max_gas.saturating_add(async_msg_cst_gas_cost);
             // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
             //       so to be consistent here, use >= & <= checks
@@ -132,20 +134,21 @@ impl SpeculativeAsyncPool {
             {
                 available_gas -= corrected_max_gas;
 
-                wanted_messages.push(*message_id);
+                wanted_ids.push(*message_id);
             }
         }
 
-        let taken = self.fetch_msgs(wanted_messages);
-
         // Remove the messages_info of the taken messages, and push their deletion in the pool changes
-        let taken_ids: Vec<_> = taken.iter().map(|(id, _)| *id).collect();
-        for message_id in taken_ids.iter() {
-            self.message_infos.remove(message_id);
+        let mut taken_msgs = Vec::with_capacity(wanted_ids.len());
+        for msg_id in &wanted_ids {
+            taken_msgs.push((
+                *msg_id,
+                self.message_cache.remove(msg_id).unwrap(), //won't panic, items were listed above
+            ));
         }
-        self.delete_messages(taken_ids);
+        self.delete_messages(wanted_ids);
 
-        taken
+        taken_msgs
     }
 
     /// Settle a slot.
@@ -161,16 +164,16 @@ impl SpeculativeAsyncPool {
         &mut self,
         slot: &Slot,
         ledger_changes: &LedgerChanges,
-        fix_eliminated_msg: bool,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        // Update the messages_info: remove messages that should be removed
+        // Update eliminated_msgs: emove messages that should be removed
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
 
-        let mut eliminated_infos = Vec::new();
-        self.message_infos.retain(|id, info| {
-            if Self::is_message_expired(slot, &info.validity_end) {
-                eliminated_infos.push((*id, info.clone()));
+        let mut eliminated_msgs = Vec::new();
+
+        self.message_cache.retain(|id, msg| {
+            if Self::is_message_expired(slot, &msg.validity_end) {
+                eliminated_msgs.push((*id, msg.clone()));
                 false
             } else {
                 true
@@ -191,111 +194,44 @@ impl SpeculativeAsyncPool {
             SetUpdateOrDelete::Delete => true,
         });
 
-        eliminated_infos.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
-            SetUpdateOrDelete::Set(v) => Some((*k, AsyncMessageInfo::from(v.clone()))),
+        eliminated_msgs.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
+            SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
             SetUpdateOrDelete::Update(_v) => None,
             SetUpdateOrDelete::Delete => None,
         }));
 
         // Truncate message pool to its max size, removing non-priority items
         let excess_count = self
-            .message_infos
+            .message_cache
             .len()
-            .saturating_sub(self.final_state.read().get_async_pool().config.max_length as usize);
+            .saturating_sub(self.async_pool_max_length as usize);
 
-        eliminated_infos.reserve_exact(excess_count);
+        eliminated_msgs.reserve_exact(excess_count);
         for _ in 0..excess_count {
-            eliminated_infos.push(self.message_infos.pop_last().unwrap()); // will not panic (checked at excess_count computation)
+            eliminated_msgs.push(self.message_cache.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
 
         // Activate the messages that can be activated (triggered)
-        let mut triggered_info = Vec::new();
-        for (id, message_info) in self.message_infos.iter_mut() {
-            if let Some(filter) = &message_info.trigger {
+        for (id, msg) in self.message_cache.iter_mut() {
+            if let Some(filter) = &msg.trigger {
                 if is_triggered(filter, ledger_changes) {
-                    message_info.can_be_executed = true;
-                    triggered_info.push((*id, message_info.clone()));
+                    msg.can_be_executed = true;
+                    self.pool_changes.push_activate(*id);
                 }
             }
         }
 
-        // Query triggered messages
-        let triggered_msg = self.fetch_msgs(triggered_info.into_iter().map(|(id, _)| id).collect());
+        // Push message deletion to the pool changes
+        self.delete_messages(eliminated_msgs.iter().map(|(id, _)| *id).collect());
 
-        for (msg_id, _msg) in triggered_msg.iter() {
-            self.pool_changes.push_activate(*msg_id);
-        }
+        // reintroduce newly eliminated messages
+        eliminated_msgs.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
+            SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
+            SetUpdateOrDelete::Update(_v) => None,
+            SetUpdateOrDelete::Delete => None,
+        }));
 
-        // Query eliminated messages
-        let mut eliminated_msg =
-            self.fetch_msgs(eliminated_infos.into_iter().map(|(id, _)| id).collect());
-        // Push their deletion in the pool changes
-        self.delete_messages(eliminated_msg.iter().map(|(id, _)| *id).collect());
-
-        if fix_eliminated_msg {
-            eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
-                SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
-                SetUpdateOrDelete::Update(_v) => None,
-                SetUpdateOrDelete::Delete => None,
-            }));
-        }
-        eliminated_msg
-    }
-
-    /// This version changes two things:
-    /// - We ensure the order of the messages is preserved when we fetch them (to avoid a non-deterministic behavior in the execution)
-    /// - We simplify the code by working from the final state and applying changes of the active history and the current changes
-    fn fetch_msgs_opt(
-        &mut self,
-        wanted_ids: Vec<AsyncMessageId>,
-    ) -> Vec<(AsyncMessageId, Option<AsyncMessage>)> {
-        // fetch final state
-        let mut retrieved = self
-            .final_state
-            .read()
-            .get_async_pool()
-            .fetch_messages(&wanted_ids);
-
-        // function to accumulate changes to the retrieved list
-        let mut apply_changes = |changes: &AsyncPoolChanges| {
-            for (id, msg_opt) in retrieved.iter_mut() {
-                match changes.0.get(id) {
-                    Some(SetUpdateOrDelete::Set(msg)) => {
-                        *msg_opt = Some(msg.clone());
-                    }
-                    Some(SetUpdateOrDelete::Update(msg_update)) => {
-                        if msg_opt.is_none() {
-                            *msg_opt = Some(AsyncMessage::default());
-                        }
-                        msg_opt.as_mut().unwrap().apply(msg_update.clone()); // unwrap checked above
-                    }
-                    Some(SetUpdateOrDelete::Delete) => {
-                        *msg_opt = None;
-                    }
-                    None => {}
-                }
-            }
-        };
-
-        // fetch active history
-        for hist_item in self.active_history.read().0.iter() {
-            apply_changes(&hist_item.state_changes.async_pool_changes);
-        }
-
-        // fetch current changes
-        apply_changes(&self.pool_changes);
-
-        retrieved
-    }
-
-    fn fetch_msgs(
-        &mut self,
-        wanted_ids: Vec<AsyncMessageId>,
-    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        self.fetch_msgs_opt(wanted_ids)
-            .into_iter()
-            .filter_map(|(id, msg_opt)| msg_opt.map(|msg| (id, msg)))
-            .collect()
+        eliminated_msgs
     }
 
     fn delete_messages(&mut self, message_ids: Vec<AsyncMessageId>) {
