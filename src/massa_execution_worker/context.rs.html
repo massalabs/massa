@@ -1472,8 +1472,6 @@
 <a href="#1472" id="1472">1472</a>
 <a href="#1473" id="1473">1473</a>
 <a href="#1474" id="1474">1474</a>
-<a href="#1475" id="1475">1475</a>
-<a href="#1476" id="1476">1476</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1508,7 +1506,7 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
-<span class="kw">use </span>massa_models::async_msg::{AsyncMessage, AsyncMessageInfo};
+<span class="kw">use </span>massa_models::async_msg::AsyncMessage;
 <span class="kw">use </span>massa_models::async_msg_id::AsyncMessageId;
 <span class="kw">use </span>massa_models::block_id::BlockIdSerializer;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
@@ -1552,7 +1550,7 @@
     </span><span class="kw">pub </span>deferred_calls_changes: DeferredCallRegistryChanges,
 
     <span class="doccomment">/// the associated message infos for the speculative async pool
-    </span><span class="kw">pub </span>message_infos: BTreeMap&lt;AsyncMessageId, AsyncMessageInfo&gt;,
+    </span><span class="kw">pub </span>message_infos: BTreeMap&lt;AsyncMessageId, AsyncMessage&gt;,
 
     <span class="doccomment">/// speculative list of operations executed
     </span><span class="kw">pub </span>executed_ops: ExecutedOpsChanges,
@@ -2526,11 +2524,9 @@
         </span><span class="kw">let </span>deferred_credits_transfers = <span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
         <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
-        </span><span class="kw">let </span>deleted_messages = <span class="self">self</span>.speculative_async_pool.settle_slot(
-            <span class="kw-2">&amp;</span>slot,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.speculative_ledger.added_changes,
-            <span class="bool-val">true</span>,
-        );
+        </span><span class="kw">let </span>deleted_messages = <span class="self">self
+            </span>.speculative_async_pool
+            .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span><span class="self">self</span>.speculative_ledger.added_changes);
 
         <span class="kw">let </span><span class="kw-2">mut </span>cancel_async_message_transfers = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {

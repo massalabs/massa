@@ -1324,38 +1324,6 @@
 <a href="#1324" id="1324">1324</a>
 <a href="#1325" id="1325">1325</a>
 <a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
@@ -1861,27 +1829,6 @@
     }
 }
 
-<span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
-</span><span class="kw">pub struct </span>AsyncMessageInfo {
-    <span class="kw">pub </span>validity_start: Slot,
-    <span class="kw">pub </span>validity_end: Slot,
-    <span class="kw">pub </span>max_gas: u64,
-    <span class="kw">pub </span>can_be_executed: bool,
-    <span class="kw">pub </span>trigger: <span class="prelude-ty">Option</span>&lt;AsyncMessageTrigger&gt;,
-}
-
-<span class="kw">impl </span>From&lt;AsyncMessage&gt; <span class="kw">for </span>AsyncMessageInfo {
-    <span class="kw">fn </span>from(value: AsyncMessage) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            validity_start: value.validity_start,
-            validity_end: value.validity_end,
-            max_gas: value.max_gas,
-            can_be_executed: value.can_be_executed,
-            trigger: value.trigger,
-        }
-    }
-}
-
 <span class="doccomment">/// represents an update to one or more fields of a `AsyncMessage`
 </span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>AsyncMessageUpdate {
@@ -2190,17 +2137,6 @@
         update.validity_start.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.validity_start);
         update.validity_end.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.validity_end);
         update.function_params.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.function_params);
-        update.trigger.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.trigger);
-        update.can_be_executed.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.can_be_executed);
-    }
-}
-
-<span class="kw">impl </span>Applicable&lt;AsyncMessageUpdate&gt; <span class="kw">for </span>AsyncMessageInfo {
-    <span class="doccomment">/// extends the `AsyncMessage` with a `AsyncMessageUpdate`
-    </span><span class="kw">fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, update: AsyncMessageUpdate) {
-        update.max_gas.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.max_gas);
-        update.validity_start.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.validity_start);
-        update.validity_end.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.validity_end);
         update.trigger.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.trigger);
         update.can_be_executed.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.can_be_executed);
     }
