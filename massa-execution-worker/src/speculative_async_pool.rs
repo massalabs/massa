@@ -165,7 +165,7 @@ impl SpeculativeAsyncPool {
         slot: &Slot,
         ledger_changes: &LedgerChanges,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        // Update eliminated_msgs: emove messages that should be removed
+        // Update eliminated_msgs: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
 
