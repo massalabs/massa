@@ -1153,7 +1153,7 @@ mod tests {
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
         ));
-        let pool = AsyncPool::new(config, db);
+        let mut pool = AsyncPool::new(config, db);
 
         let mut serialized = Vec::new();
         let serializer = AsyncPoolSerializer::new();
@@ -1181,7 +1181,7 @@ mod tests {
         pool.db
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
-
+        pool.recompute_message_cache();
         let message_ids = vec![message_id, message2_id];
         let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
@@ -1226,7 +1226,7 @@ mod tests {
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
         ));
-        let pool = AsyncPool::new(config, db);
+        let mut pool = AsyncPool::new(config, db);
 
         let mut serialized = Vec::new();
         let serializer = AsyncPoolSerializer::new();
@@ -1252,6 +1252,7 @@ mod tests {
         pool.db
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
+        pool.recompute_message_cache();
 
         let message_ids = vec![message_id, message2_id];
         let to_ser_ = pool.fetch_messages(&message_ids);
@@ -1294,7 +1295,7 @@ mod tests {
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
         ));
-        let pool = AsyncPool::new(config, db);
+        let mut pool = AsyncPool::new(config, db);
 
         let message = create_message();
         let message_id = message.compute_id();
@@ -1311,6 +1312,7 @@ mod tests {
         pool.db
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
+        pool.recompute_message_cache();
 
         let content = dump_column(pool.db.clone(), "state");
         assert_eq!(content.len(), 26); // 2 entries added, split in 13 prefix
@@ -1328,6 +1330,7 @@ mod tests {
         pool.db
             .write()
             .write_batch(batch2, versioning_batch2, Some(slot_2));
+        pool.recompute_message_cache();
 
         let content = dump_column(pool.db.clone(), "state");
         assert_eq!(content.len(), 13);
