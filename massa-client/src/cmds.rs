@@ -1010,7 +1010,7 @@ impl Command {
                     match coins.checked_add(fee) {
                         Some(total) => {
                             if let Ok(addresses_info) =
-                                client.public.get_addresses(vec![target_addr]).await
+                                client.public.get_addresses(vec![addr]).await
                             {
                                 match addresses_info.first() {
                                     Some(info) => {
@@ -1019,10 +1019,7 @@ impl Command {
                                         }
                                     }
                                     None => {
-                                        client_warning!(format!(
-                                            "address {} not found",
-                                            target_addr
-                                        ));
+                                        client_warning!(format!("address {} not found", addr));
                                     }
                                 }
                             }
