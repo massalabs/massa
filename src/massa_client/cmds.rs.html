@@ -1557,9 +1557,6 @@
 <a href="#1557" id="1557">1557</a>
 <a href="#1558" id="1558">1558</a>
 <a href="#1559" id="1559">1559</a>
-<a href="#1560" id="1560">1560</a>
-<a href="#1561" id="1561">1561</a>
-<a href="#1562" id="1562">1562</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -2572,7 +2569,7 @@
                     <span class="kw">match </span>coins.checked_add(fee) {
                         <span class="prelude-val">Some</span>(total) =&gt; {
                             <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) =
-                                client.public.get_addresses(<span class="macro">vec!</span>[target_addr]).<span class="kw">await
+                                client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await
                             </span>{
                                 <span class="kw">match </span>addresses_info.first() {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
@@ -2581,10 +2578,7 @@
                                         }
                                     }
                                     <span class="prelude-val">None </span>=&gt; {
-                                        <span class="macro">client_warning!</span>(<span class="macro">format!</span>(
-                                            <span class="string">"address {} not found"</span>,
-                                            target_addr
-                                        ));
+                                        <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">"address {} not found"</span>, addr));
                                     }
                                 }
                             }
