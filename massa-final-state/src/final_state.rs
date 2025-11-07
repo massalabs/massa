@@ -859,7 +859,7 @@ impl FinalStateController for FinalState {
     }
 
     fn recompute_caches(&mut self) {
-        self.async_pool.recompute_message_info_cache();
+        self.async_pool.recompute_message_cache();
         self.executed_ops.recompute_sorted_ops_and_op_exec_status();
         self.executed_denunciations.recompute_sorted_denunciations();
         self.pos_state.recompute_pos_state_caches();
