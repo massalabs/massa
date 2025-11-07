@@ -1451,6 +1451,9 @@
 <a href="#1451" id="1451">1451</a>
 <a href="#1452" id="1452">1452</a>
 <a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -1682,8 +1685,8 @@
         }
     }
 
-    <span class="doccomment">/// Recomputes the local message_info_cache after bootstrap or loading the state from disk
-    </span><span class="kw">pub fn </span>recompute_message_info_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="doccomment">/// Recomputes the local message_cache after bootstrap or loading the state from disk
+    </span><span class="kw">pub fn </span>recompute_message_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.message_cache.clear();
 
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
@@ -1730,7 +1733,7 @@
         <span class="self">self</span>.db
             .write()
             .delete_prefix(ASYNC_POOL_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
-        <span class="self">self</span>.recompute_message_info_cache();
+        <span class="self">self</span>.recompute_message_cache();
     }
 
     <span class="doccomment">/// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
@@ -2606,7 +2609,7 @@
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
         ));
-        <span class="kw">let </span>pool = AsyncPool::new(config, db);
+        <span class="kw">let </span><span class="kw-2">mut </span>pool = AsyncPool::new(config, db);
 
         <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
         <span class="kw">let </span>serializer = AsyncPoolSerializer::new();
@@ -2634,7 +2637,7 @@
         pool.db
             .write()
             .write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
-
+        pool.recompute_message_cache();
         <span class="kw">let </span>message_ids = <span class="macro">vec!</span>[message_id, message2_id];
         <span class="kw">let </span>to_ser_ = pool.fetch_messages(<span class="kw-2">&amp;</span>message_ids);
         <span class="kw">let </span>to_ser = to_ser_
@@ -2679,7 +2682,7 @@
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
         ));
-        <span class="kw">let </span>pool = AsyncPool::new(config, db);
+        <span class="kw">let </span><span class="kw-2">mut </span>pool = AsyncPool::new(config, db);
 
         <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
         <span class="kw">let </span>serializer = AsyncPoolSerializer::new();
@@ -2705,6 +2708,7 @@
         pool.db
             .write()
             .write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
+        pool.recompute_message_cache();
 
         <span class="kw">let </span>message_ids = <span class="macro">vec!</span>[message_id, message2_id];
         <span class="kw">let </span>to_ser_ = pool.fetch_messages(<span class="kw-2">&amp;</span>message_ids);
@@ -2747,7 +2751,7 @@
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
         ));
-        <span class="kw">let </span>pool = AsyncPool::new(config, db);
+        <span class="kw">let </span><span class="kw-2">mut </span>pool = AsyncPool::new(config, db);
 
         <span class="kw">let </span>message = create_message();
         <span class="kw">let </span>message_id = message.compute_id();
@@ -2764,6 +2768,7 @@
         pool.db
             .write()
             .write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
+        pool.recompute_message_cache();
 
         <span class="kw">let </span>content = dump_column(pool.db.clone(), <span class="string">"state"</span>);
         <span class="macro">assert_eq!</span>(content.len(), <span class="number">26</span>); <span class="comment">// 2 entries added, split in 13 prefix
@@ -2781,6 +2786,7 @@
         pool.db
             .write()
             .write_batch(batch2, versioning_batch2, <span class="prelude-val">Some</span>(slot_2));
+        pool.recompute_message_cache();
 
         <span class="kw">let </span>content = dump_column(pool.db.clone(), <span class="string">"state"</span>);
         <span class="macro">assert_eq!</span>(content.len(), <span class="number">13</span>);
@@ -2884,7 +2890,7 @@
         pool.apply_changes_to_batch(<span class="kw-2">&amp;</span>changes, <span class="kw-2">&amp;mut </span>batch);
         <span class="macro">assert_eq!</span>(pool.message_cache.len() <span class="kw">as </span>u64, EXPECT_CACHE_COUNT + <span class="number">1</span>);
 
-        <span class="kw">let </span>message_info_cache1 = pool.message_cache.clone();
+        <span class="kw">let </span>message_cache1 = pool.message_cache.clone();
 
         <span class="kw">let </span>versioning_batch = DBBatch::new();
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
@@ -2899,9 +2905,9 @@
         ));
         <span class="kw">let </span><span class="kw-2">mut </span>pool2 = AsyncPool::new(config, db2);
 
-        pool2.recompute_message_info_cache();
+        pool2.recompute_message_cache();
 
-        <span class="macro">assert_eq!</span>(pool2.message_cache, message_info_cache1);
+        <span class="macro">assert_eq!</span>(pool2.message_cache, message_cache1);
     }
 }
 </code></pre></div></section></main></body></html>

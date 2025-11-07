@@ -318,7 +318,6 @@
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -371,8 +370,8 @@
                     }
 
                     (id, SetUpdateOrDelete::Update(message_update)) =&gt; {
-                        message_cache.entry(<span class="kw-2">*</span>id).and_modify(|message_info| {
-                            message_info.apply(message_update.clone());
+                        message_cache.entry(<span class="kw-2">*</span>id).and_modify(|message| {
+                            message.apply(message_update.clone());
                         });
                     }
 
@@ -436,22 +435,21 @@
     ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>available_gas = max_gas;
 
-        <span class="comment">// Choose which messages to take based on self.message_infos
+        <span class="comment">// Choose which messages to take based on the message_cache
         // (all messages are considered: finals, in active_history and in speculative)
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>wanted_ids = Vec::new();
-
-        <span class="kw">for </span>(message_id, message_info) <span class="kw">in </span><span class="self">self</span>.message_cache.iter() {
-            <span class="kw">let </span>corrected_max_gas = message_info.max_gas.saturating_add(async_msg_cst_gas_cost);
+        <span class="kw">for </span>(message_id, message) <span class="kw">in </span><span class="self">self</span>.message_cache.iter() {
+            <span class="kw">let </span>corrected_max_gas = message.max_gas.saturating_add(async_msg_cst_gas_cost);
             <span class="comment">// Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
             //       so to be consistent here, use &gt;= &amp; &lt;= checks
             </span><span class="kw">if </span>available_gas &gt;= corrected_max_gas
                 &amp;&amp; <span class="self">Self</span>::is_message_ready_to_execute(
                     <span class="kw-2">&amp;</span>slot,
-                    <span class="kw-2">&amp;</span>message_info.validity_start,
-                    <span class="kw-2">&amp;</span>message_info.validity_end,
+                    <span class="kw-2">&amp;</span>message.validity_start,
+                    <span class="kw-2">&amp;</span>message.validity_end,
                 )
-                &amp;&amp; message_info.can_be_executed
+                &amp;&amp; message.can_be_executed
             {
                 available_gas -= corrected_max_gas;
 
@@ -464,7 +462,7 @@
         <span class="kw">for </span>msg_id <span class="kw">in </span><span class="kw-2">&amp;</span>wanted_ids {
             taken_msgs.push((
                 <span class="kw-2">*</span>msg_id,
-                <span class="self">self</span>.message_cache.remove(msg_id).unwrap(), <span class="comment">//won't panic, items were listed above
+                <span class="self">self</span>.message_cache.remove(msg_id).unwrap(), <span class="comment">// won't panic, items were listed above
             </span>));
         }
         <span class="self">self</span>.delete_messages(wanted_ids);
