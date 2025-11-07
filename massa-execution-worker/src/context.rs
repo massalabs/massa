@@ -32,7 +32,7 @@ use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::async_msg::{AsyncMessage, AsyncMessageInfo};
+use massa_models::async_msg::AsyncMessage;
 use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
@@ -76,7 +76,7 @@ pub struct ExecutionContextSnapshot {
     pub deferred_calls_changes: DeferredCallRegistryChanges,
 
     /// the associated message infos for the speculative async pool
-    pub message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
+    pub message_infos: BTreeMap<AsyncMessageId, AsyncMessage>,
 
     /// speculative list of operations executed
     pub executed_ops: ExecutedOpsChanges,
@@ -1050,11 +1050,9 @@ impl ExecutionContext {
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
 
         // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages = self.speculative_async_pool.settle_slot(
-            &slot,
-            &self.speculative_ledger.added_changes,
-            true,
-        );
+        let deleted_messages = self
+            .speculative_async_pool
+            .settle_slot(&slot, &self.speculative_ledger.added_changes);
 
         let mut cancel_async_message_transfers = vec![];
         for (_msg_id, msg) in deleted_messages {

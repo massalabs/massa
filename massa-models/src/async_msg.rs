@@ -503,27 +503,6 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AsyncMessageInfo {
-    pub validity_start: Slot,
-    pub validity_end: Slot,
-    pub max_gas: u64,
-    pub can_be_executed: bool,
-    pub trigger: Option<AsyncMessageTrigger>,
-}
-
-impl From<AsyncMessage> for AsyncMessageInfo {
-    fn from(value: AsyncMessage) -> Self {
-        Self {
-            validity_start: value.validity_start,
-            validity_end: value.validity_end,
-            max_gas: value.max_gas,
-            can_be_executed: value.can_be_executed,
-            trigger: value.trigger,
-        }
-    }
-}
-
 /// represents an update to one or more fields of a `AsyncMessage`
 #[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct AsyncMessageUpdate {
@@ -832,17 +811,6 @@ impl Applicable<AsyncMessageUpdate> for AsyncMessage {
         update.validity_start.apply_to(&mut self.validity_start);
         update.validity_end.apply_to(&mut self.validity_end);
         update.function_params.apply_to(&mut self.function_params);
-        update.trigger.apply_to(&mut self.trigger);
-        update.can_be_executed.apply_to(&mut self.can_be_executed);
-    }
-}
-
-impl Applicable<AsyncMessageUpdate> for AsyncMessageInfo {
-    /// extends the `AsyncMessage` with a `AsyncMessageUpdate`
-    fn apply(&mut self, update: AsyncMessageUpdate) {
-        update.max_gas.apply_to(&mut self.max_gas);
-        update.validity_start.apply_to(&mut self.validity_start);
-        update.validity_end.apply_to(&mut self.validity_end);
         update.trigger.apply_to(&mut self.trigger);
         update.can_be_executed.apply_to(&mut self.can_be_executed);
     }
