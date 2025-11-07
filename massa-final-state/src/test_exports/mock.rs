@@ -120,13 +120,13 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     );
 
     assert_eq!(
-        v1.async_pool.message_info_cache.len(),
-        v2.async_pool.message_info_cache.len(),
+        v1.async_pool.message_cache.len(),
+        v2.async_pool.message_cache.len(),
         "async_pool.message_info_cache len mismatch"
     );
 
     assert_eq!(
-        v1.async_pool.message_info_cache, v2.async_pool.message_info_cache,
+        v1.async_pool.message_cache, v2.async_pool.message_cache,
         "async_pool.message_info_cache mismatch"
     );
 }

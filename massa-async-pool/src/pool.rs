@@ -10,8 +10,7 @@ use massa_db_exports::{
 use massa_models::{
     address::Address,
     async_msg::{
-        AsyncMessage, AsyncMessageDeserializer, AsyncMessageInfo, AsyncMessageSerializer,
-        AsyncMessageUpdate,
+        AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer, AsyncMessageUpdate,
     },
     async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer},
     types::Applicable,
@@ -202,7 +201,8 @@ pub struct AsyncPool {
     /// Asynchronous pool configuration
     pub config: AsyncPoolConfig,
     pub db: ShareableMassaDBController,
-    pub message_info_cache: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
+    /// Cache of final async messages.
+    pub message_cache: BTreeMap<AsyncMessageId, AsyncMessage>,
     message_id_serializer: AsyncMessageIdSerializer,
     message_serializer: AsyncMessageSerializer,
     message_id_deserializer: AsyncMessageIdDeserializer,
@@ -215,7 +215,7 @@ impl AsyncPool {
         AsyncPool {
             config: config.clone(),
             db,
-            message_info_cache: Default::default(),
+            message_cache: Default::default(),
             message_id_serializer: AsyncMessageIdSerializer::new(),
             message_serializer: AsyncMessageSerializer::new(true),
             message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
@@ -229,9 +229,9 @@ impl AsyncPool {
         }
     }
 
-    /// Recomputes the local message_info_cache after bootstrap or loading the state from disk
-    pub fn recompute_message_info_cache(&mut self) {
-        self.message_info_cache.clear();
+    /// Recomputes the local message_cache after bootstrap or loading the state from disk
+    pub fn recompute_message_cache(&mut self) {
+        self.message_cache.clear();
 
         let db = self.db.read();
 
@@ -258,8 +258,8 @@ impl AsyncPool {
                 .deserialize::<DeserializeError>(&serialized_message_id[ASYNC_POOL_PREFIX.len()..])
                 .expect(MESSAGE_ID_DESER_ERROR);
 
-            if let Some(message) = self.fetch_message(&message_id) {
-                self.message_info_cache.insert(message_id, message.into());
+            if let Some(message) = self.load_message(&message_id) {
+                self.message_cache.insert(message_id, message);
             }
 
             // The -1 is to remove the IDENT byte at the end of the key
@@ -277,7 +277,7 @@ impl AsyncPool {
         self.db
             .write()
             .delete_prefix(ASYNC_POOL_PREFIX, STATE_CF, None);
-        self.recompute_message_info_cache();
+        self.recompute_message_cache();
     }
 
     /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
@@ -290,33 +290,28 @@ impl AsyncPool {
             match change {
                 (id, SetUpdateOrDelete::Set(message)) => {
                     self.put_entry(id, message.clone(), batch);
-                    self.message_info_cache
-                        .insert(*id, AsyncMessageInfo::from(message.clone()));
+                    self.message_cache.insert(*id, message.clone());
                 }
 
                 (id, SetUpdateOrDelete::Update(message_update)) => {
                     self.update_entry(id, message_update.clone(), batch);
 
-                    self.message_info_cache
-                        .entry(*id)
-                        .and_modify(|message_info| {
-                            message_info.apply(message_update.clone());
-                        });
+                    self.message_cache.entry(*id).and_modify(|message_info| {
+                        message_info.apply(message_update.clone());
+                    });
                 }
 
                 (id, SetUpdateOrDelete::Delete) => {
                     self.delete_entry(id, batch);
-                    self.message_info_cache.remove(id);
+                    self.message_cache.remove(id);
                 }
             }
         }
     }
 
-    /// Query a message from the database.
-    ///
-    /// This should only be called when we know we want to execute the message.
-    /// Otherwise, we should use the `message_info_cache`.
-    pub fn fetch_message(&self, message_id: &AsyncMessageId) -> Option<AsyncMessage> {
+    /// Query a message from the database and deserialize it.
+    /// This is heavy. Use the cached version whenever possible.
+    fn load_message(&self, message_id: &AsyncMessageId) -> Option<AsyncMessage> {
         let db = self.db.read();
 
         let mut serialized_message_id = Vec::new();
@@ -344,10 +339,7 @@ impl AsyncPool {
         }
     }
 
-    /// Query a vec of messages from the database.
-    ///
-    /// This should only be called when we know we want to execute the messages.
-    /// Otherwise, we should use the `message_info_cache`.
+    /// Query a vec of messages from cache.
     pub fn fetch_messages(
         &self,
         message_ids: &[AsyncMessageId],
@@ -355,8 +347,7 @@ impl AsyncPool {
         let mut fetched_messages = Vec::with_capacity(message_ids.len());
 
         for message_id in message_ids {
-            let message = self.fetch_message(message_id);
-            fetched_messages.push((*message_id, message));
+            fetched_messages.push((*message_id, self.message_cache.get(message_id).cloned()));
         }
 
         fetched_messages
@@ -1162,7 +1153,7 @@ mod tests {
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
         ));
-        let pool = AsyncPool::new(config, db);
+        let mut pool = AsyncPool::new(config, db);
 
         let mut serialized = Vec::new();
         let serializer = AsyncPoolSerializer::new();
@@ -1190,7 +1181,7 @@ mod tests {
         pool.db
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
-
+        pool.recompute_message_cache();
         let message_ids = vec![message_id, message2_id];
         let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
@@ -1235,7 +1226,7 @@ mod tests {
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
         ));
-        let pool = AsyncPool::new(config, db);
+        let mut pool = AsyncPool::new(config, db);
 
         let mut serialized = Vec::new();
         let serializer = AsyncPoolSerializer::new();
@@ -1261,6 +1252,7 @@ mod tests {
         pool.db
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
+        pool.recompute_message_cache();
 
         let message_ids = vec![message_id, message2_id];
         let to_ser_ = pool.fetch_messages(&message_ids);
@@ -1303,7 +1295,7 @@ mod tests {
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
         ));
-        let pool = AsyncPool::new(config, db);
+        let mut pool = AsyncPool::new(config, db);
 
         let message = create_message();
         let message_id = message.compute_id();
@@ -1320,6 +1312,7 @@ mod tests {
         pool.db
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
+        pool.recompute_message_cache();
 
         let content = dump_column(pool.db.clone(), "state");
         assert_eq!(content.len(), 26); // 2 entries added, split in 13 prefix
@@ -1337,6 +1330,7 @@ mod tests {
         pool.db
             .write()
             .write_batch(batch2, versioning_batch2, Some(slot_2));
+        pool.recompute_message_cache();
 
         let content = dump_column(pool.db.clone(), "state");
         assert_eq!(content.len(), 13);
@@ -1363,7 +1357,7 @@ mod tests {
         ));
         let mut pool = AsyncPool::new(config, db);
 
-        assert!(pool.message_info_cache.is_empty());
+        assert!(pool.message_cache.is_empty());
 
         let message = create_message();
         let message_id = message.compute_id();
@@ -1386,10 +1380,10 @@ mod tests {
 
         let mut batch = DBBatch::new();
         pool.apply_changes_to_batch(&changes, &mut batch);
-        assert_eq!(pool.message_info_cache.len() as u64, EXPECT_CACHE_COUNT + 1);
+        assert_eq!(pool.message_cache.len() as u64, EXPECT_CACHE_COUNT + 1);
 
         pool.reset();
-        assert!(pool.message_info_cache.is_empty());
+        assert!(pool.message_cache.is_empty());
     }
 
     #[test]
@@ -1415,7 +1409,7 @@ mod tests {
             as Box<(dyn MassaDBController + 'static)>));
         let mut pool = AsyncPool::new(config.clone(), db);
 
-        assert!(pool.message_info_cache.is_empty());
+        assert!(pool.message_cache.is_empty());
 
         let message = create_message();
         let message_id = message.compute_id();
@@ -1438,9 +1432,9 @@ mod tests {
 
         let mut batch = DBBatch::new();
         pool.apply_changes_to_batch(&changes, &mut batch);
-        assert_eq!(pool.message_info_cache.len() as u64, EXPECT_CACHE_COUNT + 1);
+        assert_eq!(pool.message_cache.len() as u64, EXPECT_CACHE_COUNT + 1);
 
-        let message_info_cache1 = pool.message_info_cache.clone();
+        let message_cache1 = pool.message_cache.clone();
 
         let versioning_batch = DBBatch::new();
         let slot_1 = Slot::new(1, 0);
@@ -1455,8 +1449,8 @@ mod tests {
         ));
         let mut pool2 = AsyncPool::new(config, db2);
 
-        pool2.recompute_message_info_cache();
+        pool2.recompute_message_cache();
 
-        assert_eq!(pool2.message_info_cache, message_info_cache1);
+        assert_eq!(pool2.message_cache, message_cache1);
     }
 }

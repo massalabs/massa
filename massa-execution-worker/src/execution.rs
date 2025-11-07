@@ -327,11 +327,7 @@ impl ExecutionState {
             .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.0.len());
 
         self.massa_metrics.set_async_message_pool_size(
-            self.final_state
-                .read()
-                .get_async_pool()
-                .message_info_cache
-                .len(),
+            self.final_state.read().get_async_pool().message_cache.len(),
         );
 
         self.massa_metrics.inc_executed_final_slot();
