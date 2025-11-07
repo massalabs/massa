@@ -229,8 +229,8 @@ impl AsyncPool {
         }
     }
 
-    /// Recomputes the local message_info_cache after bootstrap or loading the state from disk
-    pub fn recompute_message_info_cache(&mut self) {
+    /// Recomputes the local message_cache after bootstrap or loading the state from disk
+    pub fn recompute_message_cache(&mut self) {
         self.message_cache.clear();
 
         let db = self.db.read();
@@ -277,7 +277,7 @@ impl AsyncPool {
         self.db
             .write()
             .delete_prefix(ASYNC_POOL_PREFIX, STATE_CF, None);
-        self.recompute_message_info_cache();
+        self.recompute_message_cache();
     }
 
     /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
@@ -1431,7 +1431,7 @@ mod tests {
         pool.apply_changes_to_batch(&changes, &mut batch);
         assert_eq!(pool.message_cache.len() as u64, EXPECT_CACHE_COUNT + 1);
 
-        let message_info_cache1 = pool.message_cache.clone();
+        let message_cache1 = pool.message_cache.clone();
 
         let versioning_batch = DBBatch::new();
         let slot_1 = Slot::new(1, 0);
@@ -1446,8 +1446,8 @@ mod tests {
         ));
         let mut pool2 = AsyncPool::new(config, db2);
 
-        pool2.recompute_message_info_cache();
+        pool2.recompute_message_cache();
 
-        assert_eq!(pool2.message_cache, message_info_cache1);
+        assert_eq!(pool2.message_cache, message_cache1);
     }
 }

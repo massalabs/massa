@@ -50,8 +50,8 @@ impl SpeculativeAsyncPool {
                     }
 
                     (id, SetUpdateOrDelete::Update(message_update)) => {
-                        message_cache.entry(*id).and_modify(|message_info| {
-                            message_info.apply(message_update.clone());
+                        message_cache.entry(*id).and_modify(|message| {
+                            message.apply(message_update.clone());
                         });
                     }
 
@@ -115,22 +115,21 @@ impl SpeculativeAsyncPool {
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let mut available_gas = max_gas;
 
-        // Choose which messages to take based on self.message_infos
+        // Choose which messages to take based on the message_cache
         // (all messages are considered: finals, in active_history and in speculative)
 
         let mut wanted_ids = Vec::new();
-
-        for (message_id, message_info) in self.message_cache.iter() {
-            let corrected_max_gas = message_info.max_gas.saturating_add(async_msg_cst_gas_cost);
+        for (message_id, message) in self.message_cache.iter() {
+            let corrected_max_gas = message.max_gas.saturating_add(async_msg_cst_gas_cost);
             // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
             //       so to be consistent here, use >= & <= checks
             if available_gas >= corrected_max_gas
                 && Self::is_message_ready_to_execute(
                     &slot,
-                    &message_info.validity_start,
-                    &message_info.validity_end,
+                    &message.validity_start,
+                    &message.validity_end,
                 )
-                && message_info.can_be_executed
+                && message.can_be_executed
             {
                 available_gas -= corrected_max_gas;
 
@@ -143,7 +142,7 @@ impl SpeculativeAsyncPool {
         for msg_id in &wanted_ids {
             taken_msgs.push((
                 *msg_id,
-                self.message_cache.remove(msg_id).unwrap(), //won't panic, items were listed above
+                self.message_cache.remove(msg_id).unwrap(), // won't panic, items were listed above
             ));
         }
         self.delete_messages(wanted_ids);
