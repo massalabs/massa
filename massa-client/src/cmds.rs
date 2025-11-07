@@ -1019,10 +1019,7 @@ impl Command {
                                         }
                                     }
                                     None => {
-                                        client_warning!(format!(
-                                            "address {} not found",
-                                            addr
-                                        ));
+                                        client_warning!(format!("address {} not found", addr));
                                     }
                                 }
                             }
