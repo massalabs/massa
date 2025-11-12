@@ -140,7 +140,7 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
             .serialize(&MessageTypeId::from(message).into(), buffer)
             .map_err(|err| {
                 PeerNetError::HandlerError.error(
-                    "MessagesHandler",
+                    "MessagesSerializer",
                     Some(format!("Failed to serialize id {}", err)),
                 )
             })?;
