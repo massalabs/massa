@@ -414,7 +414,7 @@
             .serialize(<span class="kw-2">&amp;</span>MessageTypeId::from(message).into(), buffer)
             .map_err(|err| {
                 PeerNetError::HandlerError.error(
-                    <span class="string">"MessagesHandler"</span>,
+                    <span class="string">"MessagesSerializer"</span>,
                     <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to serialize id {}"</span>, err)),
                 )
             })<span class="question-mark">?</span>;
