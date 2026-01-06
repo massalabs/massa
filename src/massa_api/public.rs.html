@@ -1668,6 +1668,10 @@
 <a href="#1668" id="1668">1668</a>
 <a href="#1669" id="1669">1669</a>
 <a href="#1670" id="1670">1670</a>
+<a href="#1671" id="1671">1671</a>
+<a href="#1672" id="1672">1672</a>
+<a href="#1673" id="1673">1673</a>
+<a href="#1674" id="1674">1674</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1934,6 +1938,7 @@
             bytecode,
             operation_datastore,
             fee,
+            simulate_initial_caller_balance,
         } <span class="kw">in </span>reqs
         {
             <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = address {
@@ -1981,6 +1986,7 @@
                 }],
                 coins: <span class="prelude-val">None</span>,
                 fee,
+                simulate_initial_caller_balance,
             };
 
             <span class="comment">// check if fee is enough
@@ -2045,6 +2051,7 @@
             caller_address,
             coins,
             fee,
+            simulate_initial_caller_balance,
         } <span class="kw">in </span>reqs
         {
             <span class="kw">let </span>caller_address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = caller_address {
@@ -2083,6 +2090,7 @@
                 ],
                 coins,
                 fee,
+                simulate_initial_caller_balance,
             };
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(fee) = fee {

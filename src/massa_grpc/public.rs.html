@@ -1559,6 +1559,11 @@
 <a href="#1559" id="1559">1559</a>
 <a href="#1560" id="1560">1560</a>
 <a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1691,7 +1696,11 @@
         ));
     };
 
-    <span class="kw">let </span>read_only_call = ReadOnlyExecutionRequest {
+    <span class="comment">// TODO: Add simulate_initial_caller_balance field to ReadOnlyExecutionCall protobuf message
+    // and parse it here like the fee field above
+    </span><span class="kw">let </span>simulate_initial_caller_balance = <span class="prelude-val">None</span>; <span class="comment">// call.simulate_initial_caller_balance...
+
+    </span><span class="kw">let </span>read_only_call = ReadOnlyExecutionRequest {
         max_gas: call.max_gas,
         call_stack,
         target,
@@ -1703,6 +1712,7 @@
                     .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="string">"invalid amount"</span>.to_string()))
             })
             .transpose()<span class="question-mark">?</span>,
+        simulate_initial_caller_balance,
     };
 
     <span class="comment">// check if fee is provided and if it is too low

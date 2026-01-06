@@ -428,6 +428,12 @@
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
 <a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -732,6 +738,12 @@
 </span><span class="kw">pub const </span>PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">1024</span>;
 <span class="doccomment">/// Protocol event channel size
 </span><span class="kw">pub const </span>PROTOCOL_EVENT_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+<span class="doccomment">/// Pool controller operations channel size
+</span><span class="kw">pub const </span>POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+<span class="doccomment">/// Pool controller endorsements channel size
+</span><span class="kw">pub const </span>POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+<span class="doccomment">/// Pool controller denunciations channel size
+</span><span class="kw">pub const </span>POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE: usize = <span class="number">1024</span>;
 
 <span class="comment">// ***********************
 // Constants used for execution module (injected from ConsensusConfig)

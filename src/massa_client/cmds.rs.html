@@ -1557,6 +1557,19 @@
 <a href="#1557" id="1557">1557</a>
 <a href="#1558" id="1558">1558</a>
 <a href="#1559" id="1559">1559</a>
+<a href="#1560" id="1560">1560</a>
+<a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
+<a href="#1567" id="1567">1567</a>
+<a href="#1568" id="1568">1568</a>
+<a href="#1569" id="1569">1569</a>
+<a href="#1570" id="1570">1570</a>
+<a href="#1571" id="1571">1571</a>
+<a href="#1572" id="1572">1572</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -1833,18 +1846,21 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">"PathToBytecode MaxGas Address Fee"</span>, pwd_not_needed = <span class="string">"true"</span>),
-        message = <span class="string">"execute byte code, address is optional, fee is optional. Nothing is really executed on chain"
+        props(
+            args = <span class="string">"PathToBytecode MaxGas Address Fee SimulateInitialCallerBalance"</span>,
+            pwd_not_needed = <span class="string">"true"
+        </span>),
+        message = <span class="string">"execute byte code, address is optional, fee is optional, simulate_initial_caller_balance is optional. Nothing is really executed on chain"
     </span>)]
     </span>read_only_execute_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(
-            args = <span class="string">"TargetAddress TargetFunction Parameter MaxGas SenderAddress Coins Fee"</span>,
+            args = <span class="string">"TargetAddress TargetFunction Parameter MaxGas SenderAddress Coins Fee SimulateInitialCallerBalance"</span>,
             pwd_not_needed = <span class="string">"true"
         </span>),
-        message = <span class="string">"call a smart contract function, sender address, coins and fee are optional. Nothing is really executed on chain"
+        message = <span class="string">"call a smart contract function, sender address, coins, fee and simulate_initial_caller_balance are optional. Nothing is really executed on chain"
     </span>)]
     </span>read_only_call,
 
@@ -2619,7 +2635,7 @@
                 }
             }
             Command::read_only_execute_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() &lt; <span class="number">2 </span>|| parameters.len() &gt; <span class="number">4 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">2 </span>|| parameters.len() &gt; <span class="number">5 </span>{
                     <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>path = parameters[<span class="number">0</span>].parse::&lt;PathBuf&gt;()<span class="question-mark">?</span>;
@@ -2633,6 +2649,10 @@
                     .get(<span class="number">3</span>)
                     .map(|fee| Amount::from_str(fee))
                     .transpose()<span class="question-mark">?</span>;
+                <span class="kw">let </span>simulate_initial_caller_balance = parameters
+                    .get(<span class="number">4</span>)
+                    .map(|balance| Amount::from_str(balance))
+                    .transpose()<span class="question-mark">?</span>;
                 <span class="kw">let </span>bytecode = get_file_as_byte_vec(<span class="kw-2">&amp;</span>path).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="kw">match </span>client
                     .public
@@ -2642,6 +2662,7 @@
                         address,
                         operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// TODO - #3072
                         </span>fee,
+                        simulate_initial_caller_balance,
                     })
                     .<span class="kw">await
                 </span>{
@@ -2650,7 +2671,7 @@
                 }
             }
             Command::read_only_call =&gt; {
-                <span class="kw">if </span>parameters.len() &lt; <span class="number">4 </span>|| parameters.len() &gt; <span class="number">7 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">4 </span>|| parameters.len() &gt; <span class="number">8 </span>{
                     <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
 
@@ -2668,6 +2689,10 @@
                     .get(<span class="number">6</span>)
                     .map(|fee| Amount::from_str(fee))
                     .transpose()<span class="question-mark">?</span>;
+                <span class="kw">let </span>simulate_initial_caller_balance = parameters
+                    .get(<span class="number">7</span>)
+                    .map(|balance| Amount::from_str(balance))
+                    .transpose()<span class="question-mark">?</span>;
                 <span class="kw">match </span>client
                     .public
                     .execute_read_only_call(ReadOnlyCall {
@@ -2678,6 +2703,7 @@
                         max_gas,
                         coins,
                         fee,
+                        simulate_initial_caller_balance,
                     })
                     .<span class="kw">await
                 </span>{
