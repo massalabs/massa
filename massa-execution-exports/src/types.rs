@@ -317,6 +317,8 @@ pub struct ReadOnlyExecutionRequest {
     pub coins: Option<Amount>,
     /// Fee
     pub fee: Option<Amount>,
+    /// Optional simulated initial balance for the caller address (first element in call_stack)
+    pub simulate_initial_caller_balance: Option<Amount>,
 }
 
 /// structure describing different possible targets of a read-only execution request
