@@ -119,8 +119,14 @@ pub struct PoolSettings {
     pub max_endorsements_pool_size_per_thread: usize,
     pub max_item_return_count: usize,
     /// endorsements channel capacity
-    pub broadcast_endorsements_channel_capacity: usize,
+    pub endorsements_channel_capacity: usize,
     /// operations channel capacity
+    pub operations_channel_capacity: usize,
+    /// denunciations channel capacity
+    pub denunciations_channel_capacity: usize,
+    /// broadcast endorsements channel capacity
+    pub broadcast_endorsements_channel_capacity: usize,
+    /// broadcast operations channel capacity
     pub broadcast_operations_channel_capacity: usize,
     /// operations minimum fees for block creator
     pub minimal_fees: Amount,
