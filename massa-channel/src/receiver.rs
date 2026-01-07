@@ -69,13 +69,11 @@ impl<T> MassaReceiver<T> {
         match self.receiver.try_recv() {
             Ok(msg) => {
                 self.update_metrics();
-
                 Ok(msg)
             }
             Err(crossbeam::channel::TryRecvError::Empty) => Err(TryRecvError::Empty),
             Err(crossbeam::channel::TryRecvError::Disconnected) => {
                 self.unregister_metrics();
-
                 Err(TryRecvError::Disconnected)
             }
         }
@@ -87,9 +85,10 @@ impl<T> MassaReceiver<T> {
                 self.update_metrics();
                 Ok(msg)
             }
-            Err(e) => {
+            Err(RecvTimeoutError::Timeout) => Err(RecvTimeoutError::Timeout),
+            Err(RecvTimeoutError::Disconnected) => {
                 self.unregister_metrics();
-                Err(e)
+                Err(RecvTimeoutError::Disconnected)
             }
         }
     }
@@ -100,9 +99,10 @@ impl<T> MassaReceiver<T> {
                 self.update_metrics();
                 Ok(msg)
             }
-            Err(e) => {
+            Err(RecvTimeoutError::Timeout) => Err(RecvTimeoutError::Timeout),
+            Err(RecvTimeoutError::Disconnected) => {
                 self.unregister_metrics();
-                Err(e)
+                Err(RecvTimeoutError::Disconnected)
             }
         }
     }
