@@ -390,30 +390,6 @@
 <a href="#390" id="390">390</a>
 <a href="#391" id="391">391</a>
 <a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Write worker for the pools, allowing asynchronous writes.
@@ -423,20 +399,16 @@
 <span class="kw">use </span><span class="kw">crate</span>::operation_pool::OperationPool;
 <span class="kw">use crate</span>::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
 <span class="kw">use </span>crossbeam_channel::{RecvTimeoutError, TryRecvError};
-<span class="kw">use </span>massa_channel::MassaChannel;
 <span class="kw">use </span>massa_channel::receiver::MassaReceiver;
+<span class="kw">use </span>massa_channel::MassaChannel;
 <span class="kw">use </span>massa_pool_exports::PoolConfig;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::time::Instant;
-<span class="kw">use </span>std::{
-    sync::Arc,
-    thread,
-    thread::JoinHandle,
-};
-<span class="kw">use </span>tracing::{info, warn};
+<span class="kw">use </span>std::{sync::Arc, thread, thread::JoinHandle};
+<span class="kw">use </span>tracing::warn;
 
 <span class="doccomment">/// Endorsement pool write thread instance
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>EndorsementPoolThread {
@@ -471,7 +443,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>endorsement_pool_buffer = <span class="self">self</span>.endorsement_pool.read().clone();
         <span class="kw">let </span><span class="kw-2">mut </span>modified = <span class="bool-val">false</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>last_buffer_swap = Instant::now();
-        <span class="kw">let </span><span class="kw-2">mut </span>msg_count = <span class="number">0u64</span>;
         <span class="kw">loop </span>{
             <span class="comment">// try to get pending messages to process
             </span><span class="kw">let </span><span class="kw-2">mut </span>cmd = <span class="kw">match </span><span class="self">self</span>.receiver.try_recv() {
@@ -484,11 +455,6 @@
             <span class="comment">// Swap buffers asap if there are no messages to process.
             // This avoids waiting when we have cpu time now for swapping.
             </span><span class="kw">if </span>cmd.is_none() {
-                <span class="kw">if </span>msg_count &gt; <span class="number">0 </span>{
-                    <span class="macro">info!</span>(<span class="string">"LEO - Empty queue: swapping endorsement pool buffer. Processed {} messages since last swap."</span>, msg_count);
-                }
-                msg_count = <span class="number">0</span>;
-                <span class="kw">let </span>start_endorsement_swap = Instant::now();
                 <span class="kw">if </span>modified {
                     <span class="self">self</span>.endorsement_pool
                         .write()
@@ -496,10 +462,6 @@
                     modified = <span class="bool-val">false</span>;
                 }
                 last_buffer_swap = Instant::now();
-                <span class="kw">let </span>endorsement_swap_duration = start_endorsement_swap.elapsed();
-                <span class="kw">if </span>endorsement_swap_duration.as_millis() &gt; <span class="number">5 </span>{
-                    <span class="macro">info!</span>(<span class="string">"LEO - Empty queue: endorsement pool buffer swapped. Took {:?} ms"</span>, endorsement_swap_duration.as_millis());
-                }
             }
 
             <span class="comment">// wait for new command if none found
@@ -516,28 +478,20 @@
                 <span class="prelude-val">Some</span>(Command::AddItems(endorsements)) =&gt; {
                     endorsement_pool_buffer.add_endorsements(endorsements);
                     modified = <span class="bool-val">true</span>;
-                    msg_count += <span class="number">1</span>;
                 }
                 <span class="prelude-val">Some</span>(Command::NotifyFinalCsPeriods(final_cs_periods)) =&gt; {
                     endorsement_pool_buffer.notify_final_cs_periods(<span class="kw-2">&amp;</span>final_cs_periods);
                     modified = <span class="bool-val">true</span>;
-                    msg_count += <span class="number">1</span>;
                 }
                 <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; {
                     <span class="macro">warn!</span>(<span class="string">"EndorsementPoolThread received an unexpected command"</span>);
                 }
-                <span class="prelude-val">None </span>=&gt; {
-                    <span class="macro">info!</span>(<span class="string">"LEO - EndorsementPoolThread: timeout reached with no command"</span>);
-                }
+                <span class="prelude-val">None </span>=&gt; {}
             }
 
             <span class="comment">// On a regular basis, swap buffers if we haven't for a while.
             // This is useful under heavy congestion. Otherwise we swap as soon as the queue is empty.
             </span><span class="kw">if </span>Instant::now().saturating_duration_since(last_buffer_swap) &gt;= buffer_swap_interval {
-                <span class="macro">info!</span>(<span class="string">"LEO - Housekeeping: swapping endorsement pool buffer after buffer_swap_interval time. Processed {} messages since last swap."</span>, msg_count);
-                msg_count = <span class="number">0</span>;
-                <span class="kw">let </span>start_endorsement_swap = Instant::now();
-                <span class="kw">let </span>was_modified = modified;
                 <span class="kw">if </span>modified {
                     <span class="self">self</span>.endorsement_pool
                         .write()
@@ -545,14 +499,6 @@
                     modified = <span class="bool-val">false</span>;
                 }
                 last_buffer_swap = Instant::now();
-                <span class="kw">let </span>endorsement_swap_duration = start_endorsement_swap.elapsed();
-                <span class="kw">if </span>endorsement_swap_duration.as_millis() &gt; <span class="number">5 </span>{
-                    <span class="kw">if </span>was_modified {
-                        <span class="macro">info!</span>(<span class="string">"LEO - Housekeeping: endorsement pool buffer swapped. Took {:?} ms (was modified)"</span>, endorsement_swap_duration.as_millis());
-                    } <span class="kw">else </span>{
-                        <span class="macro">info!</span>(<span class="string">"LEO - Housekeeping: endorsement pool buffer swapped. Took {:?} ms (was NOT modified)"</span>, endorsement_swap_duration.as_millis());
-                    }
-                }
             }
         }
     }
@@ -783,12 +729,18 @@
     channels: PoolChannels,
     wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>PoolManager&gt;, Box&lt;<span class="kw">dyn </span>PoolController&gt;) {
-    <span class="kw">let </span>(operations_input_sender, operations_input_receiver) =
-        MassaChannel::new(<span class="string">"operations_pool_input"</span>.to_string(), <span class="prelude-val">Some</span>(config.operations_channel_size));
-    <span class="kw">let </span>(endorsements_input_sender, endorsements_input_receiver) =
-        MassaChannel::new(<span class="string">"endorsements_pool_input"</span>.to_string(), <span class="prelude-val">Some</span>(config.endorsements_channel_size));
-    <span class="kw">let </span>(denunciations_input_sender, denunciations_input_receiver) =
-        MassaChannel::new(<span class="string">"denunciations_pool_input"</span>.to_string(), <span class="prelude-val">Some</span>(config.denunciations_channel_size));
+    <span class="kw">let </span>(operations_input_sender, operations_input_receiver) = MassaChannel::new(
+        <span class="string">"operations_pool_input"</span>.to_string(),
+        <span class="prelude-val">Some</span>(config.operations_channel_size),
+    );
+    <span class="kw">let </span>(endorsements_input_sender, endorsements_input_receiver) = MassaChannel::new(
+        <span class="string">"endorsements_pool_input"</span>.to_string(),
+        <span class="prelude-val">Some</span>(config.endorsements_channel_size),
+    );
+    <span class="kw">let </span>(denunciations_input_sender, denunciations_input_receiver) = MassaChannel::new(
+        <span class="string">"denunciations_pool_input"</span>.to_string(),
+        <span class="prelude-val">Some</span>(config.denunciations_channel_size),
+    );
     <span class="kw">let </span>operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,
