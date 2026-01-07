@@ -2691,13 +2691,6 @@
 <a href="#2691" id="2691">2691</a>
 <a href="#2692" id="2692">2692</a>
 <a href="#2693" id="2693">2693</a>
-<a href="#2694" id="2694">2694</a>
-<a href="#2695" id="2695">2695</a>
-<a href="#2696" id="2696">2696</a>
-<a href="#2697" id="2697">2697</a>
-<a href="#2698" id="2698">2698</a>
-<a href="#2699" id="2699">2699</a>
-<a href="#2700" id="2700">2700</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -4847,22 +4840,15 @@
             .expect(<span class="string">"slot overflow in readonly execution from active slot"</span>);
 
         <span class="comment">// create a readonly execution context
-        </span><span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::readonly(
+        </span><span class="kw">let </span>execution_context = ExecutionContext::readonly(
             <span class="self">self</span>.config.clone(),
             slot,
-            req.call_stack.clone(),
+            req.call_stack,
             <span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
             <span class="self">self</span>.module_cache.clone(),
             <span class="self">self</span>.mip_store.clone(),
         );
-
-        <span class="comment">// Apply simulated initial caller balance if provided
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(simulated_balance) = req.simulate_initial_caller_balance {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(caller_addr) = req.call_stack.first() {
-                execution_context.set_balance(caller_addr.address, simulated_balance);
-            }
-        }
 
         <span class="comment">// run the interpreter according to the target type
         </span><span class="kw">let </span>exec_response = <span class="kw">match </span>req.target {
