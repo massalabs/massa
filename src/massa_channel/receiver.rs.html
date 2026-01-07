@@ -205,13 +205,11 @@
         <span class="kw">match </span><span class="self">self</span>.receiver.try_recv() {
             <span class="prelude-val">Ok</span>(msg) =&gt; {
                 <span class="self">self</span>.update_metrics();
-
                 <span class="prelude-val">Ok</span>(msg)
             }
             <span class="prelude-val">Err</span>(crossbeam::channel::TryRecvError::Empty) =&gt; <span class="prelude-val">Err</span>(TryRecvError::Empty),
             <span class="prelude-val">Err</span>(crossbeam::channel::TryRecvError::Disconnected) =&gt; {
                 <span class="self">self</span>.unregister_metrics();
-
                 <span class="prelude-val">Err</span>(TryRecvError::Disconnected)
             }
         }
@@ -223,9 +221,10 @@
                 <span class="self">self</span>.update_metrics();
                 <span class="prelude-val">Ok</span>(msg)
             }
-            <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout),
+            <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected) =&gt; {
                 <span class="self">self</span>.unregister_metrics();
-                <span class="prelude-val">Err</span>(e)
+                <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected)
             }
         }
     }
@@ -236,9 +235,10 @@
                 <span class="self">self</span>.update_metrics();
                 <span class="prelude-val">Ok</span>(msg)
             }
-            <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout),
+            <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected) =&gt; {
                 <span class="self">self</span>.unregister_metrics();
-                <span class="prelude-val">Err</span>(e)
+                <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected)
             }
         }
     }
