@@ -2,6 +2,8 @@
 
 //! Pool controller implementation
 
+use crossbeam_channel::TrySendError;
+use massa_channel::sender::MassaSender;
 use massa_models::{
     block_id::BlockId, denunciation::Denunciation, denunciation::DenunciationPrecursor,
     endorsement::EndorsementId, operation::OperationId, slot::Slot,
@@ -10,8 +12,7 @@ use massa_pool_exports::{PoolConfig, PoolController, PoolError, PoolManager};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
-use std::sync::mpsc::TrySendError;
-use std::sync::{mpsc::SyncSender, Arc};
+use std::sync::Arc;
 use tracing::{info, warn};
 
 use crate::{
@@ -21,6 +22,7 @@ use crate::{
 
 /// A generic command to send commands to a pool
 #[allow(clippy::large_enum_variant)]
+#[derive(Clone)]
 pub enum Command {
     /// Add items to the pool
     AddItems(Storage),
@@ -44,11 +46,11 @@ pub struct PoolControllerImpl {
     /// Shared reference to the denunciation pool
     pub(crate) denunciation_pool: Arc<RwLock<DenunciationPool>>,
     /// Operation write worker command sender
-    pub(crate) operations_input_sender: SyncSender<Command>,
+    pub(crate) operations_input_sender: MassaSender<Command>,
     /// Endorsement write worker command sender
-    pub(crate) endorsements_input_sender: SyncSender<Command>,
+    pub(crate) endorsements_input_sender: MassaSender<Command>,
     /// Denunciation write worker command sender
-    pub(crate) denunciations_input_sender: SyncSender<Command>,
+    pub(crate) denunciations_input_sender: MassaSender<Command>,
     /// Last final periods from Consensus
     pub last_cs_final_periods: Vec<u64>,
 }
@@ -312,11 +314,11 @@ pub struct PoolManagerImpl {
     /// Handle used to join the denunciation thread
     pub(crate) denunciations_thread_handle: Option<std::thread::JoinHandle<()>>,
     /// Operations input data mpsc (used to stop the pool thread)
-    pub(crate) operations_input_sender: SyncSender<Command>,
+    pub(crate) operations_input_sender: MassaSender<Command>,
     /// Endorsements input data mpsc (used to stop the pool thread)
-    pub(crate) endorsements_input_sender: SyncSender<Command>,
+    pub(crate) endorsements_input_sender: MassaSender<Command>,
     /// Denunciations input data mpsc (used to stop the pool thread)
-    pub(crate) denunciations_input_sender: SyncSender<Command>,
+    pub(crate) denunciations_input_sender: MassaSender<Command>,
 }
 
 impl PoolManager for PoolManagerImpl {
