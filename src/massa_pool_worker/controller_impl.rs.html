@@ -344,11 +344,15 @@
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Pool controller implementation
 
-</span><span class="kw">use </span>massa_models::{
+</span><span class="kw">use </span>crossbeam_channel::TrySendError;
+<span class="kw">use </span>massa_channel::sender::MassaSender;
+<span class="kw">use </span>massa_models::{
     block_id::BlockId, denunciation::Denunciation, denunciation::DenunciationPrecursor,
     endorsement::EndorsementId, operation::OperationId, slot::Slot,
 };
@@ -356,8 +360,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>std::sync::mpsc::TrySendError;
-<span class="kw">use </span>std::sync::{mpsc::SyncSender, Arc};
+<span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::{info, warn};
 
 <span class="kw">use crate</span>::{
@@ -367,6 +370,7 @@
 
 <span class="doccomment">/// A generic command to send commands to a pool
 </span><span class="attr">#[allow(clippy::large_enum_variant)]
+#[derive(Clone)]
 </span><span class="kw">pub enum </span>Command {
     <span class="doccomment">/// Add items to the pool
     </span>AddItems(Storage),
@@ -390,11 +394,11 @@
     <span class="doccomment">/// Shared reference to the denunciation pool
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) denunciation_pool: Arc&lt;RwLock&lt;DenunciationPool&gt;&gt;,
     <span class="doccomment">/// Operation write worker command sender
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) operations_input_sender: SyncSender&lt;Command&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) operations_input_sender: MassaSender&lt;Command&gt;,
     <span class="doccomment">/// Endorsement write worker command sender
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) endorsements_input_sender: SyncSender&lt;Command&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) endorsements_input_sender: MassaSender&lt;Command&gt;,
     <span class="doccomment">/// Denunciation write worker command sender
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) denunciations_input_sender: SyncSender&lt;Command&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) denunciations_input_sender: MassaSender&lt;Command&gt;,
     <span class="doccomment">/// Last final periods from Consensus
     </span><span class="kw">pub </span>last_cs_final_periods: Vec&lt;u64&gt;,
 }
@@ -658,11 +662,11 @@
     <span class="doccomment">/// Handle used to join the denunciation thread
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) denunciations_thread_handle: <span class="prelude-ty">Option</span>&lt;std::thread::JoinHandle&lt;()&gt;&gt;,
     <span class="doccomment">/// Operations input data mpsc (used to stop the pool thread)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) operations_input_sender: SyncSender&lt;Command&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) operations_input_sender: MassaSender&lt;Command&gt;,
     <span class="doccomment">/// Endorsements input data mpsc (used to stop the pool thread)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) endorsements_input_sender: SyncSender&lt;Command&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) endorsements_input_sender: MassaSender&lt;Command&gt;,
     <span class="doccomment">/// Denunciations input data mpsc (used to stop the pool thread)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) denunciations_input_sender: SyncSender&lt;Command&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) denunciations_input_sender: MassaSender&lt;Command&gt;,
 }
 
 <span class="kw">impl </span>PoolManager <span class="kw">for </span>PoolManagerImpl {
