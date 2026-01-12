@@ -447,7 +447,7 @@
     # max number of items returned per query
     max_item_return_count = 100
     # endorsements channel capacity
-    endorsements_channel_capacity = 1024
+    endorsements_channel_capacity = 2048
     # operations channel capacity
     operations_channel_capacity = 1024
     # denunciation channel capacity
