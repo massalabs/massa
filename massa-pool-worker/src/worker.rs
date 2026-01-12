@@ -6,25 +6,22 @@ use crate::controller_impl::{Command, PoolManagerImpl};
 use crate::denunciation_pool::DenunciationPool;
 use crate::operation_pool::OperationPool;
 use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
+use crossbeam_channel::{RecvTimeoutError, TryRecvError};
+use massa_channel::receiver::MassaReceiver;
+use massa_channel::MassaChannel;
 use massa_pool_exports::PoolConfig;
 use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::sync::mpsc::TryRecvError;
 use std::time::Instant;
-use std::{
-    sync::mpsc::{sync_channel, Receiver, RecvTimeoutError},
-    sync::Arc,
-    thread,
-    thread::JoinHandle,
-};
+use std::{sync::Arc, thread, thread::JoinHandle};
 use tracing::warn;
 
 /// Endorsement pool write thread instance
 pub(crate) struct EndorsementPoolThread {
     /// Command reception channel
-    receiver: Receiver<Command>,
+    receiver: MassaReceiver<Command>,
     /// Shared reference to the pool
     endorsement_pool: Arc<RwLock<EndorsementPool>>,
 }
@@ -32,7 +29,7 @@ pub(crate) struct EndorsementPoolThread {
 impl EndorsementPoolThread {
     /// Spawns a pool writer thread, returning a join handle.
     pub(crate) fn spawn(
-        receiver: Receiver<Command>,
+        receiver: MassaReceiver<Command>,
         endorsement_pool: Arc<RwLock<EndorsementPool>>,
         config: PoolConfig,
     ) -> JoinHandle<()> {
@@ -118,7 +115,7 @@ impl EndorsementPoolThread {
 /// Operation pool writer thread.
 pub(crate) struct OperationPoolThread {
     /// Command reception channel
-    receiver: Receiver<Command>,
+    receiver: MassaReceiver<Command>,
     /// Shared reference to the operation pool
     operation_pool: Arc<RwLock<OperationPool>>,
 }
@@ -126,7 +123,7 @@ pub(crate) struct OperationPoolThread {
 impl OperationPoolThread {
     /// Spawns a pool writer thread, returning a join handle.
     pub(crate) fn spawn(
-        receiver: Receiver<Command>,
+        receiver: MassaReceiver<Command>,
         operation_pool: Arc<RwLock<OperationPool>>,
         config: PoolConfig,
     ) -> JoinHandle<()> {
@@ -224,7 +221,7 @@ impl OperationPoolThread {
 /// Denunciation pool writer thread.
 pub(crate) struct DenunciationPoolThread {
     /// Command reception channel
-    receiver: Receiver<Command>,
+    receiver: MassaReceiver<Command>,
     /// Shared reference to the denunciation pool
     denunciation_pool: Arc<RwLock<DenunciationPool>>,
 }
@@ -232,7 +229,7 @@ pub(crate) struct DenunciationPoolThread {
 impl DenunciationPoolThread {
     /// Spawns a pool writer thread, returning a join handle.
     pub(crate) fn spawn(
-        receiver: Receiver<Command>,
+        receiver: MassaReceiver<Command>,
         denunciation_pool: Arc<RwLock<DenunciationPool>>,
         config: PoolConfig,
     ) -> JoinHandle<()> {
@@ -340,12 +337,18 @@ pub fn start_pool_controller(
     channels: PoolChannels,
     wallet: Arc<RwLock<Wallet>>,
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
-    let (operations_input_sender, operations_input_receiver) =
-        sync_channel(config.operations_channel_size);
-    let (endorsements_input_sender, endorsements_input_receiver) =
-        sync_channel(config.endorsements_channel_size);
-    let (denunciations_input_sender, denunciations_input_receiver) =
-        sync_channel(config.denunciations_channel_size);
+    let (operations_input_sender, operations_input_receiver) = MassaChannel::new(
+        "operations_pool_input".to_string(),
+        Some(config.operations_channel_size),
+    );
+    let (endorsements_input_sender, endorsements_input_receiver) = MassaChannel::new(
+        "endorsements_pool_input".to_string(),
+        Some(config.endorsements_channel_size),
+    );
+    let (denunciations_input_sender, denunciations_input_receiver) = MassaChannel::new(
+        "denunciations_pool_input".to_string(),
+        Some(config.denunciations_channel_size),
+    );
     let operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,
