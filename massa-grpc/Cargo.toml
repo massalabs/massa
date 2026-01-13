@@ -1,6 +1,6 @@
 [package]
 name = "massa_grpc"
-version = "29.0.0"
+version = "29.1.0"
 edition = "2021"
 description = "GRPC API for Massa Blockchain"
 repository = "https://github.com/massalabs/massa/"
