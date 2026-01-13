@@ -4329,7 +4329,6 @@ fn send_and_receive_async_message_with_reset() {
         trigger: None,
         can_be_executed: true,
     };
-    let message_cloned = message.clone();
     foreign_controllers
         .final_state
         .write()
