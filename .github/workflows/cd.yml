@@ -116,6 +116,7 @@ jobs:
           certificate-p12-base64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
           certificate-password: ${{ secrets.APPLE_CERTIFICATE_P12_PASSWORD }}
           signing-identity: ${{ vars.APPLE_DEVELOPER_ID_APPLICATION }}
+          entitlements: .github/actions/sign-macos/entitlements.plist
 
       - name: Package
         shell: bash
