@@ -41,7 +41,7 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
     println!("Running with test-exports feature");
 
     let mip_info_1 = MipInfo {
-        name: "MIP-0001-DeferredCalls-And-Execution-BugFix".to_string(),
+        name: "MIP-0001-Execution-BugFix-And-DeferredCalls".to_string(),
         version: 1,
         components: BTreeMap::from([(MipComponent::Execution, 1), (MipComponent::FinalState, 1)]),
         start: MassaTime::from_millis(2),
