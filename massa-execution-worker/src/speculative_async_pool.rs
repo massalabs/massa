@@ -147,6 +147,8 @@ impl SpeculativeAsyncPool {
         }
         self.delete_messages(wanted_ids);
 
+        println!("LEO - slot {}: take_batch_to_execute: {:?}", slot, taken_msgs);
+
         taken_msgs
     }
 
@@ -229,6 +231,8 @@ impl SpeculativeAsyncPool {
             SetUpdateOrDelete::Update(_v) => None,
             SetUpdateOrDelete::Delete => None,
         }));
+
+        println!("LEO - slot {}: settle slot eliminated_msgs: {:?}", slot, eliminated_msgs);
 
         eliminated_msgs
     }

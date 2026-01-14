@@ -447,6 +447,8 @@ impl FinalState {
 
         // apply the state changes to the batch
 
+        println!("LEO - Finalizing slot {}: async pool changes to apply: {:?}", slot, changes.async_pool_changes);
+
         self.async_pool
             .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
         self.pos_state
@@ -542,6 +544,8 @@ impl FinalState {
     /// Internal function called by is_db_valid
     fn _is_db_valid(&self) -> AnyResult<()> {
         let db = self.db.read();
+
+        println!("LEO - Starting is_db_valid check, current hash: {}", db.get_xof_db_hash());
 
         // check if the execution trial hash is present and valid
         {
