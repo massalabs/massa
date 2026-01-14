@@ -108,7 +108,7 @@ jobs:
           SM_CERT_FINGERPRINT: ${{ secrets.SM_CERT_FINGERPRINT }}
           SM_HOST: ${{ secrets.SM_HOST }}
 
-      - name: Sign Macos binaries
+      - name: Sign macOS binaries
         uses: ./.github/actions/sign-macos
         if: ${{ runner.os == 'macOS' }}
         with:
@@ -117,6 +117,15 @@ jobs:
           certificate-password: ${{ secrets.APPLE_CERTIFICATE_P12_PASSWORD }}
           signing-identity: ${{ vars.APPLE_DEVELOPER_ID_APPLICATION }}
           entitlements: .github/actions/sign-macos/entitlements.plist
+
+      - name: Notarize macOS binaries
+        uses: ./.github/actions/notarize-macos
+        if: ${{ runner.os == 'macOS' }}
+        with:
+          paths: "$MASSA_CLIENT_PATH $MASSA_NODE_PATH"
+          apple-id: ${{ secrets.APPLE_ID }}
+          apple-team-id: ${{ secrets.APPLE_TEAM_ID }}
+          apple-app-password: ${{ secrets.APPLE_APP_PASSWORD }}
 
       - name: Package
         shell: bash
