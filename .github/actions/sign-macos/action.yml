@@ -46,7 +46,7 @@ runs:
             ENTITLEMENTS_ARG="--entitlements ${{ inputs.entitlements }}"
           fi
 
-          codesign --force --options runtime --timestamp $ENTITLEMENTS_ARG\
+          codesign --force --options runtime --timestamp $ENTITLEMENTS_ARG \
             --sign "${{ inputs.signing-identity }}" "$path"
 
           echo "🔍 Verifying signature for: $path"
