@@ -2818,7 +2818,7 @@ dependencies = [
 
 [[package]]
 name = "massa-client"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2845,7 +2845,7 @@ dependencies = [
 
 [[package]]
 name = "massa-node"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -2949,7 +2949,7 @@ dependencies = [
 
 [[package]]
 name = "massa_api"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -2987,7 +2987,7 @@ dependencies = [
 
 [[package]]
 name = "massa_api_exports"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "jsonrpsee",
@@ -3009,7 +3009,7 @@ dependencies = [
 
 [[package]]
 name = "massa_async_pool"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "assert_matches",
  "massa-proto-rs",
@@ -3032,7 +3032,7 @@ dependencies = [
 
 [[package]]
 name = "massa_bootstrap"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "bitvec",
  "crossbeam",
@@ -3079,7 +3079,7 @@ dependencies = [
 
 [[package]]
 name = "massa_channel"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "crossbeam",
  "prometheus",
@@ -3088,7 +3088,7 @@ dependencies = [
 
 [[package]]
 name = "massa_cipher"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "aes-gcm",
  "displaydoc",
@@ -3099,7 +3099,7 @@ dependencies = [
 
 [[package]]
 name = "massa_consensus_exports"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "massa_channel",
@@ -3124,7 +3124,7 @@ dependencies = [
 
 [[package]]
 name = "massa_consensus_worker"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "crossbeam",
  "crossbeam-channel",
@@ -3154,7 +3154,7 @@ dependencies = [
 
 [[package]]
 name = "massa_db_exports"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "massa_hash",
@@ -3167,7 +3167,7 @@ dependencies = [
 
 [[package]]
 name = "massa_db_worker"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "assert_matches",
  "massa_db_exports",
@@ -3181,7 +3181,7 @@ dependencies = [
 
 [[package]]
 name = "massa_deferred_calls"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "massa-proto-rs",
  "massa_db_exports",
@@ -3200,7 +3200,7 @@ dependencies = [
 
 [[package]]
 name = "massa_event_cache"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "massa_metrics",
  "massa_models",
@@ -3221,7 +3221,7 @@ dependencies = [
 
 [[package]]
 name = "massa_executed_ops"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "massa_db_exports",
  "massa_db_worker",
@@ -3235,7 +3235,7 @@ dependencies = [
 
 [[package]]
 name = "massa_execution_exports"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "massa-proto-rs",
@@ -3261,7 +3261,7 @@ dependencies = [
 
 [[package]]
 name = "massa_execution_worker"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "blake3",
  "bs58",
@@ -3313,7 +3313,7 @@ dependencies = [
 
 [[package]]
 name = "massa_factory_exports"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "massa_consensus_exports",
@@ -3330,7 +3330,7 @@ dependencies = [
 
 [[package]]
 name = "massa_factory_worker"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "crossbeam-channel",
  "massa_channel",
@@ -3354,7 +3354,7 @@ dependencies = [
 
 [[package]]
 name = "massa_final_state"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "anyhow",
  "bs58",
@@ -3388,7 +3388,7 @@ dependencies = [
 
 [[package]]
 name = "massa_grpc"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "futures-util",
@@ -3431,7 +3431,7 @@ dependencies = [
 
 [[package]]
 name = "massa_hash"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "blake3",
  "bs58",
@@ -3446,7 +3446,7 @@ dependencies = [
 
 [[package]]
 name = "massa_ledger_exports"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "massa-proto-rs",
@@ -3467,7 +3467,7 @@ dependencies = [
 
 [[package]]
 name = "massa_ledger_worker"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "massa_db_exports",
  "massa_db_worker",
@@ -3483,7 +3483,7 @@ dependencies = [
 
 [[package]]
 name = "massa_logging"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "serde_json",
  "tracing",
@@ -3491,7 +3491,7 @@ dependencies = [
 
 [[package]]
 name = "massa_metrics"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "hyper 0.14.32",
  "lazy_static",
@@ -3502,7 +3502,7 @@ dependencies = [
 
 [[package]]
 name = "massa_models"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "bitvec",
  "bs58",
@@ -3531,7 +3531,7 @@ dependencies = [
 
 [[package]]
 name = "massa_module_cache"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "anyhow",
  "displaydoc",
@@ -3552,7 +3552,7 @@ dependencies = [
 
 [[package]]
 name = "massa_pool_exports"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "massa_execution_exports",
@@ -3569,7 +3569,7 @@ dependencies = [
 
 [[package]]
 name = "massa_pool_worker"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "crossbeam-channel",
  "massa_channel",
@@ -3590,7 +3590,7 @@ dependencies = [
 
 [[package]]
 name = "massa_pos_exports"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "assert_matches",
  "bitvec",
@@ -3616,7 +3616,7 @@ dependencies = [
 
 [[package]]
 name = "massa_pos_worker"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "massa_hash",
  "massa_models",
@@ -3630,7 +3630,7 @@ dependencies = [
 
 [[package]]
 name = "massa_protocol_exports"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "massa_hash",
@@ -3653,7 +3653,7 @@ dependencies = [
 
 [[package]]
 name = "massa_protocol_worker"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "crossbeam",
  "ip_rfc",
@@ -3691,7 +3691,7 @@ dependencies = [
 
 [[package]]
 name = "massa_sdk"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "http 1.3.1",
  "jsonrpsee",
@@ -3709,7 +3709,7 @@ dependencies = [
 
 [[package]]
 name = "massa_serialization"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "nom",
@@ -3721,7 +3721,7 @@ dependencies = [
 
 [[package]]
 name = "massa_signature"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "bs58",
  "displaydoc",
@@ -3739,7 +3739,7 @@ dependencies = [
 
 [[package]]
 name = "massa_storage"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "massa_factory_exports",
  "massa_metrics",
@@ -3750,7 +3750,7 @@ dependencies = [
 
 [[package]]
 name = "massa_test_framework"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "massa_hash",
  "massa_models",
@@ -3760,7 +3760,7 @@ dependencies = [
 
 [[package]]
 name = "massa_time"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "massa-proto-rs",
@@ -3773,7 +3773,7 @@ dependencies = [
 
 [[package]]
 name = "massa_versioning"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "assert_matches",
  "machine",
@@ -3798,7 +3798,7 @@ dependencies = [
 
 [[package]]
 name = "massa_wallet"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "displaydoc",
  "massa_cipher",
@@ -3815,7 +3815,7 @@ dependencies = [
 
 [[package]]
 name = "massa_xtask"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "massa-sc-runtime",
  "massa_models",
