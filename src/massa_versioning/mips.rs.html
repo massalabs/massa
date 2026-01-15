@@ -61,6 +61,7 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
 </pre></div><pre class="rust"><code><span class="attr">#[allow(unused_imports)]
 </span><span class="kw">use </span>std::collections::BTreeMap;
 
@@ -72,22 +73,23 @@
 
 <span class="attr">#[cfg(not(feature = <span class="string">"test-exports"</span>))]
 </span><span class="kw">pub fn </span>get_mip_list() -&gt; [(MipInfo, MipState); <span class="number">1</span>] {
-    <span class="kw">let </span>mip_list = [(
+    <span class="comment">// When the MIP becomes defined, e.g. when merged to main branch
+    </span><span class="kw">let </span>defined = MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">5</span>, <span class="number">12</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(); <span class="comment">// Monday 12th May 2025 10:00:00 UTC
+
+    </span><span class="kw">let </span>mip_list = [(
         MipInfo {
-            name: <span class="string">"MIP-0001-Execution-BugFix-And-DeferredCalls"</span>.to_string(),
+            name: <span class="string">"MIP-0001-DeferredCalls-And-Execution-BugFix"</span>.to_string(),
             version: <span class="number">1</span>,
             components: BTreeMap::from([
                 (MipComponent::Execution, <span class="number">1</span>),
                 (MipComponent::FinalState, <span class="number">1</span>),
             ]),
-            <span class="comment">// Note: All bootstrap servers should have been updated to the latest version before the start time
-            </span>start: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">01</span>, <span class="number">13</span>, <span class="number">14</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Monday, January 13, 2025 2:00:00 PM UTC
-            // Give 1 week for the MIP to be accepted
-            </span>timeout: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">01</span>, <span class="number">20</span>, <span class="number">14</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Monday, January 20, 2025 2:00:00 PM UTC
-            </span>activation_delay: MassaTime::from_millis(<span class="number">1 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>), <span class="comment">// The MIP will be activated 1 hour after the LockedIn state
+            start: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">5</span>, <span class="number">19</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Monday 19th May 2025 10:00:00 UTC
+            </span>timeout: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">6</span>, <span class="number">19</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Thursday 19th June 2025 10:00:00 UTC
+            </span>activation_delay: MassaTime::from_millis(<span class="number">7 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>),    <span class="comment">// 7 days
         </span>},
-        MipState::new(MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">01</span>, <span class="number">10</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap()), <span class="comment">// Friday, January 10, 2025 10:00:00 AM UTC
-    </span>)];
+        MipState::new(defined),
+    )];
 
     <span class="comment">// debug!("MIP list: {:?}", mip_list);
     </span><span class="attr">#[allow(clippy::let_and_return)]
@@ -104,7 +106,7 @@
     <span class="macro">println!</span>(<span class="string">"Running with test-exports feature"</span>);
 
     <span class="kw">let </span>mip_info_1 = MipInfo {
-        name: <span class="string">"MIP-0001-Execution-BugFix-And-DeferredCalls"</span>.to_string(),
+        name: <span class="string">"MIP-0001-DeferredCalls-And-Execution-BugFix"</span>.to_string(),
         version: <span class="number">1</span>,
         components: BTreeMap::from([(MipComponent::Execution, <span class="number">1</span>), (MipComponent::FinalState, <span class="number">1</span>)]),
         start: MassaTime::from_millis(<span class="number">2</span>),
