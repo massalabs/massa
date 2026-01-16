@@ -49,9 +49,6 @@ jemalloc = [
     "tikv-jemalloc-sys",
 ]
 
-[target.'cfg(unix)'.features]
-default = ["jemalloc"]
-
 [dependencies]
 crossbeam-channel = { workspace = true } # BOM UPGRADE     Revert to "0.5.6" if problem
 anyhow = { workspace = true }
@@ -81,7 +78,6 @@ massa_consensus_worker = { workspace = true }
 massa_deferred_calls = { workspace = true }
 massa_executed_ops = { workspace = true }
 massa_execution_exports = { workspace = true }
-massa_execution_worker = { workspace = true }
 massa_logging = { workspace = true }
 massa_final_state = { workspace = true }
 massa_ledger_exports = { workspace = true }
@@ -103,5 +99,13 @@ massa_grpc = { workspace = true }
 massa_versioning = { workspace = true }
 massa_signature = { workspace = true }
 massa_db_exports = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+massa_db_worker = { workspace = true, "features" = ["jemalloc"] }
+massa_event_cache = { workspace = true, "features" = ["jemalloc"] }
+massa_execution_worker = { workspace = true, "features" = ["jemalloc"] }
+
+[target.'cfg(not(unix))'.dependencies]
 massa_db_worker = { workspace = true }
 massa_event_cache = { workspace = true }
+massa_execution_worker = { workspace = true }
