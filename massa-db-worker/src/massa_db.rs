@@ -924,6 +924,12 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
     /// Get the current change_id attached to the database.
     fn get_change_id(&self) -> Result<Slot, ModelsError> {
+        #[cfg(feature = "jemalloc")]
+        println!("Jemalloc should be active!");
+
+        #[cfg(not(feature = "jemalloc"))]
+        println!("Jemalloc should NOT be active!");
+
         self.get_change_id()
     }
 
