@@ -46,7 +46,6 @@ jemalloc = [
     "massa_db_worker/jemalloc",
     "massa_execution_worker/jemalloc",
     "massa_event_cache/jemalloc",
-    "tikv-jemalloc-sys",
 ]
 
 [dependencies]
@@ -67,7 +66,6 @@ rand = { workspace = true, "optional" = true } # BOM UPGRADE     Revert to {"ver
 clap = { workspace = true }
 dialoguer = { workspace = true }
 ctrlc = { workspace = true }
-tikv-jemalloc-sys = { workspace = true, optional = true }
 massa_api_exports = { workspace = true }
 massa_api = { workspace = true }
 massa_async_pool = { workspace = true }
@@ -104,8 +102,10 @@ massa_db_exports = { workspace = true }
 massa_db_worker = { workspace = true, "features" = ["jemalloc"] }
 massa_event_cache = { workspace = true, "features" = ["jemalloc"] }
 massa_execution_worker = { workspace = true, "features" = ["jemalloc"] }
+tikv-jemalloc-sys = { workspace = true }
 
 [target.'cfg(not(unix))'.dependencies]
 massa_db_worker = { workspace = true }
 massa_event_cache = { workspace = true }
 massa_execution_worker = { workspace = true }
+tikv-jemalloc-sys = { workspace = true, optional = true }
