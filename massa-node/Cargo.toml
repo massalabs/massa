@@ -5,6 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
+default = []
 beta = []
 resync_check = []
 deadlock_detection = []
@@ -47,6 +48,9 @@ jemalloc = [
     "massa_event_cache/jemalloc",
     "tikv-jemalloc-sys",
 ]
+
+[target.'cfg(unix)'.features]
+default = ["jemalloc"]
 
 [dependencies]
 crossbeam-channel = { workspace = true } # BOM UPGRADE     Revert to "0.5.6" if problem
