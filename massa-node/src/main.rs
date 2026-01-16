@@ -4,7 +4,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 
-#[cfg(feature = "jemalloc")]
+#[cfg(unix)]
 mod jemalloc_init;
 
 extern crate massa_logging;
