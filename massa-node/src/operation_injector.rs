@@ -37,8 +37,8 @@ pub fn start_operation_injector(
         .next()
         .unwrap()
         .clone();
-    let mut distant_wallets = vec![KeyPair::generate(0).unwrap(); 32];
-    let mut wallets_created = vec![false; 32];
+    let mut distant_wallets = vec![KeyPair::generate(0).unwrap(); THREAD_COUNT as usize];
+    let mut wallets_created = vec![false; THREAD_COUNT as usize];
     let mut init_ops = vec![];
     while wallets_created.iter().any(|e| *e == false) {
         let keypair = KeyPair::generate(0).unwrap();
@@ -81,7 +81,7 @@ pub fn start_operation_injector(
         loop {
             let now = std::time::Instant::now();
             let mut storage = storage.clone_without_refs();
-            let txps = nb_op / 32;
+            let txps = nb_op / (THREAD_COUNT as u64);
             let final_slot = get_closest_slot_to_timestamp(
                 THREAD_COUNT,
                 T0,
@@ -90,7 +90,7 @@ pub fn start_operation_injector(
             );
             let mut ops = vec![];
 
-            for i in 0..32 {
+            for i in 0..(THREAD_COUNT as usize) {
                 for _ in 0..txps {
                     let amount = rng.gen_range(1..=10000);
                     let content = Operation {
