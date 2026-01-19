@@ -697,6 +697,18 @@ impl ExecutionContext {
         self.speculative_ledger.get_balance(address)
     }
 
+    /// Sets the balance of an address in the speculative ledger.
+    /// Used for simulating balances in read-only executions.
+    ///
+    /// # Arguments
+    /// * address: the address whose balance to set
+    /// * balance: the balance to set
+    pub(crate) fn set_balance(&mut self, address: Address, balance: Amount) {
+        self.speculative_ledger
+            .added_changes
+            .set_balance(address, balance);
+    }
+
     /// Sets a datastore entry for an address in the speculative ledger.
     /// Fail if the address is absent from the ledger.
     /// The datastore entry is created if it is absent for that address.

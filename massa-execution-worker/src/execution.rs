@@ -2147,15 +2147,22 @@ impl ExecutionState {
             .expect("slot overflow in readonly execution from active slot");
 
         // create a readonly execution context
-        let execution_context = ExecutionContext::readonly(
+        let mut execution_context = ExecutionContext::readonly(
             self.config.clone(),
             slot,
-            req.call_stack,
+            req.call_stack.clone(),
             self.final_state.clone(),
             self.active_history.clone(),
             self.module_cache.clone(),
             self.mip_store.clone(),
         );
+
+        // Apply simulated initial caller balance if provided
+        if let Some(simulated_balance) = req.simulate_initial_caller_balance {
+            if let Some(caller_addr) = req.call_stack.first() {
+                execution_context.set_balance(caller_addr.address, simulated_balance);
+            }
+        }
 
         // run the interpreter according to the target type
         let exec_response = match req.target {
