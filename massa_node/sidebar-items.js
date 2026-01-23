@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["configure_grpc","launch","load_wallet","main","run","stop"],"mod":["jemalloc_init","settings","survey"],"struct":["Args","Managers"]};
+window.SIDEBAR_ITEMS = {"fn":["configure_grpc","launch","load_wallet","main","run","stop"],"mod":["settings","survey"],"struct":["Args","Managers"]};
