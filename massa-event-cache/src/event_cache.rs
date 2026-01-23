@@ -318,6 +318,7 @@ impl EventCache {
             let mut opts = Options::default();
             opts.create_if_missing(true);
             opts.set_merge_operator_associative("counter merge operator", counter_merge);
+            opts.set_max_open_files(128);
             opts
         };
         let db = DB::open(&options, path).expect(OPEN_ERROR);
