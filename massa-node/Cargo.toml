@@ -5,6 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
+default = []
 beta = []
 resync_check = []
 deadlock_detection = []
@@ -45,7 +46,6 @@ jemalloc = [
     "massa_db_worker/jemalloc",
     "massa_execution_worker/jemalloc",
     "massa_event_cache/jemalloc",
-    "tikv-jemalloc-sys",
 ]
 
 [dependencies]
@@ -66,7 +66,6 @@ rand = { workspace = true, "optional" = true } # BOM UPGRADE     Revert to {"ver
 clap = { workspace = true }
 dialoguer = { workspace = true }
 ctrlc = { workspace = true }
-tikv-jemalloc-sys = { workspace = true, optional = true }
 massa_api_exports = { workspace = true }
 massa_api = { workspace = true }
 massa_async_pool = { workspace = true }
@@ -77,7 +76,6 @@ massa_consensus_worker = { workspace = true }
 massa_deferred_calls = { workspace = true }
 massa_executed_ops = { workspace = true }
 massa_execution_exports = { workspace = true }
-massa_execution_worker = { workspace = true }
 massa_logging = { workspace = true }
 massa_final_state = { workspace = true }
 massa_ledger_exports = { workspace = true }
@@ -99,5 +97,15 @@ massa_grpc = { workspace = true }
 massa_versioning = { workspace = true }
 massa_signature = { workspace = true }
 massa_db_exports = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+massa_db_worker = { workspace = true, "features" = ["jemalloc"] }
+massa_event_cache = { workspace = true, "features" = ["jemalloc"] }
+massa_execution_worker = { workspace = true, "features" = ["jemalloc"] }
+tikv-jemalloc-sys = { workspace = true }
+
+[target.'cfg(not(unix))'.dependencies]
 massa_db_worker = { workspace = true }
 massa_event_cache = { workspace = true }
+massa_execution_worker = { workspace = true }
+tikv-jemalloc-sys = { workspace = true, optional = true }
