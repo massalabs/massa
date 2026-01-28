@@ -88,6 +88,7 @@ impl RocksDBStorageBackend {
         let mut opts = Options::default();
         opts.create_if_missing(true);
         opts.set_compression_type(DBCompressionType::Lz4);
+        opts.set_max_open_files(8);
 
         let db = rocksdb::DB::open(&opts, path.clone())
             .unwrap_or_else(|_| panic!("Failed to create storage db at {:?}", path));
