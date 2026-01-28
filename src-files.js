@@ -26,7 +26,7 @@ var srcIndex = new Map(JSON.parse('[\
 ["massa_metrics",["",[],["lib.rs","server.rs"]]],\
 ["massa_models",["",[["config",[],["compact_config.rs","constants.rs","massa_disclaimer.rs","massa_settings.rs","mod.rs"]]],["active_block.rs","address.rs","amount.rs","async_msg.rs","async_msg_id.rs","block.rs","block_header.rs","block_id.rs","bytecode.rs","clique.rs","composite.rs","datastore.rs","deferred_calls.rs","denunciation.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","mapping_grpc.rs","node.rs","operation.rs","output_event.rs","prehash.rs","rolls.rs","secure_share.rs","serialization.rs","slot.rs","stats.rs","streaming_step.rs","timeslots.rs","types.rs","version.rs"]]],\
 ["massa_module_cache",["",[],["config.rs","controller.rs","error.rs","hd_cache.rs","lib.rs","lru_cache.rs","types.rs"]]],\
-["massa_node",["",[],["main.rs","settings.rs","survey.rs"]]],\
+["massa_node",["",[],["jemalloc_init.rs","main.rs","settings.rs","survey.rs"]]],\
 ["massa_pool_exports",["",[],["channels.rs","config.rs","controller_traits.rs","error.rs","lib.rs"]]],\
 ["massa_pool_worker",["",[],["controller_impl.rs","denunciation_pool.rs","endorsement_pool.rs","lib.rs","operation_pool.rs","types.rs","worker.rs"]]],\
 ["massa_pos_exports",["",[],["config.rs","controller_traits.rs","cycle_info.rs","deferred_credits.rs","error.rs","lib.rs","pos_changes.rs","pos_final_state.rs","settings.rs"]]],\
