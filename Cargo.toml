@@ -16,8 +16,6 @@ members = [
   "massa-factory-exports",
   "massa-factory-worker",
   "massa-channel",
-  "massa-consensus-exports",
-  "massa-consensus-worker",
   "massa-hash",
   "massa-logging",
   "massa-metrics",
