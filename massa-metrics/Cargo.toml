@@ -1,6 +1,6 @@
 [package]
 name = "massa_metrics"
-version = "4.1.0"
+version = "4.2.0"
 edition = "2021"
 
 [features]
