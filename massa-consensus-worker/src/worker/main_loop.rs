@@ -6,7 +6,7 @@ use massa_models::{
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_time::MassaTime;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::commands::ConsensusCommand;
 
@@ -75,7 +75,13 @@ impl ConsensusWorker {
     /// Gets the next slot and the instant when it will happen.
     /// Slots can be skipped if we waited too much in-between.
     /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
-    fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
+    /// Gets the next slot and the instant when it will happen.
+    /// Slots can be skipped if we waited too much in-between.
+    /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
+    fn get_next_slot(
+        &self,
+        previous_slot: Option<Slot>,
+    ) -> Result<(Slot, Instant), ConsensusError> {
         // get current absolute time
         let now = MassaTime::now();
 
@@ -92,7 +98,7 @@ impl ConsensusWorker {
             if next_slot <= prev_slot {
                 next_slot = prev_slot
                     .get_next_slot(self.config.thread_count)
-                    .expect("could not compute next slot");
+                    .map_err(ConsensusError::ModelsError)?;
             }
         }
 
@@ -103,11 +109,11 @@ impl ConsensusWorker {
             self.config.genesis_timestamp,
             next_slot,
         )
-        .expect("could not get block slot timestamp")
+        .map_err(ConsensusError::ModelsError)?
         .estimate_instant()
-        .expect("could not estimate block slot instant");
+        .map_err(ConsensusError::MassaTimeError)?;
 
-        (next_slot, next_instant)
+        Ok((next_slot, next_instant))
     }
 
     /// Runs in loop forever. This loop must stop every slot to perform operations on stats and graph
@@ -120,15 +126,23 @@ impl ConsensusWorker {
                 WaitingStatus::Ended => {
                     if let Some(end) = self.config.end_timestamp {
                         // The testnet has ended. Will be removed for mainnet.
-                        if self.next_instant > end.estimate_instant().unwrap() {
-                            info!("This episode has come to an end, please get the latest testnet node version to continue");
-                            let _ = self
-                                .shared_state
-                                .read()
-                                .channels
-                                .controller_event_tx
-                                .send(ConsensusEvent::Stop);
-                            break;
+                        match end.estimate_instant() {
+                            Ok(end_instant) => {
+                                if self.next_instant > end_instant {
+                                    info!("This episode has come to an end, please get the latest testnet node version to continue");
+                                    let _ = self
+                                        .shared_state
+                                        .read()
+                                        .channels
+                                        .controller_event_tx
+                                        .send(ConsensusEvent::Stop);
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Could not estimate end timestamp instant: {}", e);
+                                // Continue, assuming not ended or just log warning.
+                            }
                         }
                     }
                     let previous_cycle = self
@@ -152,14 +166,23 @@ impl ConsensusWorker {
                     if last_prune.elapsed().as_millis()
                         > self.config.block_db_prune_interval.as_millis() as u128
                     {
-                        self.shared_state
-                            .write()
-                            .prune()
-                            .expect("Error while pruning");
+                        if let Err(e) = self.shared_state.write().prune() {
+                            warn!("Error while pruning: {}", e);
+                        }
                         last_prune = Instant::now();
                     }
                     self.previous_slot = Some(self.next_slot);
-                    (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
+                    // (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
+                    match self.get_next_slot(Some(self.next_slot)) {
+                        Ok((slot, instant)) => {
+                            self.next_slot = slot;
+                            self.next_instant = instant;
+                        }
+                        Err(e) => {
+                            error!("Critical error during consensus slot computation: {}", e);
+                            break;
+                        }
+                    }
                 }
                 WaitingStatus::Disconnected => {
                     break;
