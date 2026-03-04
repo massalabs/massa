@@ -29,3 +29,5 @@ der = "der"
 numer = "numer"
 # WONTFIX: grpc_model::operation_type::Type::ExecutSc
 Execut = "Execut"
+# WONTFIX: TransferContext::AyncMsgCancel enum variant
+Aync = "Aync"
