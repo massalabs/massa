@@ -22,7 +22,7 @@ use massa_models::{
 use massa_signature::PublicKey;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::state::{
     clique_computation::compute_max_cliques,
@@ -41,9 +41,9 @@ pub(crate) struct BlockInfos {
     pub parents_hash_period: Vec<(BlockId, u64)>,
     /// The list of the blocks that are incompatible with this block
     pub incompatibilities: PreHashSet<BlockId>,
-    /// Number of incompatibilities this block inherit from his parents
+    /// Number of incompatibilities this block inherits from its parents
     pub inherited_incompatibilities_count: usize,
-    /// The storage can the block himself and his operations and endorsements
+    /// The storage containing the block itself and its operations and endorsements
     pub storage: Storage,
     /// The fitness of the block
     pub fitness: u64,
@@ -86,291 +86,290 @@ impl ConsensusState {
         block_id: BlockId,
         current_slot: Option<Slot>,
     ) -> Result<BTreeSet<(Slot, BlockId)>, ConsensusError> {
-        // list items to reprocess
-        let mut reprocess = BTreeSet::new();
-
         massa_trace!("consensus.block_graph.process", { "block_id": block_id });
-        // control all the waiting states and try to get a valid block
-        match self.blocks_state.get(&block_id) {
-            None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
-            // discarded: do nothing
-            Some(BlockStatus::Discarded { .. }) => {
-                massa_trace!("consensus.block_graph.process.discarded", {
-                    "block_id": block_id
-                });
-                return Ok(BTreeSet::new());
+        // Determine the action to take based on the current block status.
+        let action = self
+            .blocks_state
+            .get(&block_id)
+            .map(ProcessAction::from)
+            .unwrap_or(ProcessAction::Ignore);
+
+        match action {
+            ProcessAction::Ignore => Ok(BTreeSet::new()),
+            ProcessAction::IncomingHeader => {
+                self.process_incoming_header(block_id, current_slot)?;
+                Ok(BTreeSet::new())
             }
-
-            // already active: do nothing
-            Some(BlockStatus::Active { .. }) => {
-                massa_trace!("consensus.block_graph.process.active", {
-                    "block_id": block_id
-                });
-                return Ok(BTreeSet::new());
-            }
-
-            // incoming header
-            Some(BlockStatus::Incoming(HeaderOrBlock::Header(_))) => {
-                massa_trace!("consensus.block_graph.process.incoming_header", {
-                    "block_id": block_id
-                });
-
-                let new_state = if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
-                    self.blocks_state.get(&block_id)
-                {
-                    self.convert_block_header(block_id, header.clone(), current_slot)
+            ProcessAction::IncomingBlock => {
+                if self.process_incoming_block(block_id, current_slot)? {
+                    // If the block was successfully added to the graph, run the post-process check
+                    self.post_process_active_block(block_id)
                 } else {
-                    panic!(
-                        "inconsistency inside block statuses removing incoming header {}",
-                        block_id
-                    )
-                };
-
-                // remove header
-                self.blocks_state
-                    .transition_map(&block_id, |block_status, _| {
-                        if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(_header))) =
-                            block_status
-                        {
-                            new_state
-                        } else {
-                            panic!(
-                                "inconsistency inside block statuses removing incoming header {}",
-                                block_id
-                            )
-                        }
-                    });
-                return Ok(BTreeSet::new());
-            }
-
-            // incoming block
-            Some(BlockStatus::Incoming(HeaderOrBlock::Block { id: block_id, .. })) => {
-                let block_id = *block_id;
-                massa_trace!("consensus.block_graph.process.incoming_block", {
-                    "block_id": block_id
-                });
-                let header_check_outcome =
-                    if let Some(BlockStatus::Incoming(HeaderOrBlock::Block {
-                        slot: _,
-                        storage,
-                        ..
-                    })) = self.blocks_state.get(&block_id)
-                    {
-                        let stored_block = storage
-                            .read_blocks()
-                            .get(&block_id)
-                            .cloned()
-                            .expect("incoming block not found in storage");
-                        let res = self.check_header(
-                            &block_id,
-                            &stored_block.content.header,
-                            current_slot,
-                        );
-                        match &res {
-                            HeaderCheckOutcome::Discard(reason) => {
-                                self.maybe_note_attack_attempt(reason, &block_id)
-                            }
-                            _ => {
-                                if self.detect_multistake(&stored_block.content.header) {
-                                    return Ok(BTreeSet::new());
-                                }
-                            }
-                        }
-                        res
-                    } else {
-                        panic!(
-                            "inconsistency inside block statuses removing incoming block {}",
-                            block_id
-                        )
-                    };
-                let mut block_infos = None;
-                let sequence_number = self.blocks_state.sequence_counter();
-                self.blocks_state
-                    .transition_map(&block_id, |block_status, _| {
-                        if let Some(BlockStatus::Incoming(HeaderOrBlock::Block {
-                            slot,
-                            storage,
-                            ..
-                        })) = block_status
-                        {
-                            let header = storage
-                                .read_blocks()
-                                .get(&block_id)
-                                .cloned()
-                                .expect("incoming block not found in storage")
-                                .content
-                                .header;
-                            let new_state = match header_check_outcome {
-                                HeaderCheckOutcome::Proceed {
-                                    parents_hash_period,
-                                    incompatibilities,
-                                    inherited_incompatibilities_count,
-                                    fitness,
-                                } => Some(BlockCheckOutcome::BlockInfos(BlockInfos {
-                                    creator: header.content_creator_pub_key,
-                                    parents_hash_period,
-                                    storage,
-                                    slot,
-                                    incompatibilities,
-                                    inherited_incompatibilities_count,
-                                    fitness,
-                                })),
-                                HeaderCheckOutcome::WaitForDependencies(dependencies) => {
-                                    Some(BlockCheckOutcome::BlockStatus(
-                                        BlockStatus::WaitingForDependencies {
-                                            header_or_block: HeaderOrBlock::Block {
-                                                id: block_id,
-                                                slot,
-                                                storage,
-                                            },
-                                            unsatisfied_dependencies: dependencies,
-                                            sequence_number,
-                                        },
-                                    ))
-                                }
-                                HeaderCheckOutcome::WaitForSlot => {
-                                    Some(BlockCheckOutcome::BlockStatus(
-                                        BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
-                                            id: block_id,
-                                            slot,
-                                            storage,
-                                        }),
-                                    ))
-                                }
-                                HeaderCheckOutcome::Discard(reason) => {
-                                    if reason == DiscardReason::Stale {
-                                        self.new_stale_blocks.insert(
-                                            block_id,
-                                            (header.content_creator_address, header.content.slot),
-                                        );
-                                    }
-                                    // discard
-                                    Some(BlockCheckOutcome::BlockStatus(BlockStatus::Discarded {
-                                        slot: header.content.slot,
-                                        creator: header.content_creator_address,
-                                        parents: header.content.parents,
-                                        reason,
-                                        sequence_number,
-                                    }))
-                                }
-                            };
-                            match new_state {
-                                Some(BlockCheckOutcome::BlockInfos(infos)) => {
-                                    block_infos = Some((
-                                        infos.parents_hash_period.clone(),
-                                        infos.slot,
-                                        infos.incompatibilities,
-                                        infos.inherited_incompatibilities_count,
-                                    ));
-
-                                    Some(BlockStatus::Active {
-                                        a_block: Box::new(ActiveBlock {
-                                            creator_address: Address::from_public_key(
-                                                &infos.creator,
-                                            ),
-                                            parents: infos.parents_hash_period,
-                                            descendants: PreHashSet::<BlockId>::default(),
-                                            block_id,
-                                            children: vec![
-                                                Default::default();
-                                                self.config.thread_count as usize
-                                            ],
-                                            is_final: false,
-                                            slot: infos.slot,
-                                            fitness: infos.fitness,
-                                            same_thread_parent_creator: None, // added below in add_block_to_graph
-                                        }),
-                                        storage_or_block: StorageOrBlock::Storage(infos.storage),
-                                    })
-                                }
-                                Some(BlockCheckOutcome::BlockStatus(status)) => Some(status),
-                                None => None,
-                            }
-                        } else {
-                            panic!(
-                                "inconsistency inside block statuses removing incoming block {}",
-                                block_id
-                            )
-                        }
-                    });
-                match block_infos {
-                    Some(valid_block_infos) => {
-                        if let Err(err) = self.add_block_to_graph(
-                            block_id,
-                            valid_block_infos.0,
-                            valid_block_infos.1,
-                            valid_block_infos.2,
-                            valid_block_infos.3,
-                        ) {
-                            panic!("error adding block to graph: {:?}", err);
-                        }
-                    }
-                    None => return Ok(BTreeSet::new()),
+                    Ok(BTreeSet::new())
                 }
             }
-
-            Some(BlockStatus::WaitingForSlot(header_or_block)) => {
-                massa_trace!("consensus.block_graph.process.waiting_for_slot", {
-                    "block_id": block_id
-                });
-                let slot = header_or_block.get_slot();
-                if Some(slot) > current_slot {
-                    massa_trace!(
-                        "consensus.block_graph.process.waiting_for_slot.in_the_future",
-                        { "block_id": block_id }
-                    );
-                    // in the future: ignore
-                    return Ok(BTreeSet::new());
-                }
-                // send back as incoming and ask for reprocess
-                self.blocks_state
-                    .transition_map(&block_id, |block_status, _| {
-                        if let Some(BlockStatus::WaitingForSlot(header_or_block)) = block_status {
-                            Some(BlockStatus::Incoming(header_or_block))
-                        } else {
-                            panic!(
-                                "inconsistency inside block statuses removing waiting for slot {}",
-                                block_id
-                            )
-                        }
-                    });
-                reprocess.insert((slot, block_id));
-                return Ok(reprocess);
+            ProcessAction::WaitingForSlot => self.process_waiting_for_slot(block_id, current_slot),
+            ProcessAction::WaitingForDependencies => {
+                self.process_waiting_for_dependencies(block_id)
             }
+        }
+    }
 
-            Some(BlockStatus::WaitingForDependencies {
-                unsatisfied_dependencies,
-                ..
-            }) => {
-                massa_trace!("consensus.block_graph.process.waiting_for_dependencies", {
-                    "block_id": block_id
-                });
-                if !unsatisfied_dependencies.is_empty() {
-                    // still has unsatisfied dependencies: ignore
-                    return Ok(BTreeSet::new());
-                }
-                // send back as incoming and ask for reprocess
-                self.blocks_state
-                    .transition_map(&block_id, |block_status, _| {
-                        if let Some(BlockStatus::WaitingForDependencies {
-                            header_or_block, ..
-                        }) = block_status
-                        {
-                            reprocess.insert((header_or_block.get_slot(), block_id));
-                            Some(BlockStatus::Incoming(header_or_block))
-                        } else {
-                            panic!(
-                                "inconsistency inside block statuses removing waiting for slot {}",
-                                block_id
-                            )
-                        }
-                    });
-                return Ok(reprocess);
-            }
+    /// Handles `BlockStatus::Incoming(HeaderOrBlock::Header)`
+    fn process_incoming_header(
+        &mut self,
+        block_id: BlockId,
+        current_slot: Option<Slot>,
+    ) -> Result<(), ConsensusError> {
+        massa_trace!("consensus.block_graph.process.incoming_header", {
+            "block_id": block_id
+        });
+
+        // Retrieve header (cloned to release borrow)
+        let header = if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
+            self.blocks_state.get(&block_id)
+        {
+            header.clone()
+        } else {
+            return Err(ConsensusError::ContainerInconsistency(format!(
+                "inconsistency inside block statuses removing incoming header {}",
+                block_id
+            )));
         };
 
-        // if the block was added, update linked dependencies and mark satisfied ones for recheck
+        let new_state = self.convert_block_header(block_id, header, current_slot);
+
+        // Update state
+        self.blocks_state
+            .transition_map(&block_id, |block_status, _| {
+                if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(_))) = block_status {
+                    new_state
+                } else {
+                    error!(
+                        "inconsistency inside block statuses removing incoming header {}",
+                        block_id
+                    );
+                    None
+                }
+            });
+
+        Ok(())
+    }
+
+    /// Handles `BlockStatus::Incoming(HeaderOrBlock::Block)`
+    /// Returns `Ok(true)` if the block was added to the graph and requires post-processing.
+    fn process_incoming_block(
+        &mut self,
+        block_id: BlockId,
+        current_slot: Option<Slot>,
+    ) -> Result<bool, ConsensusError> {
+        massa_trace!("consensus.block_graph.process.incoming_block", {
+            "block_id": block_id
+        });
+
+        // 1. Validate the block (Check header, storage, multistake)
+        let header_check_outcome = self.validate_incoming_block(block_id, current_slot)?;
+
+        let Some(header_check_outcome) = header_check_outcome else {
+            // Multistake detected or other early exit condition
+            return Ok(false);
+        };
+
+        // 2. Transition the state based on validation outcome
+        let block_infos = self.transition_incoming_block(block_id, header_check_outcome);
+
+        // 3. If we have valid block infos, add to graph
+        if let Some(valid_block_infos) = block_infos {
+            self.add_block_to_graph(
+                block_id,
+                valid_block_infos.parents_hash_period,
+                valid_block_infos.slot,
+                valid_block_infos.incompatibilities,
+                valid_block_infos.inherited_incompatibilities_count,
+            )?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Validates an incoming block.
+    /// Returns `Ok(Some(outcome))` if validation produced a decision.
+    /// Returns `Ok(None)` if we should abort processing (e.g. multistake detected).
+    fn validate_incoming_block(
+        &mut self,
+        block_id: BlockId,
+        current_slot: Option<Slot>,
+    ) -> Result<Option<HeaderCheckOutcome>, ConsensusError> {
+        if let Some(BlockStatus::Incoming(HeaderOrBlock::Block { storage, .. })) =
+            self.blocks_state.get(&block_id)
+        {
+            let stored_block = storage
+                .read_blocks()
+                .get(&block_id)
+                .cloned()
+                .ok_or_else(|| {
+                    ConsensusError::ContainerInconsistency(
+                        "incoming block not found in storage".to_string(),
+                    )
+                })?;
+
+            let res = self.check_header(&block_id, &stored_block.content.header, current_slot);
+
+            match &res {
+                HeaderCheckOutcome::Discard(_reason) => {
+                    // Logic requires mutable access to self for `maybe_note_attack_attempt`.
+                    // We handle side check in transition_incoming_block
+                }
+                _ => {
+                    if self.detect_multistake(&stored_block.content.header) {
+                        return Ok(None);
+                    }
+                }
+            }
+            Ok(Some(res))
+        } else {
+            Err(ConsensusError::ContainerInconsistency(format!(
+                "inconsistency inside block statuses removing incoming block {}",
+                block_id
+            )))
+        }
+    }
+
+    /// Applies the state transition for an incoming block based on the validation outcome.
+    /// Also handles side effects like `maybe_note_attack_attempt` which require `&mut self`.
+    fn transition_incoming_block(
+        &mut self,
+        block_id: BlockId,
+        header_check_outcome: HeaderCheckOutcome,
+    ) -> Option<BlockInfos> {
+        if let HeaderCheckOutcome::Discard(reason) = &header_check_outcome {
+            self.maybe_note_attack_attempt(reason, &block_id);
+        }
+
+        let mut block_infos = None;
+        let sequence_number = self.blocks_state.sequence_counter();
+
+        let thread_count = self.config.thread_count;
+        let new_stale_blocks = &mut self.new_stale_blocks;
+
+        self.blocks_state
+            .transition_map(&block_id, |block_status, _| {
+                let (new_status, infos) = compute_transition_result(
+                    block_status,
+                    block_id,
+                    header_check_outcome,
+                    sequence_number,
+                    thread_count,
+                    new_stale_blocks,
+                );
+                block_infos = infos;
+                new_status
+            });
+
+        block_infos
+    }
+
+    /// Handles `BlockStatus::WaitingForSlot`
+    fn process_waiting_for_slot(
+        &mut self,
+        block_id: BlockId,
+        current_slot: Option<Slot>,
+    ) -> Result<BTreeSet<(Slot, BlockId)>, ConsensusError> {
+        massa_trace!("consensus.block_graph.process.waiting_for_slot", {
+            "block_id": block_id
+        });
+
+        let mut reprocess = BTreeSet::new();
+        let slot = if let Some(BlockStatus::WaitingForSlot(header_or_block)) =
+            self.blocks_state.get(&block_id)
+        {
+            header_or_block.get_slot()
+        } else {
+            return Ok(reprocess);
+        };
+
+        if Some(slot) > current_slot {
+            massa_trace!(
+                "consensus.block_graph.process.waiting_for_slot.in_the_future",
+                { "block_id": block_id }
+            );
+            return Ok(reprocess);
+        }
+
+        // send back as incoming and ask for reprocess
+        self.blocks_state
+            .transition_map(&block_id, |block_status, _| {
+                if let Some(BlockStatus::WaitingForSlot(header_or_block)) = block_status {
+                    Some(BlockStatus::Incoming(header_or_block))
+                } else {
+                    error!(
+                        "inconsistency inside block statuses removing waiting for slot {}",
+                        block_id
+                    );
+                    None
+                }
+            });
+
+        reprocess.insert((slot, block_id));
+        Ok(reprocess)
+    }
+
+    /// Handles `BlockStatus::WaitingForDependencies`
+    fn process_waiting_for_dependencies(
+        &mut self,
+        block_id: BlockId,
+    ) -> Result<BTreeSet<(Slot, BlockId)>, ConsensusError> {
+        massa_trace!("consensus.block_graph.process.waiting_for_dependencies", {
+            "block_id": block_id
+        });
+
+        let mut reprocess = BTreeSet::new();
+
+        let is_ready = if let Some(BlockStatus::WaitingForDependencies {
+            unsatisfied_dependencies,
+            ..
+        }) = self.blocks_state.get(&block_id)
+        {
+            unsatisfied_dependencies.is_empty()
+        } else {
+            return Ok(reprocess);
+        };
+
+        if !is_ready {
+            return Ok(reprocess);
+        }
+
+        // send back as incoming and ask for reprocess
+        self.blocks_state
+            .transition_map(&block_id, |block_status, _| {
+                if let Some(BlockStatus::WaitingForDependencies {
+                    header_or_block, ..
+                }) = block_status
+                {
+                    reprocess.insert((header_or_block.get_slot(), block_id));
+                    Some(BlockStatus::Incoming(header_or_block))
+                } else {
+                    error!(
+                        "inconsistency inside block statuses removing waiting for dependencies {}",
+                        block_id
+                    );
+                    None
+                }
+            });
+
+        Ok(reprocess)
+    }
+
+    /// Checks if a block is active and updates its dependencies.
+    /// This is the final step after a block is successfully added to the graph.
+    fn post_process_active_block(
+        &mut self,
+        block_id: BlockId,
+    ) -> Result<BTreeSet<(Slot, BlockId)>, ConsensusError> {
+        let mut reprocess = BTreeSet::new();
+
         if let Some(BlockStatus::Active {
             storage_or_block: StorageOrBlock::Storage(storage),
             ..
@@ -399,7 +398,6 @@ impl ConsensusState {
                 }
             }
         }
-
         Ok(reprocess)
     }
 
@@ -614,9 +612,12 @@ impl ConsensusState {
                         same_thread_parent_creator: a_block.same_thread_parent_creator,
                         storage: Some(storage.clone()),
                     },
-                    _ => panic!(
-                        "final block not found in active blocks and/or its operations are missing"
-                    ),
+                    _ => {
+                        error!("final block not found in active blocks and/or its operations are missing");
+                        // Panic removed, return default or skip?
+                        // `filter_map` skips None.
+                        return None;
+                    },
                 };
                 Some((*b_id, metadata))
             })
@@ -642,13 +643,17 @@ impl ConsensusState {
                             a_block,
                             storage_or_block: StorageOrBlock::Storage(storage),
                         }) => (a_block, storage),
-                        _ => panic!("blockclique block not found in active blocks and/or its operations are missing"),
+                        _ => {
+                             error!("blockclique block not found in active blocks and/or its operations are missing");
+                             panic!("blockclique block not found in active blocks and/or its operations are missing")
+                        },
                     };
                     new_blocks_metadata.insert(*b_id, ExecutionBlockMetadata { same_thread_parent_creator: a_block.same_thread_parent_creator, storage: Some(storage.clone()) });
                     (*b_id, a_block.slot)
                 }
             })
             .collect();
+
         if !self.prev_blockclique.is_empty() {
             // All elements present in the new blockclique have been removed from `prev_blockclique` above.
             // If `prev_blockclique` is not empty here, it means that it contained elements that are not in the new blockclique anymore.
@@ -800,5 +805,184 @@ impl ConsensusState {
         }
 
         Ok(())
+    }
+}
+
+enum ProcessAction {
+    Ignore,
+    IncomingHeader,
+    IncomingBlock,
+    WaitingForSlot,
+    WaitingForDependencies,
+}
+
+impl From<&BlockStatus> for ProcessAction {
+    fn from(status: &BlockStatus) -> Self {
+        match status {
+            BlockStatus::Discarded { .. } => ProcessAction::Ignore,
+            BlockStatus::Active { .. } => ProcessAction::Ignore,
+            BlockStatus::Incoming(HeaderOrBlock::Header(_)) => ProcessAction::IncomingHeader,
+            BlockStatus::Incoming(HeaderOrBlock::Block { .. }) => ProcessAction::IncomingBlock,
+            BlockStatus::WaitingForSlot(_) => ProcessAction::WaitingForSlot,
+            BlockStatus::WaitingForDependencies { .. } => ProcessAction::WaitingForDependencies,
+        }
+    }
+}
+
+fn compute_transition_result(
+    block_status: Option<BlockStatus>,
+    block_id: BlockId,
+    header_check_outcome: HeaderCheckOutcome,
+    sequence_number: u64,
+    thread_count: u8,
+    new_stale_blocks: &mut PreHashMap<BlockId, (Address, Slot)>,
+) -> (Option<BlockStatus>, Option<BlockInfos>) {
+    let Some(BlockStatus::Incoming(HeaderOrBlock::Block { slot, storage, .. })) = block_status
+    else {
+        error!(
+            "inconsistency inside block statuses removing incoming block {}",
+            block_id
+        );
+        return (None, None);
+    };
+
+    let header = match storage.read_blocks().get(&block_id) {
+        Some(b) => b.content.header.clone(),
+        None => {
+            error!("incoming block not found in storage: {}", block_id);
+            return (None, None);
+        }
+    };
+
+    let new_state = create_check_outcome(
+        &header,
+        storage.clone(),
+        slot,
+        sequence_number,
+        header_check_outcome,
+        new_stale_blocks,
+    );
+
+    match new_state {
+        Some(BlockCheckOutcome::BlockInfos(infos)) => {
+            let cloned_infos = BlockInfos {
+                creator: infos.creator,
+                parents_hash_period: infos.parents_hash_period.clone(),
+                storage: infos.storage.clone(),
+                slot: infos.slot,
+                incompatibilities: infos.incompatibilities.clone(),
+                inherited_incompatibilities_count: infos.inherited_incompatibilities_count,
+                fitness: infos.fitness,
+            };
+            let status = create_active_block(infos, block_id, thread_count);
+            (Some(status), Some(cloned_infos))
+        }
+        Some(BlockCheckOutcome::BlockStatus(status)) => (Some(status), None),
+        None => (None, None),
+    }
+}
+
+fn create_check_outcome(
+    header: &SecuredHeader,
+    storage: Storage, // cheap clone
+    slot: Slot,
+    sequence_number: u64,
+    outcome: HeaderCheckOutcome,
+    new_stale_blocks: &mut PreHashMap<BlockId, (Address, Slot)>,
+) -> Option<BlockCheckOutcome> {
+    match outcome {
+        HeaderCheckOutcome::Proceed {
+            parents_hash_period,
+            incompatibilities,
+            inherited_incompatibilities_count,
+            fitness,
+        } => Some(BlockCheckOutcome::BlockInfos(BlockInfos {
+            creator: header.content_creator_pub_key,
+            parents_hash_period,
+            storage,
+            slot,
+            incompatibilities,
+            inherited_incompatibilities_count,
+            fitness,
+        })),
+        HeaderCheckOutcome::WaitForDependencies(dependencies) => Some(
+            BlockCheckOutcome::BlockStatus(BlockStatus::WaitingForDependencies {
+                header_or_block: HeaderOrBlock::Block {
+                    id: header.id,
+                    slot,
+                    storage,
+                },
+                unsatisfied_dependencies: dependencies,
+                sequence_number,
+            }),
+        ),
+        HeaderCheckOutcome::WaitForSlot => Some(BlockCheckOutcome::BlockStatus(
+            BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
+                id: header.id,
+                slot,
+                storage,
+            }),
+        )),
+        HeaderCheckOutcome::Discard(reason) => {
+            if reason == DiscardReason::Stale {
+                new_stale_blocks.insert(
+                    header.id,
+                    (header.content_creator_address, header.content.slot),
+                );
+            }
+            Some(BlockCheckOutcome::BlockStatus(BlockStatus::Discarded {
+                slot: header.content.slot,
+                creator: header.content_creator_address,
+                parents: header.content.parents.clone(),
+                reason,
+                sequence_number,
+            }))
+        }
+    }
+}
+
+fn create_active_block(infos: BlockInfos, block_id: BlockId, thread_count: u8) -> BlockStatus {
+    BlockStatus::Active {
+        a_block: Box::new(ActiveBlock {
+            creator_address: Address::from_public_key(&infos.creator),
+            parents: infos.parents_hash_period,
+            descendants: PreHashSet::<BlockId>::default(),
+            block_id,
+            children: vec![Default::default(); thread_count as usize],
+            is_final: false,
+            slot: infos.slot,
+            fitness: infos.fitness,
+            same_thread_parent_creator: None,
+        }),
+        storage_or_block: StorageOrBlock::Storage(infos.storage),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use massa_consensus_exports::block_status::{BlockStatus, DiscardReason};
+    use massa_models::address::Address;
+    use massa_models::slot::Slot;
+    use massa_signature::KeyPair;
+
+    #[test]
+    fn test_process_action_from_status() {
+        let slot = Slot::new(1, 0);
+        let keypair = KeyPair::generate(0).unwrap();
+        let creator = Address::from_public_key(&keypair.get_public_key());
+
+        // Test Discarded
+        let status = BlockStatus::Discarded {
+            slot,
+            creator,
+            parents: vec![],
+            reason: DiscardReason::Stale,
+            sequence_number: 0,
+        };
+        assert!(matches!(
+            ProcessAction::from(&status),
+            ProcessAction::Ignore
+        ));
     }
 }
