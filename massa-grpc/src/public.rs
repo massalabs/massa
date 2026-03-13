@@ -130,6 +130,10 @@ pub(crate) fn execute_read_only_call(
         ));
     };
 
+    // TODO: Add simulate_initial_caller_balance field to ReadOnlyExecutionCall protobuf message
+    // and parse it here like the fee field above
+    let simulate_initial_caller_balance = None; // call.simulate_initial_caller_balance...
+
     let read_only_call = ReadOnlyExecutionRequest {
         max_gas: call.max_gas,
         call_stack,
@@ -142,6 +146,7 @@ pub(crate) fn execute_read_only_call(
                     .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
             })
             .transpose()?,
+        simulate_initial_caller_balance,
     };
 
     // check if fee is provided and if it is too low
