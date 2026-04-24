@@ -363,6 +363,7 @@ async fn execute_read_only_call() {
                     cancel_async_message_execution: vec![],
                     auto_sell_execution: vec![],
                     transfers_history: vec![],
+                    execution_info: None,
                 },
                 gas_cost: 100,
                 call_result: "toto".as_bytes().to_vec(),
