@@ -97,6 +97,7 @@ fn test_scan_datastore() {
         cancel_async_message_execution: Default::default(),
         auto_sell_execution: Default::default(),
         transfers_history: Default::default(),
+        execution_info: None,
     };
 
     let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([
@@ -285,6 +286,7 @@ fn scan_datastore_with_random_data(nb_keys: usize) {
         cancel_async_message_execution: Default::default(),
         auto_sell_execution: Default::default(),
         transfers_history: Default::default(),
+        execution_info: None,
     };
 
     let mut active_history_entries = VecDeque::from([exec_output.clone()]);
@@ -340,6 +342,7 @@ fn scan_datastore_with_random_data(nb_keys: usize) {
         cancel_async_message_execution: Default::default(),
         auto_sell_execution: Default::default(),
         transfers_history: Default::default(),
+        execution_info: None,
     };
 
     active_history_entries.push_back(exec_output_update);

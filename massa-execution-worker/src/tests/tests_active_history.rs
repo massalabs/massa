@@ -63,6 +63,7 @@ fn test_active_history_deferred_credits() {
         cancel_async_message_execution: Default::default(),
         auto_sell_execution: Default::default(),
         transfers_history: Default::default(),
+        execution_info: None,
     };
 
     let active_history = ActiveHistory(VecDeque::from([exec_output_1]));

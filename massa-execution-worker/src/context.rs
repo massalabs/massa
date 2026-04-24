@@ -19,8 +19,6 @@ use massa_async_pool::AsyncPoolChanges;
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
-#[cfg(feature = "execution-info")]
-use massa_execution_exports::execution_info::ExecutionInfoForSlot;
 use massa_execution_exports::execution_info::{
     OriginTransferContext, TransferContext, TransferInfo,
 };
@@ -225,10 +223,6 @@ pub struct ExecutionContext {
 
     transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
 
-    /// Execution info
-    #[cfg(feature = "execution-info")]
-    pub execution_info: ExecutionInfoForSlot,
-
     /// The deferred call id that is currently being executed
     pub deferred_call_id: Option<DeferredCallId>,
 
@@ -324,8 +318,6 @@ impl ExecutionContext {
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
             transfers_history,
-            #[cfg(feature = "execution-info")]
-            execution_info: ExecutionInfoForSlot::new(slot, execution_trail_hash, None),
             deferred_call_id: Default::default(),
             async_msg_id: Default::default(),
         }
@@ -1113,6 +1105,7 @@ impl ExecutionContext {
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
             transfers_history,
+            execution_info: None,
         }
     }
 

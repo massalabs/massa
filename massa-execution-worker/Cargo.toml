@@ -54,6 +54,7 @@ db_storage_backend = []
 file_storage_backend = []
 execution-info = [
     "execution-trace",
+    "massa_execution_exports/execution-info",
 ]
 slot-replayer = []
 jemalloc = [

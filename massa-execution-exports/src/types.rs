@@ -4,7 +4,7 @@
 
 use crate::error::ExecutionQueryError;
 use crate::event_store::EventStore;
-use crate::execution_info::TransferInfo;
+use crate::execution_info::{ExecutionInfoForSlot, TransferInfo};
 use massa_deferred_calls::DeferredCall;
 use massa_final_state::StateChanges;
 use massa_hash::Hash;
@@ -291,6 +291,20 @@ pub struct ExecutionOutput {
     pub auto_sell_execution: Vec<(Address, Amount)>,
     /// history of transfers (empty if execution-info feature is NOT enabled)
     pub transfers_history: Vec<TransferInfo>,
+    /// Per-slot execution info (rewards, denunciations, roll ops, async /
+    /// deferred call results, etc.) gathered during `execute_slot` and
+    /// carried on the `ExecutionOutput` so that finalization can broadcast
+    /// it with the correct slot metadata even when multiple active slots
+    /// have been speculatively executed ahead of the finalized one.
+    ///
+    /// Not serialized: `ExecutionInfoForSlot` bundles traces that are not
+    /// `Serialize`. The slot-replayer dump path (which is the only user
+    /// of `ExecutionOutput`'s `Serialize`) doesn't need this field.
+    ///
+    /// Populated only when the `execution-info` feature is enabled in the
+    /// execution worker — `None` otherwise.
+    #[serde(skip)]
+    pub execution_info: Option<ExecutionInfoForSlot>,
 }
 
 /// structure describing the output of a read only execution

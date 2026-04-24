@@ -54,8 +54,10 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, info, trace, warn};
 
-#[cfg(feature = "execution-info")]
-use crate::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
+// `ExecutionInfoForSlot` + `RollOperationInfo` are re-imported further down
+// from `massa_execution_exports::execution_info`. The legacy worker-local
+// `crate::execution_info` module was removed upstream, so there's no
+// crate-private import here.
 #[cfg(feature = "execution-trace")]
 use crate::trace_history::TraceHistory;
 #[cfg(feature = "execution-trace")]
@@ -373,24 +375,28 @@ impl ExecutionState {
         #[cfg(feature = "execution-info")]
         {
             if self.config.broadcast_enabled {
-                // let guard = self.execution_info.read();
-                // let execution_info_for_slot = guard.info_per_slot.peek(&exec_out.slot);
-                let guard = self.execution_context.lock();
-                let mut exec_info_for_slot = guard.execution_info.clone();
-
-                exec_info_for_slot.transfers = exec_out.transfers_history;
-                exec_info_for_slot.build_transfer_list();
-
-                if let Err(err) = self
-                    .channels
-                    .slot_execution_info_sender
-                    .send(exec_info_for_slot)
-                {
-                    trace!(
-                        "error, failed to broadcast execution info for slot {} due to: {}",
-                        exec_out.slot.clone(),
-                        err
-                    );
+                // The exec_info was attached to `exec_out` at the end of
+                // `execute_slot`, so it carries the slot, block_id,
+                // timestamp and execution_trail_hash of the *finalized*
+                // slot (rather than whatever slot the execution context
+                // happens to be on right now). Transfers are still moved
+                // in from `exec_out.transfers_history` at this point:
+                // that vec is only populated now because it was left on
+                // `exec_out` by `settle_slot`.
+                if let Some(mut exec_info_for_slot) = exec_out.execution_info.take() {
+                    exec_info_for_slot.transfers = exec_out.transfers_history;
+                    exec_info_for_slot.build_transfer_list();
+                    if let Err(err) = self
+                        .channels
+                        .slot_execution_info_sender
+                        .send(exec_info_for_slot)
+                    {
+                        trace!(
+                            "error, failed to broadcast execution info for slot {} due to: {}",
+                            exec_out.slot.clone(),
+                            err
+                        );
+                    }
                 }
             }
         }
@@ -1944,16 +1950,21 @@ impl ExecutionState {
             }
         }
 
+        // Attach the per-slot execution info to the output so it travels
+        // with `exec_out` through `active_history`. This guarantees that
+        // when the slot is eventually finalized, the broadcast exposes
+        // the correct slot metadata (slot, block_id, timestamp,
+        // execution_trail_hash) — previously the info was stored on the
+        // execution context and therefore reflected the *latest* active
+        // slot at finalization time, not the one being finalized.
         #[cfg(feature = "execution-info")]
         {
             exec_info.deferred_credits_execution =
-                std::mem::replace(&mut exec_out.deferred_credits_execution, vec![]);
+                std::mem::take(&mut exec_out.deferred_credits_execution);
             exec_info.cancel_async_message_execution =
-                std::mem::replace(&mut exec_out.cancel_async_message_execution, vec![]);
-            exec_info.auto_sell_execution =
-                std::mem::replace(&mut exec_out.auto_sell_execution, vec![]);
-            // self.execution_info.write().save_for_slot(*slot, exec_info);
-            context_guard!(self).execution_info = exec_info;
+                std::mem::take(&mut exec_out.cancel_async_message_execution);
+            exec_info.auto_sell_execution = std::mem::take(&mut exec_out.auto_sell_execution);
+            exec_out.execution_info = Some(exec_info);
         }
 
         // Broadcast a slot execution output to active channel subscribers.
