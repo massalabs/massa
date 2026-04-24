@@ -1465,13 +1465,6 @@
 <a href="#1465" id="1465">1465</a>
 <a href="#1466" id="1466">1466</a>
 <a href="#1467" id="1467">1467</a>
-<a href="#1468" id="1468">1468</a>
-<a href="#1469" id="1469">1469</a>
-<a href="#1470" id="1470">1470</a>
-<a href="#1471" id="1471">1471</a>
-<a href="#1472" id="1472">1472</a>
-<a href="#1473" id="1473">1473</a>
-<a href="#1474" id="1474">1474</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1493,8 +1486,6 @@
 <span class="kw">use </span>massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 <span class="kw">use </span>massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
-<span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
-</span><span class="kw">use </span>massa_execution_exports::execution_info::ExecutionInfoForSlot;
 <span class="kw">use </span>massa_execution_exports::execution_info::{
     OriginTransferContext, TransferContext, TransferInfo,
 };
@@ -1699,10 +1690,6 @@
 
     transfers_history: Arc&lt;RwLock&lt;Vec&lt;TransferInfo&gt;&gt;&gt;,
 
-    <span class="doccomment">/// Execution info
-    </span><span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
-    </span><span class="kw">pub </span>execution_info: ExecutionInfoForSlot,
-
     <span class="doccomment">/// The deferred call id that is currently being executed
     </span><span class="kw">pub </span>deferred_call_id: <span class="prelude-ty">Option</span>&lt;DeferredCallId&gt;,
 
@@ -1798,8 +1785,6 @@
             recursion_counter: <span class="number">0</span>,
             user_event_count_in_current_exec: <span class="number">0</span>,
             transfers_history,
-            <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
-            </span>execution_info: ExecutionInfoForSlot::new(slot, execution_trail_hash, <span class="prelude-val">None</span>),
             deferred_call_id: Default::default(),
             async_msg_id: Default::default(),
         }
@@ -2587,6 +2572,7 @@
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
             transfers_history,
+            execution_info: <span class="prelude-val">None</span>,
         }
     }
 

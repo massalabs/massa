@@ -2691,6 +2691,17 @@
 <a href="#2691" id="2691">2691</a>
 <a href="#2692" id="2692">2692</a>
 <a href="#2693" id="2693">2693</a>
+<a href="#2694" id="2694">2694</a>
+<a href="#2695" id="2695">2695</a>
+<a href="#2696" id="2696">2696</a>
+<a href="#2697" id="2697">2697</a>
+<a href="#2698" id="2698">2698</a>
+<a href="#2699" id="2699">2699</a>
+<a href="#2700" id="2700">2700</a>
+<a href="#2701" id="2701">2701</a>
+<a href="#2702" id="2702">2702</a>
+<a href="#2703" id="2703">2703</a>
+<a href="#2704" id="2704">2704</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2747,9 +2758,11 @@
 <span class="kw">use </span>std::time::Instant;
 <span class="kw">use </span>tracing::{debug, info, trace, warn};
 
-<span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
-<span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<span class="comment">// `ExecutionInfoForSlot` + `RollOperationInfo` are re-imported further down
+// from `massa_execution_exports::execution_info`. The legacy worker-local
+// `crate::execution_info` module was removed upstream, so there's no
+// crate-private import here.
+</span><span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::trace_history::TraceHistory;
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">use </span>massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
@@ -3066,24 +3079,28 @@
         <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
         </span>{
             <span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
-                <span class="comment">// let guard = self.execution_info.read();
-                // let execution_info_for_slot = guard.info_per_slot.peek(&amp;exec_out.slot);
-                </span><span class="kw">let </span>guard = <span class="self">self</span>.execution_context.lock();
-                <span class="kw">let </span><span class="kw-2">mut </span>exec_info_for_slot = guard.execution_info.clone();
-
-                exec_info_for_slot.transfers = exec_out.transfers_history;
-                exec_info_for_slot.build_transfer_list();
-
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
-                    </span>.channels
-                    .slot_execution_info_sender
-                    .send(exec_info_for_slot)
-                {
-                    <span class="macro">trace!</span>(
-                        <span class="string">"error, failed to broadcast execution info for slot {} due to: {}"</span>,
-                        exec_out.slot.clone(),
-                        err
-                    );
+                <span class="comment">// The exec_info was attached to `exec_out` at the end of
+                // `execute_slot`, so it carries the slot, block_id,
+                // timestamp and execution_trail_hash of the *finalized*
+                // slot (rather than whatever slot the execution context
+                // happens to be on right now). Transfers are still moved
+                // in from `exec_out.transfers_history` at this point:
+                // that vec is only populated now because it was left on
+                // `exec_out` by `settle_slot`.
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>exec_info_for_slot) = exec_out.execution_info.take() {
+                    exec_info_for_slot.transfers = exec_out.transfers_history;
+                    exec_info_for_slot.build_transfer_list();
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
+                        </span>.channels
+                        .slot_execution_info_sender
+                        .send(exec_info_for_slot)
+                    {
+                        <span class="macro">trace!</span>(
+                            <span class="string">"error, failed to broadcast execution info for slot {} due to: {}"</span>,
+                            exec_out.slot.clone(),
+                            err
+                        );
+                    }
                 }
             }
         }
@@ -4637,16 +4654,21 @@
             }
         }
 
-        <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
+        <span class="comment">// Attach the per-slot execution info to the output so it travels
+        // with `exec_out` through `active_history`. This guarantees that
+        // when the slot is eventually finalized, the broadcast exposes
+        // the correct slot metadata (slot, block_id, timestamp,
+        // execution_trail_hash) — previously the info was stored on the
+        // execution context and therefore reflected the *latest* active
+        // slot at finalization time, not the one being finalized.
+        </span><span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
         </span>{
             exec_info.deferred_credits_execution =
-                std::mem::replace(<span class="kw-2">&amp;mut </span>exec_out.deferred_credits_execution, <span class="macro">vec!</span>[]);
+                std::mem::take(<span class="kw-2">&amp;mut </span>exec_out.deferred_credits_execution);
             exec_info.cancel_async_message_execution =
-                std::mem::replace(<span class="kw-2">&amp;mut </span>exec_out.cancel_async_message_execution, <span class="macro">vec!</span>[]);
-            exec_info.auto_sell_execution =
-                std::mem::replace(<span class="kw-2">&amp;mut </span>exec_out.auto_sell_execution, <span class="macro">vec!</span>[]);
-            <span class="comment">// self.execution_info.write().save_for_slot(*slot, exec_info);
-            </span><span class="macro">context_guard!</span>(<span class="self">self</span>).execution_info = exec_info;
+                std::mem::take(<span class="kw-2">&amp;mut </span>exec_out.cancel_async_message_execution);
+            exec_info.auto_sell_execution = std::mem::take(<span class="kw-2">&amp;mut </span>exec_out.auto_sell_execution);
+            exec_out.execution_info = <span class="prelude-val">Some</span>(exec_info);
         }
 
         <span class="comment">// Broadcast a slot execution output to active channel subscribers.

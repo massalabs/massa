@@ -379,13 +379,27 @@
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ExecutionQueryError;
 <span class="kw">use </span><span class="kw">crate</span>::event_store::EventStore;
-<span class="kw">use </span><span class="kw">crate</span>::execution_info::TransferInfo;
+<span class="kw">use </span><span class="kw">crate</span>::execution_info::{ExecutionInfoForSlot, TransferInfo};
 <span class="kw">use </span>massa_deferred_calls::DeferredCall;
 <span class="kw">use </span>massa_final_state::StateChanges;
 <span class="kw">use </span>massa_hash::Hash;
@@ -672,6 +686,20 @@
     </span><span class="kw">pub </span>auto_sell_execution: Vec&lt;(Address, Amount)&gt;,
     <span class="doccomment">/// history of transfers (empty if execution-info feature is NOT enabled)
     </span><span class="kw">pub </span>transfers_history: Vec&lt;TransferInfo&gt;,
+    <span class="doccomment">/// Per-slot execution info (rewards, denunciations, roll ops, async /
+    /// deferred call results, etc.) gathered during `execute_slot` and
+    /// carried on the `ExecutionOutput` so that finalization can broadcast
+    /// it with the correct slot metadata even when multiple active slots
+    /// have been speculatively executed ahead of the finalized one.
+    ///
+    /// Not serialized: `ExecutionInfoForSlot` bundles traces that are not
+    /// `Serialize`. The slot-replayer dump path (which is the only user
+    /// of `ExecutionOutput`'s `Serialize`) doesn't need this field.
+    ///
+    /// Populated only when the `execution-info` feature is enabled in the
+    /// execution worker — `None` otherwise.
+    </span><span class="attr">#[serde(skip)]
+    </span><span class="kw">pub </span>execution_info: <span class="prelude-ty">Option</span>&lt;ExecutionInfoForSlot&gt;,
 }
 
 <span class="doccomment">/// structure describing the output of a read only execution
