@@ -735,7 +735,8 @@ async fn execute_read_only_bytecode() {
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap()
         ),
         operation_datastore: None,
-        fee: None
+        fee: None,
+        simulate_initial_caller_balance: None,
     }]];
     let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
         .request("execute_read_only_bytecode", params.clone())
@@ -749,6 +750,7 @@ async fn execute_read_only_bytecode() {
         address: None,
         operation_datastore: None,
         fee: None,
+        simulate_initial_caller_balance: None,
     }]];
     let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
         .request("execute_read_only_bytecode", params.clone())
@@ -761,7 +763,8 @@ async fn execute_read_only_bytecode() {
         bytecode: "hi".as_bytes().to_vec(),
         address: None,
         operation_datastore: Some("hi".as_bytes().to_vec()),
-        fee: None
+        fee: None,
+        simulate_initial_caller_balance: None,
     }]];
     let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
         .request("execute_read_only_bytecode", params.clone())
@@ -833,6 +836,7 @@ async fn execute_read_only_call() {
         caller_address: None,
         fee: None,
         coins: None,
+        simulate_initial_caller_balance: None,
     }]];
     let response: Vec<ExecuteReadOnlyResponse> = client
         .request("execute_read_only_call", params.clone())
