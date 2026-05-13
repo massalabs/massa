@@ -61,6 +61,14 @@ impl DeferredRegistrySlotChanges {
         }
     }
 
+    /// Returns the raw change entry for `id` so that callers can distinguish
+    /// `Set` (present), `Delete` (tombstoned), and `None` (no change recorded
+    /// in this layer). Required to stop speculative lookup cascades when a
+    /// deferred call has been deleted in a newer layer.
+    pub fn get_call_change(&self, id: &DeferredCallId) -> Option<&DeferredRegistryCallChange> {
+        self.calls.get(id)
+    }
+
     pub fn set_effective_slot_gas(&mut self, gas: u64) {
         self.effective_slot_gas = DeferredRegistryGasChange::Set(gas);
     }
