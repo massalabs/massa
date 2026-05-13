@@ -54,10 +54,10 @@ fn test_serialize_bootstrap_server_message() {
                 "Serialization of bootstrap server message failed"
             );
             assert!(
-                bytes.len() < MAX_BOOTSTRAP_MESSAGE_SIZE as usize,
+                bytes.len() < MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE as usize,
                 "(got) {} > {} (max limit)",
                 bytes.len(),
-                MAX_BOOTSTRAP_MESSAGE_SIZE
+                MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE
             );
 
             let deser = BootstrapServerMessageDeserializer::new(config.into());
@@ -93,10 +93,10 @@ fn test_serialize_bootstrap_client_message() {
                 "Serialization of bootstrap server message failed"
             );
             assert!(
-                bytes.len() < MAX_BOOTSTRAP_MESSAGE_SIZE as usize,
+                bytes.len() < MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE as usize,
                 "(got) {} > {} (max limit)",
                 bytes.len(),
-                MAX_BOOTSTRAP_MESSAGE_SIZE
+                MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE
             );
             let deser = BootstrapClientMessageDeserializer::new(
                 THREAD_COUNT,
