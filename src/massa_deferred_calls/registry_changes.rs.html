@@ -323,6 +323,20 @@
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::BTreeMap, ops::Bound};
 
 <span class="kw">use </span>massa_models::{
@@ -350,7 +364,7 @@
         DeferredRegistrySlotChanges, DeferredRegistrySlotChangesDeserializer,
         DeferredRegistrySlotChangesSerializer,
     },
-    DeferredCall, DeferredRegistryGasChange,
+    DeferredCall, DeferredRegistryCallChange, DeferredRegistryGasChange,
 };
 <span class="kw">use </span>std::ops::Bound::Included;
 
@@ -394,6 +408,20 @@
         <span class="self">self</span>.slots_change
             .get(target_slot)
             .and_then(|slot_changes| slot_changes.get_call(id))
+    }
+
+    <span class="doccomment">/// Returns the raw change entry for `(target_slot, id)` so that callers
+    /// can distinguish `Set` (present), `Delete` (tombstoned) and `None`
+    /// (no change recorded). Used by speculative layers to halt cascading
+    /// lookups on a tombstone instead of resurrecting stale state.
+    </span><span class="kw">pub fn </span>get_call_change(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        target_slot: <span class="kw-2">&amp;</span>Slot,
+        id: <span class="kw-2">&amp;</span>DeferredCallId,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DeferredRegistryCallChange&gt; {
+        <span class="self">self</span>.slots_change
+            .get(target_slot)
+            .and_then(|slot_changes| slot_changes.get_call_change(id))
     }
 
     <span class="kw">pub fn </span>get_effective_slot_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, target_slot: <span class="kw-2">&amp;</span>Slot) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {

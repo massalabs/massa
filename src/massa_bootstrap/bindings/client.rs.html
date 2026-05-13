@@ -248,12 +248,6 @@
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::{BindingReadExact, BindingWriteExact};
@@ -265,9 +259,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapClientConfig;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::config::{
-    MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES,
-    MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE_BYTES,
-    SIGNATURE_DESER_SIZE,
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES, SIGNATURE_DESER_SIZE,
 };
 <span class="kw">use </span>massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 <span class="kw">use </span>massa_models::version::{Version, VersionSerializer};
@@ -287,8 +279,7 @@
     cfg: BootstrapClientConfig,
 }
 
-<span class="kw">const </span>KNOWN_PREFIX_FROM_SERVER_LEN: usize =
-    SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE_BYTES;
+<span class="kw">const </span>KNOWN_PREFIX_LEN: usize = SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
 <span class="doccomment">/// The known-length component of a message to be received.
 </span><span class="kw">struct </span>ServerMessageLeader {
     sig: Signature,
@@ -350,7 +341,7 @@
         <span class="kw">let </span>deadline = duration.map(|d| Instant::now() + d);
 
         <span class="comment">// read the known-len component of the message
-        </span><span class="kw">let </span><span class="kw-2">mut </span>known_len_buff = [<span class="number">0u8</span>; KNOWN_PREFIX_FROM_SERVER_LEN];
+        </span><span class="kw">let </span><span class="kw-2">mut </span>known_len_buff = [<span class="number">0u8</span>; KNOWN_PREFIX_LEN];
         <span class="comment">// TODO: handle a partial read
         </span><span class="self">self</span>.read_exact_timeout(<span class="kw-2">&amp;mut </span>known_len_buff, deadline)
             .map_err(|(err, _consumed)| err)<span class="question-mark">?</span>;
@@ -443,12 +434,9 @@
             </span><span class="self">self</span>.prev_message = <span class="prelude-val">Some</span>(Hash::compute_from(<span class="kw-2">&amp;</span>msg_bytes));
         }
 
-        <span class="comment">// Fixed-width length prefix: server reads exactly MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES
-        // after the hash (see BootstrapServerBinder::next_timeout).
-        </span><span class="kw">let </span>enc = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE)<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>len_field = [<span class="number">0u8</span>; MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES];
-        len_field[..enc.len()].copy_from_slice(<span class="kw-2">&amp;</span>enc);
-        write_buf.extend(len_field.as_slice());
+        <span class="comment">// Provide the message length
+        </span><span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)<span class="question-mark">?</span>;
+        write_buf.extend(<span class="kw-2">&amp;</span>msg_len_bytes);
 
         <span class="comment">// Provide the message
         </span>write_buf.extend(<span class="kw-2">&amp;</span>msg_bytes);
@@ -463,14 +451,14 @@
     /// and makes error-type management cleaner
     </span><span class="kw">fn </span>decode_msg_leader(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        leader_buff: <span class="kw-2">&amp;</span>[u8; SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE_BYTES],
+        leader_buff: <span class="kw-2">&amp;</span>[u8; SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ServerMessageLeader, BootstrapError&gt; {
         <span class="kw">let </span>sig = Signature::from_bytes(leader_buff)<span class="question-mark">?</span>;
 
         <span class="comment">// construct the message len from the leader-bufff
         </span><span class="kw">let </span>msg_len = u32::from_be_bytes_min(
             <span class="kw-2">&amp;</span>leader_buff[SIGNATURE_DESER_SIZE..],
-            MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE,
+            MAX_BOOTSTRAP_MESSAGE_SIZE,
         )<span class="question-mark">?
         </span>.<span class="number">0</span>;
         <span class="prelude-val">Ok</span>(ServerMessageLeader { sig, msg_len })
