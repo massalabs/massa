@@ -65,12 +65,6 @@ impl DeferredCallRegistryChanges {
             .set_call(id, call);
     }
 
-    pub fn get_call(&self, target_slot: &Slot, id: &DeferredCallId) -> Option<&DeferredCall> {
-        self.slots_change
-            .get(target_slot)
-            .and_then(|slot_changes| slot_changes.get_call(id))
-    }
-
     /// Returns the raw change entry for `(target_slot, id)` so that callers
     /// can distinguish `Set` (present), `Delete` (tombstoned) and `None`
     pub fn get_call_change(

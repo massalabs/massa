@@ -7,8 +7,7 @@ use crate::{
     DeferredRegistryGasChange,
 };
 use massa_models::types::{
-    SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeepDeserializer,
-    SetOrKeepSerializer,
+    SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeepDeserializer, SetOrKeepSerializer,
 };
 use massa_models::{
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -52,13 +51,6 @@ impl DeferredRegistrySlotChanges {
 
     pub fn set_call(&mut self, id: DeferredCallId, call: DeferredCall) {
         self.calls.insert(id, DeferredRegistryCallChange::Set(call));
-    }
-
-    pub fn get_call(&self, id: &DeferredCallId) -> Option<&DeferredCall> {
-        match self.calls.get(id) {
-            Some(SetOrDelete::Set(call)) => Some(call),
-            _ => None,
-        }
     }
 
     /// Returns the raw change entry for `id` so that callers can distinguish
