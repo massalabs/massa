@@ -25,7 +25,7 @@ use crate::{
         DeferredRegistrySlotChanges, DeferredRegistrySlotChangesDeserializer,
         DeferredRegistrySlotChangesSerializer,
     },
-    DeferredCall, DeferredRegistryGasChange,
+    DeferredCall, DeferredRegistryCallChange, DeferredRegistryGasChange,
 };
 use std::ops::Bound::Included;
 
@@ -69,6 +69,18 @@ impl DeferredCallRegistryChanges {
         self.slots_change
             .get(target_slot)
             .and_then(|slot_changes| slot_changes.get_call(id))
+    }
+
+    /// Returns the raw change entry for `(target_slot, id)` so that callers
+    /// can distinguish `Set` (present), `Delete` (tombstoned) and `None`
+    pub fn get_call_change(
+        &self,
+        target_slot: &Slot,
+        id: &DeferredCallId,
+    ) -> Option<&DeferredRegistryCallChange> {
+        self.slots_change
+            .get(target_slot)
+            .and_then(|slot_changes| slot_changes.get_call_change(id))
     }
 
     pub fn get_effective_slot_gas(&self, target_slot: &Slot) -> Option<u64> {

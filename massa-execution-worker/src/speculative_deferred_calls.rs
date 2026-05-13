@@ -3,7 +3,7 @@
 use crate::active_history::ActiveHistory;
 use massa_deferred_calls::{
     config::DeferredCallsConfig, registry_changes::DeferredCallRegistryChanges, DeferredCall,
-    DeferredSlotCalls,
+    DeferredRegistryCallChange, DeferredSlotCalls,
 };
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
@@ -244,37 +244,39 @@ impl SpeculativeDeferredCallRegistry {
             Err(_) => return None,
         };
 
-        // check from latest to earliest changes
+        // Walk from the newest layer to the oldest. A `Delete` tombstone in
+        // any speculative layer is terminal: an already removed (executed,
+        // cancelled or failed-refunded)
 
-        // check in current changes
-        if let Some(v) = self.deferred_calls_changes.get_call(&slot, id) {
-            return Some(v.clone());
+        // 1. current speculative changes
+        match self.deferred_calls_changes.get_call_change(&slot, id) {
+            Some(DeferredRegistryCallChange::Set(call)) => return Some(call.clone()),
+            Some(DeferredRegistryCallChange::Delete) => return None,
+            None => {}
         }
 
-        // check history from the most recent to the oldest item
+        // 2. active history (newest -> oldest)
         {
             let history = self.active_history.read();
             for history_item in history.0.iter().rev() {
-                if let Some(v) = history_item
+                match history_item
                     .state_changes
                     .deferred_call_changes
-                    .get_call(&slot, id)
+                    .get_call_change(&slot, id)
                 {
-                    return Some(v.clone());
+                    Some(DeferredRegistryCallChange::Set(call)) => return Some(call.clone()),
+                    Some(DeferredRegistryCallChange::Delete) => return None,
+                    None => {}
                 }
             }
         }
 
-        // check final state
-        {
-            let final_state = self.final_state.read();
-            // if let Some(v) = final_state.get_deferred_call_registry().get_call(&slot, id) {
-            if let Some(v) = final_state.get_deferred_call_registry().get_call(&slot, id) {
-                return Some(v.clone());
-            }
-        }
-
-        None
+        // 3. final state: no tombstone semantics here, the DB only holds
+        //    materialized calls.
+        self.final_state
+            .read()
+            .get_deferred_call_registry()
+            .get_call(&slot, id)
     }
 
     pub fn delete_call(&mut self, id: &DeferredCallId, slot: Slot) {
