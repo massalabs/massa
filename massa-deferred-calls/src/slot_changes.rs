@@ -7,8 +7,7 @@ use crate::{
     DeferredRegistryGasChange,
 };
 use massa_models::types::{
-    SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeepDeserializer,
-    SetOrKeepSerializer,
+    SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeepDeserializer, SetOrKeepSerializer,
 };
 use massa_models::{
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -54,11 +53,12 @@ impl DeferredRegistrySlotChanges {
         self.calls.insert(id, DeferredRegistryCallChange::Set(call));
     }
 
-    pub fn get_call(&self, id: &DeferredCallId) -> Option<&DeferredCall> {
-        match self.calls.get(id) {
-            Some(SetOrDelete::Set(call)) => Some(call),
-            _ => None,
-        }
+    /// Returns the raw change entry for `id` so that callers can distinguish
+    /// `Set` (present), `Delete` (tombstoned), and `None` (no change recorded
+    /// in this layer). Required to stop speculative lookup cascades when a
+    /// deferred call has been deleted in a newer layer.
+    pub fn get_call_change(&self, id: &DeferredCallId) -> Option<&DeferredRegistryCallChange> {
+        self.calls.get(id)
     }
 
     pub fn set_effective_slot_gas(&mut self, gas: u64) {
