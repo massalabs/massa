@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["KNOWN_PREFIX_LEN"],"struct":["BootstrapClientBinder","ServerMessageLeader"]};
+window.SIDEBAR_ITEMS = {"constant":["KNOWN_PREFIX_FROM_SERVER_LEN"],"struct":["BootstrapClientBinder","ServerMessageLeader"]};
