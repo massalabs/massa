@@ -9,7 +9,10 @@ use crate::messages::{
 use crate::settings::BootstrapSrvBindCfg;
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
-use massa_models::config::{MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES};
+use massa_models::config::{
+    MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES,
+    MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE,
+};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -29,7 +32,8 @@ use tracing::error;
 
 use super::BindingWriteExact;
 
-const KNOWN_PREFIX_LEN: usize = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
+const KNOWN_PREFIX_FROM_CLIENT_LEN: usize =
+    HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES;
 /// The known-length component of a message to be received.
 struct ClientMessageLeader {
     received_prev_hash: Option<Hash>,
@@ -218,7 +222,7 @@ impl BootstrapServerBinder {
         };
 
         // construct msg length, and convert to bytes
-        let msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)?;
+        let msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE)?;
 
         // organize the bytes into a sendable array
         let stream_data = [sig.to_bytes().as_slice(), &msg_len_bytes, &msg_bytes].concat();
@@ -241,7 +245,7 @@ impl BootstrapServerBinder {
     ) -> Result<BootstrapClientMessage, BootstrapError> {
         let deadline = duration.map(|d| Instant::now() + d);
 
-        let mut known_len_buf = vec![0; KNOWN_PREFIX_LEN];
+        let mut known_len_buf = vec![0; KNOWN_PREFIX_FROM_CLIENT_LEN];
         // TODO: handle a partial read
         self.read_exact_timeout(&mut known_len_buf, deadline)
             .map_err(|(err, _consumed)| err)?;
@@ -277,13 +281,18 @@ impl BootstrapServerBinder {
         }
 
         // deserialize message
-        let (_, msg) = BootstrapClientMessageDeserializer::new(
+        let (rest, msg) = BootstrapClientMessageDeserializer::new(
             self.thread_count,
             self.max_datastore_key_length,
             self.max_consensus_block_ids,
         )
         .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
+        if !rest.is_empty() {
+            return Err(BootstrapError::GeneralError(
+                "bootstrap client message has trailing bytes after deserialization".into(),
+            ));
+        }
 
         Ok(msg)
     }
@@ -309,12 +318,24 @@ impl BootstrapServerBinder {
 
         // construct msg-len
         let msg_len = {
-            u32::from_be_bytes_min(&leader_buf[HASH_SIZE_BYTES..], MAX_BOOTSTRAP_MESSAGE_SIZE)?.0
+            u32::from_be_bytes_min(
+                &leader_buf[HASH_SIZE_BYTES..],
+                MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE,
+            )?
+            .0
         };
         Ok(ClientMessageLeader {
             received_prev_hash,
             msg_len,
         })
+    }
+}
+
+#[cfg(test)]
+impl BootstrapServerBinder {
+    /// Post-handshake hash-chain value for tests that craft raw client frames.
+    pub(crate) fn test_prev_message_hash(&self) -> Option<Hash> {
+        self.prev_message
     }
 }
 

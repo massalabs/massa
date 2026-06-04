@@ -11,10 +11,12 @@ use massa_consensus_exports::MockConsensusController;
 use massa_db_exports::{MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_final_state::FinalStateConfig;
+use massa_hash::Hash;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHAINID, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE,
+    MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
     MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
@@ -23,6 +25,7 @@ use massa_models::config::{
     THREAD_COUNT,
 };
 use massa_models::node::NodeId;
+use massa_models::serialization::SerializeMinBEInt;
 use massa_models::version::Version;
 
 use massa_pos_exports::{MockSelectorControllerWrapper, PoSFinalState};
@@ -44,6 +47,18 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use super::tools::{get_random_final_state_bootstrap, parametric_test};
+
+/// Fixed-width length slot written by [`BootstrapClientBinder::send_timeout`].
+fn padded_client_bootstrap_length_field(
+    msg_len: u32,
+) -> [u8; MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES] {
+    let enc = msg_len
+        .to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE)
+        .expect("msg_len within client bootstrap max");
+    let mut out = [0u8; MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES];
+    out[..enc.len()].copy_from_slice(&enc);
+    out
+}
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -355,6 +370,8 @@ fn test_partial_msg() {
     let server = server.accept().unwrap();
     let version = || Version::from_str("TEST.1.10").unwrap();
 
+    let (prev_tx, prev_rx) = std::sync::mpsc::channel::<Hash>();
+
     let mut server = BootstrapServerBinder::new(
         server.0,
         server_keypair.clone(),
@@ -377,6 +394,13 @@ fn test_partial_msg() {
         .spawn({
             move || {
                 server.handshake_timeout(version(), None).unwrap();
+                prev_tx
+                    .send(
+                        server
+                            .test_prev_message_hash()
+                            .expect("prev_message after handshake"),
+                    )
+                    .unwrap();
                 let message = server.next_timeout(None).unwrap_err();
                 match message {
                     BootstrapError::IoError(message) => {
@@ -394,16 +418,11 @@ fn test_partial_msg() {
         .spawn({
             move || {
                 client.handshake(version()).unwrap();
-
-                // write the signature.
-                // This test  assumes that the signature is not checked until the message is read in
-                // its entirety. The signature here would cause the message exchange to fail on that basis
-                // if this assumption is broken.
+                let prev = prev_rx.recv().expect("server post-handshake hash");
+                client_clone.write_all(prev.to_bytes().as_slice()).unwrap();
                 client_clone
-                    .write_all(b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                    .write_all(&padded_client_bootstrap_length_field(2))
                     .unwrap();
-                // Give a non-zero message length, but never provide any msg-bytes
-                client_clone.write_all(&[0, 0, 0, 2]).unwrap();
             }
         })
         .unwrap();
@@ -722,6 +741,8 @@ fn test_client_drip_feed() {
     let server = server.accept().unwrap();
     let version = || Version::from_str("TEST.1.10").unwrap();
 
+    let (prev_tx, prev_rx) = std::sync::mpsc::channel::<Hash>();
+
     let mut server = BootstrapServerBinder::new(
         server.0,
         server_keypair.clone(),
@@ -746,6 +767,13 @@ fn test_client_drip_feed() {
         .spawn({
             move || {
                 server.handshake_timeout(version(), None).unwrap();
+                prev_tx
+                    .send(
+                        server
+                            .test_prev_message_hash()
+                            .expect("prev_message after handshake"),
+                    )
+                    .unwrap();
 
                 let message = server
                     .next_timeout(Some(Duration::from_secs(1)))
@@ -767,16 +795,11 @@ fn test_client_drip_feed() {
         .spawn({
             move || {
                 client.handshake(version()).unwrap();
-
-                // write the signature.
-                // This test  assumes that the signature is not checked until the message is read in
-                // its entirety. The signature here would cause the message exchange to fail on that basis
-                // if this assumption is broken.
+                let prev = prev_rx.recv().expect("server post-handshake hash");
+                client_clone.write_all(prev.to_bytes().as_slice()).unwrap();
                 client_clone
-                    .write_all(b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                    .write_all(&padded_client_bootstrap_length_field(120))
                     .unwrap();
-                // give a message size that we can drip-feed
-                client_clone.write_all(&[0, 0, 0, 120]).unwrap();
                 for i in 0..120 {
                     client_clone.write_all(&[i]).unwrap();
                     client_clone.flush().unwrap();
