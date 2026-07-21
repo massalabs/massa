@@ -783,12 +783,6 @@
 <a href="#783" id="783">783</a>
 <a href="#784" id="784">784</a>
 <a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -1023,16 +1017,7 @@
                     <span class="kw-2">&amp;mut </span>message,
                 )
                 .unwrap();
-            <span class="comment">// The initial peer set is the union of the locally configured peers and the
-            // network-provided bootstrap peers, so it can exceed the channel capacity.
-            // Dropping an excess peer here must not panic (and abort) node startup: the
-            // peer can still be (re)discovered later through normal peer exchange.
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = sender_msg.try_send((<span class="kw-2">*</span>peer_id, message)) {
-                <span class="macro">warn!</span>(
-                    <span class="string">"could not enqueue initial peer {} for the peer-management thread: {}"</span>,
-                    peer_id, err
-                );
-            }
+            sender_msg.try_send((<span class="kw-2">*</span>peer_id, message)).unwrap();
         }
 
         <span class="self">Self </span>{
@@ -1313,6 +1298,9 @@
                 <span class="prelude-val">Ok</span>((peer_id, <span class="prelude-val">Some</span>(announcement))) =&gt; {
                     <span class="macro">info!</span>(<span class="string">"Peer connected: {:?}"</span>, peer_id);
                     peer_db_write.set_try_connect_success_or_insert(<span class="kw-2">&amp;</span>addr);
+                    <span class="comment">// Record the successful connection so that `last_success` feeds the
+                    // peer-priority comparator (previously it was never written anywhere).
+                    </span>peer_db_write.set_success_or_insert(<span class="kw-2">&amp;</span>addr);
                     peer_db_write
                         .get_peers_mut()
                         .entry(<span class="kw-2">*</span>peer_id)
