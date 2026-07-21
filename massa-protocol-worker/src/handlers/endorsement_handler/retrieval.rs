@@ -132,14 +132,27 @@ impl RetrievalThread {
                     &self.internal_sender,
                     self.pool_controller.as_mut(),
                 ) {
-                    warn!(
-                        "peer {} sent us critically incorrect endorsements, \
-                        which may be an attack attempt by the remote node or a \
-                        loss of sync between us and the remote node. Err = {}",
-                        peer_id, err
-                    );
-                    if let Err(err) = self.ban_peer(&peer_id) {
-                        warn!("Error while banning peer {} err: {:?}", peer_id, err);
+                    if is_local_selector_error(&err) {
+                        // A selector failure (e.g. a locally missing draw for
+                        // the endorsement's slot) is a *local* state issue, not
+                        // peer misbehavior. Banning an honest peer for our own
+                        // inability to compute the draw is incorrect, so only
+                        // log it here.
+                        warn!(
+                            "could not validate endorsements from peer {} due to a \
+                            local selector error (not banning): {}",
+                            peer_id, err
+                        );
+                    } else {
+                        warn!(
+                            "peer {} sent us critically incorrect endorsements, \
+                            which may be an attack attempt by the remote node or a \
+                            loss of sync between us and the remote node. Err = {}",
+                            peer_id, err
+                        );
+                        if let Err(err) = self.ban_peer(&peer_id) {
+                            warn!("Error while banning peer {} err: {:?}", peer_id, err);
+                        }
                     }
                 }
             }
@@ -153,6 +166,14 @@ impl RetrievalThread {
             .try_send(PeerManagementCmd::Ban(vec![*peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
+}
+
+/// Returns `true` when `err` reflects a *local* selector-state failure
+/// (e.g. a PoS draw that is not available locally) rather than peer
+/// misbehavior. In that case the sending peer must not be banned, since the
+/// failure is on our side.
+fn is_local_selector_error(err: &ProtocolError) -> bool {
+    matches!(err, ProtocolError::PosError(_))
 }
 
 /// Note endorsements coming from a given node,
@@ -324,4 +345,24 @@ pub fn start_retrieval_thread(
             retrieval_thread.run();
         })
         .expect("OS failed to start endorsement retrieval thread")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_local_selector_error;
+    use massa_pos_exports::PosError;
+    use massa_protocol_exports::ProtocolError;
+
+    #[test]
+    fn selector_errors_are_not_bannable_but_validation_errors_are() {
+        // A missing local PoS draw must not cause a peer ban.
+        assert!(is_local_selector_error(&ProtocolError::PosError(
+            PosError::CycleUnavailable(42)
+        )));
+        // Genuine peer-caused validation failures remain bannable.
+        assert!(!is_local_selector_error(&ProtocolError::WrongSignature));
+        assert!(!is_local_selector_error(
+            &ProtocolError::GeneralProtocolError("bad index".to_string())
+        ));
+    }
 }
