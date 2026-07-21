@@ -733,34 +733,6 @@
 <a href="#733" id="733">733</a>
 <a href="#734" id="734">734</a>
 <a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
-<a href="#753" id="753">753</a>
-<a href="#754" id="754">754</a>
-<a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
-<a href="#757" id="757">757</a>
-<a href="#758" id="758">758</a>
-<a href="#759" id="759">759</a>
-<a href="#760" id="760">760</a>
-<a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
-<a href="#763" id="763">763</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::VecDeque,
     fmt::{Debug, Display},
@@ -770,7 +742,7 @@
 <span class="kw">use </span>nom::{
     branch::alt,
     bytes::complete::tag,
-    combinator::{map_opt, value},
+    combinator::value,
     error::{ContextError, ParseError},
     sequence::preceded,
     sequence::tuple,
@@ -1228,30 +1200,19 @@ u128, U128VarIntSerializer, u128_buffer, U128VarIntDeserializer, <span class="st
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Ratio&lt;T&gt;, E&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>parser = context(
+        context(
             <span class="string">"Ratio&lt;_&gt; deserializer failed"</span>,
-            map_opt(
-                tuple((
-                    context(<span class="string">"numer deser failed"</span>, |input| {
-                        <span class="self">self</span>.data_deserializer.deserialize(input)
-                    }),
-                    context(<span class="string">"denom deser failed"</span>, |input| {
-                        <span class="self">self</span>.data_deserializer.deserialize(input)
-                    }),
-                )),
-                |(numer, denom)| {
-                    <span class="comment">// A zero denominator is not a representable ratio: reject it as a
-                    // parse error instead of letting `Ratio::new` panic (which could
-                    // abort DB/bootstrap validation paths).
-                    </span><span class="kw">if </span>num::Zero::is_zero(<span class="kw-2">&amp;</span>denom) {
-                        <span class="prelude-val">None
-                    </span>} <span class="kw">else </span>{
-                        <span class="prelude-val">Some</span>(Ratio::new(numer, denom))
-                    }
-                },
-            ),
-        );
-        parser.parse(buffer)
+            tuple((
+                context(<span class="string">"numer deser failed"</span>, |input| {
+                    <span class="self">self</span>.data_deserializer.deserialize(input)
+                }),
+                context(<span class="string">"denom deser failed"</span>, |input| {
+                    <span class="self">self</span>.data_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(numer, denom)| Ratio::new(numer, denom))
+        .parse(buffer)
     }
 }
 
@@ -1505,23 +1466,6 @@ u128, U128VarIntSerializer, u128_buffer, U128VarIntDeserializer, <span class="st
         <span class="macro">assert!</span>(result.is_err());
         <span class="kw">let </span>err = result.unwrap_err();
         <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err), <span class="string">"Parsing Error: Ratio&lt;_&gt; deserializer failed / denom deser failed / Failed u64 deserialization / Fail / Input: [4]\n"</span>);
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_ratio_deserializer_rejects_zero_denominator() {
-        <span class="comment">// numer = 1, denom = 0, each encoded as a single-byte u64 varint.
-        // A zero denominator must be rejected as a parse error instead of
-        // panicking inside `Ratio::new`.
-        </span><span class="kw">let </span>buffer = <span class="macro">vec!</span>[<span class="number">1u8</span>, <span class="number">0u8</span>];
-        <span class="kw">let </span>ratio_deserializer = <span class="kw">super</span>::RatioDeserializer::new(<span class="kw">super</span>::U64VarIntDeserializer::new(
-            std::ops::Bound::Included(<span class="number">0</span>),
-            std::ops::Bound::Included(u64::MAX),
-        ));
-        <span class="kw">let </span>result = ratio_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer);
-        <span class="macro">assert!</span>(
-            result.is_err(),
-            <span class="string">"a zero denominator must produce a deserialization error, not a panic"
-        </span>);
     }
 }
 </code></pre></div></section></main></body></html>
