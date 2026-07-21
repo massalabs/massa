@@ -780,6 +780,15 @@
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
 <a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -1014,7 +1023,16 @@
                     <span class="kw-2">&amp;mut </span>message,
                 )
                 .unwrap();
-            sender_msg.try_send((<span class="kw-2">*</span>peer_id, message)).unwrap();
+            <span class="comment">// The initial peer set is the union of the locally configured peers and the
+            // network-provided bootstrap peers, so it can exceed the channel capacity.
+            // Dropping an excess peer here must not panic (and abort) node startup: the
+            // peer can still be (re)discovered later through normal peer exchange.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = sender_msg.try_send((<span class="kw-2">*</span>peer_id, message)) {
+                <span class="macro">warn!</span>(
+                    <span class="string">"could not enqueue initial peer {} for the peer-management thread: {}"</span>,
+                    peer_id, err
+                );
+            }
         }
 
         <span class="self">Self </span>{
