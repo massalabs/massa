@@ -134,6 +134,70 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     ops::{Deref, DerefMut},
     sync::Arc,
@@ -161,11 +225,8 @@
 
 </span><span class="kw">impl</span>&lt;T&gt; Drop <span class="kw">for </span>MassaReceiver&lt;T&gt; {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>ref_count = Arc::strong_count(<span class="kw-2">&amp;</span><span class="self">self</span>.ref_counter);
-        <span class="kw">if </span>ref_count == <span class="number">1 </span>{
-            <span class="comment">// this is the last ref so we can unregister metrics
-            </span><span class="self">self</span>.unregister_metrics();
-        }
+        <span class="comment">// this only unregisters if this is the last live clone
+        </span><span class="self">self</span>.unregister_metrics_if_last();
     }
 }
 
@@ -179,6 +240,18 @@
         </span><span class="self">self</span>.actual_len.set(<span class="self">self</span>.receiver.len() <span class="kw">as </span>f64);
 
         <span class="self">self</span>.received.inc();
+    }
+
+    <span class="doccomment">/// Unregister metrics only if this is the last live receiver clone.
+    ///
+    /// Channel disconnection is observed by *every* clone, so unregistering
+    /// unconditionally from a `recv*`/`try_recv` disconnect branch would remove
+    /// the metrics from the registry while sibling clones are still alive and
+    /// updating them. Only the last remaining clone should unregister.
+    </span><span class="kw">fn </span>unregister_metrics_if_last(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">if </span>Arc::strong_count(<span class="kw-2">&amp;</span><span class="self">self</span>.ref_counter) == <span class="number">1 </span>{
+            <span class="self">self</span>.unregister_metrics();
+        }
     }
 
     <span class="doccomment">/// unregister metrics
@@ -209,7 +282,7 @@
             }
             <span class="prelude-val">Err</span>(crossbeam::channel::TryRecvError::Empty) =&gt; <span class="prelude-val">Err</span>(TryRecvError::Empty),
             <span class="prelude-val">Err</span>(crossbeam::channel::TryRecvError::Disconnected) =&gt; {
-                <span class="self">self</span>.unregister_metrics();
+                <span class="self">self</span>.unregister_metrics_if_last();
                 <span class="prelude-val">Err</span>(TryRecvError::Disconnected)
             }
         }
@@ -223,7 +296,7 @@
             }
             <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout),
             <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected) =&gt; {
-                <span class="self">self</span>.unregister_metrics();
+                <span class="self">self</span>.unregister_metrics_if_last();
                 <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected)
             }
         }
@@ -237,7 +310,7 @@
             }
             <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout),
             <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected) =&gt; {
-                <span class="self">self</span>.unregister_metrics();
+                <span class="self">self</span>.unregister_metrics_if_last();
                 <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected)
             }
         }
@@ -250,7 +323,7 @@
                 <span class="prelude-val">Ok</span>(msg)
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="self">self</span>.unregister_metrics();
+                <span class="self">self</span>.unregister_metrics_if_last();
                 <span class="prelude-val">Err</span>(e)
             }
         }
@@ -268,6 +341,61 @@
 <span class="kw">impl</span>&lt;T&gt; DerefMut <span class="kw">for </span>MassaReceiver&lt;T&gt; {
     <span class="kw">fn </span>deref_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Target {
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.receiver
+    }
+}
+
+<span class="comment">// Metrics are only registered in the default prometheus registry when the
+// `test-exports` feature is disabled (see `MassaChannel::new`), so these
+// registry-observing tests are gated to that build configuration.
+</span><span class="attr">#[cfg(all(test, not(feature = <span class="string">"test-exports"</span>)))]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::MassaChannel;
+
+    <span class="doccomment">/// Returns true if a metric family with the given name is currently
+    /// registered in the default prometheus registry.
+    </span><span class="kw">fn </span>metric_registered(name: <span class="kw-2">&amp;</span>str) -&gt; bool {
+        prometheus::gather().iter().any(|mf| mf.get_name() == name)
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>disconnect_does_not_unregister_metrics_while_a_clone_is_alive() {
+        <span class="kw">let </span>chan_name = <span class="string">"massa_channel_test_disconnect_keeps_metrics"</span>.to_string();
+        <span class="kw">let </span>size_metric = <span class="macro">format!</span>(<span class="string">"{}_channel_actual_size"</span>, chan_name);
+        <span class="kw">let </span>recv_metric = <span class="macro">format!</span>(<span class="string">"{}_channel_total_receive"</span>, chan_name);
+
+        <span class="kw">let </span>(sender, receiver) = MassaChannel::new::&lt;u8&gt;(chan_name, <span class="prelude-val">None</span>);
+        <span class="comment">// Second live clone of the receiver.
+        </span><span class="kw">let </span>receiver2 = receiver.clone();
+
+        <span class="macro">assert!</span>(metric_registered(<span class="kw-2">&amp;</span>size_metric));
+        <span class="macro">assert!</span>(metric_registered(<span class="kw-2">&amp;</span>recv_metric));
+
+        <span class="comment">// Disconnect the channel; every receiver clone now observes disconnection.
+        </span>drop(sender);
+
+        <span class="comment">// Hitting the disconnect branch on one clone must NOT tear down the
+        // metrics, because `receiver2` is still alive and using them.
+        </span><span class="macro">assert!</span>(receiver.recv().is_err());
+        <span class="macro">assert!</span>(
+            metric_registered(<span class="kw-2">&amp;</span>size_metric),
+            <span class="string">"actual_size metric must stay registered while a clone is alive"
+        </span>);
+        <span class="macro">assert!</span>(
+            metric_registered(<span class="kw-2">&amp;</span>recv_metric),
+            <span class="string">"total_receive metric must stay registered while a clone is alive"
+        </span>);
+
+        <span class="comment">// Once the last clone is dropped, the metrics are unregistered.
+        </span>drop(receiver);
+        drop(receiver2);
+        <span class="macro">assert!</span>(
+            !metric_registered(<span class="kw-2">&amp;</span>size_metric),
+            <span class="string">"actual_size metric must be unregistered after the last clone drops"
+        </span>);
+        <span class="macro">assert!</span>(
+            !metric_registered(<span class="kw-2">&amp;</span>recv_metric),
+            <span class="string">"total_receive metric must be unregistered after the last clone drops"
+        </span>);
     }
 }
 </code></pre></div></section></main></body></html>
