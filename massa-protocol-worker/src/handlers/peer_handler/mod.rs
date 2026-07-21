@@ -232,7 +232,16 @@ impl PeerManagementHandler {
                     &mut message,
                 )
                 .unwrap();
-            sender_msg.try_send((*peer_id, message)).unwrap();
+            // The initial peer set is the union of the locally configured peers and the
+            // network-provided bootstrap peers, so it can exceed the channel capacity.
+            // Dropping an excess peer here must not panic (and abort) node startup: the
+            // peer can still be (re)discovered later through normal peer exchange.
+            if let Err(err) = sender_msg.try_send((*peer_id, message)) {
+                warn!(
+                    "could not enqueue initial peer {} for the peer-management thread: {}",
+                    peer_id, err
+                );
+            }
         }
 
         Self {
