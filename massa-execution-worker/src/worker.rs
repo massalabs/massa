@@ -231,6 +231,12 @@ impl ExecutionThread {
         let cancel_err = ExecutionError::ChannelError(
             "readonly execution cancelled because the execution worker is closing".into(),
         );
+        // Requests already handed off from the shared input into the worker-local queue
+        // (e.g. during the final loop iteration before `stop`) must be cancelled too:
+        // `RequestQueue` does not cancel on drop, so otherwise their `resp_tx` is dropped
+        // silently and callers see a generic channel-readout error instead of this clean
+        // worker-closing cancellation.
+        self.readonly_requests.cancel(cancel_err.clone());
         self.input_data
             .1
             .lock()
