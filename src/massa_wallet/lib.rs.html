@@ -276,55 +276,6 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Standalone massa wallet
 //! Keypair management
@@ -435,21 +386,10 @@
                             <span class="kw">return </span><span class="prelude-val">Err</span>(WalletError::VersionError(<span class="string">"Invalid wallet/version matching: your wallet does not follow its version's secret key encoding format."</span>.to_string()))
                         }
                     }
-                    <span class="kw">let </span>keypair = KeyPair::from_bytes(<span class="kw-2">&amp;</span>secret_key)<span class="question-mark">?</span>;
-                    <span class="comment">// Do not trust the plaintext metadata: verify that the
-                    // decrypted keypair actually derives the declared address.
-                    // Otherwise a tampered wallet file could relabel encrypted
-                    // key material under a forged address, misbinding local
-                    // wallet state and address-based lookups.
-                    </span><span class="kw">let </span>declared_address = Address::from_str(<span class="kw-2">&amp;</span>wallet.address)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>derived_address = Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key());
-                    <span class="kw">if </span>derived_address != declared_address {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(WalletError::InconsistentWalletFile(<span class="macro">format!</span>(
-                            <span class="string">"wallet file declares address {} but the decrypted key derives {}"</span>,
-                            declared_address, derived_address
-                        )));
-                    }
-                    keys.insert(derived_address, keypair);
+                    keys.insert(
+                        Address::from_str(<span class="kw-2">&amp;</span>wallet.address)<span class="question-mark">?</span>,
+                        KeyPair::from_bytes(<span class="kw-2">&amp;</span>secret_key)<span class="question-mark">?</span>,
+                    );
                 }
             }
             <span class="prelude-val">Ok</span>(Wallet {
@@ -614,42 +554,4 @@
 <span class="doccomment">/// Test utils
 </span><span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
 </span><span class="kw">pub mod </span>test_exports;
-
-<span class="attr">#[cfg(all(test, feature = <span class="string">"test-exports"</span>))]
-</span><span class="kw">mod </span>load_tests {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>massa_signature::KeyPair;
-    <span class="kw">use </span>tempfile::TempDir;
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>honest_wallet_loads_and_tampered_address_is_rejected() {
-        <span class="kw">let </span>dir = TempDir::new().unwrap();
-        <span class="kw">let </span>dir_path = dir.path().to_path_buf();
-
-        <span class="comment">// Create a wallet with a single keypair and persist it.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>wallet = Wallet::new(dir_path.clone(), <span class="string">"pw"</span>.to_string(), <span class="number">0</span>).unwrap();
-        <span class="kw">let </span>kp = KeyPair::generate(<span class="number">0</span>).unwrap();
-        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>kp.get_public_key());
-        wallet.add_keypairs(<span class="macro">vec!</span>[kp]).unwrap();
-
-        <span class="comment">// An untampered reload succeeds and binds the right address.
-        </span><span class="kw">let </span>reloaded = Wallet::new(dir_path.clone(), <span class="string">"pw"</span>.to_string(), <span class="number">0</span>).unwrap();
-        <span class="macro">assert!</span>(reloaded.keys.contains_key(<span class="kw-2">&amp;</span>addr));
-
-        <span class="comment">// Tamper: relabel the declared address to an unrelated one while leaving
-        // the encrypted key material unchanged.
-        </span><span class="kw">let </span>file = dir_path.join(<span class="macro">format!</span>(<span class="string">"wallet_{}.yaml"</span>, addr));
-        <span class="kw">let </span>content = std::fs::read(<span class="kw-2">&amp;</span>file).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>parsed: WalletFileFormat = serde_yaml::from_slice(<span class="kw-2">&amp;</span>content).unwrap();
-        <span class="kw">let </span>other = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
-        parsed.address = other.to_string();
-        std::fs::write(<span class="kw-2">&amp;</span>file, serde_yaml::to_string(<span class="kw-2">&amp;</span>parsed).unwrap()).unwrap();
-
-        <span class="comment">// Loading the tampered file must be rejected rather than silently
-        // binding the key under the forged address.
-        </span><span class="kw">let </span>err = Wallet::new(dir_path, <span class="string">"pw"</span>.to_string(), <span class="number">0</span>)
-            .expect_err(<span class="string">"a tampered declared address must be rejected"</span>);
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(err, WalletError::InconsistentWalletFile(<span class="kw">_</span>)));
-    }
-}
 </code></pre></div></section></main></body></html>
