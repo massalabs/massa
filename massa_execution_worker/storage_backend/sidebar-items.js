@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["FileStorageBackend","RocksDBStorageBackend"],"trait":["StorageBackend"]};
+window.SIDEBAR_ITEMS = {"fn":["load_saved_slots_from_db","load_saved_slots_from_folder","parse_block_dump_file_name"],"struct":["FileStorageBackend","RocksDBStorageBackend"],"trait":["StorageBackend"]};
