@@ -28,6 +28,40 @@ use super::{
 const THREAD_NAME: &str = "poh-tester";
 static_assertions::const_assert!(THREAD_NAME.len() < 16);
 
+/// Returns the subset of operation ids in `storage` whose serialized size is
+/// within `max_serialized_operations_size_per_block`.
+///
+/// Operations exceeding the protocol size limit are excluded (and logged) so
+/// they are never marked checked, stored for propagation, or announced. This
+/// mirrors the size check already enforced on the peer-received (retrieval)
+/// path, and protects locally submitted operations (JSON-RPC / gRPC), which are
+/// not validated against this limit on submission.
+fn operations_within_size_limit(
+    storage: &Storage,
+    max_serialized_operations_size_per_block: usize,
+) -> PreHashSet<OperationId> {
+    let ops_read = storage.read_operations();
+    storage
+        .get_op_refs()
+        .iter()
+        .copied()
+        .filter(|op_id| match ops_read.get(op_id) {
+            Some(op) => {
+                let size = op.serialized_size();
+                let ok = size <= max_serialized_operations_size_per_block;
+                if !ok {
+                    warn!(
+                        "not propagating operation {}: serialized size {} exceeds max {} bytes",
+                        op_id, size, max_serialized_operations_size_per_block
+                    );
+                }
+                ok
+            }
+            None => false,
+        })
+        .collect()
+}
+
 struct PropagationThread {
     internal_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -51,16 +85,28 @@ impl PropagationThread {
                 Ok(internal_message) => {
                     match internal_message {
                         OperationHandlerPropagationCommand::PropagateOperations(operations) => {
-                            // Note operations as checked.
+                            // Re-validate the protocol size limit before propagating.
+                            // Locally submitted operations (JSON-RPC / gRPC) are not
+                            // checked against `max_serialized_operations_size_per_block`
+                            // on submission, so an oversized-but-otherwise-valid
+                            // operation could be marked checked, stored and announced,
+                            // making honest peers ban us for advertising invalid data.
+                            // This mirrors the check already enforced on the retrieval
+                            // (peer-received) path.
+                            let new_ops = operations_within_size_limit(
+                                &operations,
+                                self.config.max_serialized_operations_size_per_block,
+                            );
+
+                            // Note valid operations as checked.
                             {
                                 let mut cache_write = self.cache.write();
-                                for op_id in operations.get_op_refs().iter().copied() {
+                                for op_id in new_ops.iter().copied() {
                                     cache_write.insert_checked_operation(op_id);
                                 }
                             }
 
                             // add to propagation storage
-                            let new_ops = operations.get_op_refs().clone();
                             self.stored_for_propagation
                                 .push_back((std::time::Instant::now(), new_ops.clone()));
                             self.op_storage.extend(operations);
@@ -233,4 +279,35 @@ pub fn start_propagation_thread(
             propagation_thread.run();
         })
         .expect("OS failed to start operation propagation thread")
+}
+
+#[cfg(all(test, feature = "test-exports"))]
+mod tests {
+    use super::operations_within_size_limit;
+    use massa_protocol_exports::test_exports::tools::create_operation_with_expire_period;
+    use massa_signature::KeyPair;
+    use massa_storage::Storage;
+
+    #[test]
+    fn oversized_operations_are_filtered_out_of_propagation() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let op = create_operation_with_expire_period(&keypair, 1);
+        let op_id = op.id;
+        let op_size = op.serialized_size();
+
+        let mut storage = Storage::create_root();
+        storage.store_operations(vec![op]);
+
+        // With a generous limit the operation is kept for propagation.
+        let kept = operations_within_size_limit(&storage, op_size);
+        assert!(kept.contains(&op_id), "op within the limit must be kept");
+
+        // With a limit below its size the operation is excluded, so it is never
+        // marked checked, stored, or announced.
+        let dropped = operations_within_size_limit(&storage, op_size - 1);
+        assert!(
+            dropped.is_empty(),
+            "oversized op must be filtered out of propagation"
+        );
+    }
 }
