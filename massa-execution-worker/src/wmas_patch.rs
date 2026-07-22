@@ -20,19 +20,23 @@
 //!   the final state, so nodes bootstrapping after activation receive the
 //!   already-patched bytecode.
 //!
-//! Activation (done at release time, NOT in this commit):
-//! register a MIP that bumps `MipComponent::Execution` to
-//! `WMAS_PATCH_EXEC_VERSION` in `massa-versioning/src/mips.rs`, e.g.:
-//! ```ignore
-//! MipInfo {
-//!     name: "MIP-XXXX-WMAS-BytecodePatch".to_string(),
-//!     version: <next>,
-//!     components: BTreeMap::from([(MipComponent::Execution, WMAS_PATCH_EXEC_VERSION)]),
-//!     start: /* chosen date */, timeout: /* + window */, activation_delay: /* delay */,
-//! }
-//! ```
-//! Until such a MIP exists, `execution_component_version` never reaches
-//! `WMAS_PATCH_EXEC_VERSION` and this code is inert.
+//! WMAS is the same contract deployed at a different address on each network,
+//! so a single embedded bytecode serves all of them; only the target address is
+//! selected per network via `chain_id` (see [`wmas_address`]).
+//!
+//! Activation: this patch rides on the release's `MIP-0002-BugFix`, which already
+//! bumps `MipComponent::Execution` to `2` (= [`WMAS_PATCH_EXEC_VERSION`]) in
+//! `massa-versioning/src/mips.rs`. It therefore applies at that MIP's activation
+//! slot, together with the rest of the next release's breaking changes — there
+//! is no separate WMAS MIP.
+//!
+//! IMPORTANT: because it is bundled with `MIP-0002-BugFix` (which has real
+//! activation dates), this patch is NOT inert until a future date. Before that
+//! release ships, `wmas_bytecode.rs` MUST be regenerated from the reproducible,
+//! audited build of the deployed WMAS contract (it currently embeds a dev build)
+//! and the per-network `WMAS_ADDRESS_*` constants verified. The fail-safe in
+//! `execute_slot` only skips on an empty bytecode or an unparseable address, so
+//! a wrong-but-valid blob would still be applied.
 
 use massa_models::{
     address::Address, bytecode::Bytecode, slot::Slot, timeslots::get_block_slot_timestamp,
@@ -44,24 +48,35 @@ use std::str::FromStr;
 /// Execution component version at which the WMAS bytecode patch activates.
 pub const WMAS_PATCH_EXEC_VERSION: u32 = 2;
 
-/// Address of the deployed WMAS contract to patch.
-///
-/// TODO(release): set to the verified WMAS mainnet address before enabling the
-/// activation MIP. Patching the wrong address would be catastrophic.
-pub const WMAS_ADDRESS: &str = "AS_REPLACE_WITH_VERIFIED_WMAS_ADDRESS";
+/// Chain ids of the networks where WMAS is deployed (see
+/// `massa_models::config::CHAINID`).
+const MAINNET_CHAIN_ID: u64 = 77658377;
+const BUILDNET_CHAIN_ID: u64 = 77658366;
 
-/// Audited, reproducibly-built fixed WMAS bytecode, embedded at build time.
-///
-/// TODO(release): replace `resources/wmas_patched.wasm` with the reproducible
-/// build of the fixed WMAS contract (massa-standards) before enabling the
-/// activation MIP. It is left empty here so the crate builds while the code is
-/// inert (gated behind a MIP that does not exist yet); [`patched_wmas_bytecode`]
-/// refuses to apply an empty bytecode as a fail-safe.
-pub const PATCHED_WMAS_BYTECODE: &[u8] = include_bytes!("../resources/wmas_patched.wasm");
+/// Deployed WMAS address on mainnet.
+pub const WMAS_ADDRESS_MAINNET: &str = "AS12U4TZfNK7qoLyEERBBRDMu8nm5MKoRzPXDXans4v9wdATZedz9";
+/// Deployed WMAS address on buildnet.
+pub const WMAS_ADDRESS_BUILDNET: &str = "AS12FW5Rs5YN2zdpEnqwj4iHUUPt9R4Eqjq2qtpJFNKW3mn33RuLU";
 
-/// Returns the WMAS address to patch.
-pub fn wmas_address() -> Address {
-    Address::from_str(WMAS_ADDRESS).expect("invalid WMAS_ADDRESS constant")
+/// Audited fixed WMAS bytecode, embedded as an in-source byte array (see
+/// [`crate::wmas_bytecode`]).
+///
+/// TODO(release): regenerate `wmas_bytecode.rs` from the reproducible, audited
+/// build of the actually deployed WMAS contract before enabling the activation
+/// MIP.
+pub const PATCHED_WMAS_BYTECODE: &[u8] = crate::wmas_bytecode::PATCHED_WMAS_BYTECODE;
+
+/// Returns the WMAS address to patch for the network identified by `chain_id`,
+/// or `None` if the network has no known WMAS deployment (e.g. sandbox/labnet)
+/// or the address constant is malformed. Returning `None` rather than panicking
+/// keeps a misconfiguration from aborting consensus execution.
+pub fn wmas_address(chain_id: u64) -> Option<Address> {
+    let addr = match chain_id {
+        MAINNET_CHAIN_ID => WMAS_ADDRESS_MAINNET,
+        BUILDNET_CHAIN_ID => WMAS_ADDRESS_BUILDNET,
+        _ => return None,
+    };
+    Address::from_str(addr).ok()
 }
 
 /// Returns the patched WMAS bytecode, or `None` if it has not been embedded yet
