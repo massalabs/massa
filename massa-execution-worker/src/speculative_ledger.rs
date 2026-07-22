@@ -396,6 +396,16 @@ impl SpeculativeLedger {
         Ok(())
     }
 
+    /// Sets the bytecode of an address without charging storage costs and
+    /// without checking write rights.
+    ///
+    /// Reserved for protocol-level irregular state changes applied
+    /// deterministically at a versioning activation (see `wmas_patch`). The
+    /// target address is assumed to already exist in the ledger.
+    pub fn set_bytecode_raw(&mut self, addr: &Address, bytecode: Bytecode) {
+        self.added_changes.set_bytecode(*addr, bytecode);
+    }
+
     /// Gets a copy of a datastore keys for a given address
     ///
     /// # Arguments
