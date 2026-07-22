@@ -13,9 +13,9 @@ use crate::context::{truncate_string, ExecutionContext, ExecutionContextSnapshot
 use crate::datastore_scan::scan_datastore;
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
-use crate::wmas_patch;
 #[cfg(feature = "dump-block")]
 use crate::storage_backend::StorageBackend;
+use crate::wmas_patch;
 use massa_deferred_calls::DeferredCall;
 use massa_event_cache::controller::EventCacheController;
 use massa_execution_exports::{
@@ -1580,16 +1580,33 @@ impl ExecutionState {
             self.config.t0,
             self.config.genesis_timestamp,
         ) {
-            match wmas_patch::patched_wmas_bytecode() {
-                Some(bytecode) => {
-                    execution_context.override_bytecode(&wmas_patch::wmas_address(), bytecode);
-                    info!("applied WMAS bytecode patch at slot {}", slot);
+            match (
+                wmas_patch::wmas_address(self.config.chain_id),
+                wmas_patch::patched_wmas_bytecode(),
+            ) {
+                (Some(addr), Some(bytecode)) => {
+                    // Existence guard: only overwrite an already-deployed WMAS
+                    // contract, never create a new entry. Keeps the patch a
+                    // no-op on networks that share a known chain_id but do not
+                    // actually have WMAS deployed (e.g. a private fork or a
+                    // sandbox misconfigured with a mainnet/buildnet chain_id).
+                    if execution_context.get_bytecode(&addr).is_some() {
+                        execution_context.override_bytecode(&addr, bytecode);
+                        info!("applied WMAS bytecode patch at slot {}", slot);
+                    } else {
+                        warn!(
+                            "WMAS bytecode patch activation slot {} reached but no contract exists at {}; skipping",
+                            slot, addr
+                        );
+                    }
                 }
-                None => {
-                    // Fail-safe: the patched bytecode was not embedded. Never
-                    // apply an empty bytecode; leave WMAS untouched.
+                _ => {
+                    // Fail-safe: the patch is not applicable on this network
+                    // (unknown chain_id) or not fully configured (empty
+                    // bytecode). Leave WMAS untouched rather than abort
+                    // consensus.
                     warn!(
-                        "WMAS bytecode patch activation slot {} reached but no patched bytecode is embedded; skipping",
+                        "WMAS bytecode patch activation slot {} reached but the patch is not applicable/configured (address/bytecode); skipping",
                         slot
                     );
                 }
