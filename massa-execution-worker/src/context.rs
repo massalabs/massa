@@ -1146,6 +1146,16 @@ impl ExecutionContext {
             .set_bytecode(&self.get_current_address()?, address, bytecode)
     }
 
+    /// Overwrites the bytecode of `address` without charging storage costs or
+    /// checking write rights.
+    ///
+    /// Reserved for protocol-level irregular state changes applied
+    /// deterministically at a versioning activation (see `wmas_patch`). Do not
+    /// use from ABI / user execution paths.
+    pub fn override_bytecode(&mut self, address: &Address, bytecode: Bytecode) {
+        self.speculative_ledger.set_bytecode_raw(address, bytecode);
+    }
+
     /// Creates a new event but does not emit it.
     /// Note that this does not increment the context event counter.
     ///
