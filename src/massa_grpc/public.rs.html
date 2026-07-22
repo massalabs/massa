@@ -1556,6 +1556,11 @@
 <a href="#1556" id="1556">1556</a>
 <a href="#1557" id="1557">1557</a>
 <a href="#1558" id="1558">1558</a>
+<a href="#1559" id="1559">1559</a>
+<a href="#1560" id="1560">1560</a>
+<a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1745,7 +1750,7 @@
         ));
     }
 
-    <span class="kw">if </span>ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_block_ids_per_request {
+    <span class="kw">if </span>ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_operation_ids_per_request {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
             <span class="string">"too many block ids received. Only a maximum of {} block ids are accepted per request"</span>,
             grpc.grpc_config.max_block_ids_per_request
@@ -1754,6 +1759,7 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>block_ids: Vec&lt;BlockId&gt; = ids
         .into_iter()
+        .take(grpc.grpc_config.max_operation_ids_per_request <span class="kw">as </span>usize + <span class="number">1</span>)
         .map(|id| {
             BlockId::from_str(id.as_str())
                 .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid block id: {}"</span>, id)))
@@ -1811,18 +1817,20 @@
     <span class="kw">let </span>filters: Vec&lt;(Address, Vec&lt;u8&gt;)&gt; = inner_req
         .filters
         .into_iter()
-        .filter_map(|filter| {
-            filter.filter.and_then(|filter| <span class="kw">match </span>filter {
+        .map(|filter| {
+            <span class="kw">let </span>filter = filter
+                .filter
+                .ok_or_else(|| GrpcError::InvalidArgument(<span class="string">"no filter provided"</span>.to_string()))<span class="question-mark">?</span>;
+            <span class="kw">match </span>filter {
                 grpc_api::get_datastore_entry_filter::Filter::AddressKey(addrs) =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(add) = <span class="kw-2">&amp;</span>Address::from_str(<span class="kw-2">&amp;</span>addrs.address) {
-                        <span class="prelude-val">Some</span>((<span class="kw-2">*</span>add, addrs.key))
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">None
-                    </span>}
+                    <span class="kw">let </span>add = Address::from_str(<span class="kw-2">&amp;</span>addrs.address).map_err(|<span class="kw">_</span>| {
+                        GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid address: {}"</span>, addrs.address))
+                    })<span class="question-mark">?</span>;
+                    <span class="prelude-val">Ok</span>((add, addrs.key))
                 }
-            })
+            }
         })
-        .collect();
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;(Address, Vec&lt;u8&gt;)&gt;, GrpcError&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">let </span>entries = grpc
         .execution_controller
@@ -1855,12 +1863,13 @@
     <span class="kw">if </span>ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_endorsement_ids_per_request {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
             <span class="string">"too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request"</span>,
-            grpc.grpc_config.max_endorsement_ids_per_request
+            grpc.grpc_config.max_endorsements_per_message
         )));
     }
 
     <span class="kw">let </span><span class="kw-2">mut </span>endorsement_ids: Vec&lt;EndorsementId&gt; = ids
         .into_iter()
+        .take(grpc.grpc_config.max_operation_ids_per_request <span class="kw">as </span>usize + <span class="number">1</span>)
         .map(|id| {
             EndorsementId::from_str(id.as_str())
                 .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid endorsement id: {}"</span>, id)))
@@ -2302,6 +2311,7 @@
 
     <span class="kw">let </span>operation_ids: Vec&lt;OperationId&gt; = operation_ids
         .into_iter()
+        .take(grpc.grpc_config.max_operation_ids_per_request <span class="kw">as </span>usize + <span class="number">1</span>)
         .map(|id| {
             OperationId::from_str(id.as_str())
                 .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid operation id: {}"</span>, id)))
