@@ -187,7 +187,7 @@ pub(crate) fn get_blocks(
         ));
     }
 
-    if ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
+    if ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
         return Err(GrpcError::InvalidArgument(format!(
             "too many block ids received. Only a maximum of {} block ids are accepted per request",
             grpc.grpc_config.max_block_ids_per_request
@@ -196,7 +196,7 @@ pub(crate) fn get_blocks(
 
     let mut block_ids: Vec<BlockId> = ids
         .into_iter()
-        .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
+        .take(grpc.grpc_config.max_block_ids_per_request as usize + 1)
         .map(|id| {
             BlockId::from_str(id.as_str())
                 .map_err(|_| GrpcError::InvalidArgument(format!("invalid block id: {}", id)))
