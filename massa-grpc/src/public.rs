@@ -196,7 +196,6 @@ pub(crate) fn get_blocks(
 
     let mut block_ids: Vec<BlockId> = ids
         .into_iter()
-        .take(grpc.grpc_config.max_block_ids_per_request as usize + 1)
         .map(|id| {
             BlockId::from_str(id.as_str())
                 .map_err(|_| GrpcError::InvalidArgument(format!("invalid block id: {}", id)))
@@ -298,13 +297,12 @@ pub(crate) fn get_endorsements(
     if ids.len() as u32 > grpc.grpc_config.max_endorsement_ids_per_request {
         return Err(GrpcError::InvalidArgument(format!(
             "too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request",
-            grpc.grpc_config.max_endorsements_per_message
+            grpc.grpc_config.max_endorsement_ids_per_request
         )));
     }
 
     let mut endorsement_ids: Vec<EndorsementId> = ids
         .into_iter()
-        .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
         .map(|id| {
             EndorsementId::from_str(id.as_str())
                 .map_err(|_| GrpcError::InvalidArgument(format!("invalid endorsement id: {}", id)))
@@ -746,7 +744,6 @@ pub(crate) fn get_operations(
 
     let operation_ids: Vec<OperationId> = operation_ids
         .into_iter()
-        .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
         .map(|id| {
             OperationId::from_str(id.as_str())
                 .map_err(|_| GrpcError::InvalidArgument(format!("invalid operation id: {}", id)))
