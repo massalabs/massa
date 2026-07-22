@@ -13,6 +13,7 @@ use crate::context::{truncate_string, ExecutionContext, ExecutionContextSnapshot
 use crate::datastore_scan::scan_datastore;
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
+use crate::wmas_patch;
 #[cfg(feature = "dump-block")]
 use crate::storage_backend::StorageBackend;
 use massa_deferred_calls::DeferredCall;
@@ -1562,6 +1563,32 @@ impl ExecutionState {
         let calls = execution_context.deferred_calls_advance_slot(*slot);
 
         let deferred_calls_slot_gas = calls.effective_slot_gas;
+
+        // One-time, versioning-gated WMAS bytecode patch (see `wmas_patch`).
+        // Applied here so it is part of the slot's ledger changes and shared by
+        // both candidate and final execution (this function is called by both).
+        if wmas_patch::is_wmas_patch_activation_slot(
+            &self.mip_store,
+            slot,
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+        ) {
+            match wmas_patch::patched_wmas_bytecode() {
+                Some(bytecode) => {
+                    execution_context.override_bytecode(&wmas_patch::wmas_address(), bytecode);
+                    info!("applied WMAS bytecode patch at slot {}", slot);
+                }
+                None => {
+                    // Fail-safe: the patched bytecode was not embedded. Never
+                    // apply an empty bytecode; leave WMAS untouched.
+                    warn!(
+                        "WMAS bytecode patch activation slot {} reached but no patched bytecode is embedded; skipping",
+                        slot
+                    );
+                }
+            }
+        }
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
