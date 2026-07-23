@@ -2733,6 +2733,19 @@
 <a href="#2733" id="2733">2733</a>
 <a href="#2734" id="2734">2734</a>
 <a href="#2735" id="2735">2735</a>
+<a href="#2736" id="2736">2736</a>
+<a href="#2737" id="2737">2737</a>
+<a href="#2738" id="2738">2738</a>
+<a href="#2739" id="2739">2739</a>
+<a href="#2740" id="2740">2740</a>
+<a href="#2741" id="2741">2741</a>
+<a href="#2742" id="2742">2742</a>
+<a href="#2743" id="2743">2743</a>
+<a href="#2744" id="2744">2744</a>
+<a href="#2745" id="2745">2745</a>
+<a href="#2746" id="2746">2746</a>
+<a href="#2747" id="2747">2747</a>
+<a href="#2748" id="2748">2748</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -4314,15 +4327,28 @@
                 wmas_patch::patched_wmas_bytecode(),
             ) {
                 (<span class="prelude-val">Some</span>(addr), <span class="prelude-val">Some</span>(bytecode)) =&gt; {
-                    execution_context.override_bytecode(<span class="kw-2">&amp;</span>addr, bytecode);
-                    <span class="macro">info!</span>(<span class="string">"applied WMAS bytecode patch at slot {}"</span>, slot);
+                    <span class="comment">// Existence guard: only overwrite an already-deployed WMAS
+                    // contract, never create a new entry. Keeps the patch a
+                    // no-op on networks that share a known chain_id but do not
+                    // actually have WMAS deployed (e.g. a private fork or a
+                    // sandbox misconfigured with a mainnet/buildnet chain_id).
+                    </span><span class="kw">if </span>execution_context.get_bytecode(<span class="kw-2">&amp;</span>addr).is_some() {
+                        execution_context.override_bytecode(<span class="kw-2">&amp;</span>addr, bytecode);
+                        <span class="macro">info!</span>(<span class="string">"applied WMAS bytecode patch at slot {}"</span>, slot);
+                    } <span class="kw">else </span>{
+                        <span class="macro">warn!</span>(
+                            <span class="string">"WMAS bytecode patch activation slot {} reached but no contract exists at {}; skipping"</span>,
+                            slot, addr
+                        );
+                    }
                 }
                 <span class="kw">_ </span>=&gt; {
-                    <span class="comment">// Fail-safe: the patch is not fully configured (placeholder
-                    // address or empty bytecode). Never apply a partial patch;
-                    // leave WMAS untouched rather than abort consensus.
+                    <span class="comment">// Fail-safe: the patch is not applicable on this network
+                    // (unknown chain_id) or not fully configured (empty
+                    // bytecode). Leave WMAS untouched rather than abort
+                    // consensus.
                     </span><span class="macro">warn!</span>(
-                        <span class="string">"WMAS bytecode patch activation slot {} reached but the patch is not fully configured (address/bytecode); skipping"</span>,
+                        <span class="string">"WMAS bytecode patch activation slot {} reached but the patch is not applicable/configured (address/bytecode); skipping"</span>,
                         slot
                     );
                 }
