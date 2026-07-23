@@ -304,11 +304,14 @@ impl RetrievalThread {
             (Some((_, block_op_ids)), AskForBlockInfo::Operations(mut asked_ops)) => {
                 // the peer asked for a list of full operations from the block
 
-                // retain only ops that belong to the block
+                // Retain only unique operations that belong to the block. Request vectors may
+                // contain duplicate IDs, but returning a full operation for every occurrence
+                // would allow a peer to amplify a small request into a much larger response.
                 {
                     let block_op_ids_set: PreHashSet<OperationId> =
                         block_op_ids.iter().copied().collect();
-                    asked_ops.retain(|id| block_op_ids_set.contains(id));
+                    let mut seen = PreHashSet::default();
+                    asked_ops.retain(|id| block_op_ids_set.contains(id) && seen.insert(*id));
                 }
 
                 // Send the operations that are available in storage
