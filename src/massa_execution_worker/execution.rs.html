@@ -4633,7 +4633,11 @@
         <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
         </span><span class="self">self</span>.trace_history
             .write()
-            .save_for_slot(<span class="kw-2">*</span>slot, slot_trace.clone(), transfers.clone());
+            .save_traces_for_slot(<span class="kw-2">*</span>slot, slot_trace.clone());
+        <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+        </span><span class="self">self</span>.trace_history
+            .write()
+            .save_transfers_for_slot(<span class="kw-2">*</span>slot, transfers.clone());
 
         <span class="comment">// Finish slot
         </span><span class="attr">#[allow(unused_mut)]
@@ -4733,8 +4737,6 @@
             <span class="self">self</span>.active_history
                 .write()
                 .truncate_from(slot, <span class="self">self</span>.config.thread_count);
-            <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-            </span><span class="self">self</span>.trace_history.write().truncate_from(slot);
             <span class="self">self</span>.active_cursor = slot
                 .get_prev_slot(<span class="self">self</span>.config.thread_count)
                 .expect(<span class="string">"overflow when iterating on slots"</span>);
@@ -4815,8 +4817,6 @@
 
         <span class="comment">// truncate the whole execution queue
         </span><span class="self">self</span>.active_history.write().<span class="number">0</span>.clear();
-        <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-        </span><span class="self">self</span>.trace_history.write().truncate_from(slot);
         <span class="self">self</span>.active_cursor = <span class="self">self</span>.final_cursor;
 
         <span class="comment">// execute slot
