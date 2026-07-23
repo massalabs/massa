@@ -51,6 +51,7 @@ use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
 use massa_sc_runtime::CondomLimits;
 use massa_serialization::Serializer;
+use massa_time::MassaTime;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
 use massa_versioning::versioning::{MipComponent, MipStore};
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
@@ -118,6 +119,12 @@ pub struct ExecutionContextSnapshot {
 
     /// Transfer history count
     pub transfer_history_len: usize,
+
+    /// The version of the execution component
+    pub execution_component_version: u32,
+
+    /// True if this slot activates a new execution component version vs the previous slot
+    pub execution_component_version_upgraded: bool,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -210,9 +217,11 @@ pub struct ExecutionContext {
     /// so *excluding* the gas used by the last sc call.
     pub gas_remaining_before_subexecution: Option<u64>,
 
-    #[allow(unused)]
     /// The version of the execution component
     pub execution_component_version: u32,
+
+    /// True if this slot activates a new execution component version vs the previous slot
+    pub execution_component_version_upgraded: bool,
 
     /// recursion counter, incremented for each new nested call
     pub recursion_counter: u16,
@@ -252,15 +261,16 @@ impl ExecutionContext {
         execution_trail_hash: massa_hash::Hash,
     ) -> Self {
         let slot = Slot::new(0, 0);
-        let ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect("Time overflow when getting block slot timestamp for MIP");
-
         let transfers_history = Arc::new(RwLock::new(Vec::new()));
+
+        let (execution_component_version, execution_component_version_upgraded) =
+            execution_component_version_info(
+                &mip_store,
+                &slot,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            );
 
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -313,8 +323,8 @@ impl ExecutionContext {
             },
             execution_trail_hash,
             gas_remaining_before_subexecution: None,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(&MipComponent::Execution, ts),
+            execution_component_version,
+            execution_component_version_upgraded,
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
             transfers_history,
@@ -345,6 +355,8 @@ impl ExecutionContext {
             recursion_counter: self.recursion_counter,
             user_event_count_in_current_exec: self.user_event_count_in_current_exec,
             transfer_history_len: self.transfers_history.read().len(),
+            execution_component_version: self.execution_component_version,
+            execution_component_version_upgraded: self.execution_component_version_upgraded,
         }
     }
 
@@ -389,6 +401,8 @@ impl ExecutionContext {
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
         self.recursion_counter = snapshot.recursion_counter;
         self.user_event_count_in_current_exec = snapshot.user_event_count_in_current_exec;
+        self.execution_component_version = snapshot.execution_component_version;
+        self.execution_component_version_upgraded = snapshot.execution_component_version_upgraded;
 
         {
             let mut transfers_history = self.transfers_history.write();
@@ -430,21 +444,22 @@ impl ExecutionContext {
         let execution_trail_hash =
             generate_execution_trail_hash(&prev_execution_trail_hash, &slot, None, true);
 
-        let ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect("Time overflow when getting block slot timestamp for MIP");
+        let (execution_component_version, execution_component_version_upgraded) =
+            execution_component_version_info(
+                &mip_store,
+                &slot,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            );
 
         // return readonly context
         ExecutionContext {
             slot,
             stack: call_stack,
             read_only: true,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(&MipComponent::Execution, ts),
+            execution_component_version,
+            execution_component_version_upgraded,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -501,20 +516,21 @@ impl ExecutionContext {
             false,
         );
 
-        let ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect("Time overflow when getting block slot timestamp for MIP");
+        let (execution_component_version, execution_component_version_upgraded) =
+            execution_component_version_info(
+                &mip_store,
+                &slot,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            );
 
         // return active slot execution context
         ExecutionContext {
             slot,
             opt_block_id,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(&MipComponent::Execution, ts),
+            execution_component_version,
+            execution_component_version_upgraded,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -1422,6 +1438,67 @@ impl ExecutionContext {
     pub fn get_condom_limits(&self) -> CondomLimits {
         self.config.condom_limits.clone()
     }
+
+    /// Returns `true` if the execution component version is at least `version`.
+    #[allow(dead_code)]
+    pub fn is_execution_component_version_at_least(&self, version: u32) -> bool {
+        self.execution_component_version >= version
+    }
+
+    /// Returns `true` if this slot is the activation slot of execution component
+    /// version `target`: the version just upgraded and landed exactly on `target`.
+    ///
+    /// Use this for one-shot irregular state changes (e.g. WMAS). Prefer
+    /// [`Self::is_execution_component_version_at_least`] for sticky behaviour
+    /// that should apply on every slot from `target` onward.
+    ///
+    /// Note: this assumes MIP bumps land on `target` exactly (no single-slot
+    /// jump past it). That matches how Massa MIPs set component versions.
+    pub fn is_execution_component_version_activation(&self, target: u32) -> bool {
+        self.execution_component_version_upgraded && self.execution_component_version == target
+    }
+}
+
+/// Execution component version active at `slot`, and whether that version is
+/// strictly greater than at the previous slot (any bump). Genesis counts as an
+/// upgrade when the version is greater than 0.
+///
+/// Returns `(version, upgraded)`.
+pub(crate) fn execution_component_version_info(
+    mip_store: &MipStore,
+    slot: &Slot,
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+) -> (u32, bool) {
+    let version =
+        execution_component_version_at(mip_store, slot, thread_count, t0, genesis_timestamp);
+    let upgraded = match slot.get_prev_slot(thread_count) {
+        Ok(prev) => {
+            version
+                > execution_component_version_at(
+                    mip_store,
+                    &prev,
+                    thread_count,
+                    t0,
+                    genesis_timestamp,
+                )
+        }
+        Err(_) => version > 0,
+    };
+    (version, upgraded)
+}
+
+fn execution_component_version_at(
+    mip_store: &MipStore,
+    slot: &Slot,
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+) -> u32 {
+    let ts = get_block_slot_timestamp(thread_count, t0, genesis_timestamp, *slot)
+        .unwrap_or(genesis_timestamp);
+    mip_store.get_latest_component_version_at(&MipComponent::Execution, ts)
 }
 
 /// Generate the execution trail hash
