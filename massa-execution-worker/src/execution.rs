@@ -1567,25 +1567,19 @@ impl ExecutionState {
         // One-time, versioning-gated WMAS bytecode patch (see `wmas_patch`).
         // Applied here so it is part of the slot's ledger changes and shared by
         // both candidate and final execution (this function is called by both).
-        if wmas_patch::is_wmas_patch_activation_slot(
-            &self.mip_store,
-            slot,
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-        ) {
-            match (
-                wmas_patch::wmas_address(self.config.chain_id),
-                wmas_patch::patched_wmas_bytecode(),
-            ) {
-                (Some(addr), Some(bytecode)) => {
+        if execution_context
+            .is_execution_component_version_activation(wmas_patch::WMAS_PATCH_EXEC_VERSION)
+        {
+            match wmas_patch::wmas_address(self.config.chain_id) {
+                Some(addr) => {
                     // Existence guard: only overwrite an already-deployed WMAS
                     // contract, never create a new entry. Keeps the patch a
                     // no-op on networks that share a known chain_id but do not
                     // actually have WMAS deployed (e.g. a private fork or a
                     // sandbox misconfigured with a mainnet/buildnet chain_id).
                     if execution_context.get_bytecode(&addr).is_some() {
-                        execution_context.override_bytecode(&addr, bytecode);
+                        execution_context
+                            .override_bytecode(&addr, wmas_patch::patched_wmas_bytecode());
                         info!("applied WMAS bytecode patch at slot {}", slot);
                     } else {
                         warn!(
@@ -1594,14 +1588,13 @@ impl ExecutionState {
                         );
                     }
                 }
-                _ => {
+                None => {
                     // Fail-safe: the patch is not applicable on this network
-                    // (unknown chain_id) or not fully configured (empty
-                    // bytecode). Leave WMAS untouched rather than abort
+                    // (unknown chain_id). Leave WMAS untouched rather than abort
                     // consensus.
                     warn!(
-                        "WMAS bytecode patch activation slot {} reached but the patch is not applicable/configured (address/bytecode); skipping",
-                        slot
+                        "WMAS bytecode patch activation slot {} reached but no address for chain_id {}; skipping",
+                        slot, self.config.chain_id
                     );
                 }
             }
