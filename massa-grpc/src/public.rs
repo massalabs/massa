@@ -253,18 +253,20 @@ pub(crate) fn get_datastore_entries(
     let filters: Vec<(Address, Vec<u8>)> = inner_req
         .filters
         .into_iter()
-        .filter_map(|filter| {
-            filter.filter.and_then(|filter| match filter {
+        .map(|filter| {
+            let filter = filter
+                .filter
+                .ok_or_else(|| GrpcError::InvalidArgument("no filter provided".to_string()))?;
+            match filter {
                 grpc_api::get_datastore_entry_filter::Filter::AddressKey(addrs) => {
-                    if let Ok(add) = &Address::from_str(&addrs.address) {
-                        Some((*add, addrs.key))
-                    } else {
-                        None
-                    }
+                    let add = Address::from_str(&addrs.address).map_err(|_| {
+                        GrpcError::InvalidArgument(format!("invalid address: {}", addrs.address))
+                    })?;
+                    Ok((add, addrs.key))
                 }
-            })
+            }
         })
-        .collect();
+        .collect::<Result<Vec<(Address, Vec<u8>)>, GrpcError>>()?;
 
     let entries = grpc
         .execution_controller
