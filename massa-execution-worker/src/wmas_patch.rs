@@ -35,14 +35,10 @@
 //! release ships, `wmas_bytecode.rs` MUST be regenerated from the reproducible,
 //! audited build of the deployed WMAS contract (it currently embeds a dev build)
 //! and the per-network `WMAS_ADDRESS_*` constants verified. The fail-safe in
-//! `execute_slot` only skips on an empty bytecode or an unparseable address, so
+//! `execute_slot` only skips on an unknown chain_id or missing contract, so
 //! a wrong-but-valid blob would still be applied.
 
-use massa_models::{
-    address::Address, bytecode::Bytecode, slot::Slot, timeslots::get_block_slot_timestamp,
-};
-use massa_time::MassaTime;
-use massa_versioning::versioning::{MipComponent, MipStore};
+use massa_models::{address::Address, bytecode::Bytecode};
 use std::str::FromStr;
 
 /// Execution component version at which the WMAS bytecode patch activates.
@@ -66,6 +62,12 @@ pub const WMAS_ADDRESS_BUILDNET: &str = "AS12FW5Rs5YN2zdpEnqwj4iHUUPt9R4Eqjq2qtp
 /// MIP.
 pub const PATCHED_WMAS_BYTECODE: &[u8] = crate::wmas_bytecode::PATCHED_WMAS_BYTECODE;
 
+// Some checks at compile time that should not be ignored!
+#[allow(clippy::const_is_empty)]
+const _: () = {
+    assert!(!PATCHED_WMAS_BYTECODE.is_empty());
+};
+
 /// Returns the WMAS address to patch for the network identified by `chain_id`,
 /// or `None` if the network has no known WMAS deployment (e.g. sandbox/labnet)
 /// or the address constant is malformed. Returning `None` rather than panicking
@@ -79,50 +81,7 @@ pub fn wmas_address(chain_id: u64) -> Option<Address> {
     Address::from_str(addr).ok()
 }
 
-/// Returns the patched WMAS bytecode, or `None` if it has not been embedded yet
-/// (fail-safe: never apply an empty bytecode).
-pub fn patched_wmas_bytecode() -> Option<Bytecode> {
-    if PATCHED_WMAS_BYTECODE.is_empty() {
-        return None;
-    }
-    Some(Bytecode(PATCHED_WMAS_BYTECODE.to_vec()))
-}
-
-/// Execution component version active at `slot`.
-fn execution_version_at_slot(
-    mip_store: &MipStore,
-    slot: &Slot,
-    thread_count: u8,
-    t0: MassaTime,
-    genesis_timestamp: MassaTime,
-) -> u32 {
-    let ts = get_block_slot_timestamp(thread_count, t0, genesis_timestamp, *slot)
-        .unwrap_or(genesis_timestamp);
-    mip_store.get_latest_component_version_at(&MipComponent::Execution, ts)
-}
-
-/// Returns `true` iff `slot` is the exact slot at which the WMAS patch must be
-/// applied: the first slot whose execution component version reaches
-/// [`WMAS_PATCH_EXEC_VERSION`]. Deterministic across all nodes, so it fires on
-/// exactly one slot network-wide.
-pub fn is_wmas_patch_activation_slot(
-    mip_store: &MipStore,
-    slot: &Slot,
-    thread_count: u8,
-    t0: MassaTime,
-    genesis_timestamp: MassaTime,
-) -> bool {
-    let current = execution_version_at_slot(mip_store, slot, thread_count, t0, genesis_timestamp);
-    if current < WMAS_PATCH_EXEC_VERSION {
-        return false;
-    }
-    // Only apply on the transition: the previous slot must be below the target.
-    match slot.get_prev_slot(thread_count) {
-        Ok(prev) => {
-            execution_version_at_slot(mip_store, &prev, thread_count, t0, genesis_timestamp)
-                < WMAS_PATCH_EXEC_VERSION
-        }
-        // No previous slot (genesis): treat as a transition.
-        Err(_) => true,
-    }
+/// Returns the patched WMAS bytecode.
+pub fn patched_wmas_bytecode() -> Bytecode {
+    Bytecode(PATCHED_WMAS_BYTECODE.to_vec())
 }
