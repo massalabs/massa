@@ -196,6 +196,20 @@ impl ModuleCache {
         condom_limits: CondomLimits,
     ) -> Result<RuntimeModule, CacheError> {
         debug!("load_tmp_module");
+        if bytecode.is_empty() {
+            let error_msg = "load_tmp_module: bytecode is absent".to_string();
+            debug!(error_msg);
+            return Err(CacheError::LoadError(error_msg));
+        }
+        if bytecode.len() > self.cfg.max_module_length as usize {
+            let error_msg = format!(
+                "load_tmp_module: bytecode length {} exceeds max module length {}",
+                bytecode.len(),
+                self.cfg.max_module_length
+            );
+            debug!(error_msg);
+            return Err(CacheError::LoadError(error_msg));
+        }
         // Do not actually debit the instance creation cost from the provided gas
         // This is only supposed to be a check
         limit
@@ -216,5 +230,52 @@ impl ModuleCache {
     /// Returns the memory usage of the LRU cache
     pub fn get_module_lru_cache_memory_usage(&self) -> usize {
         self.lru_cache.cache.memory_usage()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use massa_sc_runtime::GasCosts;
+    use tempfile::TempDir;
+
+    fn setup(max_module_length: u64) -> (ModuleCache, TempDir) {
+        let cache_dir = TempDir::new().unwrap();
+        let cache = ModuleCache::new(ModuleCacheConfig {
+            hd_cache_path: cache_dir.path().to_path_buf(),
+            gas_costs: GasCosts::default(),
+            lru_cache_size: 10,
+            hd_cache_size: 10,
+            snip_amount: 1,
+            max_module_length,
+            condom_limits: CondomLimits::default(),
+        });
+        (cache, cache_dir)
+    }
+
+    #[test]
+    fn test_load_tmp_module_rejects_empty_bytecode() {
+        let (cache, _cache_dir) = setup(4);
+
+        let result = cache.load_tmp_module(&[], u64::MAX, CondomLimits::default());
+
+        assert!(matches!(
+            result,
+            Err(CacheError::LoadError(error)) if error == "load_tmp_module: bytecode is absent"
+        ));
+    }
+
+    #[test]
+    fn test_load_tmp_module_rejects_oversized_bytecode() {
+        let (cache, _cache_dir) = setup(4);
+
+        // Invalid Wasm confirms the size check runs before RuntimeModule compilation.
+        let result = cache.load_tmp_module(&[0; 5], u64::MAX, CondomLimits::default());
+
+        assert!(matches!(
+            result,
+            Err(CacheError::LoadError(error))
+                if error == "load_tmp_module: bytecode length 5 exceeds max module length 4"
+        ));
     }
 }
