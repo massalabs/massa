@@ -51,6 +51,20 @@ impl TraceHistory {
         self.transfer_per_slot.peek(slot).cloned()
     }
 
+    /// Fetch both the ABI call stack and the direct transfers for a given slot in a single
+    /// borrow, so both are read from the same snapshot of the trace history (i.e. the same
+    /// slot execution). Prefer this over calling `fetch_traces_for_slot` and
+    /// `fetch_transfers_for_slot` separately when both are needed.
+    pub(crate) fn fetch_slot_traces_and_transfers(
+        &self,
+        slot: &Slot,
+    ) -> (Option<SlotAbiCallStack>, Option<Vec<Transfer>>) {
+        (
+            self.trace_per_slot.peek(slot).cloned(),
+            self.transfer_per_slot.peek(slot).cloned(),
+        )
+    }
+
     /// Fetch transfers for a given operation id
     pub(crate) fn fetch_transfer_for_op(&self, op_id: &OperationId) -> Option<Transfer> {
         self.op_per_slot
@@ -258,5 +272,45 @@ mod tests {
         assert!(history.fetch_transfer_for_op(&first_operation).is_none());
         assert!(history.fetch_traces_for_op(&second_operation).is_some());
         assert!(history.fetch_traces_for_op(&third_operation).is_some());
+    }
+
+    /// The combined fetch must return exactly the same data as the two separate fetches, so
+    /// that switching callers to it changes only the read atomicity, not the returned data.
+    #[test]
+    fn fetch_slot_traces_and_transfers_matches_separate_fetches() {
+        let mut history = TraceHistory::new(2, 2);
+        let slot = Slot::new(3, 1);
+        let operation = operation_id(1);
+
+        history.save_for_slot(slot, traces(slot, operation), vec![transfer(operation)]);
+
+        let (slot_traces, slot_transfers) = history.fetch_slot_traces_and_transfers(&slot);
+
+        // Both datasets are present and come from the requested slot.
+        assert_eq!(slot_traces.as_ref().map(|t| t.slot), Some(slot));
+        assert_eq!(
+            slot_transfers.as_ref().map(|t| t[0].op_id),
+            Some(operation)
+        );
+
+        // Equivalent to reading each dataset separately.
+        assert_eq!(
+            slot_traces.map(|t| t.slot),
+            history.fetch_traces_for_slot(&slot).map(|t| t.slot)
+        );
+        assert_eq!(
+            slot_transfers.map(|t| t.len()),
+            history.fetch_transfers_for_slot(&slot).map(|t| t.len())
+        );
+    }
+
+    /// A slot with no recorded traces/transfers yields `(None, None)`.
+    #[test]
+    fn fetch_slot_traces_and_transfers_missing_slot() {
+        let history = TraceHistory::new(2, 2);
+        let (slot_traces, slot_transfers) =
+            history.fetch_slot_traces_and_transfers(&Slot::new(7, 0));
+        assert!(slot_traces.is_none());
+        assert!(slot_transfers.is_none());
     }
 }

@@ -139,10 +139,13 @@ impl MassaRpcServer for API<Public> {
                 continue;
             };
             let mut transfers = Vec::new();
-            let abi_calls = self
+            // Read the ABI call stack and the direct transfers for this slot from a single
+            // consistent snapshot, so the combined response cannot mix data from two
+            // different executions of the same slot (a re-execution between two reads).
+            let (abi_calls, slot_transfers) = self
                 .0
                 .execution_controller
-                .get_slot_abi_call_stack(slot.clone().into());
+                .get_slot_abi_call_stack_and_transfers(slot);
             if let Some(abi_calls) = abi_calls {
                 // flatten & filter transfer trace in asc_call_stacks
 
@@ -221,10 +224,7 @@ impl MassaRpcServer for API<Public> {
                     }
                 }
             }
-            let transfers_op: Vec<Transfer> = self
-                .0
-                .execution_controller
-                .get_transfers_for_slot(slot)
+            let transfers_op: Vec<Transfer> = slot_transfers
                 .unwrap_or_default()
                 .iter()
                 .map(|t| Transfer {
