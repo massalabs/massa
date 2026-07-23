@@ -469,19 +469,6 @@
 <a href="#469" id="469">469</a>
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::net::IpAddr;
@@ -500,7 +487,6 @@
 <span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, PeerId};
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>tracing::warn;
 <span class="comment">// use massa_proto_rs::massa::model::v1 "add_to_bootstrap_blacklist"as grpc_model;
 
 </span><span class="doccomment">/// Add IP addresses to node bootstrap blacklist
@@ -513,19 +499,16 @@
     <span class="kw">let </span>ips = inner_req
         .ips
         .into_iter()
-        .filter_map(|ip| <span class="kw">match </span>IpAddr::from_str(<span class="kw-2">&amp;</span>ip) {
-            <span class="prelude-val">Ok</span>(ip_addr) =&gt; <span class="prelude-val">Some</span>(ip_addr),
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">"error when parsing address : {}"</span>, e);
-                <span class="prelude-val">None
-            </span>}
+        .map(|ip| {
+            IpAddr::from_str(<span class="kw-2">&amp;</span>ip)
+                .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid ip address: {}"</span>, ip)))
         })
-        .collect();
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(bs_list) = <span class="kw-2">&amp;</span>grpc.bs_white_black_list {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = bs_list.add_ips_to_blacklist(ips) {
-            <span class="macro">warn!</span>(<span class="string">"error when adding ips to bootstrap blacklist : {}"</span>, e)
-        }
+        bs_list
+            .add_ips_to_blacklist(ips)
+            .map_err(|e| GrpcError::InternalServerError(e.to_string()))<span class="question-mark">?</span>;
     }
 
     <span class="prelude-val">Ok</span>(grpc_api::AddToBootstrapBlacklistResponse {})
@@ -540,19 +523,16 @@
     <span class="kw">let </span>ips = inner_req
         .ips
         .into_iter()
-        .filter_map(|ip| <span class="kw">match </span>IpAddr::from_str(<span class="kw-2">&amp;</span>ip) {
-            <span class="prelude-val">Ok</span>(ip_addr) =&gt; <span class="prelude-val">Some</span>(ip_addr),
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">"error when parsing address : {}"</span>, e);
-                <span class="prelude-val">None
-            </span>}
+        .map(|ip| {
+            IpAddr::from_str(<span class="kw-2">&amp;</span>ip)
+                .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid ip address: {}"</span>, ip)))
         })
-        .collect();
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(bs_list) = <span class="kw-2">&amp;</span>grpc.bs_white_black_list {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = bs_list.add_ips_to_whitelist(ips) {
-            <span class="macro">warn!</span>(<span class="string">"error when adding ips to bootstrap whitelist : {}"</span>, e)
-        }
+        bs_list
+            .add_ips_to_whitelist(ips)
+            .map_err(|e| GrpcError::InternalServerError(e.to_string()))<span class="question-mark">?</span>;
     }
 
     <span class="prelude-val">Ok</span>(grpc_api::AddToBootstrapWhitelistResponse {})
@@ -822,19 +802,16 @@
     <span class="kw">let </span>ips = inner_req
         .ips
         .into_iter()
-        .filter_map(|ip| <span class="kw">match </span>IpAddr::from_str(<span class="kw-2">&amp;</span>ip) {
-            <span class="prelude-val">Ok</span>(ip_addr) =&gt; <span class="prelude-val">Some</span>(ip_addr),
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">"error when parsing address : {}"</span>, e);
-                <span class="prelude-val">None
-            </span>}
+        .map(|ip| {
+            IpAddr::from_str(<span class="kw-2">&amp;</span>ip)
+                .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid ip address: {}"</span>, ip)))
         })
-        .collect();
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(bs_list) = <span class="kw-2">&amp;</span>grpc.bs_white_black_list {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = bs_list.remove_ips_from_blacklist(ips) {
-            <span class="macro">warn!</span>(<span class="string">"error when removing ips to bootstrap blacklist : {}"</span>, e)
-        }
+        bs_list
+            .remove_ips_from_blacklist(ips)
+            .map_err(|e| GrpcError::InternalServerError(e.to_string()))<span class="question-mark">?</span>;
     }
 
     <span class="prelude-val">Ok</span>(grpc_api::RemoveFromBootstrapBlacklistResponse {})
@@ -848,19 +825,16 @@
     <span class="kw">let </span>ips = inner_req
         .ips
         .into_iter()
-        .filter_map(|ip| <span class="kw">match </span>IpAddr::from_str(<span class="kw-2">&amp;</span>ip) {
-            <span class="prelude-val">Ok</span>(ip_addr) =&gt; <span class="prelude-val">Some</span>(ip_addr),
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">"error when parsing address : {}"</span>, e);
-                <span class="prelude-val">None
-            </span>}
+        .map(|ip| {
+            IpAddr::from_str(<span class="kw-2">&amp;</span>ip)
+                .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid ip address: {}"</span>, ip)))
         })
-        .collect();
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(bs_list) = <span class="kw-2">&amp;</span>grpc.bs_white_black_list {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = bs_list.remove_ips_from_whitelist(ips) {
-            <span class="macro">warn!</span>(<span class="string">"error when removing ips to bootstrap whitelist : {}"</span>, e)
-        }
+        bs_list
+            .remove_ips_from_whitelist(ips)
+            .map_err(|e| GrpcError::InternalServerError(e.to_string()))<span class="question-mark">?</span>;
     }
 
     <span class="prelude-val">Ok</span>(grpc_api::RemoveFromBootstrapWhitelistResponse {})
