@@ -96,18 +96,6 @@ pub(crate) fn execute_read_only_call(
             }
             read_only_execution_call::Target::FunctionCall(call) => {
                 let target_address = Address::from_str(&call.target_address)?;
-                call_stack.push(ExecutionStackElement {
-                    address: caller_address,
-                    coins: Default::default(),
-                    owned_addresses: vec![caller_address],
-                    operation_datastore: None, // should always be None
-                });
-                call_stack.push(ExecutionStackElement {
-                    address: target_address,
-                    coins: Default::default(),
-                    owned_addresses: vec![target_address],
-                    operation_datastore: None, // should always be None
-                });
 
                 coins = call
                     .coins
@@ -116,6 +104,21 @@ pub(crate) fn execute_read_only_call(
                             .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
                     })
                     .transpose()?;
+
+                call_stack.push(ExecutionStackElement {
+                    address: caller_address,
+                    coins: Default::default(),
+                    owned_addresses: vec![caller_address],
+                    operation_datastore: None, // should always be None
+                });
+                // propagate the request-provided coins to the target stack element
+                // so that get_call_coins matches the JSON-RPC behavior
+                call_stack.push(ExecutionStackElement {
+                    address: target_address,
+                    coins: coins.unwrap_or_default(),
+                    owned_addresses: vec![target_address],
+                    operation_datastore: None, // should always be None
+                });
 
                 ReadOnlyExecutionTarget::FunctionCall {
                     target_addr: Address::from_str(&call.target_address)?,
