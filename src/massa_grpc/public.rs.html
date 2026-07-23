@@ -2102,12 +2102,9 @@
             slot: slot.clone().into(),
             transfers: <span class="macro">vec!</span>[],
         };
-        <span class="comment">// Read the ABI call stack and the direct transfers for this slot from a single
-        // consistent snapshot, so the combined response cannot mix data from two different
-        // executions of the same slot (a re-execution between two separate reads).
-        </span><span class="kw">let </span>(abi_calls, direct_transfers) = grpc
+        <span class="kw">let </span>abi_calls = grpc
             .execution_controller
-            .get_slot_abi_call_stack_and_transfers(slot.clone().into());
+            .get_slot_abi_call_stack(slot.clone().into());
         <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
             <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
 
@@ -2154,7 +2151,10 @@
             }
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(transfers) = direct_transfers {
+        <span class="kw">let </span>transfers = grpc
+            .execution_controller
+            .get_transfers_for_slot(slot.into());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(transfers) = transfers {
             <span class="kw">for </span>transfer <span class="kw">in </span>transfers {
                 slot_transfers.transfers.push(TransferInfo {
                     from: transfer.from.to_string(),

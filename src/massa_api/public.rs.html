@@ -1809,13 +1809,10 @@
                 <span class="kw">continue</span>;
             };
             <span class="kw">let </span><span class="kw-2">mut </span>transfers = Vec::new();
-            <span class="comment">// Read the ABI call stack and the direct transfers for this slot from a single
-            // consistent snapshot, so the combined response cannot mix data from two
-            // different executions of the same slot (a re-execution between two reads).
-            </span><span class="kw">let </span>(abi_calls, slot_transfers) = <span class="self">self
+            <span class="kw">let </span>abi_calls = <span class="self">self
                 </span>.<span class="number">0
                 </span>.execution_controller
-                .get_slot_abi_call_stack_and_transfers(slot);
+                .get_slot_abi_call_stack(slot.clone().into());
             <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
                 <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
 
@@ -1894,7 +1891,10 @@
                     }
                 }
             }
-            <span class="kw">let </span>transfers_op: Vec&lt;Transfer&gt; = slot_transfers
+            <span class="kw">let </span>transfers_op: Vec&lt;Transfer&gt; = <span class="self">self
+                </span>.<span class="number">0
+                </span>.execution_controller
+                .get_transfers_for_slot(slot)
                 .unwrap_or_default()
                 .iter()
                 .map(|t| Transfer {
