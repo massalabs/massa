@@ -126,7 +126,7 @@ impl LedgerData {
     }
 
     /// apply a `LedgerChange` for an entry
-    /// Can fail in overflow or underflow occur
+    /// Can fail if an overflow or underflow occurs
     pub fn apply_change(&mut self, change: &LedgerChange) -> Result<()> {
         if change.balance_increment {
             self.balance = self
@@ -143,7 +143,7 @@ impl LedgerData {
                 .checked_sub(change.balance_delta)
                 .ok_or_else(|| {
                     ModelsError::InvalidLedgerChange(
-                        "balance overflow in LedgerData::apply_change".into(),
+                        "balance underflow in LedgerData::apply_change".into(),
                     )
                 })?;
         }
@@ -494,5 +494,27 @@ impl LedgerChanges {
                 })
                 .collect(),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn apply_change_reports_balance_underflow() {
+        let mut ledger_data = LedgerData::new(Amount::zero());
+        let change = LedgerChange {
+            balance_delta: Amount::from_raw(1),
+            balance_increment: false,
+        };
+
+        let error = ledger_data.apply_change(&change).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ModelsError::InvalidLedgerChange(message)
+                if message == "balance underflow in LedgerData::apply_change"
+        ));
     }
 }
