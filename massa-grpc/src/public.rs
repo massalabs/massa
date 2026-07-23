@@ -544,9 +544,12 @@ pub(crate) fn get_slot_transfers(
             slot: slot.clone().into(),
             transfers: vec![],
         };
-        let abi_calls = grpc
+        // Read the ABI call stack and the direct transfers for this slot from a single
+        // consistent snapshot, so the combined response cannot mix data from two different
+        // executions of the same slot (a re-execution between two separate reads).
+        let (abi_calls, direct_transfers) = grpc
             .execution_controller
-            .get_slot_abi_call_stack(slot.clone().into());
+            .get_slot_abi_call_stack_and_transfers(slot.clone().into());
         if let Some(abi_calls) = abi_calls {
             // flatten & filter transfer trace in asc_call_stacks
 
@@ -593,10 +596,7 @@ pub(crate) fn get_slot_transfers(
             }
         }
 
-        let transfers = grpc
-            .execution_controller
-            .get_transfers_for_slot(slot.into());
-        if let Some(transfers) = transfers {
+        if let Some(transfers) = direct_transfers {
             for transfer in transfers {
                 slot_transfers.transfers.push(TransferInfo {
                     from: transfer.from.to_string(),
