@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["BUILDNET_CHAIN_ID","MAINNET_CHAIN_ID","PATCHED_WMAS_BYTECODE","WMAS_ADDRESS_BUILDNET","WMAS_ADDRESS_MAINNET","WMAS_PATCH_EXEC_VERSION"],"fn":["execution_version_at_slot","is_wmas_patch_activation_slot","patched_wmas_bytecode","wmas_address"]};
