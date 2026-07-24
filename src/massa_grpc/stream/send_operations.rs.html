@@ -238,6 +238,21 @@
 <a href="#238" id="238">238</a>
 <a href="#239" id="239">239</a>
 <a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -381,12 +396,10 @@
                                     <span class="kw">let </span><span class="kw-2">mut </span>operation_storage = storage.clone_without_refs();
                                     operation_storage
                                         .store_operations(verified_ops.values().cloned().collect());
-                                    <span class="comment">// Add the received operations to the operations pool
-                                    </span>pool_controller.add_operations(operation_storage.clone());
-
-                                    <span class="comment">// Propagate the operations to the network
-                                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) =
-                                        protocol_controller.propagate_operations(operation_storage)
+                                    <span class="comment">// Propagate the operations to the network before admitting
+                                    // them into the local pool (same order as the JSON-RPC API)
+                                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = protocol_controller
+                                        .propagate_operations(operation_storage.clone())
                                     {
                                         <span class="comment">// If propagation failed, send an error message back to the client
                                         </span><span class="kw">let </span>error =
@@ -397,6 +410,23 @@
                                             error.to_owned(),
                                         )
                                         .<span class="kw">await</span>;
+                                        <span class="kw">continue</span>;
+                                    };
+
+                                    <span class="comment">// Add the received operations to the operations pool
+                                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) =
+                                        pool_controller.add_operations(operation_storage)
+                                    {
+                                        <span class="comment">// If pool admission failed, send an error message back to the client
+                                        </span><span class="kw">let </span>error =
+                                            <span class="macro">format!</span>(<span class="string">"failed to add operations to pool: {}"</span>, e);
+                                        report_error(
+                                            tx.clone(),
+                                            tonic::Code::Internal,
+                                            error.to_owned(),
+                                        )
+                                        .<span class="kw">await</span>;
+                                        <span class="kw">continue</span>;
                                     };
 
                                     <span class="comment">// Build the response message

@@ -1668,6 +1668,14 @@
 <a href="#1668" id="1668">1668</a>
 <a href="#1669" id="1669">1669</a>
 <a href="#1670" id="1670">1670</a>
+<a href="#1671" id="1671">1671</a>
+<a href="#1672" id="1672">1672</a>
+<a href="#1673" id="1673">1673</a>
+<a href="#1674" id="1674">1674</a>
+<a href="#1675" id="1675">1675</a>
+<a href="#1676" id="1676">1676</a>
+<a href="#1677" id="1677">1677</a>
+<a href="#1678" id="1678">1678</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -3113,14 +3121,22 @@
 
         to_send.store_operations(verified_ops.clone());
         <span class="kw">let </span>ids: Vec&lt;OperationId&gt; = verified_ops.iter().map(|op| op.id).collect();
-        cmd_sender.add_operations(to_send.clone());
 
-        tokio::task::spawn_blocking(<span class="kw">move </span>|| protocol_sender.propagate_operations(to_send))
+        <span class="comment">// propagate the operations before admitting them into the local pool,
+        // so that an error returned by this method means the operations were
+        // neither propagated nor queued locally
+        </span><span class="kw">let </span>to_propagate = to_send.clone();
+        tokio::task::spawn_blocking(<span class="kw">move </span>|| protocol_sender.propagate_operations(to_propagate))
             .<span class="kw">await
             </span>.map_err(|err| ApiError::InternalServerError(err.to_string()))<span class="question-mark">?
             </span>.map_err(|err| {
                 ApiError::InternalServerError(<span class="macro">format!</span>(<span class="string">"Failed to propagate operations: {}"</span>, err))
             })<span class="question-mark">?</span>;
+
+        cmd_sender.add_operations(to_send).map_err(|err| {
+            ApiError::InternalServerError(<span class="macro">format!</span>(<span class="string">"Failed to add operations to pool: {}"</span>, err))
+        })<span class="question-mark">?</span>;
+
         <span class="prelude-val">Ok</span>(ids)
     }
 

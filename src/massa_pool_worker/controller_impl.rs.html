@@ -346,6 +346,13 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Pool controller implementation
@@ -404,19 +411,26 @@
 }
 
 <span class="kw">impl </span>PoolController <span class="kw">for </span>PoolControllerImpl {
-    <span class="doccomment">/// Asynchronously add operations to pool. Simply print a warning on failure.
-    </span><span class="kw">fn </span>add_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ops: Storage) {
+    <span class="doccomment">/// Asynchronously add operations to pool.
+    /// Returns an error if the operations could not be queued for insertion.
+    </span><span class="kw">fn </span>add_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ops: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
         <span class="kw">match </span><span class="self">self
             </span>.operations_input_sender
             .try_send(Command::AddItems(ops))
         {
             <span class="prelude-val">Err</span>(TrySendError::Disconnected(<span class="kw">_</span>)) =&gt; {
                 <span class="macro">warn!</span>(<span class="string">"Could not add operations to pool: worker is unreachable."</span>);
+                <span class="prelude-val">Err</span>(PoolError::ChannelError(
+                    <span class="string">"could not add operations to pool: worker is unreachable"</span>.into(),
+                ))
             }
             <span class="prelude-val">Err</span>(TrySendError::Full(<span class="kw">_</span>)) =&gt; {
                 <span class="macro">warn!</span>(<span class="string">"Could not add operations to pool: worker channel is full."</span>);
+                <span class="prelude-val">Err</span>(PoolError::ChannelError(
+                    <span class="string">"could not add operations to pool: worker channel is full"</span>.into(),
+                ))
             }
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }
 
