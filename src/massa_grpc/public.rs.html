@@ -1558,6 +1558,9 @@
 <a href="#1558" id="1558">1558</a>
 <a href="#1559" id="1559">1559</a>
 <a href="#1560" id="1560">1560</a>
+<a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1656,18 +1659,6 @@
             }
             read_only_execution_call::Target::FunctionCall(call) =&gt; {
                 <span class="kw">let </span>target_address = Address::from_str(<span class="kw-2">&amp;</span>call.target_address)<span class="question-mark">?</span>;
-                call_stack.push(ExecutionStackElement {
-                    address: caller_address,
-                    coins: Default::default(),
-                    owned_addresses: <span class="macro">vec!</span>[caller_address],
-                    operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// should always be None
-                </span>});
-                call_stack.push(ExecutionStackElement {
-                    address: target_address,
-                    coins: Default::default(),
-                    owned_addresses: <span class="macro">vec!</span>[target_address],
-                    operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// should always be None
-                </span>});
 
                 coins = call
                     .coins
@@ -1676,6 +1667,21 @@
                             .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="string">"invalid amount"</span>.to_string()))
                     })
                     .transpose()<span class="question-mark">?</span>;
+
+                call_stack.push(ExecutionStackElement {
+                    address: caller_address,
+                    coins: Default::default(),
+                    owned_addresses: <span class="macro">vec!</span>[caller_address],
+                    operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// should always be None
+                </span>});
+                <span class="comment">// propagate the request-provided coins to the target stack element
+                // so that get_call_coins matches the JSON-RPC behavior
+                </span>call_stack.push(ExecutionStackElement {
+                    address: target_address,
+                    coins: coins.unwrap_or_default(),
+                    owned_addresses: <span class="macro">vec!</span>[target_address],
+                    operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// should always be None
+                </span>});
 
                 ReadOnlyExecutionTarget::FunctionCall {
                     target_addr: Address::from_str(<span class="kw-2">&amp;</span>call.target_address)<span class="question-mark">?</span>,
