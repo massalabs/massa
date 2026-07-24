@@ -228,13 +228,6 @@ impl FinalState {
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
         self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
-
-        let mut batch = DBBatch::new();
-
-        self.pos_state
             .create_new_cycle_from_last(
                 &latest_snapshot_cycle_info,
                 current_slot
@@ -285,11 +278,6 @@ impl FinalState {
             self.pos_state
                 .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-            self.pos_state
-                .db
-                .write()
-                .write_batch(batch, Default::default(), Some(end_slot));
-
             let last_slot = Slot::new_last_of_cycle(
                 current_slot_cycle,
                 self.config.periods_per_cycle,
@@ -301,8 +289,6 @@ impl FinalState {
                     err
                 ))
             })?;
-
-            let mut batch = DBBatch::new();
 
             self.pos_state
                 .create_new_cycle_from_last(
@@ -318,7 +304,7 @@ impl FinalState {
             self.pos_state
                 .db
                 .write()
-                .write_batch(batch, Default::default(), Some(end_slot));
+                .write_batch(batch, Default::default(), Some(last_slot));
 
             // Feed final_state_hash to the completed cycle
             self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
@@ -365,7 +351,7 @@ impl FinalState {
             self.pos_state
                 .db
                 .write()
-                .write_batch(batch, Default::default(), Some(end_slot));
+                .write_batch(batch, Default::default(), Some(last_slot));
 
             // Feed final_state_hash to the completed cycle
             self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
