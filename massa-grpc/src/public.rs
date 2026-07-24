@@ -850,7 +850,7 @@ pub(crate) fn get_selector_draws(
                 }
                 grpc_api::selector_draws_filter::Filter::SlotRange(s_range) => {
                     let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
-                    if slot_ranges.len() as u32 > grpc.grpc_config.max_slot_ranges_per_request {
+                    if slot_ranges.len() as u32 >= grpc.grpc_config.max_slot_ranges_per_request {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
                             grpc.grpc_config.max_slot_ranges_per_request
@@ -1105,7 +1105,7 @@ pub(crate) fn search_blocks(
                 }
                 grpc_api::search_blocks_filter::Filter::SlotRange(s_range) => {
                     let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
-                    if slot_ranges.len() as u32 > grpc.grpc_config.max_slot_ranges_per_request {
+                    if slot_ranges.len() as u32 >= grpc.grpc_config.max_slot_ranges_per_request {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
                             grpc.grpc_config.max_slot_ranges_per_request
