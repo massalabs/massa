@@ -17,11 +17,13 @@ use massa_models::{
     types::{SetOrKeep, SetUpdateOrDelete},
 };
 use massa_pool_exports::MockPoolController;
+#[cfg(feature = "execution-trace")]
+use massa_proto_rs::massa::api::v1::NewSlotTransfersRequest;
 use massa_proto_rs::massa::{
     api::v1::{
         public_service_client::PublicServiceClient, NewBlocksRequest, NewFilledBlocksRequest,
-        NewOperationsRequest, NewSlotExecutionOutputsRequest, NewSlotTransfersRequest,
-        SendEndorsementsRequest, SendOperationsRequest, TransactionsThroughputRequest,
+        NewOperationsRequest, NewSlotExecutionOutputsRequest, SendEndorsementsRequest,
+        SendOperationsRequest, TransactionsThroughputRequest,
     },
     model::v1::{Addresses, Slot as ProtoSlot, SlotRange},
 };
