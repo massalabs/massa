@@ -509,6 +509,8 @@
 <a href="#509" id="509">509</a>
 <a href="#510" id="510">510</a>
 <a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -973,7 +975,9 @@
         }
 
         <span class="comment">// Add to pool
-        </span>pool_controller.add_operations(ops);
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = pool_controller.add_operations(ops) {
+            <span class="macro">warn!</span>(<span class="string">"Error adding operations to pool: {}"</span>, err);
+        }
     }
 
     <span class="prelude-val">Ok</span>(())
