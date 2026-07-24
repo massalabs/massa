@@ -169,6 +169,7 @@ fn operation_workflow_mock(
                                     assert!(storage_operations.contains(&op.id));
                                 }
                                 waitpoint_trigger_handle.trigger();
+                                Ok(())
                             });
                     });
             }

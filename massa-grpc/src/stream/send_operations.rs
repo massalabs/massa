@@ -142,7 +142,19 @@ pub(crate) async fn send_operations(
                                     operation_storage
                                         .store_operations(verified_ops.values().cloned().collect());
                                     // Add the received operations to the operations pool
-                                    pool_controller.add_operations(operation_storage.clone());
+                                    if let Err(e) =
+                                        pool_controller.add_operations(operation_storage.clone())
+                                    {
+                                        // If pool admission failed, send an error message back to the client
+                                        let error =
+                                            format!("failed to add operations to pool: {}", e);
+                                        report_error(
+                                            tx.clone(),
+                                            tonic::Code::Internal,
+                                            error.to_owned(),
+                                        )
+                                        .await;
+                                    };
 
                                     // Propagate the operations to the network
                                     if let Err(e) =

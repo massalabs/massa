@@ -1400,7 +1400,7 @@ async fn send_operations_low_fee() {
     pool_ctrl.expect_clone_box().returning(|| {
         let mut pool_ctrl = Box::new(MockPoolController::new());
 
-        pool_ctrl.expect_add_operations().returning(|_| ());
+        pool_ctrl.expect_add_operations().returning(|_| Ok(()));
 
         pool_ctrl
     });
@@ -1480,7 +1480,7 @@ async fn send_operations() {
     pool_ctrl.expect_clone_box().returning(|| {
         let mut pool_ctrl = Box::new(MockPoolController::new());
 
-        pool_ctrl.expect_add_operations().returning(|_| ());
+        pool_ctrl.expect_add_operations().returning(|_| Ok(()));
 
         pool_ctrl
     });

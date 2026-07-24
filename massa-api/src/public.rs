@@ -1443,14 +1443,22 @@ impl MassaRpcServer for API<Public> {
 
         to_send.store_operations(verified_ops.clone());
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
-        cmd_sender.add_operations(to_send.clone());
 
-        tokio::task::spawn_blocking(move || protocol_sender.propagate_operations(to_send))
+        // propagate the operations before admitting them into the local pool,
+        // so that an error returned by this method means the operations were
+        // neither propagated nor queued locally
+        let to_propagate = to_send.clone();
+        tokio::task::spawn_blocking(move || protocol_sender.propagate_operations(to_propagate))
             .await
             .map_err(|err| ApiError::InternalServerError(err.to_string()))?
             .map_err(|err| {
                 ApiError::InternalServerError(format!("Failed to propagate operations: {}", err))
             })?;
+
+        cmd_sender.add_operations(to_send).map_err(|err| {
+            ApiError::InternalServerError(format!("Failed to add operations to pool: {}", err))
+        })?;
+
         Ok(ids)
     }
 
