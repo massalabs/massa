@@ -183,6 +183,20 @@
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::pin::Pin;
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
@@ -228,16 +242,30 @@
     tokio::spawn({
         <span class="kw">let </span>execution_controller = grpc.execution_controller.clone();
         <span class="kw">async move </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>finality = FinalityLevel::Unspecified;
+            <span class="comment">// Issue #5066: standardize startup with `new_slot_execution_outputs` by waiting
+            // for the client's first request before emitting anything, so the default filter
+            // is applied only once the client has had a chance to configure it and this stream
+            // never emits data under an implicit default.
+            </span><span class="kw">let </span><span class="kw-2">mut </span>finality = <span class="kw">match </span>in_stream.next().<span class="kw">await </span>{
+                <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(first)) =&gt; first.finality_level(),
+                <span class="comment">// No usable initial request (error or client disconnected): stream nothing.
+                </span><span class="kw">_ </span>=&gt; {
+                    <span class="macro">error!</span>(<span class="string">"empty request"</span>);
+                    <span class="kw">return</span>;
+                }
+            };
             <span class="kw">loop </span>{
                 <span class="macro">select!</span> {
                     <span class="comment">// Receive a new slot execution traces from the subscriber
                     </span>event = subscriber.recv() =&gt; {
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>((massa_slot_execution_trace, is_final)) =&gt; {
-                                <span class="kw">if </span>(finality == FinalityLevel::Final &amp;&amp; !is_final) ||
-                                    (finality == FinalityLevel::Candidate &amp;&amp; is_final) ||
-                                    (finality == FinalityLevel::Unspecified &amp;&amp; !is_final) {
+                                <span class="comment">// A `FinalityLevel::Unspecified` finality level (the default,
+                                // e.g. when the client sends no explicit level) accepts BOTH
+                                // candidate and final transfers, matching the default filter of
+                                // `FilterNewSlotExec` used by `new_slot_execution_outputs`.
+                                </span><span class="kw">if </span>(finality == FinalityLevel::Final &amp;&amp; !is_final) ||
+                                    (finality == FinalityLevel::Candidate &amp;&amp; is_final) {
                                     <span class="kw">continue</span>;
                                 }
                                 <span class="kw">let </span><span class="kw-2">mut </span>ret_transfers = Vec::new();
