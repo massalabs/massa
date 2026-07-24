@@ -462,7 +462,9 @@ pub(crate) fn note_operations_from_peer(
         }
 
         // Add to pool
-        pool_controller.add_operations(ops);
+        if let Err(err) = pool_controller.add_operations(ops) {
+            warn!("Error adding operations to pool: {}", err);
+        }
     }
 
     Ok(())

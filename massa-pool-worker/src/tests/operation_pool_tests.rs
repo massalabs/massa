@@ -77,7 +77,7 @@ fn test_add_operation() {
         |mut operation_pool, mut storage| {
             let op_gen = OpGenerator::default().expirery(2);
             storage.store_operations(create_some_operations(10, &op_gen));
-            operation_pool.add_operations(storage);
+            operation_pool.add_operations(storage).unwrap();
             // Allow some time for the pool to add the operations
             std::thread::sleep(Duration::from_secs(3));
             assert_eq!(
@@ -109,7 +109,7 @@ fn test_add_irrelevant_operation() {
             let op_gen = OpGenerator::default().expirery(2);
             storage.store_operations(create_some_operations(10, &op_gen));
             operation_pool.notify_final_cs_periods(&vec![51; thread_count.into()]);
-            operation_pool.add_operations(storage);
+            operation_pool.add_operations(storage).unwrap();
             // Allow some time for the pool to add the operations
             std::thread::sleep(Duration::from_secs(3));
             assert_eq!(
@@ -159,7 +159,7 @@ fn test_pool() {
         thread_tx_lists[op_thread as usize].push((op, start_period..=expire_period));
     }
 
-    pool_controller.add_operations(storage);
+    pool_controller.add_operations(storage).unwrap();
     std::thread::sleep(Duration::from_secs(3));
     // // sort from bigger fee to smaller and truncate
     for lst in thread_tx_lists.iter_mut() {
