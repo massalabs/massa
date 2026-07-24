@@ -43,16 +43,30 @@ pub(crate) async fn new_slot_transfers(
     tokio::spawn({
         let execution_controller = grpc.execution_controller.clone();
         async move {
-            let mut finality = FinalityLevel::Unspecified;
+            // Issue #5066: standardize startup with `new_slot_execution_outputs` by waiting
+            // for the client's first request before emitting anything, so the default filter
+            // is applied only once the client has had a chance to configure it and this stream
+            // never emits data under an implicit default.
+            let mut finality = match in_stream.next().await {
+                Some(Ok(first)) => first.finality_level(),
+                // No usable initial request (error or client disconnected): stream nothing.
+                _ => {
+                    error!("empty request");
+                    return;
+                }
+            };
             loop {
                 select! {
                     // Receive a new slot execution traces from the subscriber
                     event = subscriber.recv() => {
                         match event {
                             Ok((massa_slot_execution_trace, is_final)) => {
+                                // A `FinalityLevel::Unspecified` finality level (the default,
+                                // e.g. when the client sends no explicit level) accepts BOTH
+                                // candidate and final transfers, matching the default filter of
+                                // `FilterNewSlotExec` used by `new_slot_execution_outputs`.
                                 if (finality == FinalityLevel::Final && !is_final) ||
-                                    (finality == FinalityLevel::Candidate && is_final) ||
-                                    (finality == FinalityLevel::Unspecified && !is_final) {
+                                    (finality == FinalityLevel::Candidate && is_final) {
                                     continue;
                                 }
                                 let mut ret_transfers = Vec::new();

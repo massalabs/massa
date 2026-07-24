@@ -3,6 +3,8 @@
 use crate::tests::mock::grpc_public_service;
 use core::panic;
 use massa_consensus_exports::MockConsensusController;
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::SlotAbiCallStack;
 use massa_execution_exports::{ExecutionOutput, MockExecutionController, SlotExecutionOutput};
 use massa_models::{
     address::Address,
@@ -18,8 +20,8 @@ use massa_pool_exports::MockPoolController;
 use massa_proto_rs::massa::{
     api::v1::{
         public_service_client::PublicServiceClient, NewBlocksRequest, NewFilledBlocksRequest,
-        NewOperationsRequest, NewSlotExecutionOutputsRequest, SendEndorsementsRequest,
-        SendOperationsRequest, TransactionsThroughputRequest,
+        NewOperationsRequest, NewSlotExecutionOutputsRequest, NewSlotTransfersRequest,
+        SendEndorsementsRequest, SendOperationsRequest, TransactionsThroughputRequest,
     },
     model::v1::{Addresses, Slot as ProtoSlot, SlotRange},
 };
@@ -1824,6 +1826,87 @@ async fn send_blocks() {
     // secured_block.content.header.verify_signature().unwrap();
 
     // secured_block.verify_signature().unwrap();
+
+    stop_handle.stop();
+}
+
+// Regression test for issue #5066: new_slot_transfers must match new_slot_execution_outputs
+// startup behavior — it waits for the client's first request before emitting anything, and its
+// default finality level (Unspecified) accepts BOTH candidate and final transfers.
+#[cfg(feature = "execution-trace")]
+#[tokio::test]
+async fn new_slot_transfers_default_finality() {
+    let addr: SocketAddr = "[::]:4033".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
+    let config = public_server.grpc_config.clone();
+
+    let (trace_tx, _trace_rx) = tokio::sync::broadcast::channel(10);
+    public_server
+        .execution_channels
+        .slot_execution_traces_sender = trace_tx.clone();
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+
+    // An empty call stack still yields a (transfer-less) response once it passes the finality
+    // filter, which is all we need to observe startup and default-finality behavior.
+    let empty_trace = |slot| SlotAbiCallStack {
+        slot,
+        asc_call_stacks: vec![],
+        deferred_call_stacks: Default::default(),
+        operation_call_stacks: Default::default(),
+    };
+
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').last().unwrap()
+    ))
+    .await
+    .unwrap();
+
+    let (tx_request, rx) = tokio::sync::mpsc::channel(10);
+    let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+    let mut resp_stream = public_client
+        .new_slot_transfers(request_stream)
+        .await
+        .unwrap()
+        .into_inner();
+
+    // Emit a FINAL trace before the client has sent any request. The stream must NOT emit it yet
+    // (it waits for the first request). Before the fix it would be sent immediately.
+    trace_tx.send((empty_trace(Slot::new(1, 0)), true)).unwrap();
+    assert!(
+        tokio::time::timeout(Duration::from_millis(300), resp_stream.next())
+            .await
+            .is_err(),
+        "stream emitted data before the client's first request"
+    );
+
+    // Send an empty request => finality level Unspecified (the default).
+    tx_request
+        .send(NewSlotTransfersRequest { finality_level: 0 })
+        .await
+        .unwrap();
+
+    // The buffered final trace is now delivered (Unspecified accepts final).
+    let final_resp = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .expect("no final transfer response under default finality")
+        .unwrap()
+        .unwrap();
+    assert_eq!(final_resp.slot, Some(Slot::new(1, 0).into()));
+
+    // A CANDIDATE (non-final) trace must ALSO be delivered under the default. Before the fix
+    // Unspecified meant final-only and this would time out.
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    trace_tx
+        .send((empty_trace(Slot::new(1, 1)), false))
+        .unwrap();
+    let cand_resp = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .expect("candidate transfer dropped under default finality (issue #5066)")
+        .unwrap()
+        .unwrap();
+    assert_eq!(cand_resp.slot, Some(Slot::new(1, 1).into()));
 
     stop_handle.stop();
 }
