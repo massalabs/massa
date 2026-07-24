@@ -141,24 +141,10 @@ pub(crate) async fn send_operations(
                                     let mut operation_storage = storage.clone_without_refs();
                                     operation_storage
                                         .store_operations(verified_ops.values().cloned().collect());
-                                    // Add the received operations to the operations pool
-                                    if let Err(e) =
-                                        pool_controller.add_operations(operation_storage.clone())
-                                    {
-                                        // If pool admission failed, send an error message back to the client
-                                        let error =
-                                            format!("failed to add operations to pool: {}", e);
-                                        report_error(
-                                            tx.clone(),
-                                            tonic::Code::Internal,
-                                            error.to_owned(),
-                                        )
-                                        .await;
-                                    };
-
-                                    // Propagate the operations to the network
-                                    if let Err(e) =
-                                        protocol_controller.propagate_operations(operation_storage)
+                                    // Propagate the operations to the network before admitting
+                                    // them into the local pool (same order as the JSON-RPC API)
+                                    if let Err(e) = protocol_controller
+                                        .propagate_operations(operation_storage.clone())
                                     {
                                         // If propagation failed, send an error message back to the client
                                         let error =
@@ -169,6 +155,23 @@ pub(crate) async fn send_operations(
                                             error.to_owned(),
                                         )
                                         .await;
+                                        continue;
+                                    };
+
+                                    // Add the received operations to the operations pool
+                                    if let Err(e) =
+                                        pool_controller.add_operations(operation_storage)
+                                    {
+                                        // If pool admission failed, send an error message back to the client
+                                        let error =
+                                            format!("failed to add operations to pool: {}", e);
+                                        report_error(
+                                            tx.clone(),
+                                            tonic::Code::Internal,
+                                            error.to_owned(),
+                                        )
+                                        .await;
+                                        continue;
                                     };
 
                                     // Build the response message
