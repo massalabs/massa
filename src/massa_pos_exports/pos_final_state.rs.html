@@ -2404,7 +2404,6 @@
 <a href="#2404" id="2404">2404</a>
 <a href="#2405" id="2405">2405</a>
 <a href="#2406" id="2406">2406</a>
-<a href="#2407" id="2407">2407</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2718,11 +2717,10 @@
 
         <span class="kw">let </span>cycle = last_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
 
-        <span class="kw">let </span>num_slots = <span class="kw">match </span>last_slot.slots_since(<span class="kw-2">&amp;</span>first_slot, <span class="self">self</span>.config.thread_count) {
-            <span class="prelude-val">Ok</span>(slots_since) =&gt; slots_since.saturating_add(<span class="number">1</span>),
-            <span class="comment">// if first_slot is greater than last_slot, we have nothing to do
-            </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
-        };
+        <span class="kw">let </span>num_slots = last_slot
+            .slots_since(<span class="kw-2">&amp;</span>first_slot, <span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">"Error in slot ordering"</span>)
+            .saturating_add(<span class="number">1</span>);
 
         rng_seed.extend(<span class="macro">vec!</span>[<span class="bool-val">false</span>; num_slots <span class="kw">as </span>usize]);
 
