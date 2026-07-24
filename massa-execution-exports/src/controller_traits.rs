@@ -134,6 +134,19 @@ pub trait ExecutionController: Send + Sync {
     fn get_transfers_for_slot(&self, slot: Slot) -> Option<Vec<Transfer>>;
 
     #[cfg(feature = "execution-trace")]
+    /// Get both the ABI call stack and the direct transfers for a given slot, read from a
+    /// single consistent snapshot of the execution trace history.
+    ///
+    /// Callers that need both datasets for a slot must use this instead of combining
+    /// `get_slot_abi_call_stack` and `get_transfers_for_slot`: those are two separate reads,
+    /// and a slot re-execution occurring between them can yield a response mixing data from
+    /// two different executions of the same slot.
+    fn get_slot_abi_call_stack_and_transfers(
+        &self,
+        slot: Slot,
+    ) -> (Option<SlotAbiCallStack>, Option<Vec<Transfer>>);
+
+    #[cfg(feature = "execution-trace")]
     /// Get the transfer of MAS for a given operation id
     fn get_transfer_for_op(&self, op_id: &OperationId) -> Option<Transfer>;
 

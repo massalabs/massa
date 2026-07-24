@@ -581,6 +581,22 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     #[cfg(feature = "execution-trace")]
+    fn get_slot_abi_call_stack_and_transfers(
+        &self,
+        slot: Slot,
+    ) -> (Option<SlotAbiCallStack>, Option<Vec<Transfer>>) {
+        // Hold a single `execution_state` (and thus `trace_history`) read lock for both
+        // lookups. A slot re-execution takes the `execution_state` write lock, so it cannot
+        // run between the two reads; the returned ABI call stack and transfers are therefore
+        // guaranteed to come from the same slot execution.
+        self.execution_state
+            .read()
+            .trace_history
+            .read()
+            .fetch_slot_traces_and_transfers(&slot)
+    }
+
+    #[cfg(feature = "execution-trace")]
     fn get_transfer_for_op(&self, op_id: &OperationId) -> Option<Transfer> {
         self.execution_state
             .read()
