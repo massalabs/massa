@@ -211,6 +211,22 @@
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2025 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -291,7 +307,15 @@
                                 }
 
                             },
-                            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">"error on receive new block : {}"</span>, e)
+                            <span class="prelude-val">Err</span>(e) =&gt; {
+                                <span class="comment">// fail closed like the websocket path: notify the client
+                                // that blocks were missed so it can reconnect and resync
+                                </span><span class="macro">error!</span>(<span class="string">"error on receive new block : {}"</span>, e);
+                                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(tonic::Status::data_loss(<span class="macro">format!</span>(<span class="string">"error on receive new block: {}"</span>, e)))).<span class="kw">await </span>{
+                                    <span class="macro">error!</span>(<span class="string">"failed to send back NewBlocks error response: {}"</span>, e);
+                                }
+                                <span class="kw">break</span>;
+                            }
                         }
                     },
                     res = in_stream.next() =&gt; {
@@ -404,7 +428,15 @@
                                }
                            }
                        },
-                       <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">"error on receive new block : {}"</span>, e),
+                       <span class="prelude-val">Err</span>(e) =&gt; {
+                           <span class="comment">// fail closed like the websocket path: notify the client
+                           // that blocks were missed so it can reconnect and resync
+                           </span><span class="macro">error!</span>(<span class="string">"error on receive new block : {}"</span>, e);
+                           <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(tonic::Status::data_loss(<span class="macro">format!</span>(<span class="string">"error on receive new block: {}"</span>, e)))).<span class="kw">await </span>{
+                               <span class="macro">error!</span>(<span class="string">"failed to send back NewBlocks error response: {}"</span>, e);
+                           }
+                           <span class="kw">break</span>;
+                       }
                     }
                 },
                 <span class="comment">// Execute the code block whenever the timer ticks
