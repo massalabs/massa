@@ -324,6 +324,7 @@ fn test_readonly_execution() {
             ),
             coins: None,
             fee: Some(Amount::from_str("40").unwrap()),
+            simulate_initial_caller_balance: None,
         })
         .expect("readonly execution failed");
 
@@ -369,6 +370,7 @@ fn test_readonly_execution() {
             },
             coins: Some(Amount::from_str("20").unwrap()),
             fee: Some(Amount::from_str("30").unwrap()),
+            simulate_initial_caller_balance: None,
         })
         .expect("readonly execution failed");
 

@@ -274,18 +274,21 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PathToBytecode MaxGas Address Fee", pwd_not_needed = "true"),
-        message = "execute byte code, address is optional, fee is optional. Nothing is really executed on chain"
+        props(
+            args = "PathToBytecode MaxGas Address Fee SimulateInitialCallerBalance",
+            pwd_not_needed = "true"
+        ),
+        message = "execute byte code, address is optional, fee is optional, simulate_initial_caller_balance is optional. Nothing is really executed on chain"
     )]
     read_only_execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress Coins Fee",
+            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress Coins Fee SimulateInitialCallerBalance",
             pwd_not_needed = "true"
         ),
-        message = "call a smart contract function, sender address, coins and fee are optional. Nothing is really executed on chain"
+        message = "call a smart contract function, sender address, coins, fee and simulate_initial_caller_balance are optional. Nothing is really executed on chain"
     )]
     read_only_call,
 
@@ -1060,7 +1063,7 @@ impl Command {
                 }
             }
             Command::read_only_execute_smart_contract => {
-                if parameters.len() < 2 || parameters.len() > 4 {
+                if parameters.len() < 2 || parameters.len() > 5 {
                     bail!("wrong number of parameters");
                 }
                 let path = parameters[0].parse::<PathBuf>()?;
@@ -1074,6 +1077,10 @@ impl Command {
                     .get(3)
                     .map(|fee| Amount::from_str(fee))
                     .transpose()?;
+                let simulate_initial_caller_balance = parameters
+                    .get(4)
+                    .map(|balance| Amount::from_str(balance))
+                    .transpose()?;
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
                     .public
@@ -1083,6 +1090,7 @@ impl Command {
                         address,
                         operation_datastore: None, // TODO - #3072
                         fee,
+                        simulate_initial_caller_balance,
                     })
                     .await
                 {
@@ -1091,7 +1099,7 @@ impl Command {
                 }
             }
             Command::read_only_call => {
-                if parameters.len() < 4 || parameters.len() > 7 {
+                if parameters.len() < 4 || parameters.len() > 8 {
                     bail!("wrong number of parameters");
                 }
 
@@ -1109,6 +1117,10 @@ impl Command {
                     .get(6)
                     .map(|fee| Amount::from_str(fee))
                     .transpose()?;
+                let simulate_initial_caller_balance = parameters
+                    .get(7)
+                    .map(|balance| Amount::from_str(balance))
+                    .transpose()?;
                 match client
                     .public
                     .execute_read_only_call(ReadOnlyCall {
@@ -1119,6 +1131,7 @@ impl Command {
                         max_gas,
                         coins,
                         fee,
+                        simulate_initial_caller_balance,
                     })
                     .await
                 {
