@@ -2140,9 +2140,38 @@ impl ExecutionState {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
-        // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
-        // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
+        // Run the read-only execution request.
+        let result = self.execute_readonly_request_inner(req);
 
+        // Always reset the shared execution context to a clean read-only context,
+        // regardless of whether the execution succeeded or failed.
+        // Otherwise, a failed read-only execution could leave stale, caller-controlled
+        // speculative changes in the shared context, which would then be exposed
+        // to subsequent RPC queries.
+        let slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow in readonly execution context reset from active slot");
+        *context_guard!(self) = ExecutionContext::readonly(
+            self.config.clone(),
+            slot,
+            Vec::new(),
+            self.final_state.clone(),
+            self.active_history.clone(),
+            self.module_cache.clone(),
+            self.mip_store.clone(),
+        );
+
+        result
+    }
+
+    /// Inner implementation of `execute_readonly_request`.
+    /// The caller is responsible for resetting the shared execution context
+    /// after this function returns, on both success and error paths.
+    fn execute_readonly_request_inner(
+        &self,
+        req: ReadOnlyExecutionRequest,
+    ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
         // check if read only request max gas is above the threshold
         if req.max_gas > self.config.max_read_only_gas {
             return Err(ExecutionError::TooMuchGas(format!(
