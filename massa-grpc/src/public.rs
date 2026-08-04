@@ -96,18 +96,6 @@ pub(crate) fn execute_read_only_call(
             }
             read_only_execution_call::Target::FunctionCall(call) => {
                 let target_address = Address::from_str(&call.target_address)?;
-                call_stack.push(ExecutionStackElement {
-                    address: caller_address,
-                    coins: Default::default(),
-                    owned_addresses: vec![caller_address],
-                    operation_datastore: None, // should always be None
-                });
-                call_stack.push(ExecutionStackElement {
-                    address: target_address,
-                    coins: Default::default(),
-                    owned_addresses: vec![target_address],
-                    operation_datastore: None, // should always be None
-                });
 
                 coins = call
                     .coins
@@ -116,6 +104,21 @@ pub(crate) fn execute_read_only_call(
                             .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
                     })
                     .transpose()?;
+
+                call_stack.push(ExecutionStackElement {
+                    address: caller_address,
+                    coins: Default::default(),
+                    owned_addresses: vec![caller_address],
+                    operation_datastore: None, // should always be None
+                });
+                // propagate the request-provided coins to the target stack element
+                // so that get_call_coins matches the JSON-RPC behavior
+                call_stack.push(ExecutionStackElement {
+                    address: target_address,
+                    coins: coins.unwrap_or_default(),
+                    owned_addresses: vec![target_address],
+                    operation_datastore: None, // should always be None
+                });
 
                 ReadOnlyExecutionTarget::FunctionCall {
                     target_addr: Address::from_str(&call.target_address)?,
@@ -253,18 +256,20 @@ pub(crate) fn get_datastore_entries(
     let filters: Vec<(Address, Vec<u8>)> = inner_req
         .filters
         .into_iter()
-        .filter_map(|filter| {
-            filter.filter.and_then(|filter| match filter {
+        .map(|filter| {
+            let filter = filter
+                .filter
+                .ok_or_else(|| GrpcError::InvalidArgument("no filter provided".to_string()))?;
+            match filter {
                 grpc_api::get_datastore_entry_filter::Filter::AddressKey(addrs) => {
-                    if let Ok(add) = &Address::from_str(&addrs.address) {
-                        Some((*add, addrs.key))
-                    } else {
-                        None
-                    }
+                    let add = Address::from_str(&addrs.address).map_err(|_| {
+                        GrpcError::InvalidArgument(format!("invalid address: {}", addrs.address))
+                    })?;
+                    Ok((add, addrs.key))
                 }
-            })
+            }
         })
-        .collect();
+        .collect::<Result<Vec<(Address, Vec<u8>)>, GrpcError>>()?;
 
     let entries = grpc
         .execution_controller
@@ -845,7 +850,7 @@ pub(crate) fn get_selector_draws(
                 }
                 grpc_api::selector_draws_filter::Filter::SlotRange(s_range) => {
                     let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
-                    if slot_ranges.len() as u32 > grpc.grpc_config.max_slot_ranges_per_request {
+                    if slot_ranges.len() as u32 >= grpc.grpc_config.max_slot_ranges_per_request {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
                             grpc.grpc_config.max_slot_ranges_per_request
@@ -1100,7 +1105,7 @@ pub(crate) fn search_blocks(
                 }
                 grpc_api::search_blocks_filter::Filter::SlotRange(s_range) => {
                     let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
-                    if slot_ranges.len() as u32 > grpc.grpc_config.max_slot_ranges_per_request {
+                    if slot_ranges.len() as u32 >= grpc.grpc_config.max_slot_ranges_per_request {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
                             grpc.grpc_config.max_slot_ranges_per_request

@@ -56,19 +56,26 @@ pub struct PoolControllerImpl {
 }
 
 impl PoolController for PoolControllerImpl {
-    /// Asynchronously add operations to pool. Simply print a warning on failure.
-    fn add_operations(&mut self, ops: Storage) {
+    /// Asynchronously add operations to pool.
+    /// Returns an error if the operations could not be queued for insertion.
+    fn add_operations(&mut self, ops: Storage) -> Result<(), PoolError> {
         match self
             .operations_input_sender
             .try_send(Command::AddItems(ops))
         {
             Err(TrySendError::Disconnected(_)) => {
                 warn!("Could not add operations to pool: worker is unreachable.");
+                Err(PoolError::ChannelError(
+                    "could not add operations to pool: worker is unreachable".into(),
+                ))
             }
             Err(TrySendError::Full(_)) => {
                 warn!("Could not add operations to pool: worker channel is full.");
+                Err(PoolError::ChannelError(
+                    "could not add operations to pool: worker channel is full".into(),
+                ))
             }
-            Ok(_) => {}
+            Ok(_) => Ok(()),
         }
     }
 

@@ -168,7 +168,7 @@ fn block_retrieval_mock(
                                 .expect_add_operations()
                                 .times(1)
                                 .in_sequence(&mut sequence)
-                                .returning(move |_| {});
+                                .returning(move |_| Ok(()));
                         });
                 }
                 foreign_controllers

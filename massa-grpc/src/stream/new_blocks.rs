@@ -78,7 +78,15 @@ pub(crate) async fn new_blocks(
                                 }
 
                             },
-                            Err(e) => error!("error on receive new block : {}", e)
+                            Err(e) => {
+                                // fail closed like the websocket path: notify the client
+                                // that blocks were missed so it can reconnect and resync
+                                error!("error on receive new block : {}", e);
+                                if let Err(e) = tx.send(Err(tonic::Status::data_loss(format!("error on receive new block: {}", e)))).await {
+                                    error!("failed to send back NewBlocks error response: {}", e);
+                                }
+                                break;
+                            }
                         }
                     },
                     res = in_stream.next() => {
@@ -191,7 +199,15 @@ pub(crate) async fn new_blocks_server(
                                }
                            }
                        },
-                       Err(e) => error!("error on receive new block : {}", e),
+                       Err(e) => {
+                           // fail closed like the websocket path: notify the client
+                           // that blocks were missed so it can reconnect and resync
+                           error!("error on receive new block : {}", e);
+                           if let Err(e) = tx.send(Err(tonic::Status::data_loss(format!("error on receive new block: {}", e)))).await {
+                               error!("failed to send back NewBlocks error response: {}", e);
+                           }
+                           break;
+                       }
                     }
                 },
                 // Execute the code block whenever the timer ticks

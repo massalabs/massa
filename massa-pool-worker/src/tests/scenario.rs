@@ -131,7 +131,7 @@ fn test_simple_get_operations() {
 
     // setup storage
     storage.store_operations(ops);
-    pool_controller.add_operations(storage);
+    pool_controller.add_operations(storage).unwrap();
 
     // Allow some time for the pool to add the operations
     std::thread::sleep(Duration::from_millis(100));
@@ -227,7 +227,7 @@ fn test_get_operations_overflow() {
     } = PoolTestBoilerPlate::pool_test(config, execution_controller, selector_controller);
 
     storage.store_operations(create_some_operations(10, &op_gen));
-    pool_controller.add_operations(storage);
+    pool_controller.add_operations(storage).unwrap();
     // Allow some time for the pool to add the operations
     std::thread::sleep(Duration::from_millis(100));
 
