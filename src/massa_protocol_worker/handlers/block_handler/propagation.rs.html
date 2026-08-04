@@ -248,16 +248,6 @@
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file deals with the announcement of block headers to other nodes
@@ -352,16 +342,6 @@
                                     <span class="kw">continue</span>;
                                 }
                             };
-
-                            <span class="comment">// Mark the integrated header as already checked so that a peer
-                            // bouncing it back to us (after we announce it) is recognized as
-                            // known and not re-validated / re-registered with consensus.
-                            // Locally-produced blocks never go through `note_header_from_peer`,
-                            // so without this they would be absent from `checked_headers`.
-                            </span><span class="self">self</span>.cache
-                                .write()
-                                .checked_headers
-                                .insert(block_id, header.clone());
 
                             <span class="comment">// Add the block and its dependencies to the propagation LRU
                             // to ensure they are stored for the time of the propagation.
