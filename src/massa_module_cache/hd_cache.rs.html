@@ -373,6 +373,16 @@
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
@@ -424,6 +434,10 @@
     </span>meta_ser: ModuleMetadataSerializer,
     <span class="doccomment">/// Module metadata deserializer
     </span>meta_deser: ModuleMetadataDeserializer,
+    <span class="doccomment">/// Test-only counter of `get` calls, used to assert that no redundant
+    /// RocksDB read/deserialize happens when a module is already in the LRU cache.
+    </span><span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) read_count: std::sync::atomic::AtomicUsize,
 }
 
 <span class="kw">impl </span>HDCache {
@@ -450,6 +464,8 @@
             snip_amount,
             meta_ser: ModuleMetadataSerializer::new(),
             meta_deser: ModuleMetadataDeserializer::new(),
+            <span class="attr">#[cfg(test)]
+            </span>read_count: std::sync::atomic::AtomicUsize::new(<span class="number">0</span>),
         }
     }
 
@@ -550,6 +566,10 @@
         gas_costs: GasCosts,
         condom_limits: CondomLimits,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;ModuleInfo&gt; {
+        <span class="attr">#[cfg(test)]
+        </span><span class="self">self</span>.read_count
+            .fetch_add(<span class="number">1</span>, std::sync::atomic::Ordering::Relaxed);
+
         <span class="kw">let </span><span class="kw-2">mut </span>iterator = <span class="self">self
             </span>.db
             .as_ref()
