@@ -93,6 +93,16 @@ impl PropagationThread {
                                 }
                             };
 
+                            // Mark the integrated header as already checked so that a peer
+                            // bouncing it back to us (after we announce it) is recognized as
+                            // known and not re-validated / re-registered with consensus.
+                            // Locally-produced blocks never go through `note_header_from_peer`,
+                            // so without this they would be absent from `checked_headers`.
+                            self.cache
+                                .write()
+                                .checked_headers
+                                .insert(block_id, header.clone());
+
                             // Add the block and its dependencies to the propagation LRU
                             // to ensure they are stored for the time of the propagation.
                             self.stored_for_propagation.insert(

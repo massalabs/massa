@@ -49,6 +49,10 @@ pub(crate) struct HDCache {
     meta_ser: ModuleMetadataSerializer,
     /// Module metadata deserializer
     meta_deser: ModuleMetadataDeserializer,
+    /// Test-only counter of `get` calls, used to assert that no redundant
+    /// RocksDB read/deserialize happens when a module is already in the LRU cache.
+    #[cfg(test)]
+    pub(crate) read_count: std::sync::atomic::AtomicUsize,
 }
 
 impl HDCache {
@@ -75,6 +79,8 @@ impl HDCache {
             snip_amount,
             meta_ser: ModuleMetadataSerializer::new(),
             meta_deser: ModuleMetadataDeserializer::new(),
+            #[cfg(test)]
+            read_count: std::sync::atomic::AtomicUsize::new(0),
         }
     }
 
@@ -175,6 +181,10 @@ impl HDCache {
         gas_costs: GasCosts,
         condom_limits: CondomLimits,
     ) -> Option<ModuleInfo> {
+        #[cfg(test)]
+        self.read_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
         let mut iterator = self
             .db
             .as_ref()
