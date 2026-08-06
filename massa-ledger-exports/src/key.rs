@@ -254,12 +254,83 @@ impl Deserializer<Key> for KeyDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> nom::IResult<&'a [u8], Key, E> {
-        let (rest, _version) = self
-            .version_byte_deserializer
-            .deserialize(&buffer[LEDGER_PREFIX.as_bytes().len()..])?;
+        // Skip the ledger prefix without slicing past the end of the buffer:
+        // an undersized input must yield a clean parse error rather than an
+        // out-of-bounds panic.
+        let prefix_len = LEDGER_PREFIX.as_bytes().len();
+        let after_prefix = buffer.get(prefix_len..).ok_or_else(|| {
+            nom::Err::Error(E::from_error_kind(buffer, nom::error::ErrorKind::Eof))
+        })?;
+
+        let (rest, version) = self.version_byte_deserializer.deserialize(after_prefix)?;
+        // Enforce the canonical key version. `KeySerializer` always writes
+        // `KEY_VERSION`, so any other value is a non-canonical / malformed key.
+        // Rejecting it prevents version malleability where distinct encodings
+        // deserialize into the same logical `Key`.
+        if version != KEY_VERSION {
+            return Err(nom::Err::Error(E::from_error_kind(
+                after_prefix,
+                nom::error::ErrorKind::Verify,
+            )));
+        }
         let (rest, address) = self.address_deserializer.deserialize(rest)?;
         let (rest, key_type) = self.key_type_deserializer.deserialize(rest)?;
 
         Ok((rest, Key { address, key_type }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Key, KeyDeserializer, KeySerializer, KeyType};
+    use massa_db_exports::LEDGER_PREFIX;
+    use massa_models::address::Address;
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
+    use std::str::FromStr;
+
+    fn sample_address() -> Address {
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap()
+    }
+
+    #[test]
+    fn canonical_key_still_round_trips() {
+        let key = Key::new(&sample_address(), KeyType::BALANCE);
+        let mut serialized = Vec::new();
+        KeySerializer::new(true)
+            .serialize(&key, &mut serialized)
+            .unwrap();
+        let (rest, deser) = KeyDeserializer::new(255, true)
+            .deserialize::<DeserializeError>(&serialized)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(deser, key);
+    }
+
+    #[test]
+    fn undersized_buffer_errors_instead_of_panicking() {
+        // A buffer shorter than the ledger prefix must not trigger an
+        // out-of-bounds slice panic.
+        let short = vec![0u8; LEDGER_PREFIX.as_bytes().len().saturating_sub(1)];
+        let res = KeyDeserializer::new(255, true).deserialize::<DeserializeError>(&short);
+        assert!(res.is_err(), "undersized buffer must produce a parse error");
+    }
+
+    #[test]
+    fn non_canonical_version_is_rejected() {
+        let key = Key::new(&sample_address(), KeyType::BALANCE);
+        let mut serialized = Vec::new();
+        KeySerializer::new(true)
+            .serialize(&key, &mut serialized)
+            .unwrap();
+
+        // The version is a u64 varint written immediately after the prefix;
+        // `KEY_VERSION == 0` encodes as a single `0x00` byte. Flip it to a
+        // non-canonical value.
+        let version_idx = LEDGER_PREFIX.as_bytes().len();
+        assert_eq!(serialized[version_idx], 0u8);
+        serialized[version_idx] = 1u8;
+
+        let res = KeyDeserializer::new(255, true).deserialize::<DeserializeError>(&serialized);
+        assert!(res.is_err(), "a non-canonical key version must be rejected");
     }
 }
