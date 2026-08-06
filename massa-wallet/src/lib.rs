@@ -17,7 +17,7 @@ use massa_signature::{KeyPair, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::Entry;
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -198,6 +198,32 @@ impl Wallet {
         self.keys.keys().copied().collect()
     }
 
+    /// Returns `true` if `path` is a wallet file managed by this module, i.e. a
+    /// `wallet_*.yaml` / `wallet_*.yml` file written by [`Wallet::save`].
+    ///
+    /// The stale-file cleanup in `save` must only ever remove such files so that
+    /// unrelated files living in the same directory (backups, exports, recovery
+    /// notes, other custody material, subdirectories, ...) are never deleted.
+    fn is_managed_wallet_file(path: &Path) -> bool {
+        if !path.is_file() {
+            return false;
+        }
+        let ext_ok = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| {
+                let e = e.to_ascii_lowercase();
+                e == "yaml" || e == "yml"
+            })
+            .unwrap_or(false);
+        let name_ok = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|n| n.starts_with("wallet_"))
+            .unwrap_or(false);
+        ext_ok && name_ok
+    }
+
     /// Save the wallets in a directory, each wallet in a yaml file.
     pub fn save(&self) -> Result<(), WalletError> {
         let mut existing_keys: HashSet<PathBuf> = HashSet::new();
@@ -206,7 +232,12 @@ impl Wallet {
         } else {
             let read_dir = std::fs::read_dir(&self.wallet_path)?;
             for path in read_dir {
-                existing_keys.insert(path?.path());
+                let path = path?.path();
+                // Only track files we manage, so cleanup can never delete
+                // unrelated files that happen to sit in the wallet directory.
+                if Self::is_managed_wallet_file(&path) {
+                    existing_keys.insert(path);
+                }
             }
         }
         let mut persisted_keys: HashSet<PathBuf> = HashSet::new();
@@ -276,3 +307,38 @@ impl std::fmt::Display for Wallet {
 /// Test utils
 #[cfg(feature = "test-exports")]
 pub mod test_exports;
+
+#[cfg(all(test, feature = "test-exports"))]
+mod save_cleanup_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn save_only_removes_managed_wallet_files() {
+        let dir = TempDir::new().unwrap();
+        let dir_path = dir.path().to_path_buf();
+
+        // Unrelated files that must survive a save().
+        let notes = dir_path.join("notes.txt");
+        let backup = dir_path.join("backup.yaml"); // yaml, but not a wallet_ file
+        let stale = dir_path.join("wallet_stale.yaml"); // managed -> should be removed
+        std::fs::write(&notes, b"important recovery notes").unwrap();
+        std::fs::write(&backup, b"not: a-wallet").unwrap();
+        std::fs::write(&stale, b"stale: wallet").unwrap();
+
+        let wallet = Wallet {
+            keys: PreHashMap::default(),
+            wallet_path: dir_path.clone(),
+            password: "pw".to_string(),
+            chain_id: 0,
+        };
+        wallet.save().unwrap();
+
+        assert!(notes.exists(), "unrelated non-yaml file must be preserved");
+        assert!(backup.exists(), "non-wallet .yaml file must be preserved");
+        assert!(
+            !stale.exists(),
+            "stale managed wallet_*.yaml file must be removed"
+        );
+    }
+}
