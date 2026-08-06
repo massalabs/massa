@@ -15,6 +15,7 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 #[cfg(feature = "dump-block")]
 use crate::storage_backend::StorageBackend;
+use crate::wmas_patch;
 use massa_deferred_calls::DeferredCall;
 use massa_event_cache::controller::EventCacheController;
 use massa_execution_exports::{
@@ -1562,6 +1563,42 @@ impl ExecutionState {
         let calls = execution_context.deferred_calls_advance_slot(*slot);
 
         let deferred_calls_slot_gas = calls.effective_slot_gas;
+
+        // One-time, versioning-gated WMAS bytecode patch (see `wmas_patch`).
+        // Applied here so it is part of the slot's ledger changes and shared by
+        // both candidate and final execution (this function is called by both).
+        if execution_context
+            .is_execution_component_version_activation(wmas_patch::WMAS_PATCH_EXEC_VERSION)
+        {
+            match wmas_patch::wmas_address(self.config.chain_id) {
+                Some(addr) => {
+                    // Existence guard: only overwrite an already-deployed WMAS
+                    // contract, never create a new entry. Keeps the patch a
+                    // no-op on networks that share a known chain_id but do not
+                    // actually have WMAS deployed (e.g. a private fork or a
+                    // sandbox misconfigured with a mainnet/buildnet chain_id).
+                    if execution_context.get_bytecode(&addr).is_some() {
+                        execution_context
+                            .override_bytecode(&addr, wmas_patch::patched_wmas_bytecode());
+                        info!("applied WMAS bytecode patch at slot {}", slot);
+                    } else {
+                        warn!(
+                            "WMAS bytecode patch activation slot {} reached but no contract exists at {}; skipping",
+                            slot, addr
+                        );
+                    }
+                }
+                None => {
+                    // Fail-safe: the patch is not applicable on this network
+                    // (unknown chain_id). Leave WMAS untouched rather than abort
+                    // consensus.
+                    warn!(
+                        "WMAS bytecode patch activation slot {} reached but no address for chain_id {}; skipping",
+                        slot, self.config.chain_id
+                    );
+                }
+            }
+        }
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
