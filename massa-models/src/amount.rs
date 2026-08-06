@@ -414,7 +414,10 @@ impl<'de> serde::de::Visitor<'de> for AmountVisitor {
     where
         E: serde::de::Error,
     {
-        Amount::from_str(value).map_err(|_| E::invalid_value(Unexpected::Str(value), &self))
+        // Do not reflect the (attacker-controlled, possibly large) input back into the
+        // error message: use a generic descriptor instead of `Unexpected::Str(value)` so
+        // error-path allocation does not scale with the rejected field length.
+        Amount::from_str(value).map_err(|_| E::invalid_value(Unexpected::Other("string"), &self))
     }
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -431,5 +434,32 @@ impl serde::Serialize for Amount {
         S: serde::Serializer,
     {
         serializer.serialize_str(&self.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Amount;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_valid_amount_still_deserializes() {
+        let amount: Amount = serde_json::from_str("\"12.34\"").unwrap();
+        assert_eq!(amount, Amount::from_str("12.34").unwrap());
+    }
+
+    #[test]
+    fn test_invalid_amount_error_does_not_reflect_input() {
+        // A rejected Amount string must not be embedded in the error message,
+        // to avoid error-path allocation scaling with the input length.
+        let bogus = "z".repeat(4096);
+        let json = format!("\"{}\"", bogus);
+        let err = serde_json::from_str::<Amount>(&json)
+            .expect_err("invalid amount must fail to deserialize");
+        let msg = err.to_string();
+        assert!(
+            !msg.contains(&bogus),
+            "error message must not reflect the rejected input"
+        );
     }
 }
