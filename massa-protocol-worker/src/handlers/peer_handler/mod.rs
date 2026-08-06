@@ -513,6 +513,9 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                 Ok((peer_id, Some(announcement))) => {
                     info!("Peer connected: {:?}", peer_id);
                     peer_db_write.set_try_connect_success_or_insert(&addr);
+                    // Record the successful connection so that `last_success` feeds the
+                    // peer-priority comparator (previously it was never written anywhere).
+                    peer_db_write.set_success_or_insert(&addr);
                     peer_db_write
                         .get_peers_mut()
                         .entry(*peer_id)
