@@ -8,6 +8,7 @@ use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
+use tracing::warn;
 
 use crate::wrap_network::ActiveConnectionsTrait;
 
@@ -101,13 +102,52 @@ impl BlockHandler {
     }
 
     pub fn stop(&mut self) {
-        if let Some((tx, thread)) = self.block_retrieval_thread.take() {
+        // Signal both threads to stop *before* joining any of them, so a panic
+        // in (or a failed join of) one thread cannot prevent the other from
+        // being told to stop and joined.
+        if let Some((tx, _)) = self.block_retrieval_thread.as_ref() {
             let _ = tx.send(BlockHandlerRetrievalCommand::Stop);
-            thread.join().unwrap();
         }
-        if let Some((tx, thread)) = self.block_propagation_thread.take() {
+        if let Some((tx, _)) = self.block_propagation_thread.as_ref() {
             let _ = tx.send(BlockHandlerPropagationCommand::Stop);
-            thread.join().unwrap();
         }
+
+        // Join both, tolerating an already-panicked thread (`join()` returns
+        // `Err`) so shutdown of the other thread still completes instead of
+        // aborting `stop()` via `unwrap()`.
+        if let Some((_, thread)) = self.block_retrieval_thread.take() {
+            join_logging_panic(thread, "block retrieval");
+        }
+        if let Some((_, thread)) = self.block_propagation_thread.take() {
+            join_logging_panic(thread, "block propagation");
+        }
+    }
+}
+
+/// Join a handler thread, logging (instead of propagating) the case where the
+/// thread had already panicked, so one panicked thread does not abort the
+/// shutdown of the others.
+fn join_logging_panic(thread: JoinHandle<()>, name: &str) {
+    if thread.join().is_err() {
+        warn!("{} thread panicked before/at shutdown", name);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::join_logging_panic;
+
+    #[test]
+    fn join_logging_panic_tolerates_a_panicked_thread() {
+        // A thread that panics must not make `join_logging_panic` itself panic,
+        // so a sibling thread's shutdown can still proceed.
+        let panicker = std::thread::Builder::new()
+            .name("test-panicker".into())
+            .spawn(|| panic!("intentional test panic"))
+            .unwrap();
+        join_logging_panic(panicker, "test-panicker");
+
+        let normal = std::thread::spawn(|| {});
+        join_logging_panic(normal, "test-normal");
     }
 }
