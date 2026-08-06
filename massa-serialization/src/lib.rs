@@ -7,7 +7,7 @@ use displaydoc::Display;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    combinator::value,
+    combinator::{map_opt, value},
     error::{ContextError, ParseError},
     sequence::preceded,
     sequence::tuple,
@@ -465,19 +465,30 @@ where
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Ratio<T>, E> {
-        context(
+        let mut parser = context(
             "Ratio<_> deserializer failed",
-            tuple((
-                context("numer deser failed", |input| {
-                    self.data_deserializer.deserialize(input)
-                }),
-                context("denom deser failed", |input| {
-                    self.data_deserializer.deserialize(input)
-                }),
-            )),
-        )
-        .map(|(numer, denom)| Ratio::new(numer, denom))
-        .parse(buffer)
+            map_opt(
+                tuple((
+                    context("numer deser failed", |input| {
+                        self.data_deserializer.deserialize(input)
+                    }),
+                    context("denom deser failed", |input| {
+                        self.data_deserializer.deserialize(input)
+                    }),
+                )),
+                |(numer, denom)| {
+                    // A zero denominator is not a representable ratio: reject it as a
+                    // parse error instead of letting `Ratio::new` panic (which could
+                    // abort DB/bootstrap validation paths).
+                    if num::Zero::is_zero(&denom) {
+                        None
+                    } else {
+                        Some(Ratio::new(numer, denom))
+                    }
+                },
+            ),
+        );
+        parser.parse(buffer)
     }
 }
 
@@ -731,5 +742,22 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(format!("{}", err), "Parsing Error: Ratio<_> deserializer failed / denom deser failed / Failed u64 deserialization / Fail / Input: [4]\n");
+    }
+
+    #[test]
+    fn test_ratio_deserializer_rejects_zero_denominator() {
+        // numer = 1, denom = 0, each encoded as a single-byte u64 varint.
+        // A zero denominator must be rejected as a parse error instead of
+        // panicking inside `Ratio::new`.
+        let buffer = vec![1u8, 0u8];
+        let ratio_deserializer = super::RatioDeserializer::new(super::U64VarIntDeserializer::new(
+            std::ops::Bound::Included(0),
+            std::ops::Bound::Included(u64::MAX),
+        ));
+        let result = ratio_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(
+            result.is_err(),
+            "a zero denominator must produce a deserialization error, not a panic"
+        );
     }
 }
