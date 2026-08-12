@@ -511,6 +511,14 @@
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -611,8 +619,16 @@
                                     }
                                 };
                             <span class="kw">if </span>!rest.is_empty() {
-                                <span class="macro">println!</span>(<span class="string">"Error: message not fully consumed"</span>);
-                                <span class="kw">return</span>;
+                                <span class="comment">// A valid message prefix followed by trailing bytes must not
+                                // tear down this long-lived shared retrieval thread (doing so
+                                // would let a single peer deny operation handling for everyone).
+                                // Skip the malformed message and keep serving other peers.
+                                </span><span class="macro">warn!</span>(
+                                    <span class="string">"peer {} sent an operation message with {} unexpected trailing byte(s); ignoring it"</span>,
+                                    peer_id,
+                                    rest.len()
+                                );
+                                <span class="kw">continue</span>;
                             }
                             <span class="kw">match </span>message {
                                 OperationMessage::Operations(ops) =&gt; {
