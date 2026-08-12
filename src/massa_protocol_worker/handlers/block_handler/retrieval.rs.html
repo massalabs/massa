@@ -1312,6 +1312,14 @@
 <a href="#1312" id="1312">1312</a>
 <a href="#1313" id="1313">1313</a>
 <a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1462,8 +1470,16 @@
                                 }
                             };
                             <span class="kw">if </span>!rest.is_empty() {
-                                <span class="macro">println!</span>(<span class="string">"Error: message not fully consumed"</span>);
-                                <span class="kw">return</span>;
+                                <span class="comment">// A valid message prefix followed by trailing bytes must not
+                                // tear down this long-lived shared retrieval thread (doing so
+                                // would let a single peer deny block handling for everyone).
+                                // Skip the malformed message and keep serving other peers.
+                                </span><span class="macro">warn!</span>(
+                                    <span class="string">"peer {} sent a block message with {} unexpected trailing byte(s); ignoring it"</span>,
+                                    peer_id,
+                                    rest.len()
+                                );
+                                <span class="kw">continue</span>;
                             }
                             <span class="kw">match </span>message {
                                 BlockMessage::DataRequest{block_id, block_info} =&gt; {
