@@ -47,11 +47,7 @@ fn process_endorsement_pool_command(
     }
 }
 
-fn process_operation_pool_command(
-    cmd: Command,
-    buffer: &mut OperationPool,
-    modified: &mut bool,
-) {
+fn process_operation_pool_command(cmd: Command, buffer: &mut OperationPool, modified: &mut bool) {
     match cmd {
         Command::AddItems(operations) => {
             buffer.add_operations(operations);
