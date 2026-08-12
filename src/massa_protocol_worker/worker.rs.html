@@ -493,11 +493,11 @@
         );
     <span class="kw">let </span>(sender_blocks_propagation_ext, receiver_blocks_propagation_ext) = MassaChannel::new(
         <span class="string">"blocks_propagation_ext"</span>.to_string(),
-        <span class="prelude-val">Some</span>(config.max_size_channel_commands_propagation_blocks),
+        <span class="prelude-val">Some</span>(config.max_size_channel_commands_retrieval_blocks),
     );
     <span class="kw">let </span>(sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) = MassaChannel::new(
         <span class="string">"blocks_retrieval_ext"</span>.to_string(),
-        <span class="prelude-val">Some</span>(config.max_size_channel_commands_retrieval_blocks),
+        <span class="prelude-val">Some</span>(config.max_size_channel_commands_propagation_blocks),
     );
     <span class="kw">let </span>(sender_connectivity_ext, receiver_connectivity_ext) = MassaChannel::new(
         <span class="string">"connectivity_ext"</span>.to_string(),
