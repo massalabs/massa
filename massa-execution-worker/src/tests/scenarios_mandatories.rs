@@ -385,6 +385,126 @@ fn test_readonly_execution() {
     );
 }
 
+/// Regression test for finding F39 (read-only shared module-cache pollution).
+///
+/// A read-only execution can still reach bytecode-writing paths (e.g.
+/// `create_new_sc_address`), and `settle_slot` used to unconditionally compile and import all
+/// speculative bytecode updates into the shared RAM + on-disk module cache. Because read-only
+/// state is never finalized, this let a read-only request persist junk compiled modules into
+/// the global cache. This test asserts that a read-only settle imports nothing, while a normal
+/// (non read-only) settle still warms the cache with the written bytecode.
+#[test]
+fn test_readonly_settle_does_not_pollute_module_cache() {
+    use crate::active_history::ActiveHistory;
+    use crate::context::ExecutionContext;
+    use massa_final_state::FinalStateController;
+    use massa_module_cache::config::ModuleCacheConfig;
+    use massa_module_cache::controller::ModuleCache;
+
+    // Build a context in the requested mode, simulate a bytecode write, settle the slot the
+    // way the read-only / execution paths do, and return the resulting number of modules in
+    // the shared LRU module cache.
+    let run = |read_only: bool| -> usize {
+        let exec_cfg = ExecutionConfig::default();
+        let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+        final_state_boilerplate(
+            &mut foreign_controllers.final_state,
+            foreign_controllers.db.clone(),
+            &foreign_controllers.selector_controller,
+            &mut foreign_controllers.ledger_controller,
+            None,
+            None,
+            None,
+            None,
+        );
+        // `final_state_boilerplate` registers a `get_slot` expectation of exactly one call.
+        // The direct settle path exercised below never reads it, so satisfy it explicitly.
+        let _ = foreign_controllers.final_state.read().get_slot();
+        let final_state: Arc<RwLock<dyn FinalStateController>> =
+            foreign_controllers.final_state.clone();
+        let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
+
+        // A shared module cache we own so we can inspect it after settling.
+        let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
+            hd_cache_path: exec_cfg.hd_cache_path.clone(),
+            gas_costs: exec_cfg.gas_costs.clone(),
+            lru_cache_size: exec_cfg.lru_cache_size,
+            hd_cache_size: exec_cfg.hd_cache_size,
+            snip_amount: exec_cfg.snip_amount,
+            max_module_length: exec_cfg.max_bytecode_size,
+            condom_limits: exec_cfg.condom_limits.clone(),
+        })));
+
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        };
+        let mip_store =
+            MipStore::try_from((get_mip_list(), mip_stats_config)).expect("mip store creation");
+
+        // The current call must own an address so `create_new_sc_address` has a creator.
+        let owner =
+            Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA").unwrap();
+        let call_stack = vec![ExecutionStackElement {
+            address: owner,
+            coins: Amount::zero(),
+            owned_addresses: vec![owner],
+            operation_datastore: None,
+        }];
+
+        let mut context = if read_only {
+            ExecutionContext::readonly(
+                exec_cfg.clone(),
+                Slot::new(1, 0),
+                call_stack,
+                final_state,
+                active_history,
+                module_cache.clone(),
+                mip_store,
+            )
+        } else {
+            let mut context = ExecutionContext::new(
+                exec_cfg.clone(),
+                final_state,
+                active_history,
+                module_cache.clone(),
+                mip_store,
+                Hash::compute_from("Genesis".as_bytes()),
+            );
+            context.stack = call_stack;
+            context.slot = Slot::new(1, 0);
+            context
+        };
+
+        // Simulate the speculative bytecode write that a bytecode-writing path (e.g.
+        // `create_new_sc_address` / `set_bytecode`) would produce during execution.
+        context
+            .speculative_ledger
+            .added_changes
+            .set_bytecode(owner, Bytecode(b"\x00asm\x01\x00\x00\x00".to_vec()));
+
+        // Finalize the slot exactly like execute_readonly_request / real execution do.
+        let _ = context.settle_slot(None);
+
+        let len = module_cache.read().lru_cache_len();
+        len
+    };
+
+    let readonly_cache_len = run(true);
+    let real_cache_len = run(false);
+
+    assert_eq!(
+        readonly_cache_len, 0,
+        "read-only settle must not import speculative bytecode into the shared module cache"
+    );
+    assert!(
+        real_cache_len > readonly_cache_len,
+        "a normal (non read-only) settle should still warm the module cache (got {} vs {})",
+        real_cache_len,
+        readonly_cache_len
+    );
+}
+
 /// Test the gas usage in nested calls using call SC operation
 ///
 /// Create a smart contract and send it in the blockclique.

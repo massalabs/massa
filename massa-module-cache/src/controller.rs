@@ -217,6 +217,11 @@ impl ModuleCache {
     pub fn get_module_lru_cache_memory_usage(&self) -> usize {
         self.lru_cache.cache.memory_usage()
     }
+
+    /// Returns the number of modules currently held in the in-RAM LRU cache
+    pub fn lru_cache_len(&self) -> usize {
+        self.lru_cache.cache.len()
+    }
 }
 
 #[cfg(test)]
