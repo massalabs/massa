@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["start_pool_controller"],"struct":["DenunciationPoolThread","EndorsementPoolThread","OperationPoolThread"]};
+window.SIDEBAR_ITEMS = {"fn":["drain_commands_after_stop","process_denunciation_pool_command","process_endorsement_pool_command","process_operation_pool_command","start_pool_controller"],"struct":["DenunciationPoolThread","EndorsementPoolThread","OperationPoolThread"]};
