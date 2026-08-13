@@ -196,6 +196,20 @@ impl ModuleCache {
         condom_limits: CondomLimits,
     ) -> Result<RuntimeModule, CacheError> {
         debug!("load_tmp_module");
+        if bytecode.is_empty() {
+            let error_msg = "load_tmp_module: bytecode is absent".to_string();
+            debug!(error_msg);
+            return Err(CacheError::LoadError(error_msg));
+        }
+        if bytecode.len() > self.cfg.max_module_length as usize {
+            let error_msg = format!(
+                "load_tmp_module: bytecode length {} exceeds max module length {}",
+                bytecode.len(),
+                self.cfg.max_module_length
+            );
+            debug!(error_msg);
+            return Err(CacheError::LoadError(error_msg));
+        }
         // Do not actually debit the instance creation cost from the provided gas
         // This is only supposed to be a check
         limit
@@ -241,17 +255,18 @@ mod tests {
         0x6f, 0x6e, 0x65, 0x02, 0x07, 0x01, 0x00, 0x01, 0x00, 0x02, 0x70, 0x30,
     ];
 
-    fn setup() -> ModuleCache {
-        let tmp_path = TempDir::new().unwrap().path().to_path_buf();
-        ModuleCache::new(ModuleCacheConfig {
-            hd_cache_path: tmp_path,
+    fn setup(max_module_length: u64) -> (ModuleCache, TempDir) {
+        let cache_dir = TempDir::new().unwrap();
+        let cache = ModuleCache::new(ModuleCacheConfig {
+            hd_cache_path: cache_dir.path().to_path_buf(),
             gas_costs: GasCosts::default(),
             lru_cache_size: 10,
-            hd_cache_size: 1000,
-            snip_amount: 10,
-            max_module_length: 1_000_000,
+            hd_cache_size: 10,
+            snip_amount: 1,
+            max_module_length,
             condom_limits: CondomLimits::default(),
-        })
+        });
+        (cache, cache_dir)
     }
 
     /// When a module is already resident in the LRU cache, `save_module` must not
@@ -259,7 +274,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_save_module_skips_hd_read_when_in_lru() {
-        let mut cache = setup();
+        let (mut cache, _cache_dir) = setup(1_000_000);
         let condom_limits = CondomLimits::default();
 
         // First save: nothing is cached yet, so the HD cache is probed once (a miss)
@@ -279,5 +294,31 @@ mod tests {
             1,
             "save_module must not read the HD cache when the module is in the LRU cache"
         );
+    }
+
+    #[test]
+    fn test_load_tmp_module_rejects_empty_bytecode() {
+        let (cache, _cache_dir) = setup(4);
+
+        let result = cache.load_tmp_module(&[], u64::MAX, CondomLimits::default());
+
+        assert!(matches!(
+            result,
+            Err(CacheError::LoadError(error)) if error == "load_tmp_module: bytecode is absent"
+        ));
+    }
+
+    #[test]
+    fn test_load_tmp_module_rejects_oversized_bytecode() {
+        let (cache, _cache_dir) = setup(4);
+
+        // Invalid Wasm confirms the size check runs before RuntimeModule compilation.
+        let result = cache.load_tmp_module(&[0; 5], u64::MAX, CondomLimits::default());
+
+        assert!(matches!(
+            result,
+            Err(CacheError::LoadError(error))
+                if error == "load_tmp_module: bytecode length 5 exceeds max module length 4"
+        ));
     }
 }
