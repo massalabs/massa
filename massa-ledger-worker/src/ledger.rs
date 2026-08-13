@@ -4,9 +4,7 @@
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
-use massa_ledger_exports::{
-    LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
-};
+use massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerController, LedgerError};
 use massa_models::{
     address::Address,
     amount::{Amount, AmountDeserializer},
@@ -14,10 +12,7 @@ use massa_models::{
 };
 use massa_serialization::{DeserializeError, Deserializer};
 use std::ops::Bound::Included;
-use std::{
-    collections::{BTreeSet, HashMap},
-    ops::Bound,
-};
+use std::{collections::BTreeSet, ops::Bound};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -54,31 +49,8 @@ impl FinalLedger {
 impl LedgerController for FinalLedger {
     /// Loads ledger from file
     fn load_initial_ledger(&mut self) -> Result<(), LedgerError> {
-        // load the ledger tree from file
-        let initial_ledger: HashMap<Address, LedgerEntry> = serde_json::from_str(
-            &std::fs::read_to_string(&self.config.initial_ledger_path).map_err(|err| {
-                LedgerError::FileError(format!(
-                    "error loading initial ledger file {}: {}",
-                    self.config
-                        .initial_ledger_path
-                        .to_str()
-                        .unwrap_or("(non-utf8 path)"),
-                    err
-                ))
-            })?,
-        )
-        .map_err(|err| {
-            LedgerError::FileError(format!(
-                "error parsing initial ledger file {}: {}",
-                self.config
-                    .initial_ledger_path
-                    .to_str()
-                    .unwrap_or("(non-utf8 path)"),
-                err
-            ))
-        })?;
-        self.sorted_ledger.load_initial_ledger(initial_ledger);
-        Ok(())
+        self.sorted_ledger
+            .load_initial_ledger_from_path(&self.config.initial_ledger_path)
     }
 
     /// Gets the balance of a ledger entry

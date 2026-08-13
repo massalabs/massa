@@ -8,6 +8,7 @@ edition = "2021"
 test-exports = ["tempfile", "massa_models/test-exports", "massa_ledger_exports/test-exports", "massa_db_worker"]
 
 [dependencies]
+serde = {workspace = true}
 serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
 tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
 massa_ledger_exports = {workspace = true}

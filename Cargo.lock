@@ -3478,6 +3478,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "parking_lot",
+ "serde",
  "serde_json",
  "tempfile",
 ]
