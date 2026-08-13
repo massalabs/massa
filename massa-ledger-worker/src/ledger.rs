@@ -76,8 +76,7 @@ impl LedgerController for FinalLedger {
                 err
             ))
         })?;
-        self.sorted_ledger.load_initial_ledger(initial_ledger);
-        Ok(())
+        self.sorted_ledger.load_initial_ledger(initial_ledger)
     }
 
     /// Gets the balance of a ledger entry
