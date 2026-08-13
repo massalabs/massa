@@ -274,6 +274,47 @@ mod tests {
         assert!(history.fetch_traces_for_op(&third_operation).is_some());
     }
 
+    /// Replacing a slot must not unindex an operation that another slot has since recorded,
+    /// otherwise re-executing a slot would hide an operation executed elsewhere.
+    #[test]
+    fn replacing_slot_keeps_operations_indexed_in_another_slot() {
+        let mut history = TraceHistory::new(3, 2);
+        let replaced_slot = Slot::new(1, 0);
+        let other_slot = Slot::new(1, 1);
+        let moved_operation = operation_id(1);
+        let new_operation = operation_id(2);
+
+        history.save_for_slot(
+            replaced_slot,
+            traces(replaced_slot, moved_operation),
+            vec![transfer(moved_operation)],
+        );
+        history.save_for_slot(
+            other_slot,
+            traces(other_slot, moved_operation),
+            vec![transfer(moved_operation)],
+        );
+        // Re-execute the first slot with another operation.
+        history.save_for_slot(
+            replaced_slot,
+            traces(replaced_slot, new_operation),
+            vec![transfer(new_operation)],
+        );
+
+        assert_eq!(
+            history.op_per_slot.peek(&moved_operation),
+            Some(&other_slot)
+        );
+        assert!(history.fetch_traces_for_op(&moved_operation).is_some());
+        assert_eq!(
+            history
+                .fetch_transfer_for_op(&moved_operation)
+                .map(|transfer| transfer.op_id),
+            Some(moved_operation)
+        );
+        assert!(history.fetch_traces_for_op(&new_operation).is_some());
+    }
+
     /// The combined fetch must return exactly the same data as the two separate fetches, so
     /// that switching callers to it changes only the read atomicity, not the returned data.
     #[test]
@@ -288,10 +329,7 @@ mod tests {
 
         // Both datasets are present and come from the requested slot.
         assert_eq!(slot_traces.as_ref().map(|t| t.slot), Some(slot));
-        assert_eq!(
-            slot_transfers.as_ref().map(|t| t[0].op_id),
-            Some(operation)
-        );
+        assert_eq!(slot_transfers.as_ref().map(|t| t[0].op_id), Some(operation));
 
         // Equivalent to reading each dataset separately.
         assert_eq!(
