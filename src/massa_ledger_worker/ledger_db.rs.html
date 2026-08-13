@@ -953,28 +953,6 @@
 <a href="#953" id="953">953</a>
 <a href="#954" id="954">954</a>
 <a href="#955" id="955">955</a>
-<a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a>
-<a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
-<a href="#960" id="960">960</a>
-<a href="#961" id="961">961</a>
-<a href="#962" id="962">962</a>
-<a href="#963" id="963">963</a>
-<a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
-<a href="#973" id="973">973</a>
-<a href="#974" id="974">974</a>
-<a href="#975" id="975">975</a>
-<a href="#976" id="976">976</a>
-<a href="#977" id="977">977</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1085,12 +1063,7 @@
     <span class="doccomment">/// Loads the initial disk ledger
     ///
     /// # Arguments
-    </span><span class="kw">pub fn </span>load_initial_ledger(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        initial_ledger: HashMap&lt;Address, LedgerEntry&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
-        <span class="self">self</span>.ensure_ledger_is_empty()<span class="question-mark">?</span>;
-
+    </span><span class="kw">pub fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>, initial_ledger: HashMap&lt;Address, LedgerEntry&gt;) {
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
         <span class="kw">for </span>(address, entry) <span class="kw">in </span>initial_ledger {
@@ -1102,23 +1075,6 @@
             Default::default(),
             <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="self">self</span>.thread_count.saturating_sub(<span class="number">1</span>))),
         );
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">fn </span>ensure_ledger_is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>ledger_prefix = LEDGER_PREFIX.as_bytes();
-        <span class="kw">let </span>has_ledger_data = db
-            .prefix_iterator_cf(STATE_CF, ledger_prefix)
-            .take_while(|(key, <span class="kw">_</span>)| key.starts_with(ledger_prefix))
-            .next()
-            .is_some();
-        <span class="kw">if </span>has_ledger_data {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(LedgerError::ContainerInconsistency(
-                <span class="string">"cannot load initial ledger: ledger database is not empty"</span>.into(),
-            ));
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Allows applying `LedgerChanges` to the disk ledger

@@ -193,6 +193,7 @@
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.
@@ -271,7 +272,8 @@
                 err
             ))
         })<span class="question-mark">?</span>;
-        <span class="self">self</span>.sorted_ledger.load_initial_ledger(initial_ledger)
+        <span class="self">self</span>.sorted_ledger.load_initial_ledger(initial_ledger);
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Gets the balance of a ledger entry
