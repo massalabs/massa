@@ -251,6 +251,47 @@
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -424,16 +465,25 @@
 
 <span class="kw">impl </span>Announcement {
     <span class="kw">pub fn </span>new(
-        <span class="kw-2">mut </span>listeners: HashMap&lt;SocketAddr, TransportType&gt;,
+        listeners: HashMap&lt;SocketAddr, TransportType&gt;,
         routable_ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
         keypair: <span class="kw-2">&amp;</span>KeyPair,
     ) -&gt; PeerNetResult&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>buf: Vec&lt;u8&gt; = <span class="macro">vec!</span>[];
         <span class="kw">let </span>length_serializer = U64VarIntSerializer::new();
         <span class="comment">//TODO: Hacky to fix and adapt to support multiple ip/listeners
-        </span><span class="kw">if </span>routable_ip.is_none() {
-            listeners = HashMap::default()
-        }
+        // Build the canonical listener set that gets serialized, hashed and signed:
+        // when a routable IP is provided, advertise every listener under that IP;
+        // otherwise advertise no listeners. Storing this same map in the returned
+        // struct keeps `listeners`, `serialized`, `hash` and `signature` describing
+        // the exact same listener set (so a serialize/deserialize round trip is stable).
+        </span><span class="kw">let </span>listeners: HashMap&lt;SocketAddr, TransportType&gt; = <span class="kw">match </span>routable_ip {
+            <span class="prelude-val">Some</span>(ip) =&gt; listeners
+                .into_iter()
+                .map(|(addr, transport)| (SocketAddr::new(ip, addr.port()), transport))
+                .collect(),
+            <span class="prelude-val">None </span>=&gt; HashMap::default(),
+        };
         length_serializer
             .serialize(<span class="kw-2">&amp;</span>(listeners.len() <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buf)
             .map_err(|err| {
@@ -441,7 +491,7 @@
                     .error(<span class="string">"Announcement serialization"</span>, <span class="prelude-val">Some</span>(err.to_string()))
             })<span class="question-mark">?</span>;
         <span class="kw">for </span>listener <span class="kw">in </span><span class="kw-2">&amp;</span>listeners {
-            <span class="kw">let </span>ip = routable_ip.unwrap_or_else(|| listener.<span class="number">0</span>.ip());
+            <span class="kw">let </span>ip = listener.<span class="number">0</span>.ip();
             <span class="kw">let </span>ip_bytes = <span class="kw">match </span>ip {
                 IpAddr::V4(ip) =&gt; {
                     buf.push(<span class="number">4</span>);
@@ -481,6 +531,7 @@
     <span class="kw">use </span>massa_signature::KeyPair;
     <span class="kw">use </span>peernet::transports::TransportType;
     <span class="kw">use </span>std::collections::HashMap;
+    <span class="kw">use </span>std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     <span class="kw">use </span><span class="kw">super</span>::AnnouncementSerializer;
 
@@ -492,6 +543,37 @@
         <span class="kw">let </span>announcement =
             Announcement::new(listeners, <span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap()).unwrap();
         <span class="kw">let </span>announcement_serializer = AnnouncementSerializer::new();
+        <span class="kw">let </span>announcement_deserializer =
+            AnnouncementDeserializer::new(AnnouncementDeserializerArgs { max_listeners: <span class="number">100 </span>});
+        <span class="kw">let </span><span class="kw-2">mut </span>buf: Vec&lt;u8&gt; = <span class="macro">vec!</span>[];
+        announcement_serializer
+            .serialize(<span class="kw-2">&amp;</span>announcement, <span class="kw-2">&amp;mut </span>buf)
+            .unwrap();
+        <span class="kw">let </span>(<span class="kw">_</span>, announcement_deserialized) = announcement_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf)
+            .unwrap();
+        <span class="macro">assert_eq!</span>(announcement, announcement_deserialized);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_ser_deser_with_routable_ip() {
+        <span class="kw">let </span><span class="kw-2">mut </span>listeners = HashMap::new();
+        listeners.insert(<span class="string">"127.0.0.1:8081"</span>.parse().unwrap(), TransportType::Tcp);
+        listeners.insert(<span class="string">"127.0.0.1:8082"</span>.parse().unwrap(), TransportType::Quic);
+        <span class="kw">let </span>routable_ip = IpAddr::V4(Ipv4Addr::new(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>));
+        <span class="kw">let </span>announcement =
+            Announcement::new(listeners, <span class="prelude-val">Some</span>(routable_ip), <span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap())
+                .unwrap();
+
+        <span class="comment">// The in-memory listeners map must advertise the routable IP (same ports),
+        // so it matches the serialized/hashed/signed payload.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>expected_listeners = HashMap::new();
+        expected_listeners.insert(SocketAddr::new(routable_ip, <span class="number">8081</span>), TransportType::Tcp);
+        expected_listeners.insert(SocketAddr::new(routable_ip, <span class="number">8082</span>), TransportType::Quic);
+        <span class="macro">assert_eq!</span>(announcement.listeners, expected_listeners);
+
+        <span class="comment">// And a serialize -&gt; deserialize round trip must preserve the whole struct.
+        </span><span class="kw">let </span>announcement_serializer = AnnouncementSerializer::new();
         <span class="kw">let </span>announcement_deserializer =
             AnnouncementDeserializer::new(AnnouncementDeserializerArgs { max_listeners: <span class="number">100 </span>});
         <span class="kw">let </span><span class="kw-2">mut </span>buf: Vec&lt;u8&gt; = <span class="macro">vec!</span>[];
