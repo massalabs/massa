@@ -649,9 +649,14 @@ pub fn stream_bootstrap_information(
             debug!("Consensus bootstrap cursor length: {}", ids.len());
         }
 
-        // If the consensus streaming is finished (also meaning that consensus slot == final state slot) exit
+        // Exit only when all cursors are finished and there are no pending state/versioning
+        // deltas for this iteration (execution catch-up after consensus may still produce some).
         // We don't bother with the bs-deadline, as this is the last step of the bootstrap process - defer to general write-timeout
-        if final_state_global_step.finished() && last_consensus_step.finished() {
+        if final_state_global_step.finished()
+            && last_consensus_step.finished()
+            && state_part.is_empty()
+            && versioning_part.is_empty()
+        {
             server.send_msg(write_timeout, BootstrapServerMessage::BootstrapFinished)?;
             break;
         }
