@@ -322,26 +322,6 @@
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::prehash::BuildHashMapper;
 <span class="kw">use </span>massa_sc_runtime::{Compiler, CondomLimits, RuntimeModule};
@@ -599,17 +579,18 @@
         <span class="number">0x6f</span>, <span class="number">0x6e</span>, <span class="number">0x65</span>, <span class="number">0x02</span>, <span class="number">0x07</span>, <span class="number">0x01</span>, <span class="number">0x00</span>, <span class="number">0x01</span>, <span class="number">0x00</span>, <span class="number">0x02</span>, <span class="number">0x70</span>, <span class="number">0x30</span>,
     ];
 
-    <span class="kw">fn </span>setup() -&gt; ModuleCache {
-        <span class="kw">let </span>tmp_path = TempDir::new().unwrap().path().to_path_buf();
-        ModuleCache::new(ModuleCacheConfig {
-            hd_cache_path: tmp_path,
+    <span class="kw">fn </span>setup(max_module_length: u64) -&gt; (ModuleCache, TempDir) {
+        <span class="kw">let </span>cache_dir = TempDir::new().unwrap();
+        <span class="kw">let </span>cache = ModuleCache::new(ModuleCacheConfig {
+            hd_cache_path: cache_dir.path().to_path_buf(),
             gas_costs: GasCosts::default(),
             lru_cache_size: <span class="number">10</span>,
-            hd_cache_size: <span class="number">1000</span>,
-            snip_amount: <span class="number">10</span>,
-            max_module_length: <span class="number">1_000_000</span>,
+            hd_cache_size: <span class="number">10</span>,
+            snip_amount: <span class="number">1</span>,
+            max_module_length,
             condom_limits: CondomLimits::default(),
-        })
+        });
+        (cache, cache_dir)
     }
 
     <span class="doccomment">/// When a module is already resident in the LRU cache, `save_module` must not
@@ -617,7 +598,7 @@
     </span><span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_save_module_skips_hd_read_when_in_lru() {
-        <span class="kw">let </span><span class="kw-2">mut </span>cache = setup();
+        <span class="kw">let </span>(<span class="kw-2">mut </span>cache, _cache_dir) = setup(<span class="number">1_000_000</span>);
         <span class="kw">let </span>condom_limits = CondomLimits::default();
 
         <span class="comment">// First save: nothing is cached yet, so the HD cache is probed once (a miss)
@@ -637,27 +618,6 @@
             <span class="number">1</span>,
             <span class="string">"save_module must not read the HD cache when the module is in the LRU cache"
         </span>);
-    }
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>massa_sc_runtime::GasCosts;
-    <span class="kw">use </span>tempfile::TempDir;
-
-    <span class="kw">fn </span>setup(max_module_length: u64) -&gt; (ModuleCache, TempDir) {
-        <span class="kw">let </span>cache_dir = TempDir::new().unwrap();
-        <span class="kw">let </span>cache = ModuleCache::new(ModuleCacheConfig {
-            hd_cache_path: cache_dir.path().to_path_buf(),
-            gas_costs: GasCosts::default(),
-            lru_cache_size: <span class="number">10</span>,
-            hd_cache_size: <span class="number">10</span>,
-            snip_amount: <span class="number">1</span>,
-            max_module_length,
-            condom_limits: CondomLimits::default(),
-        });
-        (cache, cache_dir)
     }
 
     <span class="attr">#[test]
