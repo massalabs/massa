@@ -713,6 +713,99 @@ fn test_protocol_sends_blocks_when_asked_for() {
     waitpoint.wait();
 }
 
+/// Regression test for reflected-header CPU amplification.
+///
+/// When we integrate a locally-produced block, its header is announced to peers but never
+/// goes through `note_header_from_peer`. If it is not recorded in `checked_headers`, a peer
+/// can bounce the very same header back to us and make us re-validate it and re-register it
+/// with consensus as if it were new. This test asserts that a re-sent propagated header is
+/// recognized as already known and is NOT registered again.
+#[test]
+fn test_resent_propagated_header_is_not_revalidated() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ask_block_timeout: MassaTime::from_millis(200),
+        ..Default::default()
+    };
+
+    let block_creator = KeyPair::generate(0).unwrap();
+    let block =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+
+    let waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+
+    // Record whether the bounced-back header gets (wrongly) re-registered with consensus.
+    // `.times(0..)` so the expectation is satisfied whether or not it is called; the actual
+    // assertion is done on `registered` after the synchronization barrier below.
+    let registered = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let registered_mock = registered.clone();
+    foreign_controllers
+        .consensus_controller
+        .expect_register_block_header()
+        .times(0..)
+        .returning(move |_, _| {
+            registered_mock.store(true, std::sync::atomic::Ordering::SeqCst);
+        });
+
+    block_retrieval_mock(
+        vec![
+            // Header announced to the peer right after integration.
+            TestsStepMatch::SendHeader((
+                PeerIdMatchers::PeerId(node_a_peer_id),
+                block.id,
+                block.content.header.clone(),
+            )),
+            // Reply to the follow-up DataRequest. Because the retrieval thread processes
+            // messages in order, observing this response guarantees the bounced-back header
+            // was already handled.
+            TestsStepMatch::SendData((
+                PeerIdMatchers::PeerId(node_a_peer_id),
+                block.id,
+                BlockInfoReply::OperationIds(vec![]),
+            )),
+        ],
+        &mut foreign_controllers,
+        waitpoint.get_trigger_handle(),
+    );
+
+    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config.clone());
+
+    // Integrate a locally-produced block -> its header is announced to peers.
+    universe.storage.store_block(block.clone());
+    universe
+        .module_controller
+        .integrated_block(block.id, universe.storage.clone())
+        .unwrap();
+    waitpoint.wait(); // SendHeader
+
+    // The peer bounces the very same header back to us.
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
+    );
+
+    // Follow-up request, processed after the bounced header (same in-order channel), so once
+    // we observe its response we know the header has been fully handled.
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::DataRequest {
+            block_id: block.id,
+            block_info: AskForBlockInfo::OperationIds,
+        })),
+    );
+    waitpoint.wait(); // SendData
+
+    assert!(
+        !registered.load(std::sync::atomic::Ordering::SeqCst),
+        "a re-sent propagated header must not be re-registered with consensus"
+    );
+}
+
 #[test]
 fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_header_to_others() {
     let protocol_config = ProtocolConfig {

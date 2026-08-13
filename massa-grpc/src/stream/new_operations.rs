@@ -39,8 +39,8 @@ pub(crate) async fn new_operations(
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner stream from the request
     let mut in_stream = request.into_inner();
-    // Subscribe to the new operations channel
-    let mut subscriber = grpc.pool_broadcasts.operation_sender.subscribe();
+    // Clone the new operations channel sender to subscribe from the spawned task
+    let operation_sender = grpc.pool_broadcasts.operation_sender.clone();
     // Clone grpc to be able to use it in the spawned task
     // let grpc = grpc.clone();
 
@@ -61,6 +61,11 @@ pub(crate) async fn new_operations(
                         return;
                     }
                 };
+
+            // Subscribe to the new operations channel only once the initial
+            // filters are known, so that operations broadcast before the
+            // handshake are not buffered and replayed
+            let mut subscriber = operation_sender.subscribe();
 
             loop {
                 select! {

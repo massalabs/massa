@@ -1929,11 +1929,7 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         self.trace_history
             .write()
-            .save_traces_for_slot(*slot, slot_trace.clone());
-        #[cfg(feature = "execution-trace")]
-        self.trace_history
-            .write()
-            .save_transfers_for_slot(*slot, transfers.clone());
+            .save_for_slot(*slot, slot_trace.clone(), transfers.clone());
 
         // Finish slot
         #[allow(unused_mut)]
@@ -2033,6 +2029,8 @@ impl ExecutionState {
             self.active_history
                 .write()
                 .truncate_from(slot, self.config.thread_count);
+            #[cfg(feature = "execution-trace")]
+            self.trace_history.write().truncate_from(slot);
             self.active_cursor = slot
                 .get_prev_slot(self.config.thread_count)
                 .expect("overflow when iterating on slots");
@@ -2113,6 +2111,8 @@ impl ExecutionState {
 
         // truncate the whole execution queue
         self.active_history.write().0.clear();
+        #[cfg(feature = "execution-trace")]
+        self.trace_history.write().truncate_from(slot);
         self.active_cursor = self.final_cursor;
 
         // execute slot

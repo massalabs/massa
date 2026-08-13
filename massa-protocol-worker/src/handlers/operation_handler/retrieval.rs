@@ -98,8 +98,16 @@ impl RetrievalThread {
                                     }
                                 };
                             if !rest.is_empty() {
-                                println!("Error: message not fully consumed");
-                                return;
+                                // A valid message prefix followed by trailing bytes must not
+                                // tear down this long-lived shared retrieval thread (doing so
+                                // would let a single peer deny operation handling for everyone).
+                                // Skip the malformed message and keep serving other peers.
+                                warn!(
+                                    "peer {} sent an operation message with {} unexpected trailing byte(s); ignoring it",
+                                    peer_id,
+                                    rest.len()
+                                );
+                                continue;
                             }
                             match message {
                                 OperationMessage::Operations(ops) => {
