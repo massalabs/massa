@@ -5,7 +5,7 @@ use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
 use massa_models::{
-    operation::{OperationPrefixId, OperationPrefixIds, SecureShareOperation},
+    operation::{OperationPrefixId, OperationPrefixIds, OperationType, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::Id,
     slot::Slot,
@@ -513,6 +513,18 @@ pub(crate) fn note_operations_from_peer(
             )));
         };
 
+        // ignore smart-contract operations that can never fit in a block
+        if matches!(
+            operation.content.op,
+            OperationType::ExecuteSC { .. } | OperationType::CallSC { .. }
+        ) {
+            let gas_usage =
+                operation.get_gas_usage(config.base_operation_gas_cost, config.sp_compilation_cost);
+            if gas_usage > config.max_block_gas {
+                continue;
+            }
+        }
+
         // add to new operations
         new_operations.insert(operation.id, operation);
     }
@@ -637,14 +649,21 @@ mod tests {
     use crate::wrap_network::MockActiveConnectionsTraitWrapper;
     use massa_channel::MassaChannel;
     use massa_models::operation::OperationId;
-    use massa_pool_exports::MockPoolControllerWrapper;
+    use massa_pool_exports::{MockPoolControllerWrapper, PoolController};
     use massa_signature::KeyPair;
     use parking_lot::RwLock;
     use std::collections::HashSet;
     use std::sync::Arc;
     use std::time::Duration;
 
-    use super::super::cache::OperationCache;
+    use massa_protocol_exports::test_exports::tools::{
+        create_call_sc_op_with_too_much_gas, create_execute_sc_op_with_too_much_gas,
+        create_operation_with_expire_period,
+    };
+
+    use crate::handlers::operation_handler::{
+        cache::OperationCache, commands_propagation::OperationHandlerPropagationCommand,
+    };
 
     fn new_peer_id() -> PeerId {
         PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key())
@@ -797,5 +816,85 @@ mod tests {
             .unwrap();
         assert_eq!(asks.read().len(), 2);
         assert_eq!(asks.read().last().unwrap().0, peer_a);
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn note_operations_setup(
+        pool_times: usize,
+    ) -> (
+        Storage,
+        Arc<RwLock<OperationCache>>,
+        ProtocolConfig,
+        MassaSender<OperationHandlerPropagationCommand>,
+        Box<dyn PoolController>,
+    ) {
+        let config = ProtocolConfig::default();
+        let cache = Arc::new(RwLock::new(OperationCache::new(
+            config.max_known_ops_size as u32,
+            config.max_node_known_ops_size as u32,
+        )));
+        let storage = Storage::create_root();
+        let (sender, _receiver) = MassaChannel::new(
+            String::from("test_ops_propagation"),
+            Some(config.max_size_channel_commands_propagation_operations),
+        );
+        let mut pool_controller = MockPoolControllerWrapper::new();
+        pool_controller.set_expectations(|pool| {
+            pool.expect_add_operations()
+                .times(pool_times)
+                .returning(|_| Ok(()));
+        });
+        (
+            storage,
+            cache,
+            config,
+            sender,
+            Box::new(pool_controller) as Box<dyn PoolController>,
+        )
+    }
+
+    #[test]
+    fn note_operations_from_peer_rejects_over_gas_sc_operations() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let peer_id = PeerId::from_public_key(keypair.get_public_key());
+        let over_gas_ops = vec![
+            create_execute_sc_op_with_too_much_gas(&keypair, 10),
+            create_call_sc_op_with_too_much_gas(&keypair, 10),
+        ];
+
+        let (storage, mut cache, config, mut sender, mut pool_controller) =
+            note_operations_setup(0);
+
+        note_operations_from_peer(
+            &storage,
+            &mut cache,
+            &config,
+            over_gas_ops,
+            &peer_id,
+            &mut sender,
+            &mut pool_controller,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn note_operations_from_peer_accepts_valid_operations() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let peer_id = PeerId::from_public_key(keypair.get_public_key());
+        let valid_op = create_operation_with_expire_period(&keypair, 10);
+
+        let (storage, mut cache, config, mut sender, mut pool_controller) =
+            note_operations_setup(1);
+
+        note_operations_from_peer(
+            &storage,
+            &mut cache,
+            &config,
+            vec![valid_op],
+            &peer_id,
+            &mut sender,
+            &mut pool_controller,
+        )
+        .unwrap();
     }
 }

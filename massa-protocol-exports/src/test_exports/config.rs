@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{settings::PeerCategoryInfo, ProtocolConfig};
-use massa_models::config::{CHAINID, ENDORSEMENT_COUNT, MAX_MESSAGE_SIZE};
+use massa_models::config::{
+    BASE_OPERATION_GAS_COST, CHAINID, ENDORSEMENT_COUNT, MAX_GAS_PER_BLOCK, MAX_MESSAGE_SIZE,
+};
 use massa_time::MassaTime;
 use tempfile::NamedTempFile;
 
@@ -37,6 +39,9 @@ impl Default for ProtocolConfig {
             max_operations_per_block: 5000,
             thread_count: 32,
             max_serialized_operations_size_per_block: 1024,
+            max_block_gas: MAX_GAS_PER_BLOCK,
+            base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+            sp_compilation_cost: 314_000_000,
             controller_channel_size: 1024,
             event_channel_size: 1024,
             genesis_timestamp: MassaTime::now(),
