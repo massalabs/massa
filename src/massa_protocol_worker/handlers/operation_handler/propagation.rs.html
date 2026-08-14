@@ -234,6 +234,122 @@
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::{mem, thread::JoinHandle};
 
@@ -269,6 +385,9 @@
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     <span class="comment">// times at which previous ops were announced
     </span>stored_for_propagation: VecDeque&lt;(std::time::Instant, PreHashSet&lt;OperationId&gt;)&gt;,
+    <span class="comment">// running total number of operations held in `stored_for_propagation`, maintained
+    // incrementally so pruning does not need to scan the whole queue on every call
+    </span>stored_ops_count: usize,
     op_storage: Storage,
     next_batch: PreHashSet&lt;OperationId&gt;,
     config: ProtocolConfig,
@@ -297,6 +416,8 @@
 
                             <span class="comment">// add to propagation storage
                             </span><span class="kw">let </span>new_ops = operations.get_op_refs().clone();
+                            <span class="self">self</span>.stored_ops_count =
+                                <span class="self">self</span>.stored_ops_count.saturating_add(new_ops.len());
                             <span class="self">self</span>.stored_for_propagation
                                 .push_back((std::time::Instant::now(), new_ops.clone()));
                             <span class="self">self</span>.op_storage.extend(operations);
@@ -339,16 +460,42 @@
 
     <span class="doccomment">/// Prune the list of operations kept for propagation.
     </span><span class="kw">fn </span>prune_propagation_storage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>removed = <span class="self">Self</span>::prune_stored_for_propagation(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>.stored_for_propagation,
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>.stored_ops_count,
+            <span class="self">self</span>.config.max_operations_propagation_time.to_duration(),
+            <span class="self">self</span>.config.max_ops_kept_for_propagation,
+        );
+
+        <span class="comment">// remove from storage
+        </span><span class="self">self</span>.op_storage.drop_operation_refs(<span class="kw-2">&amp;</span>removed);
+    }
+
+    <span class="doccomment">/// Remove expired and excess operation batches from the propagation queue,
+    /// keeping `stored_ops_count` in sync with the total number of queued operations.
+    ///
+    /// `stored_ops_count` is maintained incrementally (updated here on removal and by
+    /// the caller on insertion) so that pruning costs O(number of removed batches)
+    /// instead of scanning the whole queue on every call. This prevents an attacker
+    /// from making each propagation command increasingly expensive by flooding the
+    /// queue with many tiny batches.
+    ///
+    /// Returns the set of operation ids that were removed from the queue.
+    </span><span class="kw">fn </span>prune_stored_for_propagation(
+        stored_for_propagation: <span class="kw-2">&amp;mut </span>VecDeque&lt;(std::time::Instant, PreHashSet&lt;OperationId&gt;)&gt;,
+        stored_ops_count: <span class="kw-2">&amp;mut </span>usize,
+        max_operations_propagation_time: std::time::Duration,
+        max_ops_kept_for_propagation: usize,
+    ) -&gt; PreHashSet&lt;OperationId&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>removed = PreHashSet::default();
 
         <span class="comment">// remove expired
-        </span><span class="kw">let </span>max_op_prop_time = <span class="self">self</span>.config.max_operations_propagation_time.to_duration();
-        <span class="kw">while let </span><span class="prelude-val">Some</span>((t, <span class="kw">_</span>)) = <span class="self">self</span>.stored_for_propagation.front() {
-            <span class="kw">if </span>t.elapsed() &gt; max_op_prop_time {
-                <span class="kw">let </span>(<span class="kw">_</span>, op_ids) = <span class="self">self
-                    </span>.stored_for_propagation
+        </span><span class="kw">while let </span><span class="prelude-val">Some</span>((t, <span class="kw">_</span>)) = stored_for_propagation.front() {
+            <span class="kw">if </span>t.elapsed() &gt; max_operations_propagation_time {
+                <span class="kw">let </span>(<span class="kw">_</span>, op_ids) = stored_for_propagation
                     .pop_front()
                     .expect(<span class="string">"there should be at least one element, checked above"</span>);
+                <span class="kw-2">*</span>stored_ops_count = stored_ops_count.saturating_sub(op_ids.len());
                 removed.extend(op_ids);
             } <span class="kw">else </span>{
                 <span class="kw">break</span>;
@@ -358,23 +505,16 @@
         <span class="comment">// Cap cache size
         // Note that we directly remove batches of operations, not individual operations
         // to favor simplicity and performance over precision.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>excess_count = <span class="self">self
-            </span>.stored_for_propagation
-            .iter()
-            .map(|(<span class="kw">_</span>, ops)| ops.len())
-            .sum::&lt;usize&gt;()
-            .saturating_sub(<span class="self">self</span>.config.max_ops_kept_for_propagation);
-        <span class="kw">while </span>excess_count &gt; <span class="number">0 </span>{
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((_t, op_ids)) = <span class="self">self</span>.stored_for_propagation.pop_front() {
-                excess_count = excess_count.saturating_sub(op_ids.len());
+        </span><span class="kw">while </span><span class="kw-2">*</span>stored_ops_count &gt; max_ops_kept_for_propagation {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((_t, op_ids)) = stored_for_propagation.pop_front() {
+                <span class="kw-2">*</span>stored_ops_count = stored_ops_count.saturating_sub(op_ids.len());
                 removed.extend(op_ids);
             } <span class="kw">else </span>{
                 <span class="kw">break</span>;
             }
         }
 
-        <span class="comment">// remove from storage
-        </span><span class="self">self</span>.op_storage.drop_operation_refs(<span class="kw-2">&amp;</span>removed);
+        removed
     }
 
     <span class="kw">fn </span>announce_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -454,6 +594,7 @@
                 stored_for_propagation: VecDeque::with_capacity(
                     config.max_ops_kept_for_propagation,
                 ),
+                stored_ops_count: <span class="number">0</span>,
                 op_storage,
                 next_batch: PreHashSet::with_capacity(
                     config
@@ -469,5 +610,96 @@
             propagation_thread.run();
         })
         .expect(<span class="string">"OS failed to start operation propagation thread"</span>)
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>massa_hash::Hash;
+    <span class="kw">use </span>massa_models::secure_share::Id;
+    <span class="kw">use </span>std::time::{Duration, Instant};
+
+    <span class="kw">fn </span>op_id(i: u64) -&gt; OperationId {
+        OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>i.to_be_bytes()))
+    }
+
+    <span class="doccomment">/// Push a batch of operations, mirroring the accounting done by the propagation
+    /// thread on `PropagateOperations` (increment the running count, then push).
+    </span><span class="kw">fn </span>push_batch(
+        queue: <span class="kw-2">&amp;mut </span>VecDeque&lt;(Instant, PreHashSet&lt;OperationId&gt;)&gt;,
+        count: <span class="kw-2">&amp;mut </span>usize,
+        ops: <span class="kw">impl </span>IntoIterator&lt;Item = OperationId&gt;,
+    ) {
+        <span class="kw">let </span>ops: PreHashSet&lt;OperationId&gt; = ops.into_iter().collect();
+        <span class="kw-2">*</span>count = count.saturating_add(ops.len());
+        queue.push_back((Instant::now(), ops));
+    }
+
+    <span class="doccomment">/// The ground-truth op count, computed by scanning the whole queue (the O(n)
+    /// operation the running count is meant to replace).
+    </span><span class="kw">fn </span>real_count(queue: <span class="kw-2">&amp;</span>VecDeque&lt;(Instant, PreHashSet&lt;OperationId&gt;)&gt;) -&gt; usize {
+        queue.iter().map(|(<span class="kw">_</span>, ops)| ops.len()).sum()
+    }
+
+    <span class="doccomment">/// A flood of tiny (single-op) batches must stay bounded by the op cap, and the
+    /// running count must stay exact so pruning never falls back to scanning.
+    </span><span class="attr">#[test]
+    </span><span class="kw">fn </span>running_count_stays_exact_and_caps_total_ops() {
+        <span class="kw">let </span><span class="kw-2">mut </span>queue = VecDeque::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0usize</span>;
+        <span class="kw">let </span>max_ops = <span class="number">100</span>;
+        <span class="kw">let </span>never_expires = Duration::from_secs(<span class="number">3600</span>);
+
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">1000u64 </span>{
+            push_batch(<span class="kw-2">&amp;mut </span>queue, <span class="kw-2">&amp;mut </span>count, [op_id(i)]);
+            <span class="kw">let </span>removed = PropagationThread::prune_stored_for_propagation(
+                <span class="kw-2">&amp;mut </span>queue,
+                <span class="kw-2">&amp;mut </span>count,
+                never_expires,
+                max_ops,
+            );
+
+            <span class="comment">// running count must always match the ground truth
+            </span><span class="macro">assert_eq!</span>(count, real_count(<span class="kw-2">&amp;</span>queue));
+            <span class="comment">// once the cap is reached, each new 1-op batch evicts exactly one old batch
+            </span><span class="kw">if </span>i &gt;= max_ops <span class="kw">as </span>u64 {
+                <span class="macro">assert_eq!</span>(removed.len(), <span class="number">1</span>);
+            }
+        }
+
+        <span class="comment">// total ops (== queue length for 1-op batches) stays bounded by the cap
+        </span><span class="macro">assert_eq!</span>(count, max_ops);
+        <span class="macro">assert_eq!</span>(queue.len(), max_ops);
+        <span class="macro">assert_eq!</span>(count, real_count(<span class="kw-2">&amp;</span>queue));
+    }
+
+    <span class="doccomment">/// Expired batches are dropped and the running count is decremented accordingly.
+    </span><span class="attr">#[test]
+    </span><span class="kw">fn </span>prune_removes_expired_batches_and_updates_count() {
+        <span class="kw">let </span><span class="kw-2">mut </span>queue = VecDeque::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0usize</span>;
+
+        <span class="comment">// a batch inserted "in the past", already older than the propagation time
+        </span><span class="kw">let </span>expired: PreHashSet&lt;OperationId&gt; = [op_id(<span class="number">1</span>), op_id(<span class="number">2</span>)].into_iter().collect();
+        count = count.saturating_add(expired.len());
+        queue.push_back((Instant::now() - Duration::from_secs(<span class="number">60</span>), expired));
+
+        <span class="comment">// a fresh batch that must be kept
+        </span>push_batch(<span class="kw-2">&amp;mut </span>queue, <span class="kw-2">&amp;mut </span>count, [op_id(<span class="number">3</span>)]);
+
+        <span class="kw">let </span>removed = PropagationThread::prune_stored_for_propagation(
+            <span class="kw-2">&amp;mut </span>queue,
+            <span class="kw-2">&amp;mut </span>count,
+            Duration::from_secs(<span class="number">30</span>),
+            <span class="number">1_000</span>,
+        );
+
+        <span class="macro">assert_eq!</span>(removed.len(), <span class="number">2</span>);
+        <span class="macro">assert!</span>(removed.contains(<span class="kw-2">&amp;</span>op_id(<span class="number">1</span>)));
+        <span class="macro">assert!</span>(removed.contains(<span class="kw-2">&amp;</span>op_id(<span class="number">2</span>)));
+        <span class="macro">assert_eq!</span>(queue.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(count, <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(count, real_count(<span class="kw-2">&amp;</span>queue));
+    }
 }
 </code></pre></div></section></main></body></html>
