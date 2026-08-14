@@ -171,16 +171,25 @@ impl Deserializer<Announcement> for AnnouncementDeserializer {
 
 impl Announcement {
     pub fn new(
-        mut listeners: HashMap<SocketAddr, TransportType>,
+        listeners: HashMap<SocketAddr, TransportType>,
         routable_ip: Option<IpAddr>,
         keypair: &KeyPair,
     ) -> PeerNetResult<Self> {
         let mut buf: Vec<u8> = vec![];
         let length_serializer = U64VarIntSerializer::new();
         //TODO: Hacky to fix and adapt to support multiple ip/listeners
-        if routable_ip.is_none() {
-            listeners = HashMap::default()
-        }
+        // Build the canonical listener set that gets serialized, hashed and signed:
+        // when a routable IP is provided, advertise every listener under that IP;
+        // otherwise advertise no listeners. Storing this same map in the returned
+        // struct keeps `listeners`, `serialized`, `hash` and `signature` describing
+        // the exact same listener set (so a serialize/deserialize round trip is stable).
+        let listeners: HashMap<SocketAddr, TransportType> = match routable_ip {
+            Some(ip) => listeners
+                .into_iter()
+                .map(|(addr, transport)| (SocketAddr::new(ip, addr.port()), transport))
+                .collect(),
+            None => HashMap::default(),
+        };
         length_serializer
             .serialize(&(listeners.len() as u64), &mut buf)
             .map_err(|err| {
@@ -188,7 +197,7 @@ impl Announcement {
                     .error("Announcement serialization", Some(err.to_string()))
             })?;
         for listener in &listeners {
-            let ip = routable_ip.unwrap_or_else(|| listener.0.ip());
+            let ip = listener.0.ip();
             let ip_bytes = match ip {
                 IpAddr::V4(ip) => {
                     buf.push(4);
@@ -228,6 +237,7 @@ mod tests {
     use massa_signature::KeyPair;
     use peernet::transports::TransportType;
     use std::collections::HashMap;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     use super::AnnouncementSerializer;
 
@@ -238,6 +248,37 @@ mod tests {
         listeners.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Quic);
         let announcement =
             Announcement::new(listeners, None, &KeyPair::generate(0).unwrap()).unwrap();
+        let announcement_serializer = AnnouncementSerializer::new();
+        let announcement_deserializer =
+            AnnouncementDeserializer::new(AnnouncementDeserializerArgs { max_listeners: 100 });
+        let mut buf: Vec<u8> = vec![];
+        announcement_serializer
+            .serialize(&announcement, &mut buf)
+            .unwrap();
+        let (_, announcement_deserialized) = announcement_deserializer
+            .deserialize::<DeserializeError>(&buf)
+            .unwrap();
+        assert_eq!(announcement, announcement_deserialized);
+    }
+
+    #[test]
+    fn test_ser_deser_with_routable_ip() {
+        let mut listeners = HashMap::new();
+        listeners.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
+        listeners.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Quic);
+        let routable_ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
+        let announcement =
+            Announcement::new(listeners, Some(routable_ip), &KeyPair::generate(0).unwrap())
+                .unwrap();
+
+        // The in-memory listeners map must advertise the routable IP (same ports),
+        // so it matches the serialized/hashed/signed payload.
+        let mut expected_listeners = HashMap::new();
+        expected_listeners.insert(SocketAddr::new(routable_ip, 8081), TransportType::Tcp);
+        expected_listeners.insert(SocketAddr::new(routable_ip, 8082), TransportType::Quic);
+        assert_eq!(announcement.listeners, expected_listeners);
+
+        // And a serialize -> deserialize round trip must preserve the whole struct.
         let announcement_serializer = AnnouncementSerializer::new();
         let announcement_deserializer =
             AnnouncementDeserializer::new(AnnouncementDeserializerArgs { max_listeners: 100 });
