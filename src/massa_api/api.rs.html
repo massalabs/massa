@@ -184,6 +184,7 @@
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="kw">use </span>std::net::SocketAddr;
@@ -280,16 +281,17 @@
         staker_vec
             .sort_by(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, roll_counts_a), <span class="kw-2">&amp;</span>(<span class="kw">_</span>, roll_counts_b)| roll_counts_b.cmp(<span class="kw-2">&amp;</span>roll_counts_a));
 
-        <span class="comment">// Omitted api_request and a present request with no page_request must
-        // behave the same: default to the first 50 largest stakers.
-        </span><span class="kw">const </span>DEFAULT_PAGE_LIMIT: usize = <span class="number">50</span>;
-        <span class="kw">let </span>page_request = api_request
-            .and_then(|request| request.page_request)
-            .or(<span class="prelude-val">Some</span>(PageRequest {
-                offset: <span class="number">0</span>,
-                limit: DEFAULT_PAGE_LIMIT,
-            }));
-        <span class="kw">let </span>paged_vec = PagedVec::new(staker_vec, page_request);
+        <span class="kw">let </span>paged_vec = <span class="kw">if let </span><span class="prelude-val">Some</span>(api_request) = api_request {
+            PagedVec::new(staker_vec, api_request.page_request)
+        } <span class="kw">else </span>{
+            PagedVec::new(
+                staker_vec,
+                <span class="prelude-val">Some</span>(PageRequest {
+                    offset: <span class="number">0</span>,
+                    limit: <span class="number">50</span>,
+                }),
+            )
+        };
 
         <span class="prelude-val">Ok</span>(paged_vec.into())
     }
