@@ -954,10 +954,6 @@
 <a href="#954" id="954">954</a>
 <a href="#955" id="955">955</a>
 <a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a>
-<a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
-<a href="#960" id="960">960</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -971,7 +967,6 @@
 
 <span class="kw">use </span>massa_models::config::MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
-<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>massa_models::serialization::{
     PreHashSetDeserializer, PreHashSetSerializer, VecU8Deserializer, VecU8Serializer,
 };
@@ -988,6 +983,7 @@
     SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
+<span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 <span class="kw">use </span>nom::error::context;
@@ -1488,9 +1484,7 @@
                                             |input| {
                                                 <span class="self">self</span>.datastore_key_deserializer.deserialize(input)
                                             },
-                                            |input| {
-                                                <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input)
-                                            },
+                                            |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
                                         )),
                                         BTreeMap::new,
                                         |<span class="kw-2">mut </span>acc, (key, value)| {
@@ -1537,9 +1531,7 @@
                                             |input| {
                                                 <span class="self">self</span>.datastore_key_deserializer.deserialize(input)
                                             },
-                                            |input| {
-                                                <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input)
-                                            },
+                                            |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
                                         )),
                                         BTreeMap::new,
                                         |<span class="kw-2">mut </span>acc, (key, value)| {
