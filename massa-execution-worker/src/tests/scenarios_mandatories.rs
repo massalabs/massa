@@ -4550,6 +4550,103 @@ fn send_and_receive_async_message_with_reset() {
 
 #[cfg(feature = "execution-trace")]
 #[test]
+fn execution_trace_transfers_are_bound_to_event() {
+    // A Transaction operation produces a transfer. This test checks that the
+    // transfer travels *inside* the broadcast trace event, bound to the same
+    // execution instance as the abi call stacks, rather than being fetched
+    // separately from a mutable slot-keyed cache that a re-execution of the same
+    // slot could overwrite (which used to allow a hybrid response mixing an old
+    // trace with newer transfers).
+    let mut exec_cfg = ExecutionConfig::default();
+    // Make sure broadcast is enabled as we need it for this test
+    exec_cfg.broadcast_enabled = true;
+
+    let finalized_waitpoint = WaitPoint::new();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+        None,
+    );
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, _| {
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    // build a transaction that transfers coins (this is what populates the
+    // per-slot transfers)
+    let sender_keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let sender_address = Address::from_public_key(&sender_keypair.get_public_key());
+    let recipient_address =
+        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+    let amount = Amount::from_str("10").unwrap();
+    let operation = Operation::new_verifiable(
+        Operation {
+            fee: Amount::from_str("5").unwrap(),
+            expire_period: 10,
+            op: OperationType::Transaction {
+                recipient_address,
+                amount,
+            },
+        },
+        OperationSerializer::new(),
+        &sender_keypair,
+        *CHAINID,
+    )
+    .unwrap();
+    let op_id = operation.id;
+
+    universe.storage.store_operations(vec![operation.clone()]);
+    let block = ExecutionTestUniverse::create_block(
+        &sender_keypair,
+        Slot::new(1, 0),
+        vec![operation],
+        vec![],
+        vec![],
+    );
+    universe.send_and_finalize(&sender_keypair, block, None);
+    finalized_waitpoint.wait();
+
+    // read the finalized broadcast trace event for our slot and assert the
+    // transfer is carried by the event itself
+    let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
+    let join_handle = thread::spawn(move || loop {
+        if let Ok((slot_trace, transfers, is_final)) = receiver.blocking_recv() {
+            if is_final && slot_trace.slot == Slot::new(1, 0) {
+                return (slot_trace, transfers);
+            }
+        }
+    });
+    let (_slot_trace, transfers) = join_handle.join().expect("Nothing received from thread");
+
+    assert_eq!(
+        transfers.len(),
+        1,
+        "the transaction transfer must travel inside the trace event"
+    );
+    let transfer = &transfers[0];
+    assert_eq!(transfer.op_id, op_id);
+    assert_eq!(transfer.from, sender_address);
+    assert_eq!(transfer.to, recipient_address);
+    assert_eq!(transfer.amount, amount);
+}
+
+#[cfg(feature = "execution-trace")]
+#[test]
 fn execution_trace() {
     // setup the period duration
     let mut exec_cfg = ExecutionConfig::default();
@@ -4590,16 +4687,20 @@ fn execution_trace() {
     let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
     let join_handle = thread::spawn(move || loop {
         if let Ok(exec_traces) = receiver.blocking_recv() {
-            if exec_traces.1 == true {
+            if exec_traces.2 == true {
                 return Ok::<
-                    (massa_execution_exports::SlotAbiCallStack, bool),
+                    (
+                        massa_execution_exports::SlotAbiCallStack,
+                        Vec<massa_execution_exports::types_trace_info::Transfer>,
+                        bool,
+                    ),
                     tokio::sync::broadcast::error::RecvError,
                 >(exec_traces);
             }
         }
     });
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
-    let (broadcast_result, _) = broadcast_result_.unwrap();
+    let (broadcast_result, _, _) = broadcast_result_.unwrap();
 
     let abi_name_1 = "assembly_script_generate_event";
     let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
@@ -4716,9 +4817,13 @@ fn execution_trace_nested() {
         // Execution Output
         loop {
             if let Ok(exec_traces) = receiver.blocking_recv() {
-                if exec_traces.1 == true {
+                if exec_traces.2 == true {
                     return Ok::<
-                        (massa_execution_exports::SlotAbiCallStack, bool),
+                        (
+                            massa_execution_exports::SlotAbiCallStack,
+                            Vec<massa_execution_exports::types_trace_info::Transfer>,
+                            bool,
+                        ),
                         tokio::sync::broadcast::error::RecvError,
                     >(exec_traces);
                 }
@@ -4728,7 +4833,7 @@ fn execution_trace_nested() {
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
 
     // println!("b r: {:?}", broadcast_result_);
-    let (broadcast_result, _) = broadcast_result_.unwrap();
+    let (broadcast_result, _, _) = broadcast_result_.unwrap();
 
     let abi_name_1 = "assembly_script_call";
     let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
