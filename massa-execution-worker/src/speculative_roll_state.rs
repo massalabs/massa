@@ -21,6 +21,13 @@ use std::cmp::min;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
+/// Execution component version from which missed-production auto-sell
+/// liquidates only the rolls that were active for the penalized cycle
+/// (the delayed cycle − 3 snapshot), not the address's entire current balance.
+///
+/// Rides on `MIP-0002-BugFix`, which bumps `MipComponent::Execution` to 2.
+pub(crate) const SETTLE_ACTIVE_ROLLS_EXEC_VERSION: u32 = 2;
+
 /// Speculative state of the rolls
 #[allow(dead_code)]
 pub(crate) struct SpeculativeRollState {
@@ -327,7 +334,11 @@ impl SpeculativeRollState {
     /// IMPORTANT: This function should only be used at the end of a cycle.
     ///
     /// # Arguments:
-    /// `slot`: the final slot of the cycle to compute
+    /// * `slot`: the final slot of the cycle to compute
+    /// * `limit_liquidation_to_active_rolls`: when true (execution component
+    ///   version ≥ [`SETTLE_ACTIVE_ROLLS_EXEC_VERSION`]), only the rolls that
+    ///   were active for this cycle are auto-sold. When false, the pre-MIP
+    ///   behavior applies: the address's entire current roll balance is zeroed.
     pub fn settle_production_stats(
         &mut self,
         slot: &Slot,
@@ -335,6 +346,7 @@ impl SpeculativeRollState {
         thread_count: u8,
         roll_price: Amount,
         max_miss_ratio: Ratio<u64>,
+        limit_liquidation_to_active_rolls: bool,
     ) -> Vec<(Address, Amount)> {
         #[allow(unused_mut)]
         let mut result = vec![];
@@ -361,14 +373,30 @@ impl SpeculativeRollState {
         for (addr, stats) in production_stats {
             if !stats.is_satisfying(&max_miss_ratio) {
                 let owned_count = self.get_rolls(&addr);
-                if owned_count != 0 {
-                    if let Some(amount) = roll_price.checked_mul_u64(owned_count) {
+                // Production eligibility for cycle C uses the delayed active-roll
+                // snapshot (cycle C − 3). Liquidating `owned_count` would also
+                // auto-sell rolls bought after those obligations were fixed.
+                let rolls_to_sell = if limit_liquidation_to_active_rolls {
+                    let active_count = self
+                        .final_state
+                        .read()
+                        .get_pos_state()
+                        .get_address_active_rolls(&addr, cycle)
+                        .unwrap_or(0);
+                    min(owned_count, active_count)
+                } else {
+                    owned_count
+                };
+                if rolls_to_sell != 0 {
+                    if let Some(amount) = roll_price.checked_mul_u64(rolls_to_sell) {
                         let new_deferred_credits = self
                             .get_address_deferred_credit_for_slot(&addr, &target_slot)
                             .unwrap_or_default()
                             .saturating_add(amount);
                         target_credits.insert(addr, new_deferred_credits);
-                        self.added_changes.roll_changes.insert(addr, 0);
+                        self.added_changes
+                            .roll_changes
+                            .insert(addr, owned_count.saturating_sub(rolls_to_sell));
 
                         #[cfg(feature = "execution-info")]
                         result.push((addr, amount));
@@ -684,5 +712,170 @@ impl SpeculativeRollState {
 
         // return taken credits
         credits
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SpeculativeRollState;
+    use crate::active_history::ActiveHistory;
+    use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
+    use massa_db_worker::MassaDB;
+    use massa_final_state::test_exports::get_initials;
+    use massa_final_state::MockFinalStateController;
+    use massa_models::address::Address;
+    use massa_models::config::{ROLL_PRICE, THREAD_COUNT};
+    use massa_models::prehash::PreHashMap;
+    use massa_models::slot::Slot;
+    use massa_pos_exports::{
+        CycleInfo, MockSelectorControllerWrapper, PoSConfig, PoSFinalState, ProductionStats,
+    };
+    use massa_signature::KeyPair;
+    use num::rational::Ratio;
+    use parking_lot::RwLock;
+    use std::str::FromStr;
+    use std::sync::Arc;
+    use tempfile::TempDir;
+
+    const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
+    const PERIODS_PER_CYCLE: u64 = 2;
+    const POS_THREAD_COUNT: u8 = 2;
+    /// Current rolls at settlement: 100 active (cycle − 3 / genesis) + 50 bought later.
+    const OWNED_ROLLS: u64 = 150;
+    const ACTIVE_ROLLS: u64 = 100;
+    const LATER_BOUGHT_ROLLS: u64 = 50;
+
+    fn setup() -> (SpeculativeRollState, Address, Slot) {
+        let disk_ledger = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: disk_ledger.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: THREAD_COUNT,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        let mut selector = Box::new(MockSelectorControllerWrapper::new());
+        selector.set_expectations(|selector_controller| {
+            selector_controller
+                .expect_feed_cycle()
+                .returning(move |_, _, _| Ok(()));
+            selector_controller
+                .expect_wait_for_draws()
+                .returning(move |cycle| Ok(cycle + 1));
+        });
+
+        let address =
+            Address::from_public_key(&KeyPair::from_str(TEST_SK_1).unwrap().get_public_key());
+        let (rolls_path, _) = get_initials();
+        let mut batch = DBBatch::new();
+        let mut pos_final_state = PoSFinalState::new(
+            PoSConfig {
+                thread_count: POS_THREAD_COUNT,
+                periods_per_cycle: PERIODS_PER_CYCLE,
+                ..PoSConfig::default()
+            },
+            "",
+            &rolls_path.into_temp_path().to_path_buf(),
+            selector,
+            db.clone(),
+        )
+        .unwrap();
+        pos_final_state.create_initial_cycle(&mut batch);
+        assert_eq!(
+            pos_final_state.initial_rolls.get(&address).copied(),
+            Some(ACTIVE_ROLLS)
+        );
+
+        let mut prod_stats = PreHashMap::default();
+        prod_stats.insert(
+            address,
+            ProductionStats {
+                block_success_count: 0,
+                block_failure_count: 1,
+            },
+        );
+        let cycle_info_0 = CycleInfo::new(
+            0,
+            false,
+            pos_final_state.initial_rolls.clone(),
+            Default::default(),
+            prod_stats,
+        );
+        pos_final_state.put_new_cycle_info(&cycle_info_0, &mut batch);
+        db.write().write_batch(batch, Default::default(), None);
+        pos_final_state.recompute_pos_state_caches();
+
+        let mut mock_final_state = MockFinalStateController::new();
+        mock_final_state
+            .expect_get_pos_state()
+            .return_const(pos_final_state);
+
+        let mut state = SpeculativeRollState::new(
+            Arc::new(RwLock::new(mock_final_state)),
+            Arc::new(RwLock::new(ActiveHistory::default())),
+            Arc::new(RwLock::new(Vec::new())),
+        );
+        state
+            .added_changes
+            .roll_changes
+            .insert(address, OWNED_ROLLS);
+
+        let last_slot_of_cycle_0 = Slot::new_last_of_cycle(0, PERIODS_PER_CYCLE, POS_THREAD_COUNT)
+            .expect("last slot of cycle 0");
+        (state, address, last_slot_of_cycle_0)
+    }
+
+    fn settle(
+        state: &mut SpeculativeRollState,
+        slot: &Slot,
+        limit_liquidation_to_active_rolls: bool,
+    ) {
+        state.settle_production_stats(
+            slot,
+            PERIODS_PER_CYCLE,
+            POS_THREAD_COUNT,
+            ROLL_PRICE,
+            Ratio::new(0, 1),
+            limit_liquidation_to_active_rolls,
+        );
+    }
+
+    #[test]
+    fn settle_pre_mip_zeroes_current_balance() {
+        let (mut state, address, slot) = setup();
+        settle(&mut state, &slot, false);
+
+        assert_eq!(state.added_changes.roll_changes.get(&address), Some(&0));
+        let target_slot = Slot::new_last_of_cycle(3, PERIODS_PER_CYCLE, POS_THREAD_COUNT).unwrap();
+        let credits = state
+            .added_changes
+            .deferred_credits
+            .get_address_credits_for_slot(&address, &target_slot)
+            .unwrap();
+        assert_eq!(credits, ROLL_PRICE.saturating_mul_u64(OWNED_ROLLS));
+    }
+
+    #[test]
+    fn settle_post_mip_preserves_rolls_bought_after_eligibility() {
+        let (mut state, address, slot) = setup();
+        settle(&mut state, &slot, true);
+
+        assert_eq!(
+            state.added_changes.roll_changes.get(&address),
+            Some(&LATER_BOUGHT_ROLLS)
+        );
+        let target_slot = Slot::new_last_of_cycle(3, PERIODS_PER_CYCLE, POS_THREAD_COUNT).unwrap();
+        let credits = state
+            .added_changes
+            .deferred_credits
+            .get_address_credits_for_slot(&address, &target_slot)
+            .unwrap();
+        assert_eq!(credits, ROLL_PRICE.saturating_mul_u64(ACTIVE_ROLLS));
     }
 }

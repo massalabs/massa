@@ -15,7 +15,10 @@ use crate::speculative_deferred_calls::{
 use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
+use crate::{
+    active_history::ActiveHistory,
+    speculative_roll_state::{SpeculativeRollState, SETTLE_ACTIVE_ROLLS_EXEC_VERSION},
+};
 use massa_async_pool::AsyncPoolChanges;
 
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
@@ -1101,6 +1104,7 @@ impl ExecutionContext {
                 self.config.thread_count,
                 self.config.roll_price,
                 self.config.max_miss_ratio,
+                self.is_execution_component_version_at_least(SETTLE_ACTIVE_ROLLS_EXEC_VERSION),
             )
         } else {
             vec![]
