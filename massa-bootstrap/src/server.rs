@@ -230,7 +230,16 @@ impl BootstrapServer<'_> {
                         Err(e) => return Err(BootstrapError::GeneralError(format!("update stopper error : {}", e))),
                     }
                 },
-                recv(ticker) -> _ => {list.update()?;},
+                recv(ticker) -> _ => {
+                    // A failed refresh (e.g. malformed JSON in an ACL file)
+                    // must not kill the updater: log it and keep the previously
+                    // loaded lists, retrying on the next tick. Propagating the
+                    // error here would stop all future reloads while the event
+                    // loop kept enforcing a stale ACL snapshot.
+                    if let Err(e) = list.update() {
+                        warn!("failed to refresh bootstrap white/black list, keeping previous lists: {}", e);
+                    }
+                },
             }
         }
     }
@@ -798,5 +807,41 @@ pub(crate) fn manage_bootstrap(
                 }
             },
         };
+    }
+}
+
+#[cfg(test)]
+mod updater_tests {
+    use super::*;
+    use std::time::Duration;
+    use tempfile::TempDir;
+
+    #[test]
+    fn updater_survives_a_malformed_acl_reload() {
+        let dir = TempDir::new().unwrap();
+        let white = dir.path().join("whitelist.json");
+        let black = dir.path().join("blacklist.json");
+        // Start from a valid (empty) blacklist so init succeeds.
+        std::fs::write(&black, "[]").unwrap();
+
+        let list = SharedWhiteBlackList::new(white, black.clone()).unwrap();
+        let (stop_tx, stop_rx) = crossbeam::channel::unbounded::<()>();
+        let handle = std::thread::spawn(move || {
+            BootstrapServer::run_updater(list, Duration::from_millis(20), stop_rx)
+        });
+
+        // Corrupt the file so subsequent periodic reloads fail to parse.
+        std::fs::write(&black, "{ not valid json ]").unwrap();
+        // Let several ticks elapse; the updater must keep running.
+        std::thread::sleep(Duration::from_millis(200));
+        assert!(
+            !handle.is_finished(),
+            "updater thread must survive a malformed ACL reload instead of dying"
+        );
+
+        // It must still stop cleanly on request.
+        stop_tx.send(()).unwrap();
+        let res = handle.join().expect("updater thread panicked");
+        assert!(res.is_ok(), "clean stop should return Ok, got {:?}", res);
     }
 }
