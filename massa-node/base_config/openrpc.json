@@ -1184,7 +1184,7 @@
                         "$ref": "#/components/schemas/ApiRequest"
                     },
                     "name": "ApiRequest",
-                    "description": "Optional api request"
+                    "description": "Optional api request. When omitted, empty, or when page_request is null, the first 50 largest stakers are returned."
                 }
             ],
             "result": {
@@ -1195,7 +1195,7 @@
             },
             "name": "get_largest_stakers",
             "summary": "Get largest stakers",
-            "description": "Returns the active stakers and their active roll counts for the current cycle sorted by largest roll counts."
+            "description": "Returns the active stakers and their active roll counts for the current cycle sorted by largest roll counts. If pagination is omitted (no argument, empty request, or null page_request), the response contains the first 50 stakers and total_count is the full set size."
         },
         {
             "tags": [
@@ -1677,7 +1677,7 @@
                 "properties": {
                     "page_request": {
                         "$ref": "#/components/schemas/PageRequest",
-                        "description": "Optional page request"
+                        "description": "Optional page request. When omitted or null, defaults to offset 0 and limit 50."
                     }
                 },
                 "additionalProperties": false

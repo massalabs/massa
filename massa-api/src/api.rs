@@ -94,17 +94,16 @@ impl MassaApiServer for API<ApiV2> {
         staker_vec
             .sort_by(|&(_, roll_counts_a), &(_, roll_counts_b)| roll_counts_b.cmp(&roll_counts_a));
 
-        let paged_vec = if let Some(api_request) = api_request {
-            PagedVec::new(staker_vec, api_request.page_request)
-        } else {
-            PagedVec::new(
-                staker_vec,
-                Some(PageRequest {
-                    offset: 0,
-                    limit: 50,
-                }),
-            )
-        };
+        // Omitted api_request and a present request with no page_request must
+        // behave the same: default to the first 50 largest stakers.
+        const DEFAULT_PAGE_LIMIT: usize = 50;
+        let page_request = api_request
+            .and_then(|request| request.page_request)
+            .or(Some(PageRequest {
+                offset: 0,
+                limit: DEFAULT_PAGE_LIMIT,
+            }));
+        let paged_vec = PagedVec::new(staker_vec, page_request);
 
         Ok(paged_vec.into())
     }
