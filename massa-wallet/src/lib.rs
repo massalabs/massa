@@ -108,10 +108,21 @@ impl Wallet {
                             return Err(WalletError::VersionError("Invalid wallet/version matching: your wallet does not follow its version's secret key encoding format.".to_string()))
                         }
                     }
-                    keys.insert(
-                        Address::from_str(&wallet.address)?,
-                        KeyPair::from_bytes(&secret_key)?,
-                    );
+                    let keypair = KeyPair::from_bytes(&secret_key)?;
+                    // Do not trust the plaintext metadata: verify that the
+                    // decrypted keypair actually derives the declared address.
+                    // Otherwise a tampered wallet file could relabel encrypted
+                    // key material under a forged address, misbinding local
+                    // wallet state and address-based lookups.
+                    let declared_address = Address::from_str(&wallet.address)?;
+                    let derived_address = Address::from_public_key(&keypair.get_public_key());
+                    if derived_address != declared_address {
+                        return Err(WalletError::InconsistentWalletFile(format!(
+                            "wallet file declares address {} but the decrypted key derives {}",
+                            declared_address, derived_address
+                        )));
+                    }
+                    keys.insert(derived_address, keypair);
                 }
             }
             Ok(Wallet {
@@ -309,8 +320,9 @@ impl std::fmt::Display for Wallet {
 pub mod test_exports;
 
 #[cfg(all(test, feature = "test-exports"))]
-mod save_cleanup_tests {
+mod tests {
     use super::*;
+    use massa_signature::KeyPair;
     use tempfile::TempDir;
 
     #[test]
@@ -340,5 +352,36 @@ mod save_cleanup_tests {
             !stale.exists(),
             "stale managed wallet_*.yaml file must be removed"
         );
+    }
+
+    #[test]
+    fn honest_wallet_loads_and_tampered_address_is_rejected() {
+        let dir = TempDir::new().unwrap();
+        let dir_path = dir.path().to_path_buf();
+
+        // Create a wallet with a single keypair and persist it.
+        let mut wallet = Wallet::new(dir_path.clone(), "pw".to_string(), 0).unwrap();
+        let kp = KeyPair::generate(0).unwrap();
+        let addr = Address::from_public_key(&kp.get_public_key());
+        wallet.add_keypairs(vec![kp]).unwrap();
+
+        // An untampered reload succeeds and binds the right address.
+        let reloaded = Wallet::new(dir_path.clone(), "pw".to_string(), 0).unwrap();
+        assert!(reloaded.keys.contains_key(&addr));
+
+        // Tamper: relabel the declared address to an unrelated one while leaving
+        // the encrypted key material unchanged.
+        let file = dir_path.join(format!("wallet_{}.yaml", addr));
+        let content = std::fs::read(&file).unwrap();
+        let mut parsed: WalletFileFormat = serde_yaml::from_slice(&content).unwrap();
+        let other = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        parsed.address = other.to_string();
+        std::fs::write(&file, serde_yaml::to_string(&parsed).unwrap()).unwrap();
+
+        // Loading the tampered file must be rejected rather than silently
+        // binding the key under the forged address.
+        let err = Wallet::new(dir_path, "pw".to_string(), 0)
+            .expect_err("a tampered declared address must be rejected");
+        assert!(matches!(err, WalletError::InconsistentWalletFile(_)));
     }
 }
