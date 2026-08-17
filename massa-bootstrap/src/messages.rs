@@ -31,7 +31,7 @@ use std::collections::BTreeMap;
 
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
-use nom::multi::{fold_many0, length_data, length_value, many0};
+use nom::multi::{fold_many0, length_data, length_value};
 use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
@@ -506,10 +506,25 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.state_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.datastore_val_deserializer.deserialize(input),
-                                    ))),
+                                    // Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the new_elements
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    fold_many0(
+                                        tuple((
+                                            |input| {
+                                                self.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| {
+                                                self.datastore_val_deserializer.deserialize(input)
+                                            },
+                                        )),
+                                        BTreeMap::new,
+                                        |mut acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context(
@@ -553,10 +568,25 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.versioning_part_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.datastore_val_deserializer.deserialize(input),
-                                    ))),
+                                    // Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the new_elements
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    fold_many0(
+                                        tuple((
+                                            |input| {
+                                                self.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| {
+                                                self.datastore_val_deserializer.deserialize(input)
+                                            },
+                                        )),
+                                        BTreeMap::new,
+                                        |mut acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context(
@@ -622,14 +652,14 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         last_slot_before_downtime,
                     )| {
                         let state_part = StreamBatch::<Slot> {
-                            new_elements: state_part_new_elems.into_iter().collect(),
-                            // already a `BTreeMap` (folded during parsing)
+                            // both already `BTreeMap`s (folded during parsing)
+                            new_elements: state_part_new_elems,
                             updates_on_previous_elements: state_part_updates,
                             change_id: state_part_change_id,
                         };
                         let versioning_part = StreamBatch::<Slot> {
-                            new_elements: versioning_part_new_elems.into_iter().collect(),
-                            // already a `BTreeMap` (folded during parsing)
+                            // both already `BTreeMap`s (folded during parsing)
+                            new_elements: versioning_part_new_elems,
                             updates_on_previous_elements: versioning_part_updates,
                             change_id: versioning_part_change_id,
                         };
