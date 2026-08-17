@@ -15,6 +15,18 @@ use tracing::error;
 /// end user can override this value by sending a request with a custom interval
 const DEFAULT_THROUGHPUT_INTERVAL: u64 = 10;
 
+/// Resolve the throughput interval (in seconds) from an optional client-supplied
+/// value, falling back to the default when it is absent or zero.
+///
+/// A zero interval must never reach `tokio::time::interval`, which panics when the
+/// period is zero and would take down the streaming task.
+fn resolve_interval_secs(requested: Option<u64>) -> u64 {
+    match requested {
+        Some(secs) if secs > 0 => secs,
+        _ => DEFAULT_THROUGHPUT_INTERVAL,
+    }
+}
+
 /// Type declaration for TransactionsThroughput
 pub type TransactionsThroughputStreamType = Pin<
     Box<
@@ -58,8 +70,9 @@ pub(crate) async fn transactions_throughput(
                 res = in_stream.next() => {
                     match res {
                         Some(Ok(req)) => {
-                            // Update the interval timer based on the request (or use the default)
-                            let new_timer = req.interval.unwrap_or(DEFAULT_THROUGHPUT_INTERVAL);
+                            // Update the interval timer based on the request (or use the default).
+                            // A zero interval falls back to the default to avoid panicking `time::interval`.
+                            let new_timer = resolve_interval_secs(req.interval);
                             interval = time::interval(Duration::from_secs(new_timer));
                             interval.reset();
                         },
@@ -116,11 +129,8 @@ pub(crate) async fn transactions_throughput_server(
 
     // Spawn a new Tokio task to handle the stream processing
     tokio::spawn(async move {
-        let mut interval = if let Some(interval_user) = request.interval {
-            time::interval(Duration::from_secs(interval_user))
-        } else {
-            time::interval(Duration::from_secs(DEFAULT_THROUGHPUT_INTERVAL))
-        };
+        let mut interval =
+            time::interval(Duration::from_secs(resolve_interval_secs(request.interval)));
 
         // Continuously loop until the stream ends or an error occurs
         loop {
@@ -157,4 +167,19 @@ pub(crate) async fn transactions_throughput_server(
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
     Ok(Box::pin(out_stream) as TransactionsThroughputServerStreamType)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{resolve_interval_secs, DEFAULT_THROUGHPUT_INTERVAL};
+
+    #[test]
+    fn test_resolve_interval_secs() {
+        // Absent or zero -> default (zero would panic tokio's time::interval).
+        assert_eq!(resolve_interval_secs(None), DEFAULT_THROUGHPUT_INTERVAL);
+        assert_eq!(resolve_interval_secs(Some(0)), DEFAULT_THROUGHPUT_INTERVAL);
+        // Positive values are used as-is.
+        assert_eq!(resolve_interval_secs(Some(1)), 1);
+        assert_eq!(resolve_interval_secs(Some(42)), 42);
+    }
 }
