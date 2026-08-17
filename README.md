@@ -49,6 +49,7 @@ with other like-minded people, these can be good places to start:
 - [Discord](https://discord.com/invite/massa)
 - [Telegram](https://t.me/massanetwork)
 - [Twitter](https://x.com/massachain/)
+- [YouTube](https://www.youtube.com/@massa_chain)
 
 ## Contributing
 
