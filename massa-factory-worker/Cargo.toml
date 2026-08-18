@@ -32,4 +32,5 @@ massa_factory_exports = {workspace = true, "features" = ["test-exports"]}
 massa_wallet = {workspace = true, "features" = ["test-exports"]}
 massa_pos_exports = {workspace = true, "features" = ["test-exports"]}
 massa_pool_exports = {workspace = true, "features" = ["test-exports"]}
+massa_versioning = {workspace = true, "features" = ["test-exports"]}
 serial_test = { workspace = true }

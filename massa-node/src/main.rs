@@ -698,6 +698,8 @@ async fn launch(
         },
         selector: selector_controller.clone(),
         execution_controller: execution_controller.clone(),
+        mip_store: mip_store.clone(),
+        chain_id: *CHAINID,
     };
 
     let (pool_manager, pool_controller) = start_pool_controller(

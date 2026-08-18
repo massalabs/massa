@@ -1541,7 +1541,8 @@ mod tests {
         );
 
         let op: SecureShare<Operation, OperationId> =
-            Operation::new_verifiable(content, op_serializer, &sender_keypair, chain_id).unwrap();
+            Operation::new_verifiable(content, op_serializer, &sender_keypair, chain_id, None)
+                .unwrap();
 
         println!("Chain id: {}", *CHAINID);
         println!("Operation id: {:?}", op.id);
@@ -1606,8 +1607,8 @@ mod tests {
 
         let op_serializer = OperationSerializer::new();
 
-        let op =
-            Operation::new_verifiable(content, op_serializer, &sender_keypair, *CHAINID).unwrap();
+        let op = Operation::new_verifiable(content, op_serializer, &sender_keypair, *CHAINID, None)
+            .unwrap();
 
         let mut ser_op = Vec::new();
         SecureShareSerializer::new()
@@ -1684,8 +1685,8 @@ mod tests {
         assert_eq!(res_content, content);
         let op_serializer = OperationSerializer::new();
 
-        let op =
-            Operation::new_verifiable(content, op_serializer, &sender_keypair, *CHAINID).unwrap();
+        let op = Operation::new_verifiable(content, op_serializer, &sender_keypair, *CHAINID, None)
+            .unwrap();
 
         let mut ser_op = Vec::new();
         SecureShareSerializer::new()
@@ -1763,8 +1764,8 @@ mod tests {
         assert_eq!(res_content, content);
         let op_serializer = OperationSerializer::new();
 
-        let op =
-            Operation::new_verifiable(content, op_serializer, &sender_keypair, *CHAINID).unwrap();
+        let op = Operation::new_verifiable(content, op_serializer, &sender_keypair, *CHAINID, None)
+            .unwrap();
 
         let mut ser_op = Vec::new();
         SecureShareSerializer::new()

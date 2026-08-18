@@ -719,7 +719,33 @@ impl ExecutionState {
         }
 
         // ignore denunciation if not valid
-        if !denunciation.is_valid() {
+        //
+        // The signature reconstruction is chain-scoped once MIP-0002's `Execution`
+        // component v2 is active for the denounced slot: the signed hash then folds
+        // in the local chain id. This prevents an attacker from combining two
+        // legitimate same-(slot, index) endorsements / block headers produced by
+        // the same validator on two different chains into a denunciation on either
+        // chain (F90 / PDF #11). Pre-activation `sig_chain_id` is `None` and the
+        // legacy (chain-agnostic) layout is used, so existing denunciations keep
+        // verifying. The layout is decided by the network-agreed active version for
+        // the denounced slot, not any self-claimed header field.
+        let de_slot_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            *de_slot,
+        )
+        .map_err(|e| {
+            ExecutionError::IncludeDenunciationError(format!(
+                "cannot compute denounced slot timestamp: {e}"
+            ))
+        })?;
+        let sig_chain_id = massa_versioning::consensus_signature::sig_chain_id_for_slot(
+            &self.mip_store,
+            self.config.chain_id,
+            de_slot_ts,
+        );
+        if !denunciation.is_valid_with_chain(sig_chain_id) {
             return Err(ExecutionError::IncludeDenunciationError(
                 "denunciation is not valid".to_string(),
             ));

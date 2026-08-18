@@ -71,6 +71,7 @@ impl SecureShareContent for Block {
         content_serializer: SC,
         _keypair: &KeyPair,
         _chain_id: u64,
+        _sig_chain_id: Option<u64>,
     ) -> Result<SecureShare<Self, U>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&self, &mut content_serialized)?;
@@ -475,6 +476,7 @@ mod test {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
         let endo2 = Endorsement::new_verifiable(
@@ -489,6 +491,7 @@ mod test {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -506,6 +509,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -521,6 +525,7 @@ mod test {
             BlockSerializer::new(),
             &keypair,
             *CHAINID,
+            None,
         )
         .unwrap();
         let mut ser_block = Vec::new();
@@ -565,9 +570,9 @@ mod test {
         );
 
         assert_eq!(orig_block.header.signature, res_block.signature);
-        orig_header.verify_signature().unwrap();
+        orig_header.verify_signature(Some(*CHAINID)).unwrap();
         for ed in orig_block.header.content.endorsements.iter() {
-            ed.verify_signature().unwrap();
+            ed.verify_signature(Some(*CHAINID)).unwrap();
         }
 
         res_block
@@ -597,6 +602,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -612,6 +618,7 @@ mod test {
             BlockSerializer::new(),
             &keypair,
             *CHAINID,
+            None,
         )
         .unwrap();
         let mut ser_block = Vec::new();
@@ -691,6 +698,7 @@ mod test {
                     EndorsementSerializer::new(),
                     &keypair,
                     *CHAINID,
+                    Some(*CHAINID),
                 )
                 .unwrap()],
                 denunciations: vec![],
@@ -698,6 +706,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -709,7 +718,8 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -757,6 +767,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -768,7 +779,8 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -811,6 +823,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -822,7 +835,8 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -868,6 +882,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -879,7 +894,8 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -931,6 +947,7 @@ mod test {
                     EndorsementSerializer::new(),
                     &keypair,
                     *CHAINID,
+                    Some(*CHAINID),
                 )
                 .unwrap()
             })
@@ -949,6 +966,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -960,7 +978,8 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1008,6 +1027,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -1019,7 +1039,8 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1062,6 +1083,7 @@ mod test {
                     EndorsementSerializer::new(),
                     &keypair,
                     *CHAINID,
+                    Some(*CHAINID),
                 )
                 .unwrap()
             })
@@ -1080,6 +1102,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -1091,7 +1114,8 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1140,6 +1164,7 @@ mod test {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -1157,6 +1182,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -1168,7 +1194,8 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1216,6 +1243,7 @@ mod test {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
         let endo2 = Endorsement::new_verifiable(
@@ -1230,6 +1258,7 @@ mod test {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -1247,6 +1276,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -1258,7 +1288,8 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1308,6 +1339,7 @@ mod test {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
         let endo2 = Endorsement::new_verifiable(
@@ -1322,6 +1354,7 @@ mod test {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -1339,6 +1372,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 

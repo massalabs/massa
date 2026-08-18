@@ -140,6 +140,7 @@ fn basic_creation_with_operation() {
                 OperationSerializer::new(),
                 &keypair_clone,
                 *CHAINID,
+                None,
             )
             .unwrap();
             pool_storage.store_operations(vec![operation.clone()]);

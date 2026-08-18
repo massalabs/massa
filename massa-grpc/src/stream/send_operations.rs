@@ -118,7 +118,7 @@ pub(crate) async fn send_operations(
                                             }
 
                                             if rest.is_empty() {
-                                                res_operation.verify_signature()
+                                                res_operation.verify_signature(None)
                                                     .map(|_| (res_operation.id.to_string(), res_operation))
                                                     .map_err(|e| e.into())
                                             } else {
