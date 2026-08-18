@@ -434,10 +434,6 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -755,11 +751,7 @@
 
 </span><span class="doccomment">/// Maximum of GAS allowed for a block
 </span><span class="kw">pub const </span>MAX_GAS_PER_BLOCK: u64 = u32::MAX <span class="kw">as </span>u64;
-<span class="doccomment">/// Base GAS budget for asynchronous messages execution on one slot.
-/// This is not a strict per-slot cap: since MIP-0001, `execute_slot` tops this budget
-/// up with the gas left unused by the block at that slot (and subtracts the gas booked
-/// by deferred calls), so async execution can exceed this value on underfilled slots.
-/// The bound that always holds is `MAX_GAS_PER_BLOCK + MAX_ASYNC_GAS` for the whole slot.
+<span class="doccomment">/// Maximum of GAS allowed for asynchronous messages execution on one slot
 </span><span class="kw">pub const </span>MAX_ASYNC_GAS: u64 = <span class="number">1_000_000_000</span>;
 <span class="doccomment">/// Constant cost applied to asynchronous messages (to take into account some costs related to snapshot)
 </span><span class="kw">pub const </span>ASYNC_MSG_CST_GAS_COST: u64 = <span class="number">1_000_000</span>;
