@@ -110,7 +110,7 @@ massa_event_cache = { path = "./massa-event-cache" }
 massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", "rev" = "9bfbbe1b5dc62815aa2b9f9c5b827b0198da65e3" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "3218b591dcbbc2b88b22a91817434208eb909d12" }
 
-peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "4f0f69571021de8d7f4c0a70327274c2b0976c71" }
+peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "c26659997602386d3c9883361d8867139d8de246" }
 # Dev only - use local dependencies
 # massa-proto-rs = { path = "../massa-proto-rs" }
 # massa-sc-runtime = { path = "../massa-sc-runtime" }

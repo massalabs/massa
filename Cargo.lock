@@ -4297,7 +4297,7 @@ dependencies = [
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?rev=4f0f69571021de8d7f4c0a70327274c2b0976c71#4f0f69571021de8d7f4c0a70327274c2b0976c71"
+source = "git+https://github.com/massalabs/PeerNet?rev=c26659997602386d3c9883361d8867139d8de246#c26659997602386d3c9883361d8867139d8de246"
 dependencies = [
  "crossbeam",
  "enum_delegate",
