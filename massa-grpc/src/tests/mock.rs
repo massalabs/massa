@@ -64,6 +64,8 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         max_decoding_message_size: 4194304,
         max_encoding_message_size: 4194304,
         max_gas_per_block: u32::MAX as u64,
+        base_operation_gas_cost: 0,
+        sp_compilation_cost: 0,
         concurrency_limit_per_connection: 5,
         timeout: Default::default(),
         initial_stream_window_size: None,

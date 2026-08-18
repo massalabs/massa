@@ -1001,6 +1001,41 @@ impl SecureShareOperation {
         .saturating_add(base_operation_gas_cost)
     }
 
+    /// Check that the operation can ever fit in a block, gas-wise.
+    ///
+    /// Compares the full gas usage (see `get_gas_usage`, mandatory overheads included)
+    /// against the block gas limit, so that every submission interface applies the same
+    /// includability criterion as the block filling logic.
+    ///
+    /// On failure returns the client-facing error message, stating the highest `max_gas`
+    /// the operation could have declared.
+    pub fn check_gas_usage(
+        &self,
+        max_gas_per_block: u64,
+        base_operation_gas_cost: u64,
+        sp_compilation_cost: u64,
+    ) -> Result<(), String> {
+        // gas that the operation is charged on top of its declared max_gas
+        let (op_name, gas_overhead) = match &self.content.op {
+            OperationType::CallSC { .. } => ("CallSC", base_operation_gas_cost),
+            OperationType::ExecuteSC { .. } => (
+                "ExecuteSC",
+                base_operation_gas_cost.saturating_add(sp_compilation_cost),
+            ),
+            OperationType::RollBuy { .. }
+            | OperationType::RollSell { .. }
+            | OperationType::Transaction { .. } => return Ok(()),
+        };
+        if self.get_gas_usage(base_operation_gas_cost, sp_compilation_cost) > max_gas_per_block {
+            return Err(format!(
+                "Upper gas limit for {} operation is {}. Your operation will never be included in a block.",
+                op_name,
+                max_gas_per_block.saturating_sub(gas_overhead)
+            ));
+        }
+        Ok(())
+    }
+
     /// get the addresses that are involved in this operation from a ledger point of view
     pub fn get_ledger_involved_addresses(&self) -> PreHashSet<Address> {
         let mut res = PreHashSet::<Address>::default();
