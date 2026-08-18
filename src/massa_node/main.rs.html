@@ -1626,11 +1626,6 @@
 <a href="#1626" id="1626">1626</a>
 <a href="#1627" id="1627">1627</a>
 <a href="#1628" id="1628">1628</a>
-<a href="#1629" id="1629">1629</a>
-<a href="#1630" id="1630">1630</a>
-<a href="#1631" id="1631">1631</a>
-<a href="#1632" id="1632">1632</a>
-<a href="#1633" id="1633">1633</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2647,7 +2642,6 @@
             keypair.clone(),
             <span class="kw-2">&amp;</span>final_state,
             SETTINGS.pool.minimal_fees,
-            gas_costs.sp_compilation_cost,
         );
 
         <span class="kw">let </span>grpc_public_api = MassaPublicGrpc {
@@ -2689,7 +2683,6 @@
             keypair.clone(),
             <span class="kw-2">&amp;</span>final_state,
             SETTINGS.pool.minimal_fees,
-            gas_costs.sp_compilation_cost,
         );
 
         <span class="kw">let </span>bs_white_black_list = bootstrap_manager
@@ -2848,7 +2841,6 @@
     keypair: KeyPair,
     final_state: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     minimal_fees: Amount,
-    sp_compilation_cost: u64,
 ) -&gt; GrpcConfig {
     GrpcConfig {
         name,
@@ -2891,8 +2883,6 @@
         max_parameter_size: MAX_PARAMETERS_SIZE,
         max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
-        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
-        sp_compilation_cost,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
