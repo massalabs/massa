@@ -534,7 +534,11 @@ pub fn into_element(abi_trace: &AbiTrace) -> AbiCallStackElementParent {
 }
 
 #[cfg(feature = "execution-trace")]
-/// Get slot transfers
+/// Get slot transfers.
+///
+/// A slot is only reported if it currently has a block in the blockclique; otherwise its
+/// transfers are returned empty. This matches the JSON-RPC `get_slots_transfers` availability
+/// semantics so both query APIs agree for a given slot.
 pub(crate) fn get_slot_transfers(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetSlotTransfersRequest>,
@@ -549,6 +553,18 @@ pub(crate) fn get_slot_transfers(
             slot: slot.clone().into(),
             transfers: vec![],
         };
+        // Only report transfers for a slot that currently has a block in the blockclique,
+        // mirroring the JSON-RPC `get_slots_transfers` behavior so both query APIs return the
+        // same batch for a given slot. Without this gate the two queries could disagree for a
+        // slot whose block is not (or no longer) in the blockclique.
+        if grpc
+            .consensus_controller
+            .get_blockclique_block_at_slot(slot.clone().into())
+            .is_none()
+        {
+            transfer_each_slot.push(slot_transfers);
+            continue;
+        }
         // Read the ABI call stack and the direct transfers for this slot from a single
         // consistent snapshot, so the combined response cannot mix data from two different
         // executions of the same slot (a re-execution between two separate reads).
