@@ -315,7 +315,11 @@ pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
 
 /// Maximum of GAS allowed for a block
 pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
-/// Maximum of GAS allowed for asynchronous messages execution on one slot
+/// Base GAS budget for asynchronous messages execution on one slot.
+/// This is not a strict per-slot cap: since MIP-0001, `execute_slot` tops this budget
+/// up with the gas left unused by the block at that slot (and subtracts the gas booked
+/// by deferred calls), so async execution can exceed this value on underfilled slots.
+/// The bound that always holds is `MAX_GAS_PER_BLOCK + MAX_ASYNC_GAS` for the whole slot.
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 /// Constant cost applied to asynchronous messages (to take into account some costs related to snapshot)
 pub const ASYNC_MSG_CST_GAS_COST: u64 = 1_000_000;

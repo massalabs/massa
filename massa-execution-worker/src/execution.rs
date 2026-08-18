@@ -1599,7 +1599,7 @@ impl ExecutionState {
         // Block execution
 
         let mut block_info: Option<ExecutedBlockInfo> = None;
-        // Set block gas (max_gas_per_block - gas used by deferred calls)
+        // Set block gas (deferred calls have their own budget, see async gas below)
         let mut remaining_block_gas = self.config.max_gas_per_block;
 
         // Check if there is a block at this slot
@@ -1887,6 +1887,9 @@ impl ExecutionState {
 
         // Get asynchronous messages to execute
         // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
+        // Reusing the gas the block left unused is intentional (activated by MIP-0001, MipComponent::Execution v1):
+        // it keeps the whole-slot budget bounded by max_gas_per_block + max_async_gas while letting
+        // underfilled slots do more async work. Changing this formula is a consensus change.
         let async_msg_gas_available = self
             .config
             .max_async_gas
