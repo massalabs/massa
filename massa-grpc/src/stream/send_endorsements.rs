@@ -5,10 +5,13 @@ use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::endorsement::{EndorsementDeserializer, SecureShareEndorsement};
 use massa_models::secure_share::SecureShareDeserializer;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_pos_exports::SelectorController;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_serialization::{DeserializeError, Deserializer};
+use massa_time::MassaTime;
+use massa_versioning::consensus_signature::sig_chain_id_for_slot;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::pin::Pin;
@@ -35,6 +38,7 @@ pub(crate) async fn send_endorsements(
     let selector_controller = grpc.selector_controller.clone();
     let config = grpc.grpc_config.clone();
     let storage = grpc.storage.clone_without_refs();
+    let mip_store = grpc.keypair_factory.mip_store.clone();
 
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
@@ -81,7 +85,19 @@ pub(crate) async fn send_endorsements(
                                             // Deserialize the endorsement and verify its signature
                                             let (rest, res_endorsement): (&[u8], SecureShareEndorsement) = tuple;
                                             if rest.is_empty() {
-                                                res_endorsement.verify_signature()
+                                                let slot_ts = get_block_slot_timestamp(
+                                                    config.thread_count,
+                                                    config.t0,
+                                                    config.genesis_timestamp,
+                                                    res_endorsement.content.slot,
+                                                )
+                                                .unwrap_or_else(|_| MassaTime::from_millis(0));
+                                                let sig_chain_id = sig_chain_id_for_slot(
+                                                    &mip_store,
+                                                    config.chain_id,
+                                                    slot_ts,
+                                                );
+                                                res_endorsement.verify_signature(sig_chain_id)
                                                     .map(|_| (res_endorsement.id.to_string(), res_endorsement))
                                                     .map_err(|e| e.into())
                                             } else {

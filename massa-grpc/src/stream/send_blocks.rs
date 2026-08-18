@@ -4,9 +4,14 @@ use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
+use massa_models::error::ModelsError;
 use massa_models::secure_share::SecureShareDeserializer;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_serialization::{DeserializeError, Deserializer};
+use massa_time::MassaTime;
+use massa_versioning::consensus_signature::sig_chain_id_for_slot;
+use massa_versioning::versioning::MipStore;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::sync::mpsc::Sender;
@@ -34,6 +39,7 @@ pub(crate) async fn send_blocks(
     let protocol_command_sender = grpc.protocol_controller.clone();
     let config = grpc.grpc_config.clone();
     let storage = grpc.storage.clone_without_refs();
+    let mip_store = grpc.keypair_factory.mip_store.clone();
 
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
@@ -83,15 +89,7 @@ pub(crate) async fn send_blocks(
                                 .await;
                                 continue;
                             }
-                            if let Err(e) = res_block.verify_signature().and_then(|_| {
-                                res_block
-                                    .content
-                                    .header
-                                    .content
-                                    .endorsements
-                                    .iter()
-                                    .try_for_each(|endorsement| endorsement.verify_signature())
-                            }) {
+                            if let Err(e) = verify_received_block(&res_block, &config, &mip_store) {
                                 report_error(
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
@@ -198,4 +196,32 @@ async fn report_error(
         // If sending the message fails, log the error message
         error!("failed to send back send_blocks error response: {}", e);
     }
+}
+
+fn verify_received_block(
+    block: &SecureShareBlock,
+    config: &crate::config::GrpcConfig,
+    mip_store: &MipStore,
+) -> Result<(), ModelsError> {
+    // Block::verify_signature delegates to the nested header signing domain (F87).
+    let header = &block.content.header;
+    let header_ts = get_block_slot_timestamp(
+        config.thread_count,
+        config.t0,
+        config.genesis_timestamp,
+        header.content.slot,
+    )
+    .unwrap_or_else(|_| MassaTime::from_millis(0));
+    block.verify_signature(sig_chain_id_for_slot(mip_store, config.chain_id, header_ts))?;
+    for endorsement in header.content.endorsements.iter() {
+        let slot_ts = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            endorsement.content.slot,
+        )
+        .unwrap_or_else(|_| MassaTime::from_millis(0));
+        endorsement.verify_signature(sig_chain_id_for_slot(mip_store, config.chain_id, slot_ts))?;
+    }
+    Ok(())
 }

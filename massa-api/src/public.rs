@@ -1438,7 +1438,7 @@ impl MassaRpcServer for API<Public> {
                         .into());
                     }
 
-                    let _verify_signature = match operation.verify_signature() {
+                    let _verify_signature = match operation.verify_signature(None) {
                         Ok(()) => (),
                         Err(e) => return Err(ApiError::ModelsError(e).into()),
                     };

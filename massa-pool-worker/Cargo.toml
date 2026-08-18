@@ -15,6 +15,7 @@ massa_models = {workspace = true}
 massa_storage = {workspace = true}
 massa_pool_exports = {workspace = true}
 massa_time = {workspace = true}
+massa_versioning = {workspace = true}
 massa_wallet = {workspace = true}
 crossbeam-channel = {workspace = true}
 
@@ -26,3 +27,5 @@ massa_hash = {workspace = true}
 massa_pool_exports = {workspace = true, "features" = ["test-exports"]}
 massa_pos_exports = {workspace = true, "features" = ["test-exports"]}
 massa_execution_exports = {workspace = true, "features" = ["test-exports"]}
+massa_versioning = {workspace = true, "features" = ["test-exports"]}
+num = {workspace = true}

@@ -7,6 +7,7 @@ use massa_models::{
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
+    config::CHAINID,
     denunciation::Denunciation,
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     operation::{
@@ -64,7 +65,8 @@ pub trait TestUniverse {
             },
             BlockHeaderSerializer::new(),
             keypair,
-            0,
+            *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -76,6 +78,7 @@ pub trait TestUniverse {
             BlockSerializer::new(),
             keypair,
             0,
+            None,
         )
         .unwrap()
     }
@@ -96,7 +99,8 @@ pub trait TestUniverse {
             op,
             expire_period,
         };
-        Operation::new_verifiable(content, OperationSerializer::new(), keypair, chain_id).unwrap()
+        Operation::new_verifiable(content, OperationSerializer::new(), keypair, chain_id, None)
+            .unwrap()
     }
 
     fn create_endorsement(creator: &KeyPair, slot: Slot) -> SecureShareEndorsement {
@@ -105,7 +109,14 @@ pub trait TestUniverse {
             index: 0,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
         };
-        Endorsement::new_verifiable(content, EndorsementSerializer::new(), creator, 0).unwrap()
+        Endorsement::new_verifiable(
+            content,
+            EndorsementSerializer::new(),
+            creator,
+            *CHAINID,
+            Some(*CHAINID),
+        )
+        .unwrap()
     }
 }
 
