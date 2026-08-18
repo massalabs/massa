@@ -947,6 +947,12 @@ impl ExecutionState {
     /// Execute an operation of type `Transaction`
     /// Will panic if called with another operation type
     ///
+    /// The recipient can be any address, including a deployed smart contract:
+    /// a transaction only moves coins and never executes the destination's bytecode.
+    /// Contracts must therefore not treat a balance increase as a handled deposit.
+    /// Note that transfers to a *non-existing* SC address are rejected by the ledger,
+    /// since only user addresses can be created from transferred coins.
+    ///
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be a `Transaction`
     /// * `operation_id`: ID of the operation
