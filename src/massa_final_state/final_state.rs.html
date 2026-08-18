@@ -1343,6 +1343,7 @@
 <a href="#1343" id="1343">1343</a>
 <a href="#1344" id="1344">1344</a>
 <a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -2207,9 +2208,10 @@
         <span class="self">self</span>.executed_ops.reset();
         <span class="self">self</span>.executed_denunciations.reset();
         <span class="self">self</span>.mip_store.reset_db(<span class="self">self</span>.db.clone());
-        <span class="comment">// delete all remaining data from the database (execution trail hash, deferred calls, etc.)
-        </span><span class="self">self</span>.db.write().delete_prefix(<span class="string">""</span>, STATE_CF, <span class="prelude-val">None</span>);
-        <span class="self">self</span>.db.write().delete_prefix(<span class="string">""</span>, VERSIONING_CF, <span class="prelude-val">None</span>);
+        <span class="comment">// delete the execution trail hash
+        </span><span class="self">self</span>.db
+            .write()
+            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
     }
 
     <span class="kw">fn </span>get_ledger(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>LedgerController&gt; {
