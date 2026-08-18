@@ -2734,6 +2734,12 @@
 <a href="#2734" id="2734">2734</a>
 <a href="#2735" id="2735">2735</a>
 <a href="#2736" id="2736">2736</a>
+<a href="#2737" id="2737">2737</a>
+<a href="#2738" id="2738">2738</a>
+<a href="#2739" id="2739">2739</a>
+<a href="#2740" id="2740">2740</a>
+<a href="#2741" id="2741">2741</a>
+<a href="#2742" id="2742">2742</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3682,6 +3688,12 @@
 
     <span class="doccomment">/// Execute an operation of type `Transaction`
     /// Will panic if called with another operation type
+    ///
+    /// The recipient can be any address, including a deployed smart contract:
+    /// a transaction only moves coins and never executes the destination's bytecode.
+    /// Contracts must therefore not treat a balance increase as a handled deposit.
+    /// Note that transfers to a *non-existing* SC address are rejected by the ledger,
+    /// since only user addresses can be created from transferred coins.
     ///
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be a `Transaction`
