@@ -1561,22 +1561,6 @@
 <a href="#1561" id="1561">1561</a>
 <a href="#1562" id="1562">1562</a>
 <a href="#1563" id="1563">1563</a>
-<a href="#1564" id="1564">1564</a>
-<a href="#1565" id="1565">1565</a>
-<a href="#1566" id="1566">1566</a>
-<a href="#1567" id="1567">1567</a>
-<a href="#1568" id="1568">1568</a>
-<a href="#1569" id="1569">1569</a>
-<a href="#1570" id="1570">1570</a>
-<a href="#1571" id="1571">1571</a>
-<a href="#1572" id="1572">1572</a>
-<a href="#1573" id="1573">1573</a>
-<a href="#1574" id="1574">1574</a>
-<a href="#1575" id="1575">1575</a>
-<a href="#1576" id="1576">1576</a>
-<a href="#1577" id="1577">1577</a>
-<a href="#1578" id="1578">1578</a>
-<a href="#1579" id="1579">1579</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2113,11 +2097,7 @@
 }
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-</span><span class="doccomment">/// Get slot transfers.
-///
-/// A slot is only reported if it currently has a block in the blockclique; otherwise its
-/// transfers are returned empty. This matches the JSON-RPC `get_slots_transfers` availability
-/// semantics so both query APIs agree for a given slot.
+</span><span class="doccomment">/// Get slot transfers
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_slot_transfers(
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: tonic::Request&lt;grpc_api::GetSlotTransfersRequest&gt;,
@@ -2132,18 +2112,6 @@
             slot: slot.clone().into(),
             transfers: <span class="macro">vec!</span>[],
         };
-        <span class="comment">// Only report transfers for a slot that currently has a block in the blockclique,
-        // mirroring the JSON-RPC `get_slots_transfers` behavior so both query APIs return the
-        // same batch for a given slot. Without this gate the two queries could disagree for a
-        // slot whose block is not (or no longer) in the blockclique.
-        </span><span class="kw">if </span>grpc
-            .consensus_controller
-            .get_blockclique_block_at_slot(slot.clone().into())
-            .is_none()
-        {
-            transfer_each_slot.push(slot_transfers);
-            <span class="kw">continue</span>;
-        }
         <span class="comment">// Read the ABI call stack and the direct transfers for this slot from a single
         // consistent snapshot, so the combined response cannot mix data from two different
         // executions of the same slot (a re-execution between two separate reads).
