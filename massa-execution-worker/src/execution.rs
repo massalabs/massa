@@ -356,11 +356,11 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         {
             if self.config.broadcast_traces_enabled {
-                if let Some((slot_trace, _)) = exec_out.slot_trace.clone() {
+                if let Some((slot_trace, transfers)) = exec_out.slot_trace.clone() {
                     if let Err(err) = self
                         .channels
                         .slot_execution_traces_sender
-                        .send((slot_trace, true))
+                        .send((slot_trace, transfers, true))
                     {
                         trace!(
                             "error, failed to broadcast abi trace for slot {} due to: {}",
@@ -2040,11 +2040,11 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         {
             if self.config.broadcast_traces_enabled {
-                if let Some((slot_trace, _)) = exec_out.slot_trace.clone() {
+                if let Some((slot_trace, transfers)) = exec_out.slot_trace.clone() {
                     if let Err(err) = self
                         .channels
                         .slot_execution_traces_sender
-                        .send((slot_trace, false))
+                        .send((slot_trace, transfers, false))
                     {
                         trace!(
                             "error, failed to broadcast abi trace for slot {} due to: {}",
