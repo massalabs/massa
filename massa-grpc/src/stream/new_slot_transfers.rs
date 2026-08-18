@@ -41,7 +41,6 @@ pub(crate) async fn new_slot_transfers(
         .subscribe();
 
     tokio::spawn({
-        let execution_controller = grpc.execution_controller.clone();
         async move {
             let mut finality = FinalityLevel::Unspecified;
             loop {
@@ -49,7 +48,7 @@ pub(crate) async fn new_slot_transfers(
                     // Receive a new slot execution traces from the subscriber
                     event = subscriber.recv() => {
                         match event {
-                            Ok((massa_slot_execution_trace, is_final)) => {
+                            Ok((massa_slot_execution_trace, slot_transfers, is_final)) => {
                                 if (finality == FinalityLevel::Final && !is_final) ||
                                     (finality == FinalityLevel::Candidate && is_final) ||
                                     (finality == FinalityLevel::Unspecified && !is_final) {
@@ -116,22 +115,22 @@ pub(crate) async fn new_slot_transfers(
                                         }
                                     }
                                 }
-                                let transfers =
-                                    execution_controller
-                                    .get_transfers_for_slot(massa_slot_execution_trace.slot);
-                                if let Some(transfers) = transfers {
-                                    for transfer in transfers {
-                                        ret_transfers.push(TransferInfo {
-                                            from: transfer.from.to_string(),
-                                            to: transfer.to.to_string(),
-                                            amount: transfer.amount.to_raw(),
-                                            operation_id_or_asc_index: Some(
-                                                grpc_api::transfer_info::OperationIdOrAscIndex::OperationId(
-                                                    transfer.op_id.to_string(),
-                                                ),
+                                // Direct coin transfers come from the broadcast event itself,
+                                // i.e. the same execution snapshot as the ABI call stacks above.
+                                // Reading them from the (LRU-evictable) trace history instead
+                                // could return a different execution's data, or nothing at all
+                                // once the slot has been evicted.
+                                for transfer in slot_transfers {
+                                    ret_transfers.push(TransferInfo {
+                                        from: transfer.from.to_string(),
+                                        to: transfer.to.to_string(),
+                                        amount: transfer.amount.to_raw(),
+                                        operation_id_or_asc_index: Some(
+                                            grpc_api::transfer_info::OperationIdOrAscIndex::OperationId(
+                                                transfer.op_id.to_string(),
                                             ),
-                                        });
-                                    }
+                                        ),
+                                    });
                                 }
                                 let ret = grpc_api::NewSlotTransfersResponse {
                                     slot: Some(massa_slot_execution_trace.slot.into()),

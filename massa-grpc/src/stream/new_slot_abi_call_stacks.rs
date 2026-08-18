@@ -64,7 +64,7 @@ pub(crate) async fn new_slot_abi_call_stacks(
         #[cfg(not(feature = "execution-trace"))]
         let (mut subscriber, _receiver) = {
             let (subscriber_, receiver) =
-                tokio::sync::broadcast::channel::<(SlotAbiCallStack, bool)>(0);
+                tokio::sync::broadcast::channel::<(SlotAbiCallStack, Vec<()>, bool)>(0);
             (subscriber_.subscribe(), receiver)
         };
 
@@ -73,7 +73,7 @@ pub(crate) async fn new_slot_abi_call_stacks(
                 // Receive a new slot execution traces from the subscriber
                 event = subscriber.recv() => {
                     match event {
-                        Ok((massa_slot_execution_trace, received_finality)) => {
+                        Ok((massa_slot_execution_trace, _transfers, received_finality)) => {
                             if (finality == FinalityLevel::Final && !received_finality) ||
                                 (finality == FinalityLevel::Candidate && received_finality) {
                                 continue;

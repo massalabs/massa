@@ -4590,16 +4590,20 @@ fn execution_trace() {
     let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
     let join_handle = thread::spawn(move || loop {
         if let Ok(exec_traces) = receiver.blocking_recv() {
-            if exec_traces.1 == true {
+            if exec_traces.2 == true {
                 return Ok::<
-                    (massa_execution_exports::SlotAbiCallStack, bool),
+                    (
+                        massa_execution_exports::SlotAbiCallStack,
+                        Vec<massa_execution_exports::Transfer>,
+                        bool,
+                    ),
                     tokio::sync::broadcast::error::RecvError,
                 >(exec_traces);
             }
         }
     });
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
-    let (broadcast_result, _) = broadcast_result_.unwrap();
+    let (broadcast_result, _, _) = broadcast_result_.unwrap();
 
     let abi_name_1 = "assembly_script_generate_event";
     let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
@@ -4716,9 +4720,13 @@ fn execution_trace_nested() {
         // Execution Output
         loop {
             if let Ok(exec_traces) = receiver.blocking_recv() {
-                if exec_traces.1 == true {
+                if exec_traces.2 == true {
                     return Ok::<
-                        (massa_execution_exports::SlotAbiCallStack, bool),
+                        (
+                            massa_execution_exports::SlotAbiCallStack,
+                            Vec<massa_execution_exports::Transfer>,
+                            bool,
+                        ),
                         tokio::sync::broadcast::error::RecvError,
                     >(exec_traces);
                 }
@@ -4728,7 +4736,7 @@ fn execution_trace_nested() {
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
 
     // println!("b r: {:?}", broadcast_result_);
-    let (broadcast_result, _) = broadcast_result_.unwrap();
+    let (broadcast_result, _, _) = broadcast_result_.unwrap();
 
     let abi_name_1 = "assembly_script_call";
     let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
