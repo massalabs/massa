@@ -2731,15 +2731,6 @@
 <a href="#2731" id="2731">2731</a>
 <a href="#2732" id="2732">2732</a>
 <a href="#2733" id="2733">2733</a>
-<a href="#2734" id="2734">2734</a>
-<a href="#2735" id="2735">2735</a>
-<a href="#2736" id="2736">2736</a>
-<a href="#2737" id="2737">2737</a>
-<a href="#2738" id="2738">2738</a>
-<a href="#2739" id="2739">2739</a>
-<a href="#2740" id="2740">2740</a>
-<a href="#2741" id="2741">2741</a>
-<a href="#2742" id="2742">2742</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3689,12 +3680,6 @@
     <span class="doccomment">/// Execute an operation of type `Transaction`
     /// Will panic if called with another operation type
     ///
-    /// The recipient can be any address, including a deployed smart contract:
-    /// a transaction only moves coins and never executes the destination's bytecode.
-    /// Contracts must therefore not treat a balance increase as a handled deposit.
-    /// Note that transfers to a *non-existing* SC address are rejected by the ledger,
-    /// since only user addresses can be created from transferred coins.
-    ///
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be a `Transaction`
     /// * `operation_id`: ID of the operation
@@ -4347,7 +4332,7 @@
         <span class="comment">// Block execution
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>block_info: <span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt; = <span class="prelude-val">None</span>;
-        <span class="comment">// Set block gas (deferred calls have their own budget, see async gas below)
+        <span class="comment">// Set block gas (max_gas_per_block - gas used by deferred calls)
         </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_block_gas = <span class="self">self</span>.config.max_gas_per_block;
 
         <span class="comment">// Check if there is a block at this slot
@@ -4635,9 +4620,6 @@
 
         // Get asynchronous messages to execute
         // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
-        // Reusing the gas the block left unused is intentional (activated by MIP-0001, MipComponent::Execution v1):
-        // it keeps the whole-slot budget bounded by max_gas_per_block + max_async_gas while letting
-        // underfilled slots do more async work. Changing this formula is a consensus change.
         </span><span class="kw">let </span>async_msg_gas_available = <span class="self">self
             </span>.config
             .max_async_gas
