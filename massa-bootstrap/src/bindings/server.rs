@@ -42,6 +42,7 @@ struct ClientMessageLeader {
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
+    /// max number of block ids accepted in the client's cumulative bootstrap cursor
     max_consensus_block_ids: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
@@ -73,7 +74,8 @@ impl BootstrapServerBinder {
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
-            consensus_bootstrap_part_size,
+            consensus_bootstrap_part_size: _part_size,
+            max_consensus_block_ids,
             write_error_timeout,
         } = cfg;
 
@@ -82,7 +84,7 @@ impl BootstrapServerBinder {
         });
         let duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapServerBinder {
-            max_consensus_block_ids: consensus_bootstrap_part_size,
+            max_consensus_block_ids,
             local_keypair,
             duplex,
             prev_message: None,
