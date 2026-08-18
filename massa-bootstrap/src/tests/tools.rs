@@ -395,7 +395,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     }
 }
 
-fn gen_export_active_blocks<R: Rng>(rng: &mut R) -> ExportActiveBlock {
+pub(crate) fn gen_export_active_blocks<R: Rng>(rng: &mut R) -> ExportActiveBlock {
     let keypair = KeyPair::generate(0).unwrap();
     let block = gen_random_block(&keypair, rng)
         .new_verifiable(BlockSerializer::new(), &keypair, *CHAINID)

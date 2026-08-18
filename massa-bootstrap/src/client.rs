@@ -65,7 +65,7 @@ impl BSConnector for DefaultConnector {
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-fn stream_final_state_and_consensus(
+pub(crate) fn stream_final_state_and_consensus(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
@@ -150,8 +150,6 @@ fn stream_final_state_and_consensus(
                 }
                 BootstrapServerMessage::BootstrapFinished => {
                     info!("State bootstrap complete");
-                    // Set next bootstrap message
-                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
 
                     // Update MIP store by reading from the disk
                     let mut guard = global_bootstrap_state.final_state.write();
@@ -162,6 +160,11 @@ fn stream_final_state_and_consensus(
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
 
                     warn_user_about_versioning_updates(updated, added);
+
+                    // Only advance to the next phase once the streamed state has been fully
+                    // post-processed: on failure the retry must replay the state streaming
+                    // instead of resuming from the peers phase with a half-updated store.
+                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
 
                     return Ok(());
                 }
@@ -176,6 +179,12 @@ fn stream_final_state_and_consensus(
                     };
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
+                    drop(write_final_state);
+                    // The cursor above restarts the consensus stream from `Started`, for which the
+                    // server reports no outdated ids: blocks kept from the aborted attempt would
+                    // never be pruned and would be merged into the next attempt's graph.
+                    global_bootstrap_state.graph = None;
+                    global_bootstrap_state.peers = None;
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
                 // At this point, we have successfully received the next message from the server, and it's an error-message String

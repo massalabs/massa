@@ -139,6 +139,7 @@ pub struct BootstrapSrvBindCfg {
     pub max_datastore_key_length: u8,
     pub randomness_size_bytes: usize,
     pub consensus_bootstrap_part_size: u64,
+    pub max_consensus_block_ids: u64,
     pub write_error_timeout: MassaTime,
 }
 
