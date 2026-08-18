@@ -99,9 +99,12 @@ pub(crate) async fn send_operations(
                                         Ok(tuple) => {
                                             let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
                                             match res_operation.content.op {
-                                                OperationType::CallSC { max_gas, .. } | OperationType::ExecuteSC { max_gas, .. } => {
-                                                    if max_gas > config.max_gas_per_block {
-                                                        return Err(GrpcError::InvalidArgument("Gas limit of the operation is higher than the block gas limit. Your operation will never be included in a block.".into()));
+                                                // the gas actually consumed by the operation includes mandatory
+                                                // overheads, so check the full usage as the block filling logic does
+                                                OperationType::CallSC { .. } | OperationType::ExecuteSC { .. } => {
+                                                    let gas_usage = res_operation.get_gas_usage(config.base_operation_gas_cost, config.sp_compilation_cost);
+                                                    if gas_usage > config.max_gas_per_block {
+                                                        return Err(GrpcError::InvalidArgument("Total gas usage of the operation is higher than the block gas limit. Your operation will never be included in a block.".into()));
                                                     }
                                                 },
                                                 _ => {}

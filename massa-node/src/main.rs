@@ -1014,6 +1014,7 @@ async fn launch(
             keypair.clone(),
             &final_state,
             SETTINGS.pool.minimal_fees,
+            gas_costs.sp_compilation_cost,
         );
 
         let grpc_public_api = MassaPublicGrpc {
@@ -1055,6 +1056,7 @@ async fn launch(
             keypair.clone(),
             &final_state,
             SETTINGS.pool.minimal_fees,
+            gas_costs.sp_compilation_cost,
         );
 
         let bs_white_black_list = bootstrap_manager
@@ -1213,6 +1215,7 @@ fn configure_grpc(
     keypair: KeyPair,
     final_state: &Arc<RwLock<dyn FinalStateController>>,
     minimal_fees: Amount,
+    sp_compilation_cost: u64,
 ) -> GrpcConfig {
     GrpcConfig {
         name,
@@ -1255,6 +1258,8 @@ fn configure_grpc(
         max_parameter_size: MAX_PARAMETERS_SIZE,
         max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        sp_compilation_cost,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,

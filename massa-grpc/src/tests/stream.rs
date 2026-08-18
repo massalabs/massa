@@ -25,7 +25,8 @@ use massa_proto_rs::massa::{
 };
 use massa_protocol_exports::{
     test_exports::tools::{
-        create_block, create_block_with_operations, create_endorsement,
+        create_block, create_block_with_operations, create_call_sc_op_with_too_much_gas,
+        create_endorsement, create_execute_sc_op_with_too_much_gas,
         create_operation_with_expire_period,
     },
     MockProtocolController,
@@ -1465,6 +1466,93 @@ async fn send_operations_low_fee() {
         }
         massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(e) => {
             assert_eq!(e.message, "invalid operation(s): Invalid argument error: Operation fee is lower than the minimal fee. Your operation will never be included in a block.");
+        }
+    }
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn send_operations_gas_over_block_limit() {
+    let addr: SocketAddr = "[::]:4001".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
+    // the raw max_gas of the operations below fits under the block gas limit,
+    // only the mandatory overheads push their total gas usage above it
+    public_server.grpc_config.max_gas_per_block = u32::MAX as u64;
+    public_server.grpc_config.base_operation_gas_cost = 10;
+    public_server.grpc_config.sp_compilation_cost = 10;
+
+    let mut pool_ctrl = Box::new(MockPoolController::new());
+    pool_ctrl.expect_clone_box().returning(|| {
+        let mut pool_ctrl = Box::new(MockPoolController::new());
+
+        pool_ctrl.expect_add_operations().returning(|_| Ok(()));
+
+        pool_ctrl
+    });
+
+    let mut protocol_ctrl = Box::new(MockProtocolController::new());
+    protocol_ctrl.expect_clone_box().returning(|| {
+        let mut ctrl = Box::new(MockProtocolController::new());
+
+        ctrl.expect_propagate_operations().returning(|_| Ok(()));
+
+        ctrl
+    });
+
+    public_server.pool_controller = pool_ctrl;
+    public_server.protocol_controller = protocol_ctrl;
+
+    let config = public_server.grpc_config.clone();
+    let stop_handle = public_server.serve(&config).await.unwrap();
+
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').last().unwrap()
+    ))
+    .await
+    .unwrap();
+
+    let mut resp_stream = public_client
+        .send_operations(request_stream)
+        .await
+        .unwrap()
+        .into_inner();
+
+    let keypair = KeyPair::generate(0).unwrap();
+    for op in [
+        create_execute_sc_op_with_too_much_gas(&keypair, 11950000),
+        create_call_sc_op_with_too_much_gas(&keypair, 11950000),
+    ] {
+        let mut buffer: Vec<u8> = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(&op, &mut buffer)
+            .unwrap();
+
+        tx.send(SendOperationsRequest {
+            operations: vec![buffer],
+        })
+        .await
+        .unwrap();
+
+        let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap()
+            .result
+            .unwrap();
+
+        match result {
+            massa_proto_rs::massa::api::v1::send_operations_response::Result::OperationIds(_) => {
+                panic!("should be error");
+            }
+            massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(e) => {
+                assert_eq!(e.message, "invalid operation(s): Invalid argument error: Total gas usage of the operation is higher than the block gas limit. Your operation will never be included in a block.");
+            }
         }
     }
 
