@@ -1523,9 +1523,15 @@ async fn send_operations_gas_over_block_limit() {
         .into_inner();
 
     let keypair = KeyPair::generate(0).unwrap();
-    for op in [
-        create_execute_sc_op_with_too_much_gas(&keypair, 11950000),
-        create_call_sc_op_with_too_much_gas(&keypair, 11950000),
+    for (op, expected_limit) in [
+        (
+            create_execute_sc_op_with_too_much_gas(&keypair, 11950000),
+            "Upper gas limit for ExecuteSC operation is 4294967275",
+        ),
+        (
+            create_call_sc_op_with_too_much_gas(&keypair, 11950000),
+            "Upper gas limit for CallSC operation is 4294967285",
+        ),
     ] {
         let mut buffer: Vec<u8> = Vec::new();
         SecureShareSerializer::new()
@@ -1551,7 +1557,7 @@ async fn send_operations_gas_over_block_limit() {
                 panic!("should be error");
             }
             massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(e) => {
-                assert_eq!(e.message, "invalid operation(s): Invalid argument error: Total gas usage of the operation is higher than the block gas limit. Your operation will never be included in a block.");
+                assert_eq!(e.message, format!("invalid operation(s): Invalid argument error: {}. Your operation will never be included in a block.", expected_limit));
             }
         }
     }

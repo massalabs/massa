@@ -3,7 +3,7 @@
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
-use massa_models::operation::{OperationDeserializer, OperationType, SecureShareOperation};
+use massa_models::operation::{OperationDeserializer, SecureShareOperation};
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
@@ -98,17 +98,13 @@ pub(crate) async fn send_operations(
                                     let verified_op_res = match operation_deserializer.deserialize::<DeserializeError>(&proto_operation) {
                                         Ok(tuple) => {
                                             let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
-                                            match res_operation.content.op {
-                                                // the gas actually consumed by the operation includes mandatory
-                                                // overheads, so check the full usage as the block filling logic does
-                                                OperationType::CallSC { .. } | OperationType::ExecuteSC { .. } => {
-                                                    let gas_usage = res_operation.get_gas_usage(config.base_operation_gas_cost, config.sp_compilation_cost);
-                                                    if gas_usage > config.max_gas_per_block {
-                                                        return Err(GrpcError::InvalidArgument("Total gas usage of the operation is higher than the block gas limit. Your operation will never be included in a block.".into()));
-                                                    }
-                                                },
-                                                _ => {}
-                                            };
+                                            if let Err(err_msg) = res_operation.check_gas_usage(
+                                                config.max_gas_per_block,
+                                                config.base_operation_gas_cost,
+                                                config.sp_compilation_cost,
+                                            ) {
+                                                return Err(GrpcError::InvalidArgument(err_msg));
+                                            }
                                             if let Some(slot) = last_slot {
                                                 if res_operation.content.expire_period < slot.period {
                                                     return Err(GrpcError::InvalidArgument("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()));

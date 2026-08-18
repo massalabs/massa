@@ -46,7 +46,7 @@ use massa_models::{
     error::ModelsError,
     execution::EventFilter,
     node::NodeId,
-    operation::{OperationDeserializer, OperationId, OperationType, SecureShareOperation},
+    operation::{OperationDeserializer, OperationId, SecureShareOperation},
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShareDeserializer,
@@ -1586,27 +1586,13 @@ fn check_input_operation(
     let (rest, op): (&[u8], SecureShareOperation) = operation_deserializer
         .deserialize::<DeserializeError>(&op_serialized)
         .map_err(|err| ApiError::ModelsError(ModelsError::DeserializeError(err.to_string())))?;
-    match op.content.op {
-        OperationType::CallSC { .. } => {
-            let gas_usage =
-                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
-            if gas_usage > api_cfg.max_gas_per_block {
-                let err_msg = format!("Upper gas limit for CallSC operation is {}. Your operation will never be included in a block.",
-                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost));
-                return Err(ApiError::InconsistencyError(err_msg).into());
-            }
-        }
-        OperationType::ExecuteSC { .. } => {
-            let gas_usage =
-                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
-            if gas_usage > api_cfg.max_gas_per_block {
-                let err_msg = format!("Upper gas limit for ExecuteSC operation is {}. Your operation will never be included in a block.",
-                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost).saturating_sub(api_cfg.sp_compilation_cost));
-                return Err(ApiError::InconsistencyError(err_msg).into());
-            }
-        }
-        _ => {}
-    };
+    if let Err(err_msg) = op.check_gas_usage(
+        api_cfg.max_gas_per_block,
+        api_cfg.base_operation_gas_cost,
+        api_cfg.sp_compilation_cost,
+    ) {
+        return Err(ApiError::InconsistencyError(err_msg).into());
+    }
     if let Some(slot) = last_slot {
         if op.content.expire_period < slot.period {
             return Err(
