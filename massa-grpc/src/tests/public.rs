@@ -110,6 +110,101 @@ async fn get_transactions_throughput() {
     stop_handle.stop();
 }
 
+#[cfg(feature = "execution-trace")]
+#[tokio::test]
+async fn get_slot_transfers_gated_on_blockclique_block() {
+    use massa_execution_exports::Transfer as ExecTransfer;
+    use massa_models::amount::Amount;
+    use massa_proto_rs::massa::api::v1::GetSlotTransfersRequest;
+
+    let addr: SocketAddr = "[::]:4045".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
+
+    // Query three slots where the middle one has no blockclique block. Like the JSON-RPC
+    // `get_slots_transfers`, it must still appear (empty) so both query APIs agree per slot.
+    let present_a = Slot::new(1, 0);
+    let missing = Slot::new(2, 0);
+    let present_b = Slot::new(3, 0);
+
+    let block_id = create_block(&KeyPair::generate(0).unwrap()).id;
+
+    let mut consensus_ctrl = Box::new(MockConsensusController::new());
+    consensus_ctrl
+        .expect_get_blockclique_block_at_slot()
+        .returning(move |slot| {
+            if slot == missing {
+                None
+            } else {
+                Some(block_id)
+            }
+        });
+    public_server.consensus_controller = consensus_ctrl;
+
+    let sample_addr =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    let op_id = massa_models::operation::OperationId::from_str(
+        "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC",
+    )
+    .unwrap();
+
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
+    // Encode the slot period into the transfer amount to prove each response entry maps to
+    // the slot it reports.
+    exec_ctrl
+        .expect_get_slot_abi_call_stack_and_transfers()
+        .returning(move |slot| {
+            (
+                None,
+                Some(vec![ExecTransfer {
+                    from: sample_addr,
+                    to: sample_addr,
+                    amount: Amount::from_raw(slot.period),
+                    effective_received_amount: Amount::from_raw(slot.period),
+                    op_id,
+                    succeed: true,
+                    fee: Amount::zero(),
+                }]),
+            )
+        });
+    public_server.execution_controller = exec_ctrl;
+
+    let config = public_server.grpc_config.clone();
+    let stop_handle = public_server.serve(&config).await.unwrap();
+
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').last().unwrap()
+    ))
+    .await
+    .unwrap();
+
+    let response = public_client
+        .get_slot_transfers(GetSlotTransfersRequest {
+            slots: vec![present_a.into(), missing.into(), present_b.into()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    // One slot-tagged entry per input slot, in order.
+    assert_eq!(response.transfer_each_slot.len(), 3);
+    // The missing-blockclique slot is present but empty; the others carry their transfer.
+    assert_eq!(response.transfer_each_slot[0].transfers.len(), 1);
+    assert!(response.transfer_each_slot[1].transfers.is_empty());
+    assert_eq!(response.transfer_each_slot[2].transfers.len(), 1);
+    // Each entry maps to the slot it reports: the amount was set to the slot period.
+    assert_eq!(
+        response.transfer_each_slot[0].transfers[0].amount,
+        present_a.period
+    );
+    assert_eq!(
+        response.transfer_each_slot[2].transfers[0].amount,
+        present_b.period
+    );
+
+    stop_handle.stop();
+}
+
 #[tokio::test]
 async fn get_operations() {
     let addr: SocketAddr = "[::]:4003".parse().unwrap();
