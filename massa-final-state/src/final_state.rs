@@ -862,10 +862,9 @@ impl FinalStateController for FinalState {
         self.executed_ops.reset();
         self.executed_denunciations.reset();
         self.mip_store.reset_db(self.db.clone());
-        // delete the execution trail hash
-        self.db
-            .write()
-            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
+        // delete all remaining data from the database (execution trail hash, deferred calls, etc.)
+        self.db.write().delete_prefix("", STATE_CF, None);
+        self.db.write().delete_prefix("", VERSIONING_CF, None);
     }
 
     fn get_ledger(&self) -> &Box<dyn LedgerController> {
