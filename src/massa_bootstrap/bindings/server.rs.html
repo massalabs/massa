@@ -372,6 +372,8 @@
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -416,7 +418,8 @@
 
 <span class="doccomment">/// Bootstrap server binder
 </span><span class="kw">pub struct </span>BootstrapServerBinder {
-    max_consensus_block_ids: u64,
+    <span class="doccomment">/// max number of block ids accepted in the client's cumulative bootstrap cursor
+    </span>max_consensus_block_ids: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
@@ -447,7 +450,8 @@
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
-            consensus_bootstrap_part_size,
+            consensus_bootstrap_part_size: _part_size,
+            max_consensus_block_ids,
             write_error_timeout,
         } = cfg;
 
@@ -456,7 +460,7 @@
         });
         <span class="kw">let </span>duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapServerBinder {
-            max_consensus_block_ids: consensus_bootstrap_part_size,
+            max_consensus_block_ids,
             local_keypair,
             duplex,
             prev_message: <span class="prelude-val">None</span>,
