@@ -54,13 +54,21 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
         message: Message,
         high_priority: bool,
     ) -> Result<(), ProtocolError> {
-        if let Some(connection) = self.read().connections.get(peer_id) {
-            connection
-                .send_channels
+        // Clone the cheap send handle and drop the connections read lock before
+        // serialize/enqueue. Holding the global lock across serialization would
+        // stall connect/disconnect (and, with a waiting writer, later sends).
+        let send_channels = {
+            let connections = self.read();
+            connections
+                .connections
+                .get(peer_id)
+                .map(|connection| connection.send_channels.clone())
+        };
+        match send_channels {
+            Some(send_channels) => send_channels
                 .try_send(message_serializer, message, high_priority)
-                .map_err(|err| ProtocolError::SendError(err.to_string()))
-        } else {
-            Err(ProtocolError::PeerDisconnected(peer_id.to_string()))
+                .map_err(|err| ProtocolError::SendError(err.to_string())),
+            None => Err(ProtocolError::PeerDisconnected(peer_id.to_string())),
         }
     }
 
