@@ -23,6 +23,8 @@ chain_id = 77658377
     # maximum number of outcoming connections allowed
     max_concurrent_requests = 100
     # certificate_store, `Native` or `WebPki`
+    # deprecated: this setting is currently ignored, the client connects to the node over
+    # plaintext http/ws/grpc. It is kept to avoid breaking existing configuration files.
     certificate_store = "Native"
     # JSON-RPC request object id data type, `String` or `Number`
     id_kind = "Number"
