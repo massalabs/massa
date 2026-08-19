@@ -19,6 +19,26 @@ pub struct BootstrapTcpListener {
 
 pub struct BootstrapListenerStopHandle(pub(crate) Waker);
 
+/// Drain all currently-ready connections from `accept` into `out`.
+///
+/// The drain ends on the first error, whether it is `WouldBlock` (no more
+/// pending connections) or any other error such as a persistent `EMFILE` /
+/// `ENFILE`. Ending the drain on a non-`WouldBlock` error (instead of
+/// `continue`-ing) is what prevents a sticky listener-level failure from
+/// spinning `poll()` forever and starving the `STOP_LISTENER` token.
+fn drain_accept<S>(mut accept: impl FnMut() -> std::io::Result<S>, out: &mut Vec<S>) {
+    loop {
+        match accept() {
+            Ok(item) => out.push(item),
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => break,
+            Err(e) => {
+                warn!("Error accepting connection in bootstrap: {:?}", e);
+                break;
+            }
+        }
+    }
+}
+
 pub enum PollEvent {
     NewConnections(Vec<(TcpStream, SocketAddr)>),
     Stop,
@@ -83,23 +103,21 @@ impl BootstrapTcpListener {
         // Process each event.
         for event in self.events.iter() {
             match event.token() {
-                NEW_CONNECTION => loop {
-                    match self.server.accept() {
-                        Ok((mut stream, remote_addr)) => {
-                            let _ = self.poll.registry().deregister(&mut stream);
-                            let stream: std::net::TcpStream = mio_stream_to_std(stream);
-                            stream.set_nonblocking(false)?;
-                            results.push((stream, remote_addr));
-                        }
-                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                            break;
-                        }
-                        Err(e) => {
-                            warn!("Error accepting connection in bootstrap: {:?}", e);
-                            continue;
-                        }
+                NEW_CONNECTION => {
+                    // Drain the currently-ready connections, borrowing only
+                    // `self.server`, then post-process them (which borrows
+                    // `self.poll`). The drain never spins on a persistent
+                    // accept error, so control always returns to the poller and
+                    // the STOP token can be serviced.
+                    let mut accepted = Vec::new();
+                    drain_accept(|| self.server.accept(), &mut accepted);
+                    for (mut stream, remote_addr) in accepted {
+                        let _ = self.poll.registry().deregister(&mut stream);
+                        let stream: std::net::TcpStream = mio_stream_to_std(stream);
+                        stream.set_nonblocking(false)?;
+                        results.push((stream, remote_addr));
                     }
-                },
+                }
                 STOP_LISTENER => {
                     return Ok(PollEvent::Stop);
                 }
@@ -115,5 +133,45 @@ impl BootstrapListenerStopHandle {
     /// Stop the bootstrap listener.
     pub fn stop(&self) -> Result<(), BootstrapError> {
         self.0.wake().map_err(BootstrapError::from)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::drain_accept;
+    use std::io::{Error, ErrorKind};
+
+    #[test]
+    fn drain_stops_on_persistent_error_instead_of_spinning() {
+        let mut calls = 0u32;
+        let mut out: Vec<u8> = Vec::new();
+        drain_accept(
+            || {
+                calls += 1;
+                // A persistent non-WouldBlock error (e.g. EMFILE/ENFILE).
+                Err::<u8, _>(Error::from(ErrorKind::Other))
+            },
+            &mut out,
+        );
+        assert_eq!(
+            calls, 1,
+            "a persistent accept error must break the drain, not loop forever"
+        );
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn drain_collects_ready_connections_until_would_block() {
+        let mut seq = vec![
+            Ok(1u8),
+            Ok(2u8),
+            Err(Error::from(ErrorKind::WouldBlock)),
+            Ok(3u8),
+        ]
+        .into_iter();
+        let mut out = Vec::new();
+        drain_accept(|| seq.next().unwrap(), &mut out);
+        // Stops at the WouldBlock, leaving the trailing item untouched.
+        assert_eq!(out, vec![1, 2]);
     }
 }
