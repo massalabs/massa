@@ -1,11 +1,13 @@
 use std::{collections::BTreeMap, time::Duration};
 
-use massa_models::{address::Address, config::THREAD_COUNT, slot::Slot};
+use massa_models::{address::Address, config::THREAD_COUNT, prehash::PreHashSet, slot::Slot};
 use massa_pool_exports::PoolConfig;
 use massa_pos_exports::{MockSelectorController, Selection};
 use massa_signature::KeyPair;
 
-use super::tools::{create_endorsement, default_mock_execution_controller, pool_test};
+use super::tools::{
+    create_endorsement, create_endorsement_on_block, default_mock_execution_controller, pool_test,
+};
 
 fn create_selector_mock_with_address(address: Address) -> MockSelectorController {
     let mut res = MockSelectorController::new();
@@ -268,6 +270,128 @@ fn test_get_block_endorsements_works() {
             assert!(endorsement_ids[0].is_some());
             assert!(endorsement_ids[1].is_some());
             assert_eq!(endorsements_storage.get_endorsement_refs().len(), 2);
+        },
+    );
+}
+
+/// A drawn endorser can sign arbitrarily many valid endorsements for the same `(slot, index)`
+/// that only differ by their endorsed block. The pool must only keep a bounded number of them.
+#[test]
+fn test_bound_conflicting_endorsements_per_slot_index() {
+    let sender_keypair = KeyPair::generate(0).unwrap();
+    let address = Address::from_public_key(&sender_keypair.get_public_key());
+    let execution_controller = default_mock_execution_controller();
+    let selector_controller = default_mock_selector(address);
+    pool_test(
+        PoolConfig::default(),
+        execution_controller,
+        selector_controller,
+        Some((address, sender_keypair.clone())),
+        |mut pool, mut storage| {
+            let endorsements: Vec<_> = (0..10)
+                .map(|i| {
+                    create_endorsement_on_block(
+                        &sender_keypair,
+                        0,
+                        Slot::new(1, 2),
+                        &format!("conflicting_block_{}", i),
+                    )
+                })
+                .collect();
+            storage.store_endorsements(endorsements);
+            pool.add_endorsements(storage.clone());
+            // Allow some time for the pool to add the endorsements
+            std::thread::sleep(Duration::from_secs(2));
+            assert_eq!(
+                pool.get_endorsement_count(None)
+                    .expect("Failed to get endorsement count"),
+                1
+            );
+        },
+    );
+}
+
+/// Pruning used to drop an endorsement from the sort index only, leaving the lookup index pointing
+/// at an endorsement whose storage reference had been released. Looking that endorsement up for
+/// block creation then panicked, halting the pool worker.
+#[test]
+fn test_pruned_endorsements_are_not_returned_for_block_creation() {
+    let sender_keypair = KeyPair::generate(0).unwrap();
+    let address = Address::from_public_key(&sender_keypair.get_public_key());
+    let execution_controller = default_mock_execution_controller();
+    let selector_controller = default_mock_selector(address);
+    let cfg = PoolConfig {
+        max_endorsements_pool_size_per_thread: 1,
+        ..Default::default()
+    };
+    pool_test(
+        cfg,
+        execution_controller,
+        selector_controller,
+        Some((address, sender_keypair.clone())),
+        |mut pool, mut storage| {
+            // both endorsements land in thread 2, so the second one is pruned away by the size cap
+            let kept = create_endorsement(&sender_keypair, 0, Slot::new(1, 2));
+            let pruned = create_endorsement(&sender_keypair, 0, Slot::new(2, 2));
+            storage.store_endorsements(vec![kept.clone(), pruned.clone()]);
+            pool.add_endorsements(storage.clone());
+            // Allow some time for the pool to add the endorsements
+            std::thread::sleep(Duration::from_secs(2));
+            assert_eq!(
+                pool.contains_endorsements(&[kept.id, pruned.id], None)
+                    .expect("Failed to check contains endorsements"),
+                vec![true, false]
+            );
+
+            // release the caller-side reference so that nothing keeps the pruned endorsement alive
+            // in storage anymore
+            storage.drop_endorsement_refs(&PreHashSet::from_iter([pruned.id]));
+
+            // the pruned endorsement must not be handed out for block creation (used to panic)
+            let (endorsement_ids, endorsements_storage) = pool
+                .get_block_endorsements(&pruned.content.endorsed_block, &Slot::new(2, 2), None)
+                .expect("Failed to get block endorsements");
+            assert!(endorsement_ids.iter().all(|id| id.is_none()));
+            assert!(endorsements_storage.get_endorsement_refs().is_empty());
+
+            // the endorsement that was kept is still available
+            let (endorsement_ids, _) = pool
+                .get_block_endorsements(&kept.content.endorsed_block, &Slot::new(1, 2), None)
+                .expect("Failed to get block endorsements");
+            assert_eq!(endorsement_ids[0], Some(kept.id));
+        },
+    );
+}
+
+/// After finalization pruning, nothing must be left behind in the pool for the finalized slots.
+#[test]
+fn test_finalization_leaves_no_orphan_entry() {
+    let sender_keypair = KeyPair::generate(0).unwrap();
+    let address = Address::from_public_key(&sender_keypair.get_public_key());
+    let execution_controller = default_mock_execution_controller();
+    let selector_controller = default_mock_selector(address);
+    pool_test(
+        PoolConfig::default(),
+        execution_controller,
+        selector_controller,
+        Some((address, sender_keypair.clone())),
+        |mut pool, mut storage| {
+            let endorsement = create_endorsement(&sender_keypair, 0, Slot::new(1, 2));
+            storage.store_endorsements(vec![endorsement.clone()]);
+            pool.add_endorsements(storage.clone());
+            std::thread::sleep(Duration::from_secs(2));
+            pool.notify_final_cs_periods(&vec![1; THREAD_COUNT as usize]);
+            std::thread::sleep(Duration::from_secs(2));
+
+            assert_eq!(
+                pool.get_endorsement_count(None)
+                    .expect("Failed to get endorsement count"),
+                0
+            );
+            let (endorsement_ids, _) = pool
+                .get_block_endorsements(&endorsement.content.endorsed_block, &Slot::new(1, 2), None)
+                .expect("Failed to get block endorsements");
+            assert!(endorsement_ids.iter().all(|id| id.is_none()));
         },
     );
 }

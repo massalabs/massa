@@ -3,7 +3,7 @@
 use massa_models::{
     block_id::BlockId,
     endorsement::EndorsementId,
-    prehash::{CapacityAllocator, PreHashSet},
+    prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
 };
 use massa_pool_exports::{PoolChannels, PoolConfig};
@@ -11,22 +11,28 @@ use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{
-    collections::{hash_map::Entry, BTreeMap, HashMap},
+    collections::{hash_map::Entry, BTreeMap},
     sync::Arc,
 };
 use tracing::{trace, warn};
+
+/// Maximum number of endorsements kept for a given `(slot, index)` pair, whatever the endorsed
+/// block is. Only one endorsement per `(slot, index)` can ever end up in a block, and an honest
+/// endorser signs exactly one. The endorsed block is not constrained at ingress, so without this
+/// bound an equivocating drawn endorser could mint arbitrarily many valid endorsements differing
+/// only by their endorsed block and grow the pool without limit.
+const MAX_ENDORSEMENTS_PER_SLOT_INDEX: usize = 1;
 
 #[derive(Clone)]
 pub struct EndorsementPool {
     /// configuration
     config: PoolConfig,
 
-    /// endorsements indexed by slot, index and block ID
-    endorsements_indexed: HashMap<(Slot, u32, BlockId), EndorsementId>,
-
-    /// endorsements sorted by increasing inclusion slot for pruning
-    /// indexed by thread, then `BTreeMap<(inclusion_slot, index, target_block), endorsement_id>`
-    endorsements_sorted: Vec<BTreeMap<(Slot, u32, BlockId), EndorsementId>>,
+    /// endorsements sorted by increasing inclusion slot for pruning,
+    /// indexed by thread, then `BTreeMap<(inclusion_slot, index), map of endorsement_id by target block>`.
+    /// This is the single source of truth of the pool contents: keeping a second index keyed on the
+    /// target block would risk desynchronizing on pruning and leak entries.
+    endorsements_sorted: Vec<BTreeMap<(Slot, u32), PreHashMap<BlockId, EndorsementId>>>,
 
     /// storage
     storage: Storage,
@@ -50,7 +56,6 @@ impl EndorsementPool {
     ) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
-            endorsements_indexed: Default::default(),
             endorsements_sorted: vec![Default::default(); config.thread_count as usize],
             config,
             storage: storage.clone_without_refs(),
@@ -63,7 +68,6 @@ impl EndorsementPool {
     /// This is used for double buffering.
     pub(crate) fn replace_with(&mut self, other: &EndorsementPool) {
         self.last_cs_final_periods = other.last_cs_final_periods.clone();
-        self.endorsements_indexed = other.endorsements_indexed.clone();
         self.endorsements_sorted = other.endorsements_sorted.clone();
         self.storage.replace_with(&other.storage);
     }
@@ -86,18 +90,17 @@ impl EndorsementPool {
         // remove all endorsements whose periods <= last_cs_final_periods[endorsement.thread]
         let mut removed: PreHashSet<EndorsementId> = Default::default();
         for thread in 0..self.config.thread_count {
-            while let Some((&(inclusion_slot, index, block_id), &endo_id)) =
+            while let Some((&(inclusion_slot, _index), _)) =
                 self.endorsements_sorted[thread as usize].first_key_value()
             {
-                if inclusion_slot.period <= self.last_cs_final_periods[thread as usize] {
-                    self.endorsements_sorted[thread as usize].pop_first();
-                    self.endorsements_indexed
-                        .remove(&(inclusion_slot, index, block_id))
-                        .expect("endorsement should be in endorsements_indexed at this point");
-                    removed.insert(endo_id);
-                } else {
+                if inclusion_slot.period > self.last_cs_final_periods[thread as usize] {
                     break;
                 }
+                // won't panic because first_key_value returned an entry above
+                let (_key, endos) = self.endorsements_sorted[thread as usize]
+                    .pop_first()
+                    .unwrap();
+                removed.extend(endos.into_values());
             }
         }
         self.storage.drop_endorsement_refs(&removed);
@@ -175,20 +178,25 @@ impl EndorsementPool {
                 }
 
                 // insert
-                let key = (
-                    endo.content.slot,
-                    endo.content.index,
-                    endo.content.endorsed_block,
-                );
+                let by_target_block = self.endorsements_sorted[endo.content.slot.thread as usize]
+                    .entry((endo.content.slot, endo.content.index))
+                    .or_default();
+                let is_full = by_target_block.len() >= MAX_ENDORSEMENTS_PER_SLOT_INDEX;
                 // note that we don't want equivalent endorsements (slot, index, block etc...) to overwrite each other
-                if let Entry::Vacant(e) = self.endorsements_indexed.entry(key) {
-                    e.insert(endo.id);
-                    if self.endorsements_sorted[endo.content.slot.thread as usize]
-                        .insert(key, endo.id)
-                        .is_some()
-                    {
-                        panic!("endorsement is expected to be absent from endorsements_sorted at this point");
+                if let Entry::Vacant(e) = by_target_block.entry(endo.content.endorsed_block) {
+                    // refuse conflicting endorsements beyond the per-(slot, index) bound: the
+                    // endorsed block is not constrained at ingress, so without it an equivocating
+                    // drawn endorser could flood the pool
+                    if is_full {
+                        warn!(
+                            "ignoring endorsement {} at slot {} index {}: too many conflicting endorsements for that draw",
+                            endo.id.clone(),
+                            endo.content.slot,
+                            endo.content.index
+                        );
+                        continue;
                     }
+                    e.insert(endo.id);
                     added.insert(endo.id);
                 }
             }
@@ -200,11 +208,13 @@ impl EndorsementPool {
                 > self.config.max_endorsements_pool_size_per_thread
             {
                 // won't panic because len was checked above
-                let (_key, endo_id) = self.endorsements_sorted[thread as usize]
+                let (_key, endos) = self.endorsements_sorted[thread as usize]
                     .pop_last()
                     .unwrap();
-                if !added.remove(&endo_id) {
-                    removed.insert(endo_id);
+                for endo_id in endos.into_values() {
+                    if !added.remove(&endo_id) {
+                        removed.insert(endo_id);
+                    }
                 }
             }
         }
@@ -230,12 +240,14 @@ impl EndorsementPool {
         let mut endo_ids = Vec::with_capacity(self.config.max_block_endorsement_count as usize);
 
         // gather endorsements
+        let thread_endorsements = self.endorsements_sorted.get(slot.thread as usize);
         for index in 0..self.config.max_block_endorsement_count {
-            endo_ids.push(
-                self.endorsements_indexed
-                    .get(&(*slot, index, *target_block))
-                    .copied(),
-            );
+            endo_ids.push(thread_endorsements.and_then(|endos| {
+                endos
+                    .get(&(*slot, index))
+                    .and_then(|by_target_block| by_target_block.get(target_block))
+                    .copied()
+            }));
         }
 
         // setup endorsement storage
@@ -244,7 +256,18 @@ impl EndorsementPool {
             endo_ids.iter().filter_map(|&opt| opt).collect();
         let claimed_endos = endo_storage.claim_endorsement_refs(&claim_endos);
         if claimed_endos.len() != claim_endos.len() {
-            panic!("could not claim all endorsements from storage");
+            // The pool holds a storage reference for every endorsement it indexes, so this should
+            // not happen. Drop the unclaimable ones instead of killing the pool worker: producing a
+            // block with fewer endorsements is always better than not producing one at all.
+            warn!(
+                "could not claim all endorsements from storage for a block at slot {}",
+                slot
+            );
+            for endo_id in endo_ids.iter_mut() {
+                if endo_id.map_or(false, |id| !claimed_endos.contains(&id)) {
+                    *endo_id = None;
+                }
+            }
         }
 
         (endo_ids, endo_storage)
