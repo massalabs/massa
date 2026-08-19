@@ -468,6 +468,138 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
     std::thread::sleep(Duration::from_millis(1000));
 }
 
+/// A peer that never sent us any data for a block must not be banned when that block
+/// turns out to be an attack attempt, even though our propagation cache marks it as
+/// knowing the block (because we announced the header to it ourselves).
+#[test]
+fn test_protocol_only_bans_the_senders_of_an_attack_block() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+
+    let block_creator = KeyPair::generate(0).unwrap();
+    let block =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), vec![], vec![], vec![]);
+    // node A sends us the block header, node B only receives our announcement of it
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
+
+    let ban_waitpoint = WaitPoint::new();
+    let ban_waitpoint_trigger_handle = ban_waitpoint.get_trigger_handle();
+
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers_mut()
+        .times(0..1)
+        .returning(move || {
+            let mut peers = HashMap::new();
+            peers.insert(
+                node_a_peer_id,
+                PeerInfo {
+                    last_announce: None,
+                    state: PeerState::Trusted,
+                },
+            );
+            peers
+        });
+    let mut peers = HashMap::new();
+    peers.insert(
+        node_a_peer_id,
+        PeerInfo {
+            last_announce: None,
+            state: PeerState::Banned,
+        },
+    );
+    // only the peer that actually sent us the block gets banned
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .with(predicate::eq(node_a_peer_id))
+        .times(1)
+        .returning(move |_| {
+            ban_waitpoint_trigger_handle.trigger();
+        });
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .with(predicate::eq(node_b_peer_id))
+        .times(0)
+        .returning(move |_| {});
+    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers()
+        .return_const(peers);
+    let block_clone = block.clone();
+    foreign_controllers
+        .consensus_controller
+        .expect_register_block_header()
+        .return_once(move |block_id, header| {
+            assert_eq!(block_id, block_clone.id);
+            assert_eq!(header.id, block_clone.content.header.id);
+        });
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    shared_active_connections.set_expectations(
+        |active_connections: &mut MockActiveConnectionsTrait| {
+            active_connections
+                .expect_get_peer_ids_connected()
+                .returning(move || {
+                    let mut peers = HashSet::new();
+                    peers.insert(node_a_peer_id);
+                    peers.insert(node_b_peer_id);
+                    peers
+                });
+            // we announce the header to node B, which marks it as knowing the block
+            active_connections
+                .expect_send_to_peer()
+                .returning(move |_, _, _, _| Ok(()));
+            active_connections
+                .expect_shutdown_connection()
+                .times(1)
+                .with(predicate::eq(node_a_peer_id))
+                .returning(move |_| {});
+        },
+    );
+    foreign_controllers
+        .network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(shared_active_connections.clone()));
+
+    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    // node A sends us the header: it is recorded as a direct sender of that block
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
+    );
+
+    // we announce the header to our peers, marking them as knowing the block
+    universe.storage.store_block(block.clone());
+    universe
+        .module_controller
+        .integrated_block(block.id, universe.storage.clone())
+        .unwrap();
+
+    // TODO: Find a way to wait for the previous messages to be processed
+    std::thread::sleep(Duration::from_millis(1000));
+
+    universe
+        .module_controller
+        .notify_block_attack(block.id)
+        .unwrap();
+
+    ban_waitpoint.wait();
+}
+
 #[test]
 fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     let protocol_config = ProtocolConfig {
