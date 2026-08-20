@@ -29,6 +29,7 @@ use massa_wallet::Wallet;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::Arc;
 use std::thread;
+use std::time::{Duration, Instant};
 use tracing::debug;
 
 /// Structure gathering all elements needed by the execution thread
@@ -43,6 +44,11 @@ pub(crate) struct ExecutionThread {
     readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
     /// Selector controller
     selector: Box<dyn SelectorController>,
+    /// maximum time a queued read-only request may wait behind slot execution
+    readonly_starvation_timeout: Duration,
+    /// time at which the latest read-only request was executed,
+    /// used to bound read-only starvation when slot work is continuously available
+    last_readonly_served: Instant,
 }
 
 impl ExecutionThread {
@@ -74,6 +80,8 @@ impl ExecutionThread {
         ExecutionThread {
             input_data,
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
+            readonly_starvation_timeout: config.readonly_starvation_timeout.to_duration(),
+            last_readonly_served: Instant::now(),
             execution_state,
             slot_sequencer: SlotSequencer::new(config, final_cursor),
             selector,
@@ -107,6 +115,8 @@ impl ExecutionThread {
             // Ignore errors because they just mean that the request emitter dropped the received
             // because it doesn't need the response anymore.
             let _ = resp_tx.send(outcome);
+
+            self.last_readonly_served = Instant::now();
 
             return true;
         }
@@ -177,6 +187,8 @@ impl ExecutionThread {
         // 1 - final executions
         // 2 - speculative executions
         // 3 - read-only executions
+        // Read-only executions are last, but bounded by `readonly_starvation_timeout`
+        // so that they still make progress when slot work is continuously available.
         loop {
             let (input_data, stop) = self.wait_loop_event();
             debug!("Execution loop triggered, input_data = {}", input_data);
@@ -195,6 +207,18 @@ impl ExecutionThread {
                 input_data.new_blockclique,
                 input_data.block_metadata,
             );
+
+            // Slot work always wins over read-only work, but the slot sequencer can keep
+            // handing out tasks for as long as the worker lags behind real time (e.g. while
+            // catching up after bootstrap). Without a bound, the low-priority read-only call
+            // below is never reached and queued requests block their callers for the whole
+            // catch-up. Serve a single pending request once it has waited long enough, so
+            // read-only execution keeps making progress without giving up slot priority.
+            if !self.readonly_requests.is_empty()
+                && self.last_readonly_served.elapsed() >= self.readonly_starvation_timeout
+            {
+                self.execute_one_readonly_request();
+            }
 
             // ask the slot sequencer for a task to be executed in priority (final is higher priority than candidate)
             let run_result = self.slot_sequencer.run_task_with(
