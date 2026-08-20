@@ -250,43 +250,12 @@
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
     block_id::BlockId,
     endorsement::EndorsementId,
-    prehash::{CapacityAllocator, PreHashMap, PreHashSet},
+    prehash::{CapacityAllocator, PreHashSet},
     slot::Slot,
 };
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig};
@@ -294,36 +263,22 @@
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
-    collections::{hash_map::Entry, BTreeMap},
+    collections::{hash_map::Entry, BTreeMap, HashMap},
     sync::Arc,
 };
 <span class="kw">use </span>tracing::{trace, warn};
-
-<span class="doccomment">/// Maximum number of endorsements kept for a given `(slot, index)` pair, whatever the endorsed
-/// block is. An honest endorser signs exactly one endorsement per `(slot, index)`: the factory
-/// walks slots strictly monotonically and never re-endorses after a reorg. So several entries
-/// under the same key mean the drawn endorser equivocated, and the endorsed block is not
-/// constrained at ingress: without a bound such an endorser could mint arbitrarily many valid
-/// endorsements differing only by their endorsed block and grow the pool without limit.
-///
-/// The bound is kept above 1 because [`EndorsementPool::get_block_endorsements`] only returns the
-/// endorsement matching the parent the block factory settled on. Keeping a single variant makes
-/// insertion first-write-wins, letting an equivocating endorser deliberately send the variant that
-/// does not match our parent and permanently deny us that endorsement slot, which costs block
-/// fitness and rewards. A few variants cover the competing blockclique tips of a real fork while
-/// keeping the worst-case pool size within a small multiple of `max_endorsements_pool_size_per_thread`.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MAX_ENDORSEMENTS_PER_SLOT_INDEX: usize = <span class="number">4</span>;
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>EndorsementPool {
     <span class="doccomment">/// configuration
     </span>config: PoolConfig,
 
-    <span class="doccomment">/// endorsements sorted by increasing inclusion slot for pruning,
-    /// indexed by thread, then `BTreeMap&lt;(inclusion_slot, index), map of endorsement_id by target block&gt;`.
-    /// This is the single source of truth of the pool contents: keeping a second index keyed on the
-    /// target block would risk desynchronizing on pruning and leak entries.
-    </span>endorsements_sorted: Vec&lt;BTreeMap&lt;(Slot, u32), PreHashMap&lt;BlockId, EndorsementId&gt;&gt;&gt;,
+    <span class="doccomment">/// endorsements indexed by slot, index and block ID
+    </span>endorsements_indexed: HashMap&lt;(Slot, u32, BlockId), EndorsementId&gt;,
+
+    <span class="doccomment">/// endorsements sorted by increasing inclusion slot for pruning
+    /// indexed by thread, then `BTreeMap&lt;(inclusion_slot, index, target_block), endorsement_id&gt;`
+    </span>endorsements_sorted: Vec&lt;BTreeMap&lt;(Slot, u32, BlockId), EndorsementId&gt;&gt;,
 
     <span class="doccomment">/// storage
     </span>storage: Storage,
@@ -347,6 +302,7 @@
     ) -&gt; <span class="self">Self </span>{
         EndorsementPool {
             last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; config.thread_count <span class="kw">as </span>usize],
+            endorsements_indexed: Default::default(),
             endorsements_sorted: <span class="macro">vec!</span>[Default::default(); config.thread_count <span class="kw">as </span>usize],
             config,
             storage: storage.clone_without_refs(),
@@ -359,6 +315,7 @@
     /// This is used for double buffering.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>replace_with(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>EndorsementPool) {
         <span class="self">self</span>.last_cs_final_periods = other.last_cs_final_periods.clone();
+        <span class="self">self</span>.endorsements_indexed = other.endorsements_indexed.clone();
         <span class="self">self</span>.endorsements_sorted = other.endorsements_sorted.clone();
         <span class="self">self</span>.storage.replace_with(<span class="kw-2">&amp;</span>other.storage);
     }
@@ -381,17 +338,18 @@
         <span class="comment">// remove all endorsements whose periods &lt;= last_cs_final_periods[endorsement.thread]
         </span><span class="kw">let </span><span class="kw-2">mut </span>removed: PreHashSet&lt;EndorsementId&gt; = Default::default();
         <span class="kw">for </span>thread <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.thread_count {
-            <span class="kw">while let </span><span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>(inclusion_slot, _index), <span class="kw">_</span>)) =
+            <span class="kw">while let </span><span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>(inclusion_slot, index, block_id), <span class="kw-2">&amp;</span>endo_id)) =
                 <span class="self">self</span>.endorsements_sorted[thread <span class="kw">as </span>usize].first_key_value()
             {
-                <span class="kw">if </span>inclusion_slot.period &gt; <span class="self">self</span>.last_cs_final_periods[thread <span class="kw">as </span>usize] {
+                <span class="kw">if </span>inclusion_slot.period &lt;= <span class="self">self</span>.last_cs_final_periods[thread <span class="kw">as </span>usize] {
+                    <span class="self">self</span>.endorsements_sorted[thread <span class="kw">as </span>usize].pop_first();
+                    <span class="self">self</span>.endorsements_indexed
+                        .remove(<span class="kw-2">&amp;</span>(inclusion_slot, index, block_id))
+                        .expect(<span class="string">"endorsement should be in endorsements_indexed at this point"</span>);
+                    removed.insert(endo_id);
+                } <span class="kw">else </span>{
                     <span class="kw">break</span>;
                 }
-                <span class="comment">// won't panic because first_key_value returned an entry above
-                </span><span class="kw">let </span>(_key, endos) = <span class="self">self</span>.endorsements_sorted[thread <span class="kw">as </span>usize]
-                    .pop_first()
-                    .unwrap();
-                removed.extend(endos.into_values());
             }
         }
         <span class="self">self</span>.storage.drop_endorsement_refs(<span class="kw-2">&amp;</span>removed);
@@ -469,25 +427,20 @@
                 }
 
                 <span class="comment">// insert
-                </span><span class="kw">let </span>by_target_block = <span class="self">self</span>.endorsements_sorted[endo.content.slot.thread <span class="kw">as </span>usize]
-                    .entry((endo.content.slot, endo.content.index))
-                    .or_default();
-                <span class="kw">let </span>is_full = by_target_block.len() &gt;= MAX_ENDORSEMENTS_PER_SLOT_INDEX;
+                </span><span class="kw">let </span>key = (
+                    endo.content.slot,
+                    endo.content.index,
+                    endo.content.endorsed_block,
+                );
                 <span class="comment">// note that we don't want equivalent endorsements (slot, index, block etc...) to overwrite each other
-                </span><span class="kw">if let </span>Entry::Vacant(e) = by_target_block.entry(endo.content.endorsed_block) {
-                    <span class="comment">// refuse conflicting endorsements beyond the per-(slot, index) bound: the
-                    // endorsed block is not constrained at ingress, so without it an equivocating
-                    // drawn endorser could flood the pool
-                    </span><span class="kw">if </span>is_full {
-                        <span class="macro">warn!</span>(
-                            <span class="string">"ignoring endorsement {} at slot {} index {}: too many conflicting endorsements for that draw"</span>,
-                            endo.id.clone(),
-                            endo.content.slot,
-                            endo.content.index
-                        );
-                        <span class="kw">continue</span>;
-                    }
+                </span><span class="kw">if let </span>Entry::Vacant(e) = <span class="self">self</span>.endorsements_indexed.entry(key) {
                     e.insert(endo.id);
+                    <span class="kw">if </span><span class="self">self</span>.endorsements_sorted[endo.content.slot.thread <span class="kw">as </span>usize]
+                        .insert(key, endo.id)
+                        .is_some()
+                    {
+                        <span class="macro">panic!</span>(<span class="string">"endorsement is expected to be absent from endorsements_sorted at this point"</span>);
+                    }
                     added.insert(endo.id);
                 }
             }
@@ -499,13 +452,11 @@
                 &gt; <span class="self">self</span>.config.max_endorsements_pool_size_per_thread
             {
                 <span class="comment">// won't panic because len was checked above
-                </span><span class="kw">let </span>(_key, endos) = <span class="self">self</span>.endorsements_sorted[thread <span class="kw">as </span>usize]
+                </span><span class="kw">let </span>(_key, endo_id) = <span class="self">self</span>.endorsements_sorted[thread <span class="kw">as </span>usize]
                     .pop_last()
                     .unwrap();
-                <span class="kw">for </span>endo_id <span class="kw">in </span>endos.into_values() {
-                    <span class="kw">if </span>!added.remove(<span class="kw-2">&amp;</span>endo_id) {
-                        removed.insert(endo_id);
-                    }
+                <span class="kw">if </span>!added.remove(<span class="kw-2">&amp;</span>endo_id) {
+                    removed.insert(endo_id);
                 }
             }
         }
@@ -531,14 +482,12 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>endo_ids = Vec::with_capacity(<span class="self">self</span>.config.max_block_endorsement_count <span class="kw">as </span>usize);
 
         <span class="comment">// gather endorsements
-        </span><span class="kw">let </span>thread_endorsements = <span class="self">self</span>.endorsements_sorted.get(slot.thread <span class="kw">as </span>usize);
-        <span class="kw">for </span>index <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.max_block_endorsement_count {
-            endo_ids.push(thread_endorsements.and_then(|endos| {
-                endos
-                    .get(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>slot, index))
-                    .and_then(|by_target_block| by_target_block.get(target_block))
-                    .copied()
-            }));
+        </span><span class="kw">for </span>index <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.config.max_block_endorsement_count {
+            endo_ids.push(
+                <span class="self">self</span>.endorsements_indexed
+                    .get(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>slot, index, <span class="kw-2">*</span>target_block))
+                    .copied(),
+            );
         }
 
         <span class="comment">// setup endorsement storage
@@ -547,18 +496,7 @@
             endo_ids.iter().filter_map(|<span class="kw-2">&amp;</span>opt| opt).collect();
         <span class="kw">let </span>claimed_endos = endo_storage.claim_endorsement_refs(<span class="kw-2">&amp;</span>claim_endos);
         <span class="kw">if </span>claimed_endos.len() != claim_endos.len() {
-            <span class="comment">// The pool holds a storage reference for every endorsement it indexes, so this should
-            // not happen. Drop the unclaimable ones instead of killing the pool worker: producing a
-            // block with fewer endorsements is always better than not producing one at all.
-            </span><span class="macro">warn!</span>(
-                <span class="string">"could not claim all endorsements from storage for a block at slot {}"</span>,
-                slot
-            );
-            <span class="kw">for </span>endo_id <span class="kw">in </span>endo_ids.iter_mut() {
-                <span class="kw">if </span>endo_id.map_or(<span class="bool-val">false</span>, |id| !claimed_endos.contains(<span class="kw-2">&amp;</span>id)) {
-                    <span class="kw-2">*</span>endo_id = <span class="prelude-val">None</span>;
-                }
-            }
+            <span class="macro">panic!</span>(<span class="string">"could not claim all endorsements from storage"</span>);
         }
 
         (endo_ids, endo_storage)
