@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"enum":["PeerAskState"],"fn":["note_operations_from_peer","start_retrieval_thread"],"struct":["AskedOperation","OperationBatchItem","RetrievalThread"]};
+window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"fn":["note_operations_from_peer","start_retrieval_thread"],"struct":["OperationBatchItem","RetrievalThread"]};
