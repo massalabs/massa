@@ -43,6 +43,8 @@ pub enum GrpcError {
     InternalServerError(String),
     /// Invalid argument error: {0}
     InvalidArgument(String),
+    /// Invalid configuration error: {0}
+    ConfigError(String),
     /// Not implemented error: {0}
     Unimplemented(String),
 }
@@ -63,6 +65,7 @@ impl From<GrpcError> for tonic::Status {
             GrpcError::InternalServerError(e) => tonic::Status::internal(e),
             GrpcError::ReflectionError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::InvalidArgument(e) => tonic::Status::invalid_argument(e),
+            GrpcError::ConfigError(e) => tonic::Status::internal(e),
             GrpcError::Unimplemented(e) => tonic::Status::unimplemented(e),
         }
     }

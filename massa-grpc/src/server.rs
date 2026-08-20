@@ -169,6 +169,19 @@ async fn massa_service_status(mut reporter: HealthReporter) {
         .await;
 }
 
+/// mTLS is a strict extension of TLS: reject the combination rather than silently serving in
+/// plaintext a service the operator meant to protect with client certificates.
+pub(crate) fn check_mtls_requires_tls(config: &GrpcConfig) -> Result<(), GrpcError> {
+    if config.enable_mtls && !config.enable_tls {
+        return Err(GrpcError::ConfigError(format!(
+            "gRPC {:?} API: `enable_mtls` requires `enable_tls` to be enabled, refusing to start in plaintext",
+            config.name
+        )));
+    }
+
+    Ok(())
+}
+
 // Configure and start the gRPC API with the given service
 async fn serve<S>(service: S, config: &GrpcConfig) -> Result<StopHandle, GrpcError>
 where
@@ -179,6 +192,8 @@ where
         + 'static,
     S::Future: Send + 'static,
 {
+    check_mtls_requires_tls(config)?;
+
     let (shutdown_send, shutdown_recv) = oneshot::channel::<()>();
 
     let mut server_builder = tonic::transport::Server::builder()
