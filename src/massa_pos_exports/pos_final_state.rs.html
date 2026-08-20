@@ -2708,9 +2708,6 @@
 <a href="#2708" id="2708">2708</a>
 <a href="#2709" id="2709">2709</a>
 <a href="#2710" id="2710">2710</a>
-<a href="#2711" id="2711">2711</a>
-<a href="#2712" id="2712">2712</a>
-<a href="#2713" id="2713">2713</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2870,7 +2867,7 @@
             .periods_per_cycle
             .saturating_mul(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
             .try_into()
-            .unwrap_or(usize::MAX)
+            .expect(<span class="string">"slots_per_cycle overflow"</span>)
     }
 
     <span class="doccomment">/// create a new `PoSFinalState`
@@ -3043,9 +3040,6 @@
 
         <span class="kw">let </span>complete =
             last_slot.is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count);
-        <span class="kw">if </span>complete &amp;&amp; rng_seed.len() &lt; slots_per_cycle {
-            rng_seed.extend(<span class="macro">vec!</span>[<span class="bool-val">false</span>; slots_per_cycle - rng_seed.len()]);
-        }
         <span class="kw">if </span>rng_seed.len() &gt; slots_per_cycle || (complete &amp;&amp; rng_seed.len() != slots_per_cycle) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(PosError::ContainerInconsistency(<span class="macro">format!</span>(
                 <span class="string">"invalid RNG seed length {} for cycle {} (slots_per_cycle {}, complete={})"</span>,
@@ -4799,7 +4793,7 @@
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_pos_final_state_hash_computation() {
         <span class="kw">let </span>pos_config = PoSConfig {
-            <span class="comment">// slots_per_cycle = 8 so the seed bits accumulated below stay within bounds
+            <span class="comment">// slots_per_cycle = 4*2 = 8 so the seed bits accumulated below stay within bounds
             </span>periods_per_cycle: <span class="number">4</span>,
             thread_count: <span class="number">2</span>,
             cycle_history_length: POS_SAVED_CYCLES,
