@@ -1340,10 +1340,6 @@
 <a href="#1340" id="1340">1340</a>
 <a href="#1341" id="1341">1341</a>
 <a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -2094,14 +2090,10 @@
                     e
                 ))
             })<span class="question-mark">?</span>;
-        <span class="kw">let </span>shutdown_end = Slot::new(last_start_period, <span class="number">0</span>)
-            .get_prev_slot(config.thread_count)
-            .map_err(|e| {
-                FinalStateError::InvalidSlot(<span class="macro">format!</span>(
-                    <span class="string">"Unable to compute prev slot from last start period: {:?}"</span>,
-                    e
-                ))
-            })<span class="question-mark">?</span>;
+        <span class="comment">// Include the entire last_start_period as downtime: interpolation attaches at
+        // Slot(last_start_period, thread_count - 1) and block production resumes only
+        // at Slot(last_start_period + 1, 0).
+        </span><span class="kw">let </span>shutdown_end = Slot::new(last_start_period, config.thread_count.saturating_sub(<span class="number">1</span>));
         <span class="macro">debug!</span>(
             <span class="string">"Checking if MIP store is consistent against shutdown period: {} - {}"</span>,
             shutdown_start, shutdown_end
