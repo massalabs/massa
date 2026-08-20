@@ -157,7 +157,7 @@ impl PoSFinalState {
             .periods_per_cycle
             .saturating_mul(self.config.thread_count as u64)
             .try_into()
-            .unwrap_or(usize::MAX)
+            .expect("slots_per_cycle overflow")
     }
 
     /// create a new `PoSFinalState`
@@ -330,9 +330,6 @@ impl PoSFinalState {
 
         let complete =
             last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
-        if complete && rng_seed.len() < slots_per_cycle {
-            rng_seed.extend(vec![false; slots_per_cycle - rng_seed.len()]);
-        }
         if rng_seed.len() > slots_per_cycle || (complete && rng_seed.len() != slots_per_cycle) {
             return Err(PosError::ContainerInconsistency(format!(
                 "invalid RNG seed length {} for cycle {} (slots_per_cycle {}, complete={})",
@@ -2086,7 +2083,7 @@ mod tests {
     #[test]
     fn test_pos_final_state_hash_computation() {
         let pos_config = PoSConfig {
-            // slots_per_cycle = 8 so the seed bits accumulated below stay within bounds
+            // slots_per_cycle = 4*2 = 8 so the seed bits accumulated below stay within bounds
             periods_per_cycle: 4,
             thread_count: 2,
             cycle_history_length: POS_SAVED_CYCLES,
