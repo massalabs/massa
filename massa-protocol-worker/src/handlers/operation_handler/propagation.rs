@@ -45,10 +45,15 @@ struct PropagationThread {
 }
 
 impl PropagationThread {
-    fn run(&mut self) {
-        let mut batch_deadline = std::time::Instant::now()
+    /// Time at which the next announcement should happen if the batch is not full before that.
+    fn next_batch_deadline(&self) -> std::time::Instant {
+        std::time::Instant::now()
             .checked_add(self.config.operation_announcement_interval.to_duration())
-            .expect("Can't init interval op propagation");
+            .expect("Can't init interval op propagation")
+    }
+
+    fn run(&mut self) {
+        let mut batch_deadline = self.next_batch_deadline();
         loop {
             match self.internal_receiver.recv_deadline(batch_deadline) {
                 Ok(internal_message) => {
@@ -77,14 +82,17 @@ impl PropagationThread {
                                     >= self.config.operation_announcement_buffer_capacity
                                 {
                                     self.announce_ops();
-                                    batch_deadline = std::time::Instant::now()
-                                        .checked_add(
-                                            self.config
-                                                .operation_announcement_interval
-                                                .to_duration(),
-                                        )
-                                        .expect("Can't init interval op propagation");
+                                    batch_deadline = self.next_batch_deadline();
                                 }
+                            }
+
+                            // `recv_deadline` returns immediately whenever a message is ready,
+                            // so a continuously non-empty channel would never let the timeout
+                            // branch below fire. Enforce the deadline here as well to make sure
+                            // announcements keep happening under a constant flow of commands.
+                            if std::time::Instant::now() >= batch_deadline {
+                                self.announce_ops();
+                                batch_deadline = self.next_batch_deadline();
                             }
                         }
                         OperationHandlerPropagationCommand::Stop => {
@@ -95,9 +103,7 @@ impl PropagationThread {
                 }
                 Err(RecvTimeoutError::Timeout) => {
                     self.announce_ops();
-                    batch_deadline = std::time::Instant::now()
-                        .checked_add(self.config.operation_announcement_interval.to_duration())
-                        .expect("Can't init interval op propagation");
+                    batch_deadline = self.next_batch_deadline();
                 }
                 Err(RecvTimeoutError::Disconnected) => {
                     return;
