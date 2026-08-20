@@ -350,6 +350,12 @@
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::{mem, thread::JoinHandle};
 
@@ -397,10 +403,15 @@
 }
 
 <span class="kw">impl </span>PropagationThread {
-    <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>batch_deadline = std::time::Instant::now()
+    <span class="doccomment">/// Time at which the next announcement should happen if the batch is not full before that.
+    </span><span class="kw">fn </span>next_batch_deadline(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::time::Instant {
+        std::time::Instant::now()
             .checked_add(<span class="self">self</span>.config.operation_announcement_interval.to_duration())
-            .expect(<span class="string">"Can't init interval op propagation"</span>);
+            .expect(<span class="string">"Can't init interval op propagation"</span>)
+    }
+
+    <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span><span class="kw-2">mut </span>batch_deadline = <span class="self">self</span>.next_batch_deadline();
         <span class="kw">loop </span>{
             <span class="kw">match </span><span class="self">self</span>.internal_receiver.recv_deadline(batch_deadline) {
                 <span class="prelude-val">Ok</span>(internal_message) =&gt; {
@@ -429,14 +440,17 @@
                                     &gt;= <span class="self">self</span>.config.operation_announcement_buffer_capacity
                                 {
                                     <span class="self">self</span>.announce_ops();
-                                    batch_deadline = std::time::Instant::now()
-                                        .checked_add(
-                                            <span class="self">self</span>.config
-                                                .operation_announcement_interval
-                                                .to_duration(),
-                                        )
-                                        .expect(<span class="string">"Can't init interval op propagation"</span>);
+                                    batch_deadline = <span class="self">self</span>.next_batch_deadline();
                                 }
+                            }
+
+                            <span class="comment">// `recv_deadline` returns immediately whenever a message is ready,
+                            // so a continuously non-empty channel would never let the timeout
+                            // branch below fire. Enforce the deadline here as well to make sure
+                            // announcements keep happening under a constant flow of commands.
+                            </span><span class="kw">if </span>std::time::Instant::now() &gt;= batch_deadline {
+                                <span class="self">self</span>.announce_ops();
+                                batch_deadline = <span class="self">self</span>.next_batch_deadline();
                             }
                         }
                         OperationHandlerPropagationCommand::Stop =&gt; {
@@ -447,9 +461,7 @@
                 }
                 <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; {
                     <span class="self">self</span>.announce_ops();
-                    batch_deadline = std::time::Instant::now()
-                        .checked_add(<span class="self">self</span>.config.operation_announcement_interval.to_duration())
-                        .expect(<span class="string">"Can't init interval op propagation"</span>);
+                    batch_deadline = <span class="self">self</span>.next_batch_deadline();
                 }
                 <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected) =&gt; {
                     <span class="kw">return</span>;
