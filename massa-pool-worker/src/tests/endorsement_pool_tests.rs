@@ -8,6 +8,7 @@ use massa_signature::KeyPair;
 use super::tools::{
     create_endorsement, create_endorsement_on_block, default_mock_execution_controller, pool_test,
 };
+use crate::endorsement_pool::MAX_ENDORSEMENTS_PER_SLOT_INDEX;
 
 fn create_selector_mock_with_address(address: Address) -> MockSelectorController {
     let mut res = MockSelectorController::new();
@@ -305,8 +306,53 @@ fn test_bound_conflicting_endorsements_per_slot_index() {
             assert_eq!(
                 pool.get_endorsement_count(None)
                     .expect("Failed to get endorsement count"),
-                1
+                MAX_ENDORSEMENTS_PER_SLOT_INDEX
             );
+        },
+    );
+}
+
+/// The bound must leave room for more than one endorsed block per `(slot, index)`: an equivocating
+/// endorser sending a variant that does not match the parent our block factory settles on must not
+/// be able to deny us the endorsement variant that does match it.
+#[test]
+fn test_conflicting_endorsement_does_not_deny_the_matching_one() {
+    let sender_keypair = KeyPair::generate(0).unwrap();
+    let address = Address::from_public_key(&sender_keypair.get_public_key());
+    let execution_controller = default_mock_execution_controller();
+    let selector_controller = default_mock_selector(address);
+    pool_test(
+        PoolConfig::default(),
+        execution_controller,
+        selector_controller,
+        Some((address, sender_keypair.clone())),
+        |mut pool, mut storage| {
+            // fill the draw with conflicting variants, one of which endorses the parent our block
+            // factory will settle on. Insertion order is not controlled, so stay at the bound to
+            // assert order-independently that the matching variant is never the one evicted.
+            let matching =
+                create_endorsement_on_block(&sender_keypair, 0, Slot::new(1, 2), "our_parent");
+            let mut endorsements: Vec<_> = (0..MAX_ENDORSEMENTS_PER_SLOT_INDEX - 1)
+                .map(|i| {
+                    create_endorsement_on_block(
+                        &sender_keypair,
+                        0,
+                        Slot::new(1, 2),
+                        &format!("other_tip_{}", i),
+                    )
+                })
+                .collect();
+            endorsements.push(matching.clone());
+            let target_block = matching.content.endorsed_block;
+            storage.store_endorsements(endorsements);
+            pool.add_endorsements(storage.clone());
+            // Allow some time for the pool to add the endorsements
+            std::thread::sleep(Duration::from_secs(2));
+
+            let (endorsement_ids, _) = pool
+                .get_block_endorsements(&target_block, &Slot::new(1, 2), None)
+                .expect("Failed to get block endorsements");
+            assert_eq!(endorsement_ids[0], Some(matching.id));
         },
     );
 }
