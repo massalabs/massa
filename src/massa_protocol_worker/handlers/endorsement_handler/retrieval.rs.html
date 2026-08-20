@@ -325,64 +325,6 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -545,12 +487,10 @@
 ///
 /// Caches knowledge of valid ones.
 ///
-/// Returns an error if the peer must be banned.
+/// Does not ban if the endorsement is invalid
 ///
 /// Checks performed:
 /// - Valid signature.
-/// - Endorsement slot not too far in the future (peer offense if it is).
-/// - Correct PoS endorsement producer selection, when the draws of that slot are locally available.
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_peer(
     endorsements: Vec&lt;SecureShareEndorsement&gt;,
@@ -597,68 +537,15 @@
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>now = MassaTime::now();
-
-    <span class="comment">// Check the endorsement slots and the PoS draws.
-    //
-    // An endorsement is created at its own slot, so its slot can only be as far ahead of our clock
-    // as the propagation window, plus one period of tolerance for clock drift. Beyond that the
-    // endorsement is invalid whatever our local state is, and propagating it would amplify it, so we
-    // fail the whole batch and the caller bans the peer.
-    //
-    // Endorsements that are too old, and endorsements whose cycle draws are not available locally,
-    // are only dropped: both cases happen to honest peers (respectively a slow propagation and a
-    // selector of ours that has not caught up yet). They are not marked as checked either, so that
-    // they get validated again if we see them later.
-    </span><span class="kw">let </span>slot_acceptance_margin = config
-        .max_endorsements_propagation_time
-        .saturating_add(config.t0);
-    <span class="kw">let </span><span class="kw-2">mut </span>unchecked_endorsements = PreHashSet::with_capacity(new_endorsements.len());
-    <span class="kw">for </span>(endorsement_id, endorsement) <span class="kw">in </span>new_endorsements.iter() {
-        <span class="kw">let </span>slot = endorsement.content.slot;
-        <span class="kw">let </span>slot_timestamp = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .map_err(|err| {
-            ProtocolError::GeneralProtocolError(<span class="macro">format!</span>(
-                <span class="string">"Endorsement slot {} does not have a valid timestamp: {}"</span>,
-                slot, err
-            ))
-        })<span class="question-mark">?</span>;
-        <span class="kw">if </span>slot_timestamp &gt; now.saturating_add(slot_acceptance_margin) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::GeneralProtocolError(<span class="macro">format!</span>(
-                <span class="string">"Endorsement slot {} is too far in the future"</span>,
-                slot
-            )));
-        }
-        <span class="kw">if </span>slot_timestamp.saturating_add(slot_acceptance_margin) &lt; now {
-            <span class="macro">debug!</span>(
-                <span class="string">"Ignoring endorsement {} from peer {}: its slot {} is too old"</span>,
-                endorsement_id, from_peer_id, slot
-            );
-            unchecked_endorsements.insert(<span class="kw-2">*</span>endorsement_id);
-            <span class="kw">continue</span>;
-        }
-
-        <span class="kw">let </span>selection = <span class="kw">match </span>selector_controller.get_selection(slot) {
-            <span class="prelude-val">Ok</span>(selection) =&gt; selection.endorsements,
-            <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="macro">debug!</span>(
-                    <span class="string">"Could not check the PoS draws of endorsement {} at slot {} because our local \
-                    selector is not ready: {}. Ignoring it without banning peer {}."</span>,
-                    endorsement_id, slot, err, from_peer_id
-                );
-                unchecked_endorsements.insert(<span class="kw-2">*</span>endorsement_id);
-                <span class="kw">continue</span>;
-            }
-        };
+    <span class="comment">// Check PoS draws
+    </span><span class="kw">for </span>endorsement <span class="kw">in </span>new_endorsements.values() {
+        <span class="kw">let </span>selection = selector_controller
+            .get_selection(endorsement.content.slot)<span class="question-mark">?
+            </span>.endorsements;
         <span class="kw">let </span><span class="prelude-val">Some</span>(address) = selection.get(endorsement.content.index <span class="kw">as </span>usize) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::GeneralProtocolError(<span class="macro">format!</span>(
                 <span class="string">"No selection on slot {} for index {}"</span>,
-                slot, endorsement.content.index
+                endorsement.content.slot, endorsement.content.index
             )));
         };
         <span class="kw">if </span>address != <span class="kw-2">&amp;</span>endorsement.content_creator_address {
@@ -668,16 +555,12 @@
             )));
         }
     }
-    new_endorsements.retain(|endorsement_id, <span class="kw">_</span>| !unchecked_endorsements.contains(endorsement_id));
 
     {
         <span class="kw">let </span><span class="kw-2">mut </span>cache_write = cache.write();
 
         <span class="comment">// add to the cache of endorsements we have checked
-        </span><span class="kw">for </span>endorsement_id <span class="kw">in </span>all_endorsement_ids
-            .iter()
-            .filter(|endorsement_id| !unchecked_endorsements.contains(endorsement_id))
-        {
+        </span><span class="kw">for </span>endorsement_id <span class="kw">in </span>all_endorsement_ids.iter() {
             cache_write.insert_checked_endorsement(<span class="kw-2">*</span>endorsement_id);
         }
 
@@ -691,7 +574,8 @@
     <span class="comment">// From there we note new endorsements and propagate them
 
     // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
-    </span>new_endorsements.retain(|_id, endorsement| {
+    </span><span class="kw">let </span>now = MassaTime::now();
+    new_endorsements.retain(|_id, endorsement| {
         <span class="kw">match </span>get_block_slot_timestamp(
             config.thread_count,
             config.t0,
