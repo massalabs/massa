@@ -123,6 +123,9 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -150,6 +153,9 @@
 </span><span class="kw">pub struct </span>ExecutionConfig {
     <span class="doccomment">/// read-only execution request queue length
     </span><span class="kw">pub </span>readonly_queue_length: usize,
+    <span class="doccomment">/// maximum time a queued read-only request may wait behind slot execution
+    /// before the execution worker serves it, even if slot work is still pending
+    </span><span class="kw">pub </span>readonly_starvation_timeout: MassaTime,
     <span class="doccomment">/// maximum number of SC output events kept in cache
     </span><span class="kw">pub </span>max_final_events: usize,
     <span class="doccomment">/// maximum available gas for asynchronous messages execution
