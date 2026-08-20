@@ -1631,24 +1631,6 @@
 <a href="#1631" id="1631">1631</a>
 <a href="#1632" id="1632">1632</a>
 <a href="#1633" id="1633">1633</a>
-<a href="#1634" id="1634">1634</a>
-<a href="#1635" id="1635">1635</a>
-<a href="#1636" id="1636">1636</a>
-<a href="#1637" id="1637">1637</a>
-<a href="#1638" id="1638">1638</a>
-<a href="#1639" id="1639">1639</a>
-<a href="#1640" id="1640">1640</a>
-<a href="#1641" id="1641">1641</a>
-<a href="#1642" id="1642">1642</a>
-<a href="#1643" id="1643">1643</a>
-<a href="#1644" id="1644">1644</a>
-<a href="#1645" id="1645">1645</a>
-<a href="#1646" id="1646">1646</a>
-<a href="#1647" id="1647">1647</a>
-<a href="#1648" id="1648">1648</a>
-<a href="#1649" id="1649">1649</a>
-<a href="#1650" id="1650">1650</a>
-<a href="#1651" id="1651">1651</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2490,24 +2472,6 @@
             .force_keep_final_periods_without_ops,
         chain_id: <span class="kw-2">*</span>CHAINID,
     };
-
-    <span class="comment">// Blocks are kept in the shared storage by consensus until they are older than
-    // `force_keep_final_periods` (past that point `strip_to_block` drops the storage
-    // reference, so the block is no longer servable to peers). That retention is what
-    // covers the tail of the propagation window when the propagation cache has to evict
-    // an entry early because of its `max_blocks_kept_for_propagation` size cap.
-    </span><span class="kw">let </span>consensus_block_retention = consensus_config
-        .t0
-        .saturating_mul(consensus_config.force_keep_final_periods);
-    <span class="kw">if </span>consensus_block_retention &lt; protocol_config.max_block_propagation_time {
-        <span class="macro">warn!</span>(
-            <span class="string">"consensus only keeps blocks for {:?} (force_keep_final_periods={} * t0={:?}) which is shorter than max_block_propagation_time={:?}: a block evicted early by the max_blocks_kept_for_propagation cap will not be retrievable by peers anymore, consider raising force_keep_final_periods or lowering max_block_propagation_time"</span>,
-            consensus_block_retention.to_duration(),
-            consensus_config.force_keep_final_periods,
-            consensus_config.t0.to_duration(),
-            protocol_config.max_block_propagation_time.to_duration()
-        );
-    }
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
         MassaChannel::new(<span class="string">"consensus_event"</span>.to_string(), <span class="prelude-val">Some</span>(CHANNEL_SIZE));
