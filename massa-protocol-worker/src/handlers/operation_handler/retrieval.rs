@@ -439,15 +439,9 @@ pub(crate) fn note_operations_from_peer(
     )?;
 
     {
-        // add to checked operations
+        // mark the sender as knowing the ops it sent us:
+        // this holds regardless of whether we end up retaining them locally
         let mut cache_write = operations_cache.write();
-
-        // add checked operations
-        for op_id in new_operations.keys().copied() {
-            cache_write.insert_checked_operation(op_id);
-        }
-
-        // add to known ops
         cache_write.insert_peer_known_ops(
             source_peer_id,
             &all_received_ids
@@ -458,20 +452,41 @@ pub(crate) fn note_operations_from_peer(
     }
 
     if !new_operations.is_empty() {
+        let new_op_ids: Vec<_> = new_operations.keys().copied().collect();
+
         // Store new operations, claim locally
         let mut ops = base_storage.clone_without_refs();
         ops.store_operations(new_operations.into_values().collect());
 
-        // propagate new operations
-        if let Err(_err) = ops_propagation_sender.try_send(
+        // propagate new operations: on success the propagation thread owns a clone of the storage
+        let propagated = match ops_propagation_sender.try_send(
             OperationHandlerPropagationCommand::PropagateOperations(ops.clone()),
         ) {
-            warn!("Error sending operations to propagation channel");
-        }
+            Ok(()) => true,
+            Err(_err) => {
+                warn!("Error sending operations to propagation channel");
+                false
+            }
+        };
 
-        // Add to pool
-        if let Err(err) = pool_controller.add_operations(ops) {
-            warn!("Error adding operations to pool: {}", err);
+        // Add to pool: on success the pool worker owns the storage
+        let pooled = match pool_controller.add_operations(ops) {
+            Ok(()) => true,
+            Err(err) => {
+                warn!("Error adding operations to pool: {}", err);
+                false
+            }
+        };
+
+        // Mark the operations as checked only once at least one local component
+        // has taken ownership of them. Otherwise the temporary storage is dropped here
+        // and marking them checked would blackhole them: we would ignore any later
+        // announcement or re-delivery of operations we no longer hold.
+        if propagated || pooled {
+            let mut cache_write = operations_cache.write();
+            for op_id in new_op_ids {
+                cache_write.insert_checked_operation(op_id);
+            }
         }
     }
 

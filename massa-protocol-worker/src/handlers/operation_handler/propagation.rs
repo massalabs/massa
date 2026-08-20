@@ -33,9 +33,11 @@ struct PropagationThread {
     active_connections: Box<dyn ActiveConnectionsTrait>,
     // times at which previous ops were announced
     stored_for_propagation: VecDeque<(std::time::Instant, PreHashSet<OperationId>)>,
-    // running total number of operations held in `stored_for_propagation`, maintained
-    // incrementally so pruning does not need to scan the whole queue on every call
-    stored_ops_count: usize,
+    // ids of the operations held in `stored_for_propagation`, maintained incrementally
+    // so pruning does not need to scan the whole queue on every call. The queue batches
+    // are disjoint, so this is both the set of operations referenced in `op_storage` and
+    // the number of operations the cache size is capped on.
+    stored_ops: PreHashSet<OperationId>,
     op_storage: Storage,
     next_batch: PreHashSet<OperationId>,
     config: ProtocolConfig,
@@ -45,10 +47,15 @@ struct PropagationThread {
 }
 
 impl PropagationThread {
-    fn run(&mut self) {
-        let mut batch_deadline = std::time::Instant::now()
+    /// Time at which the next announcement should happen if the batch is not full before that.
+    fn next_batch_deadline(&self) -> std::time::Instant {
+        std::time::Instant::now()
             .checked_add(self.config.operation_announcement_interval.to_duration())
-            .expect("Can't init interval op propagation");
+            .expect("Can't init interval op propagation")
+    }
+
+    fn run(&mut self) {
+        let mut batch_deadline = self.next_batch_deadline();
         loop {
             match self.internal_receiver.recv_deadline(batch_deadline) {
                 Ok(internal_message) => {
@@ -64,10 +71,19 @@ impl PropagationThread {
 
                             // add to propagation storage
                             let new_ops = operations.get_op_refs().clone();
-                            self.stored_ops_count =
-                                self.stored_ops_count.saturating_add(new_ops.len());
-                            self.stored_for_propagation
-                                .push_back((std::time::Instant::now(), new_ops.clone()));
+                            // an operation can be propagated again while it is still
+                            // queued: only queue the ones that are not already tracked, so
+                            // that queue membership stays aligned with the `op_storage`
+                            // refs and duplicates do not consume the cache budget twice
+                            let newly_tracked: PreHashSet<OperationId> = new_ops
+                                .iter()
+                                .filter(|op_id| self.stored_ops.insert(**op_id))
+                                .copied()
+                                .collect();
+                            if !newly_tracked.is_empty() {
+                                self.stored_for_propagation
+                                    .push_back((std::time::Instant::now(), newly_tracked));
+                            }
                             self.op_storage.extend(operations);
                             self.prune_propagation_storage();
 
@@ -77,14 +93,17 @@ impl PropagationThread {
                                     >= self.config.operation_announcement_buffer_capacity
                                 {
                                     self.announce_ops();
-                                    batch_deadline = std::time::Instant::now()
-                                        .checked_add(
-                                            self.config
-                                                .operation_announcement_interval
-                                                .to_duration(),
-                                        )
-                                        .expect("Can't init interval op propagation");
+                                    batch_deadline = self.next_batch_deadline();
                                 }
+                            }
+
+                            // `recv_deadline` returns immediately whenever a message is ready,
+                            // so a continuously non-empty channel would never let the timeout
+                            // branch below fire. Enforce the deadline here as well to make sure
+                            // announcements keep happening under a constant flow of commands.
+                            if std::time::Instant::now() >= batch_deadline {
+                                self.announce_ops();
+                                batch_deadline = self.next_batch_deadline();
                             }
                         }
                         OperationHandlerPropagationCommand::Stop => {
@@ -95,9 +114,7 @@ impl PropagationThread {
                 }
                 Err(RecvTimeoutError::Timeout) => {
                     self.announce_ops();
-                    batch_deadline = std::time::Instant::now()
-                        .checked_add(self.config.operation_announcement_interval.to_duration())
-                        .expect("Can't init interval op propagation");
+                    batch_deadline = self.next_batch_deadline();
                 }
                 Err(RecvTimeoutError::Disconnected) => {
                     return;
@@ -110,7 +127,7 @@ impl PropagationThread {
     fn prune_propagation_storage(&mut self) {
         let removed = Self::prune_stored_for_propagation(
             &mut self.stored_for_propagation,
-            &mut self.stored_ops_count,
+            &mut self.stored_ops,
             self.config.max_operations_propagation_time.to_duration(),
             self.config.max_ops_kept_for_propagation,
         );
@@ -120,18 +137,23 @@ impl PropagationThread {
     }
 
     /// Remove expired and excess operation batches from the propagation queue,
-    /// keeping `stored_ops_count` in sync with the total number of queued operations.
+    /// keeping `stored_ops` in sync with the operations queued for propagation.
     ///
-    /// `stored_ops_count` is maintained incrementally (updated here on removal and by
-    /// the caller on insertion) so that pruning costs O(number of removed batches)
+    /// `stored_ops` is maintained incrementally (updated here on removal and by the
+    /// caller on insertion) so that pruning costs O(number of removed operations)
     /// instead of scanning the whole queue on every call. This prevents an attacker
     /// from making each propagation command increasingly expensive by flooding the
     /// queue with many tiny batches.
     ///
+    /// Because the caller never queues an operation that is already tracked, the queue
+    /// batches are disjoint: the cap is enforced on distinct operations and each removed
+    /// id is released exactly once, so an operation is referenced in `op_storage` if and
+    /// only if it is still held by a batch.
+    ///
     /// Returns the set of operation ids that were removed from the queue.
     fn prune_stored_for_propagation(
         stored_for_propagation: &mut VecDeque<(std::time::Instant, PreHashSet<OperationId>)>,
-        stored_ops_count: &mut usize,
+        stored_ops: &mut PreHashSet<OperationId>,
         max_operations_propagation_time: std::time::Duration,
         max_ops_kept_for_propagation: usize,
     ) -> PreHashSet<OperationId> {
@@ -143,8 +165,10 @@ impl PropagationThread {
                 let (_, op_ids) = stored_for_propagation
                     .pop_front()
                     .expect("there should be at least one element, checked above");
-                *stored_ops_count = stored_ops_count.saturating_sub(op_ids.len());
-                removed.extend(op_ids);
+                for op_id in op_ids {
+                    stored_ops.remove(&op_id);
+                    removed.insert(op_id);
+                }
             } else {
                 break;
             }
@@ -153,10 +177,12 @@ impl PropagationThread {
         // Cap cache size
         // Note that we directly remove batches of operations, not individual operations
         // to favor simplicity and performance over precision.
-        while *stored_ops_count > max_ops_kept_for_propagation {
+        while stored_ops.len() > max_ops_kept_for_propagation {
             if let Some((_t, op_ids)) = stored_for_propagation.pop_front() {
-                *stored_ops_count = stored_ops_count.saturating_sub(op_ids.len());
-                removed.extend(op_ids);
+                for op_id in op_ids {
+                    stored_ops.remove(&op_id);
+                    removed.insert(op_id);
+                }
             } else {
                 break;
             }
@@ -242,7 +268,7 @@ pub fn start_propagation_thread(
                 stored_for_propagation: VecDeque::with_capacity(
                     config.max_ops_kept_for_propagation,
                 ),
-                stored_ops_count: 0,
+                stored_ops: PreHashSet::with_capacity(config.max_ops_kept_for_propagation),
                 op_storage,
                 next_batch: PreHashSet::with_capacity(
                     config
@@ -271,73 +297,94 @@ mod tests {
         OperationId::new(Hash::compute_from(&i.to_be_bytes()))
     }
 
-    /// Push a batch of operations, mirroring the accounting done by the propagation
-    /// thread on `PropagateOperations` (increment the running count, then push).
-    fn push_batch(
+    /// Push a batch of operations at the given time, mirroring the accounting done by
+    /// the propagation thread on `PropagateOperations`: only the operations that are not
+    /// already tracked are queued, and an empty batch is not pushed at all.
+    fn push_batch_at(
         queue: &mut VecDeque<(Instant, PreHashSet<OperationId>)>,
-        count: &mut usize,
+        stored_ops: &mut PreHashSet<OperationId>,
+        time: Instant,
         ops: impl IntoIterator<Item = OperationId>,
     ) {
-        let ops: PreHashSet<OperationId> = ops.into_iter().collect();
-        *count = count.saturating_add(ops.len());
-        queue.push_back((Instant::now(), ops));
+        let newly_tracked: PreHashSet<OperationId> = ops
+            .into_iter()
+            .filter(|op_id| stored_ops.insert(*op_id))
+            .collect();
+        if !newly_tracked.is_empty() {
+            queue.push_back((time, newly_tracked));
+        }
     }
 
-    /// The ground-truth op count, computed by scanning the whole queue (the O(n)
-    /// operation the running count is meant to replace).
-    fn real_count(queue: &VecDeque<(Instant, PreHashSet<OperationId>)>) -> usize {
-        queue.iter().map(|(_, ops)| ops.len()).sum()
+    fn push_batch(
+        queue: &mut VecDeque<(Instant, PreHashSet<OperationId>)>,
+        stored_ops: &mut PreHashSet<OperationId>,
+        ops: impl IntoIterator<Item = OperationId>,
+    ) {
+        push_batch_at(queue, stored_ops, Instant::now(), ops);
+    }
+
+    /// The ground-truth set of queued operations, computed by scanning the whole queue
+    /// (the O(n) operation the incrementally maintained set is meant to replace).
+    fn real_stored_ops(
+        queue: &VecDeque<(Instant, PreHashSet<OperationId>)>,
+    ) -> PreHashSet<OperationId> {
+        queue
+            .iter()
+            .flat_map(|(_, ops)| ops.iter().copied())
+            .collect()
     }
 
     /// A flood of tiny (single-op) batches must stay bounded by the op cap, and the
-    /// running count must stay exact so pruning never falls back to scanning.
+    /// tracked set must stay exact so pruning never falls back to scanning.
     #[test]
     fn running_count_stays_exact_and_caps_total_ops() {
         let mut queue = VecDeque::new();
-        let mut count = 0usize;
+        let mut stored_ops = PreHashSet::default();
         let max_ops = 100;
         let never_expires = Duration::from_secs(3600);
 
         for i in 0..1000u64 {
-            push_batch(&mut queue, &mut count, [op_id(i)]);
+            push_batch(&mut queue, &mut stored_ops, [op_id(i)]);
             let removed = PropagationThread::prune_stored_for_propagation(
                 &mut queue,
-                &mut count,
+                &mut stored_ops,
                 never_expires,
                 max_ops,
             );
 
-            // running count must always match the ground truth
-            assert_eq!(count, real_count(&queue));
+            // the tracked set must always match the ground truth
+            assert_eq!(stored_ops, real_stored_ops(&queue));
             // once the cap is reached, each new 1-op batch evicts exactly one old batch
             if i >= max_ops as u64 {
                 assert_eq!(removed.len(), 1);
             }
         }
 
-        // total ops (== queue length for 1-op batches) stays bounded by the cap
-        assert_eq!(count, max_ops);
+        // stored ops (== queue length for distinct 1-op batches) stays bounded by the cap
+        assert_eq!(stored_ops.len(), max_ops);
         assert_eq!(queue.len(), max_ops);
-        assert_eq!(count, real_count(&queue));
     }
 
-    /// Expired batches are dropped and the running count is decremented accordingly.
+    /// Expired batches are dropped and the tracked set is updated accordingly.
     #[test]
     fn prune_removes_expired_batches_and_updates_count() {
         let mut queue = VecDeque::new();
-        let mut count = 0usize;
+        let mut stored_ops = PreHashSet::default();
 
         // a batch inserted "in the past", already older than the propagation time
-        let expired: PreHashSet<OperationId> = [op_id(1), op_id(2)].into_iter().collect();
-        count = count.saturating_add(expired.len());
-        queue.push_back((Instant::now() - Duration::from_secs(60), expired));
+        push_batch_at(
+            &mut queue,
+            &mut stored_ops,
+            Instant::now() - Duration::from_secs(60),
+            [op_id(1), op_id(2)],
+        );
 
         // a fresh batch that must be kept
-        push_batch(&mut queue, &mut count, [op_id(3)]);
+        push_batch(&mut queue, &mut stored_ops, [op_id(3)]);
 
         let removed = PropagationThread::prune_stored_for_propagation(
             &mut queue,
-            &mut count,
+            &mut stored_ops,
             Duration::from_secs(30),
             1_000,
         );
@@ -346,7 +393,101 @@ mod tests {
         assert!(removed.contains(&op_id(1)));
         assert!(removed.contains(&op_id(2)));
         assert_eq!(queue.len(), 1);
-        assert_eq!(count, 1);
-        assert_eq!(count, real_count(&queue));
+        assert_eq!(stored_ops, real_stored_ops(&queue));
+        assert!(stored_ops.contains(&op_id(3)));
+    }
+
+    /// Propagating an operation again while it is still queued must not queue it twice:
+    /// its storage ref is dropped exactly once, when its batch is pruned.
+    #[test]
+    fn repropagated_op_is_only_queued_once() {
+        let mut queue = VecDeque::new();
+        let mut stored_ops = PreHashSet::default();
+        let never_expires = Duration::from_secs(3600);
+
+        push_batch(&mut queue, &mut stored_ops, [op_id(1)]);
+        for _ in 0..10 {
+            push_batch(&mut queue, &mut stored_ops, [op_id(1)]);
+        }
+
+        // the repropagations added no batch and no extra tracking
+        assert_eq!(queue.len(), 1);
+        assert_eq!(stored_ops.len(), 1);
+
+        // the op is released exactly once, when its only batch is pruned
+        let removed = PropagationThread::prune_stored_for_propagation(
+            &mut queue,
+            &mut stored_ops,
+            never_expires,
+            0,
+        );
+        assert_eq!(removed, [op_id(1)].into_iter().collect::<PreHashSet<_>>());
+        assert!(queue.is_empty());
+        assert!(stored_ops.is_empty());
+    }
+
+    /// Batches sharing operations, pruned in a single pass, release each op exactly once
+    /// and leave no stale entry behind.
+    #[test]
+    fn overlapping_batches_pruned_in_one_pass_release_ops_once() {
+        let mut queue = VecDeque::new();
+        let mut stored_ops = PreHashSet::default();
+        let past = Instant::now() - Duration::from_secs(60);
+
+        push_batch_at(&mut queue, &mut stored_ops, past, [op_id(1), op_id(2)]);
+        push_batch_at(&mut queue, &mut stored_ops, past, [op_id(2), op_id(3)]);
+
+        // op 2 was only queued by the first batch
+        assert_eq!(queue.len(), 2);
+        assert_eq!(
+            queue[1].1,
+            [op_id(3)].into_iter().collect::<PreHashSet<_>>()
+        );
+
+        let removed = PropagationThread::prune_stored_for_propagation(
+            &mut queue,
+            &mut stored_ops,
+            Duration::from_secs(30),
+            1_000,
+        );
+
+        assert_eq!(
+            removed,
+            [op_id(1), op_id(2), op_id(3)]
+                .into_iter()
+                .collect::<PreHashSet<_>>()
+        );
+        assert!(queue.is_empty());
+        assert!(stored_ops.is_empty());
+    }
+
+    /// Repeatedly propagating the same operation must not consume the propagation budget
+    /// several times and evict unrelated operations.
+    #[test]
+    fn duplicate_ops_do_not_inflate_cache_pressure() {
+        let mut queue = VecDeque::new();
+        let mut stored_ops = PreHashSet::default();
+        let max_ops = 3;
+        let never_expires = Duration::from_secs(3600);
+
+        // one honest op, then many resubmissions of the same other op
+        push_batch(&mut queue, &mut stored_ops, [op_id(0)]);
+        for _ in 0..100 {
+            push_batch(&mut queue, &mut stored_ops, [op_id(1)]);
+            let removed = PropagationThread::prune_stored_for_propagation(
+                &mut queue,
+                &mut stored_ops,
+                never_expires,
+                max_ops,
+            );
+            // only 2 distinct ops are retained: nothing should ever be evicted
+            assert!(removed.is_empty());
+            assert_eq!(stored_ops, real_stored_ops(&queue));
+        }
+
+        // the honest op is still retained despite the flood of duplicates
+        assert_eq!(queue.len(), 2);
+        assert_eq!(stored_ops.len(), 2);
+        assert!(stored_ops.contains(&op_id(0)));
     }
 }
