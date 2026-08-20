@@ -4,14 +4,16 @@ use massa_models::config::MAX_ENDORSEMENTS_PER_SLOT_INDEX;
 use massa_models::endorsement::{Endorsement, EndorsementSerializer};
 use massa_models::secure_share::SecureShareContent;
 use massa_models::slot::Slot;
-use massa_pos_exports::Selection;
+use massa_pos_exports::{PosError, Selection};
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
 use massa_signature::KeyPair;
 use massa_test_framework::{TestUniverse, WaitPoint};
 use massa_time::MassaTime;
 use parking_lot::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::{
     handlers::{block_handler::BlockMessage, endorsement_handler::EndorsementMessage},
@@ -466,6 +468,135 @@ fn test_protocol_bounds_conflicting_endorsements_for_the_same_draw() {
     universe.mock_message_receive(
         &node_a_peer_id,
         Message::Endorsement(EndorsementMessage::Endorsements(endorsements)),
+    );
+    waitpoint.wait();
+}
+
+#[test]
+fn test_protocol_does_not_ban_peer_when_local_selector_is_not_ready() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let peer_ids = [node_a_peer_id];
+    let endorsement_creator = KeyPair::generate(0).unwrap();
+    let endorsement =
+        ProtocolTestUniverse::create_endorsement(&endorsement_creator, Slot::new(1, 1));
+
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let banned = Arc::new(AtomicBool::new(false));
+    let banned_clone = banned.clone();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    ProtocolTestUniverse::active_connections_boilerplate(
+        &mut shared_active_connections,
+        peer_ids.into_iter().collect(),
+    );
+    shared_active_connections.set_expectations(|active_connections| {
+        active_connections
+            .expect_shutdown_connection()
+            .returning(move |_| ());
+    });
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .returning(move |_peer_id| {
+            banned_clone.store(true, Ordering::Relaxed);
+        });
+    foreign_controllers
+        .network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(shared_active_connections.clone()));
+    foreign_controllers
+        .pool_controller
+        .set_expectations(|pool_controller| {
+            pool_controller.expect_add_endorsements().never();
+        });
+    // the draws of that cycle are not available locally: this is our own problem, not the peer's
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_selection()
+                .return_once(move |slot| {
+                    assert_eq!(slot, endorsement.content.slot);
+                    waitpoint_trigger_handle.trigger();
+                    Err(PosError::CycleUnavailable(0))
+                });
+        });
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement.clone()])),
+    );
+    waitpoint.wait();
+    // leave some time for a ban to reach the peer db, if one was wrongly emitted
+    std::thread::sleep(Duration::from_millis(500));
+    assert!(!banned.load(Ordering::Relaxed));
+}
+
+#[test]
+fn test_protocol_bans_peer_sending_endorsement_with_slot_too_far_in_the_future() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let peer_ids = [node_a_peer_id];
+    let endorsement_creator = KeyPair::generate(0).unwrap();
+    // way beyond the acceptance window: no honest peer can endorse that slot yet
+    let endorsement =
+        ProtocolTestUniverse::create_endorsement(&endorsement_creator, Slot::new(100_000, 1));
+
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    ProtocolTestUniverse::active_connections_boilerplate(
+        &mut shared_active_connections,
+        peer_ids.into_iter().collect(),
+    );
+    shared_active_connections.set_expectations(|active_connections| {
+        active_connections
+            .expect_shutdown_connection()
+            .returning(move |_| ());
+    });
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .returning(move |peer_id| {
+            assert_eq!(peer_id, &node_a_peer_id);
+            waitpoint_trigger_handle.trigger();
+        });
+    foreign_controllers
+        .network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(shared_active_connections.clone()));
+    foreign_controllers
+        .pool_controller
+        .set_expectations(|pool_controller| {
+            pool_controller.expect_add_endorsements().never();
+        });
+    // the slot is rejected without any local state being involved
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller.expect_get_selection().never();
+        });
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement.clone()])),
     );
     waitpoint.wait();
 }
