@@ -600,6 +600,148 @@ fn test_protocol_only_bans_the_senders_of_an_attack_block() {
     ban_waitpoint.wait();
 }
 
+/// A block whose contents turn out to be invalid must only get the peers that actually sent us
+/// those contents banned. A peer that merely relayed the header had no way of checking the
+/// contents before propagating, so it must be spared.
+#[test]
+fn test_protocol_does_not_ban_header_only_sender_of_an_invalid_block() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        // any single operation is enough to overflow the block, making its contents invalid
+        max_serialized_operations_size_per_block: 1,
+        ..Default::default()
+    };
+
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+
+    let block_creator = KeyPair::generate(0).unwrap();
+    let op = tools::create_operation_with_expire_period(&block_creator, 5);
+    let op_thread = op
+        .content_creator_address
+        .get_thread(protocol_config.thread_count);
+    let block = ProtocolTestUniverse::create_block(
+        &block_creator,
+        Slot::new(1, op_thread),
+        vec![op.clone()],
+        vec![],
+        vec![],
+    );
+    // node A only relays the header, node B sends us the operation ids
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
+
+    let ban_waitpoint = WaitPoint::new();
+    let ban_waitpoint_trigger_handle = ban_waitpoint.get_trigger_handle();
+
+    // only the peer that sent us the block contents gets banned
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .with(predicate::eq(node_b_peer_id))
+        .times(1)
+        .returning(move |_| {
+            ban_waitpoint_trigger_handle.trigger();
+        });
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .with(predicate::eq(node_a_peer_id))
+        .times(0)
+        .returning(move |_| {});
+    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers()
+        .return_const(HashMap::default());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers_mut()
+        .times(0..1)
+        .returning(HashMap::default);
+    let block_clone = block.clone();
+    foreign_controllers
+        .consensus_controller
+        .expect_register_block_header()
+        .return_once(move |block_id, header| {
+            assert_eq!(block_id, block_clone.id);
+            assert_eq!(header.id, block_clone.content.header.id);
+        });
+    let block_clone = block.clone();
+    foreign_controllers
+        .consensus_controller
+        .expect_mark_invalid_block()
+        .return_once(move |block_id, header| {
+            assert_eq!(block_id, block_clone.id);
+            assert_eq!(header.id, block_clone.content.header.id);
+        });
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    shared_active_connections.set_expectations(
+        |active_connections: &mut MockActiveConnectionsTrait| {
+            // only node B is connected, so it is the one we ask the block contents from
+            active_connections
+                .expect_get_peer_ids_connected()
+                .returning(move || {
+                    let mut peers = HashSet::new();
+                    peers.insert(node_b_peer_id);
+                    peers
+                });
+            active_connections
+                .expect_send_to_peer()
+                .returning(move |_, _, _, _| Ok(()));
+            active_connections
+                .expect_shutdown_connection()
+                .with(predicate::eq(node_b_peer_id))
+                .returning(move |_| {});
+        },
+    );
+    foreign_controllers
+        .network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(shared_active_connections.clone()));
+
+    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    // make the operation available locally so that the block size check can be performed
+    universe.storage.store_operations(vec![op.clone()]);
+
+    // node A relays the header: it is recorded as a header-only sender of that block
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
+    );
+
+    // start retrieving the block, which makes us ask node B for its operation ids
+    universe
+        .module_controller
+        .send_wishlist_delta(
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .unwrap();
+
+    // TODO: Find a way to wait for the previous messages to be processed
+    std::thread::sleep(Duration::from_millis(1000));
+
+    // node B sends us the contents: the block is then found to be oversized and invalid
+    universe.mock_message_receive(
+        &node_b_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::OperationIds(vec![op.id]),
+        })),
+    );
+
+    ban_waitpoint.wait();
+}
+
 #[test]
 fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     let protocol_config = ProtocolConfig {
