@@ -84,6 +84,8 @@ pub struct ProtocolConfig {
     pub genesis_timestamp: MassaTime,
     /// max number of operations kept in memory for propagation
     pub max_ops_kept_for_propagation: usize,
+    /// max number of endorsements merged into a single propagation round
+    pub max_endorsements_per_propagation_round: usize,
     /// max time we propagate operations
     pub max_operations_propagation_time: MassaTime,
     /// max time we propagate endorsements

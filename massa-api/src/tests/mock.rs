@@ -213,6 +213,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
             genesis_timestamp: MassaTime::now(),
             t0: MassaTime::from_millis(16000),
             max_ops_kept_for_propagation: 10000,
+            max_endorsements_per_propagation_round: 10000,
             max_operations_propagation_time: MassaTime::from_millis(30000),
             max_endorsements_propagation_time: MassaTime::from_millis(60000),
             initial_peers: NamedTempFile::new()

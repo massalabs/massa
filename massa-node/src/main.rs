@@ -741,6 +741,9 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_message_size: MAX_MESSAGE_SIZE as usize,
         max_ops_kept_for_propagation: SETTINGS.protocol.max_ops_kept_for_propagation,
+        max_endorsements_per_propagation_round: SETTINGS
+            .protocol
+            .max_endorsements_per_propagation_round,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().get_last_start_period(),
