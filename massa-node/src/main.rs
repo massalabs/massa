@@ -843,6 +843,24 @@ async fn launch(
         chain_id: *CHAINID,
     };
 
+    // Blocks are kept in the shared storage by consensus until they are older than
+    // `force_keep_final_periods` (past that point `strip_to_block` drops the storage
+    // reference, so the block is no longer servable to peers). That retention is what
+    // covers the tail of the propagation window when the propagation cache has to evict
+    // an entry early because of its `max_blocks_kept_for_propagation` size cap.
+    let consensus_block_retention = consensus_config
+        .t0
+        .saturating_mul(consensus_config.force_keep_final_periods);
+    if consensus_block_retention < protocol_config.max_block_propagation_time {
+        warn!(
+            "consensus only keeps blocks for {:?} (force_keep_final_periods={} * t0={:?}) which is shorter than max_block_propagation_time={:?}: a block evicted early by the max_blocks_kept_for_propagation cap will not be retrievable by peers anymore, consider raising force_keep_final_periods or lowering max_block_propagation_time",
+            consensus_block_retention.to_duration(),
+            consensus_config.force_keep_final_periods,
+            consensus_config.t0.to_duration(),
+            protocol_config.max_block_propagation_time.to_duration()
+        );
+    }
+
     let (consensus_event_sender, consensus_event_receiver) =
         MassaChannel::new("consensus_event".to_string(), Some(CHANNEL_SIZE));
     let consensus_channels = ConsensusChannels {
