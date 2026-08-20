@@ -362,6 +362,21 @@
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_bootstrap::white_black_list::SharedWhiteBlackList;
@@ -533,6 +548,19 @@
         .<span class="kw">await</span>;
 }
 
+<span class="doccomment">/// mTLS is a strict extension of TLS: reject the combination rather than silently serving in
+/// plaintext a service the operator meant to protect with client certificates.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_mtls_requires_tls(config: <span class="kw-2">&amp;</span>GrpcConfig) -&gt; <span class="prelude-ty">Result</span>&lt;(), GrpcError&gt; {
+    <span class="kw">if </span>config.enable_mtls &amp;&amp; !config.enable_tls {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::ConfigError(<span class="macro">format!</span>(
+            <span class="string">"gRPC {:?} API: `enable_mtls` requires `enable_tls` to be enabled, refusing to start in plaintext"</span>,
+            config.name
+        )));
+    }
+
+    <span class="prelude-val">Ok</span>(())
+}
+
 <span class="comment">// Configure and start the gRPC API with the given service
 </span><span class="kw">async fn </span>serve&lt;S&gt;(service: S, config: <span class="kw-2">&amp;</span>GrpcConfig) -&gt; <span class="prelude-ty">Result</span>&lt;StopHandle, GrpcError&gt;
 <span class="kw">where
@@ -543,6 +571,8 @@
         + <span class="lifetime">'static</span>,
     S::Future: Send + <span class="lifetime">'static</span>,
 {
+    check_mtls_requires_tls(config)<span class="question-mark">?</span>;
+
     <span class="kw">let </span>(shutdown_send, shutdown_recv) = oneshot::channel::&lt;()&gt;();
 
     <span class="kw">let </span><span class="kw-2">mut </span>server_builder = tonic::transport::Server::builder()
