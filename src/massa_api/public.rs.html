@@ -1662,7 +1662,6 @@
 <a href="#1662" id="1662">1662</a>
 <a href="#1663" id="1663">1663</a>
 <a href="#1664" id="1664">1664</a>
-<a href="#1665" id="1665">1665</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -2327,12 +2326,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operations_ids: Vec&lt;OperationId&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt; {
-        <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-        <span class="comment">// bound the request size on the ids provided by the caller, before any storage lookup
-        </span><span class="kw">if </span>operations_ids.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
-        }
-
         <span class="comment">// get the operations and the list of blocks that contain them from storage
         </span><span class="kw">let </span>secure_share_operations: Vec&lt;SecureShareOperation&gt; = {
             <span class="kw">let </span>read_ops = <span class="self">self</span>.<span class="number">0</span>.storage.read_operations();
@@ -2361,6 +2354,11 @@
 
         <span class="comment">// keep only the ops id (found in storage)
         </span><span class="kw">let </span>ops: Vec&lt;OperationId&gt; = storage_info.iter().map(|(op, <span class="kw">_</span>)| op.id).collect();
+
+        <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
+        <span class="kw">if </span>ops.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
+        }
 
         <span class="comment">// ask pool whether it carries the operations
         </span><span class="kw">let </span>in_pool = <span class="self">self
