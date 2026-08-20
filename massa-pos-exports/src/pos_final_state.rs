@@ -151,6 +151,15 @@ pub struct PoSFinalState {
 }
 
 impl PoSFinalState {
+    /// Number of slots (and thus RNG seed bits) in a full cycle.
+    fn slots_per_cycle(&self) -> usize {
+        self.config
+            .periods_per_cycle
+            .saturating_mul(self.config.thread_count as u64)
+            .try_into()
+            .unwrap_or(usize::MAX)
+    }
+
     /// create a new `PoSFinalState`
     pub fn new(
         config: PoSConfig,
@@ -266,13 +275,7 @@ impl PoSFinalState {
     ///
     /// This should be called only if bootstrap did not happen.
     pub fn create_initial_cycle(&mut self, batch: &mut DBBatch) {
-        let mut rng_seed = BitVec::with_capacity(
-            self.config
-                .periods_per_cycle
-                .saturating_mul(self.config.thread_count as u64)
-                .try_into()
-                .unwrap(),
-        );
+        let mut rng_seed = BitVec::with_capacity(self.slots_per_cycle());
         rng_seed.extend(vec![false; self.config.thread_count as usize]);
 
         self.put_new_cycle_info(
@@ -298,13 +301,7 @@ impl PoSFinalState {
         batch: &mut DBBatch,
     ) -> Result<(), PosError> {
         let mut rng_seed = if first_slot.is_first_of_cycle(self.config.periods_per_cycle) {
-            BitVec::with_capacity(
-                self.config
-                    .periods_per_cycle
-                    .saturating_mul(self.config.thread_count as u64)
-                    .try_into()
-                    .unwrap(),
-            )
+            BitVec::with_capacity(self.slots_per_cycle())
         } else {
             last_cycle_info.rng_seed.clone()
         };
@@ -317,10 +314,34 @@ impl PoSFinalState {
             Err(_) => return Ok(()),
         };
 
-        rng_seed.extend(vec![false; num_slots as usize]);
+        let slots_per_cycle = self.slots_per_cycle();
+        // Existing seed (e.g. genesis thread_count padding) may already cover some of
+        // the interpolated range. Cap so we never exceed a full cycle.
+        if rng_seed.len() > slots_per_cycle {
+            return Err(PosError::ContainerInconsistency(format!(
+                "RNG seed for cycle {} exceeds slots_per_cycle: {} > {}",
+                cycle,
+                rng_seed.len(),
+                slots_per_cycle
+            )));
+        }
+        let to_add = (num_slots as usize).min(slots_per_cycle.saturating_sub(rng_seed.len()));
+        rng_seed.extend(vec![false; to_add]);
 
         let complete =
             last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
+        if complete && rng_seed.len() < slots_per_cycle {
+            rng_seed.extend(vec![false; slots_per_cycle - rng_seed.len()]);
+        }
+        if rng_seed.len() > slots_per_cycle || (complete && rng_seed.len() != slots_per_cycle) {
+            return Err(PosError::ContainerInconsistency(format!(
+                "invalid RNG seed length {} for cycle {} (slots_per_cycle {}, complete={})",
+                rng_seed.len(),
+                cycle,
+                slots_per_cycle,
+                complete
+            )));
+        }
 
         self.put_new_cycle_info(
             &CycleInfo::new(
@@ -420,12 +441,7 @@ impl PoSFinalState {
         feed_selector: bool,
         batch: &mut DBBatch,
     ) -> PosResult<()> {
-        let slots_per_cycle: usize = self
-            .config
-            .periods_per_cycle
-            .saturating_mul(self.config.thread_count as u64)
-            .try_into()
-            .unwrap();
+        let slots_per_cycle = self.slots_per_cycle();
 
         // compute the current cycle from the given slot
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
@@ -469,14 +485,33 @@ impl PoSFinalState {
 
         let complete: bool =
             slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
-        self.put_cycle_history_complete(cycle, complete, batch);
 
         // OPTIM: we could avoid reading the previous seed bits with a cache or with an update function
-        let mut rng_seed = self
-            .get_cycle_history_rng_seed(cycle)
-            .expect("missing RNG seed");
+        let mut rng_seed = self.get_cycle_history_rng_seed(cycle).ok_or_else(|| {
+            PosError::ContainerInconsistency(format!("missing RNG seed for cycle {}", cycle))
+        })?;
+        // Reject already-corrupt or overflowing seed state before mutating caches/batch.
+        if rng_seed.len() > slots_per_cycle {
+            return Err(PosError::ContainerInconsistency(format!(
+                "RNG seed for cycle {} exceeds slots_per_cycle: {} > {}",
+                cycle,
+                rng_seed.len(),
+                slots_per_cycle
+            )));
+        }
         rng_seed.extend(changes.seed_bits);
-        self.put_cycle_history_rng_seed(cycle, rng_seed.clone(), batch);
+        if rng_seed.len() > slots_per_cycle || (complete && rng_seed.len() != slots_per_cycle) {
+            return Err(PosError::ContainerInconsistency(format!(
+                "cycle {} RNG seed length {} invalid (slots_per_cycle {}, complete={})",
+                cycle,
+                rng_seed.len(),
+                slots_per_cycle,
+                complete
+            )));
+        }
+
+        self.put_cycle_history_complete(cycle, complete, batch);
+        self.put_cycle_history_rng_seed(cycle, rng_seed, batch);
 
         // extend roll counts
         for (addr, roll_count) in changes.roll_changes {
@@ -499,15 +534,6 @@ impl PoSFinalState {
             } else {
                 self.put_cycle_history_address_entry(cycle, &addr, None, Some(&stats), batch);
             }
-        }
-
-        // if the cycle just completed, check that it has the right number of seed bits
-        if complete && rng_seed.len() != slots_per_cycle {
-            panic!(
-                "cycle completed with incorrect number of seed bits: {} instead of {}",
-                rng_seed.len(),
-                slots_per_cycle
-            );
         }
 
         // extend deferred_credits with changes.deferred_credits and remove zeros
@@ -1314,14 +1340,15 @@ impl PoSFinalState {
 
         // deserialize the cycle
         let rest_key = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
-        let Some((rest_key, _cycle)) = buf_to_array_ctr(rest_key, |v| u64::from_be_bytes(*v))
-        else {
+        let Some((rest_key, cycle)) = buf_to_array_ctr(rest_key, |v| u64::from_be_bytes(*v)) else {
             return false;
         };
 
         if rest_key.is_empty() {
             return false;
         }
+
+        let slots_per_cycle = self.slots_per_cycle();
 
         match rest_key[0] {
             COMPLETE_IDENT => {
@@ -1334,12 +1361,32 @@ impl PoSFinalState {
                 if serialized_value[0] > 1 {
                     return false;
                 }
+                // A completed cycle must have an RNG seed of exactly slots_per_cycle bits.
+                if serialized_value[0] == 1 {
+                    let prefix = self.cycle_history_cycle_prefix(cycle);
+                    let Ok(Some(serialized_rng_seed)) =
+                        self.db.read().get_cf(STATE_CF, rng_seed_key!(prefix))
+                    else {
+                        return false;
+                    };
+                    let Ok((rest, rng_seed)) = self
+                        .cycle_info_deserializer
+                        .cycle_info_deserializer
+                        .bitvec_deser
+                        .deserialize::<DeserializeError>(&serialized_rng_seed)
+                    else {
+                        return false;
+                    };
+                    if !rest.is_empty() || rng_seed.len() != slots_per_cycle {
+                        return false;
+                    }
+                }
             }
             RNG_SEED_IDENT => {
                 if rest_key.len() != 1 {
                     return false;
                 }
-                let Ok((rest_key, _rng_seed)) = self
+                let Ok((rest_key, rng_seed)) = self
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .bitvec_deser
@@ -1348,6 +1395,11 @@ impl PoSFinalState {
                     return false;
                 };
                 if !rest_key.is_empty() {
+                    return false;
+                }
+                // Seed length must never exceed a full cycle; exact length for complete
+                // cycles is enforced when validating the COMPLETE flag above.
+                if rng_seed.len() > slots_per_cycle {
                     return false;
                 }
             }
@@ -2034,7 +2086,8 @@ mod tests {
     #[test]
     fn test_pos_final_state_hash_computation() {
         let pos_config = PoSConfig {
-            periods_per_cycle: 2,
+            // slots_per_cycle = 8 so the seed bits accumulated below stay within bounds
+            periods_per_cycle: 4,
             thread_count: 2,
             cycle_history_length: POS_SAVED_CYCLES,
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
@@ -2403,5 +2456,258 @@ mod tests {
 
         // Note: by using cycle 2, feed_selector will use initial_rolls & initial_seeds
         let _ = pos_state_0.feed_selector(2);
+    }
+
+    /// Oversized RNG seeds must be rejected by DB key/value validation (bootstrap/DoS hardening).
+    #[test]
+    fn test_rng_seed_validation_rejects_oversized_seed() {
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2, // slots_per_cycle = 4
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
+        };
+
+        let tempdir = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: 2,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let selector_controller = Box::new(MockSelectorController::new());
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
+        let cycle_info_deserializer = CycleHistoryDeserializer::new(
+            pos_config.cycle_history_length as u64,
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
+
+        let mut pos_state = PoSFinalState {
+            config: pos_config,
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: selector_controller,
+            initial_rolls: Default::default(),
+            initial_seeds,
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            deferred_credits_deserializer,
+            cycle_info_serializer: CycleHistorySerializer::new(),
+            cycle_info_deserializer,
+        };
+
+        let oversized = bitvec![u8, Lsb0; 0, 1, 0, 1, 0]; // 5 > 4
+        let cycle_info = CycleInfo::new(
+            0,
+            false,
+            BTreeMap::default(),
+            oversized.clone(),
+            PreHashMap::default(),
+        );
+        let mut batch = DBBatch::new();
+        pos_state.put_new_cycle_info(&cycle_info, &mut batch);
+        db.write().write_batch(batch, DBBatch::new(), None);
+
+        let prefix = pos_state.cycle_history_cycle_prefix(0);
+        let key = rng_seed_key!(prefix);
+        let mut serialized_value = Vec::new();
+        pos_state
+            .cycle_info_serializer
+            .cycle_info_serializer
+            .bitvec_ser
+            .serialize(&oversized, &mut serialized_value)
+            .unwrap();
+
+        assert!(
+            !pos_state.is_cycle_history_key_value_valid(&key, &serialized_value),
+            "oversized RNG seed must be rejected"
+        );
+
+        // Completing a cycle with a short seed must also be rejected
+        let short_seed = bitvec![u8, Lsb0; 0, 1];
+        let mut batch = DBBatch::new();
+        pos_state.put_cycle_history_rng_seed(0, short_seed, &mut batch);
+        pos_state.put_cycle_history_complete(0, true, &mut batch);
+        db.write().write_batch(batch, DBBatch::new(), None);
+
+        let complete_key = complete_key!(prefix);
+        assert!(
+            !pos_state.is_cycle_history_key_value_valid(&complete_key, &[1]),
+            "complete cycle with wrong RNG seed length must be rejected"
+        );
+    }
+
+    /// Cycle completion with a wrong seed length returns an error instead of panicking.
+    #[test]
+    fn test_apply_changes_returns_error_on_seed_length_mismatch() {
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2, // slots_per_cycle = 4
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
+        };
+
+        let tempdir = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: 2,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let selector_controller = Box::new(MockSelectorController::new());
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
+        let cycle_info_deserializer = CycleHistoryDeserializer::new(
+            pos_config.cycle_history_length as u64,
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
+
+        let mut pos_state = PoSFinalState {
+            config: pos_config,
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: selector_controller,
+            initial_rolls: Default::default(),
+            initial_seeds,
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            deferred_credits_deserializer,
+            cycle_info_serializer: CycleHistorySerializer::new(),
+            cycle_info_deserializer,
+        };
+
+        // Incomplete cycle with a short seed; completing it with one more bit yields length 3 ≠ 4.
+        let mut batch = DBBatch::new();
+        pos_state.put_new_cycle_info(
+            &CycleInfo::new(
+                0,
+                false,
+                BTreeMap::default(),
+                bitvec![u8, Lsb0; 0, 1],
+                PreHashMap::default(),
+            ),
+            &mut batch,
+        );
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(1, 0)));
+        pos_state.recompute_pos_state_caches();
+
+        // Last slot of cycle 0 with periods_per_cycle=2, thread_count=2 is (1, 1).
+        let changes = PoSChanges {
+            seed_bits: bitvec![u8, Lsb0; 1],
+            roll_changes: PreHashMap::default(),
+            production_stats: PreHashMap::default(),
+            deferred_credits: DeferredCredits::new(),
+        };
+        let mut batch = DBBatch::new();
+        let err = pos_state
+            .apply_changes_to_batch(changes, Slot::new(1, 1), false, &mut batch)
+            .expect_err("seed length mismatch on cycle completion must be an error");
+        assert_matches!(err, PosError::ContainerInconsistency(_));
+    }
+
+    /// Completing a cycle during downtime interpolation must cap seed bits at slots_per_cycle
+    /// when the existing seed already includes genesis padding.
+    #[test]
+    fn test_create_new_cycle_from_last_caps_seed_on_complete() {
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2, // slots_per_cycle = 4
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
+        };
+
+        let tempdir = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: 2,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let selector_controller = Box::new(MockSelectorController::new());
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
+        let cycle_info_deserializer = CycleHistoryDeserializer::new(
+            pos_config.cycle_history_length as u64,
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
+
+        let mut pos_state = PoSFinalState {
+            config: pos_config,
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: selector_controller,
+            initial_rolls: Default::default(),
+            initial_seeds,
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            deferred_credits_deserializer,
+            cycle_info_serializer: CycleHistorySerializer::new(),
+            cycle_info_deserializer,
+        };
+
+        // Same pattern as create_initial_cycle: thread_count padding bits already present.
+        let last_cycle = CycleInfo::new(
+            0,
+            false,
+            BTreeMap::default(),
+            bitvec![u8, Lsb0; 0, 0],
+            PreHashMap::default(),
+        );
+        let mut batch = DBBatch::new();
+        pos_state
+            .create_new_cycle_from_last(
+                &last_cycle,
+                Slot::new(0, 1),
+                Slot::new(1, 1), // last slot of cycle 0
+                &mut batch,
+            )
+            .expect("interpolation should cap seed length instead of overflowing");
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(1, 1)));
+
+        let cycle_info = pos_state.get_cycle_info(0).expect("cycle 0 should exist");
+        assert!(cycle_info.complete);
+        assert_eq!(cycle_info.rng_seed.len(), 4);
     }
 }
