@@ -439,14 +439,10 @@ fn shutdown_range(
                 last_slot_before_downtime, e
             ))
         })?;
-    let shutdown_end = Slot::new(last_start_period, 0)
-        .get_prev_slot(cfg.thread_count)
-        .map_err(|e| {
-            BootstrapError::GeneralError(format!(
-                "the server announced a downtime ending at period {}, which has no previous slot: {}",
-                last_start_period, e
-            ))
-        })?;
+    // Include the entire last_start_period as downtime: interpolation attaches at
+    // Slot(last_start_period, thread_count - 1) and block production resumes only
+    // at Slot(last_start_period + 1, 0).
+    let shutdown_end = Slot::new(last_start_period, cfg.thread_count.saturating_sub(1));
     Ok((shutdown_start, shutdown_end))
 }
 
