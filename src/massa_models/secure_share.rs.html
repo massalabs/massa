@@ -412,55 +412,6 @@
 <a href="#412" id="412">412</a>
 <a href="#413" id="413">413</a>
 <a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use crate</span>::{address::Address, error::ModelsError};
@@ -519,52 +470,31 @@
 <span class="kw">where
     </span><span class="self">Self</span>: Sized + Display,
 {
-    <span class="doccomment">/// Sign the SecureShare given the content. `sig_chain_id` selects the
-    /// signed-hash layout: `None` for the legacy (chain-agnostic) layout,
-    /// `Some(chain_id)` to fold the chain id into the signed hash. Signing,
-    /// verification and denunciation reconstruction must use the same value
-    /// for a given message (see [`Self::compute_signed_hash`]).
-    </span><span class="kw">fn </span>sign(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        keypair: <span class="kw-2">&amp;</span>KeyPair,
-        content_hash: <span class="kw-2">&amp;</span>Hash,
-        sig_chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, ModelsError&gt; {
-        <span class="prelude-val">Ok</span>(keypair.sign(<span class="kw-2">&amp;</span><span class="self">self</span>.compute_signed_hash(
-            <span class="kw-2">&amp;</span>keypair.get_public_key(),
-            content_hash,
-            sig_chain_id,
-        ))<span class="question-mark">?</span>)
+    <span class="doccomment">/// Sign the SecureShare given the content
+    </span><span class="kw">fn </span>sign(<span class="kw-2">&amp;</span><span class="self">self</span>, keypair: <span class="kw-2">&amp;</span>KeyPair, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, ModelsError&gt; {
+        <span class="prelude-val">Ok</span>(keypair.sign(<span class="kw-2">&amp;</span><span class="self">self</span>.compute_signed_hash(<span class="kw-2">&amp;</span>keypair.get_public_key(), content_hash))<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Verify a signature. `sig_chain_id` selects the signed-hash layout used
-    /// to reconstruct the signature hash (see [`Self::compute_signed_hash`]).
+    <span class="doccomment">/// verify signature
     </span><span class="kw">fn </span>verify_signature(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         public_key: <span class="kw-2">&amp;</span>PublicKey,
         content_hash: <span class="kw-2">&amp;</span>Hash,
         signature: <span class="kw-2">&amp;</span>Signature,
-        sig_chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
         <span class="prelude-val">Ok</span>(public_key.verify_signature(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.compute_signed_hash(public_key, content_hash, sig_chain_id),
+            <span class="kw-2">&amp;</span><span class="self">self</span>.compute_signed_hash(public_key, content_hash),
             signature,
         )<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
-    ///
-    /// `chain_id` computes the content id ([`Self::compute_hash`]); `sig_chain_id`
-    /// selects the signed-hash layout (`None` = legacy / chain-agnostic,
-    /// `Some(chain_id)` = chain-scoped). The two must flip together at the
-    /// deterministic MIP-0002 activation slot so all nodes switch simultaneously.
     </span><span class="kw">fn </span>new_verifiable&lt;Ser: Serializer&lt;<span class="self">Self</span>&gt;, ID: Id&gt;(
         <span class="self">self</span>,
         content_serializer: Ser,
         keypair: <span class="kw-2">&amp;</span>KeyPair,
         chain_id: u64,
-        sig_chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShare&lt;<span class="self">Self</span>, ID&gt;, ModelsError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
         content_serializer.serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
@@ -572,7 +502,7 @@
         <span class="kw">let </span>hash = <span class="self">Self</span>::compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span>content_serialized, <span class="kw-2">&amp;</span>public_key, chain_id);
         <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
         <span class="prelude-val">Ok</span>(SecureShare {
-            signature: <span class="self">self</span>.sign(keypair, <span class="kw-2">&amp;</span>hash, sig_chain_id)<span class="question-mark">?</span>,
+            signature: <span class="self">self</span>.sign(keypair, <span class="kw-2">&amp;</span>hash)<span class="question-mark">?</span>,
             content_creator_pub_key: public_key,
             content_creator_address: creator_address,
             content: <span class="self">self</span>,
@@ -594,28 +524,8 @@
         Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
     }
 
-    <span class="doccomment">/// Compute hash used for signature.
-    ///
-    /// `sig_chain_id` selects the layout:
-    /// * `None` -&gt; legacy (chain-agnostic) layout, identical to the pre-fix
-    ///   one. Used for messages whose slot is governed by a network version
-    ///   predating the MIP-0002 `Execution` v2 activation.
-    /// * `Some(chain_id)` -&gt; chain-scoped layout, folding `chain_id` into the
-    ///   signed hash so two signatures produced on different chains for the
-    ///   same (slot, index) cannot be replayed as a denunciation on either
-    ///   chain (F90 / PDF #11).
-    ///
-    /// The default ignores `sig_chain_id` and returns `*content_hash` (the
-    /// legacy layout), which is correct for components that never chain-scope
-    /// their signed hash (e.g. `Operation`, whose `compute_hash` already folds
-    /// in the chain id). `Endorsement` and `BlockHeader` override this to fold
-    /// in `chain_id` when `Some`.
-    </span><span class="kw">fn </span>compute_signed_hash(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        _public_key: <span class="kw-2">&amp;</span>PublicKey,
-        content_hash: <span class="kw-2">&amp;</span>Hash,
-        _sig_chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    ) -&gt; Hash {
+    <span class="doccomment">/// Compute hash used for signature
+    </span><span class="kw">fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, _public_key: <span class="kw-2">&amp;</span>PublicKey, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; Hash {
         <span class="kw-2">*</span>content_hash
     }
 
@@ -719,27 +629,19 @@
         <span class="prelude-val">Ok</span>(keypair.sign(content_hash)<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// check if self has been signed by public key. `sig_chain_id` selects the
-    /// signed-hash layout (`None` = legacy, `Some(chain_id)` = chain-scoped); see
-    /// [`SecureShareContent::compute_signed_hash`].
-    </span><span class="kw">pub fn </span>verify_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, sig_chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
+    <span class="doccomment">/// check if self has been signed by public key
+    </span><span class="kw">pub fn </span>verify_signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
         <span class="self">self</span>.content.verify_signature(
             <span class="kw-2">&amp;</span><span class="self">self</span>.content_creator_pub_key,
             <span class="self">self</span>.id.get_hash(),
             <span class="kw-2">&amp;</span><span class="self">self</span>.signature,
-            sig_chain_id,
         )
     }
 
-    <span class="doccomment">/// Compute the signed hash. `sig_chain_id` selects the signed-hash layout
-    /// (`None` = legacy, `Some(chain_id)` = chain-scoped); see
-    /// [`SecureShareContent::compute_signed_hash`].
-    </span><span class="kw">pub fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, sig_chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;) -&gt; Hash {
-        <span class="self">self</span>.content.compute_signed_hash(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.content_creator_pub_key,
-            <span class="self">self</span>.id.get_hash(),
-            sig_chain_id,
-        )
+    <span class="doccomment">/// Compute the signed hash
+    </span><span class="kw">pub fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
+        <span class="self">self</span>.content
+            .compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>.content_creator_pub_key, <span class="self">self</span>.id.get_hash())
     }
 
     <span class="doccomment">/// get full serialized size
