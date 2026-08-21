@@ -465,12 +465,20 @@ impl DeferredCallRegistry {
 
                     // [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG]
                     let k = deferred_slot_call_prefix_key!(&slot.to_bytes_key());
+                    // Malformed keys must return false, not panic (bootstrap / final-state verification).
+                    if !serialized_key.starts_with(&k) {
+                        return false;
+                    }
                     let rest_key = &serialized_key[k.len()..];
 
                     if let Ok((rest, _id)) = self
                         .call_id_deserializer
                         .deserialize::<DeserializeError>(rest_key)
                     {
+                        // Require exactly one field-tag byte after the call id.
+                        if rest.len() != 1 {
+                            return false;
+                        }
                         match rest[0] {
                             CALL_FIELD_SENDER_ADDRESS => {
                                 let res: Result<(&[u8], Address), nom::Err<DeserializeError<'_>>> =
