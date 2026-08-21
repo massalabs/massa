@@ -2549,6 +2549,16 @@
 <a href="#2549" id="2549">2549</a>
 <a href="#2550" id="2550">2550</a>
 <a href="#2551" id="2551">2551</a>
+<a href="#2552" id="2552">2552</a>
+<a href="#2553" id="2553">2553</a>
+<a href="#2554" id="2554">2554</a>
+<a href="#2555" id="2555">2555</a>
+<a href="#2556" id="2556">2556</a>
+<a href="#2557" id="2557">2557</a>
+<a href="#2558" id="2558">2558</a>
+<a href="#2559" id="2559">2559</a>
+<a href="#2560" id="2560">2560</a>
+<a href="#2561" id="2561">2561</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2674,8 +2684,6 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3979,7 +3987,16 @@
     /// * `target_function`: Name of the message handling function
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
-    /// * `max_gas`: Maximum gas for the message execution
+    /// * `max_gas`: Maximum gas for the message execution.
+    ///   Only a lower bound is enforced here (`max_instance_cost`). Note that no upper
+    ///   bound is checked: `take_batch_to_execute` only schedules a message when
+    ///   `max_gas + async_msg_cst_gas_cost` fits the slot's async gas budget, which can
+    ///   never exceed `max_async_gas + max_gas_per_block` (see `execute_slot`). A message
+    ///   emitted above that ceiling is therefore accepted here but is permanently
+    ///   unschedulable: it occupies async pool capacity until its validity end, and on
+    ///   expiry `cancel_async_message` refunds `raw_coins` but not `raw_fee`.
+    ///   Rejecting it here instead would change execution results, so it is a consensus
+    ///   change and would need to be gated behind a `MipComponent::Execution` bump.
     /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
@@ -4020,7 +4037,10 @@
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>emission_slot = execution_context.slot;
 
-        <span class="kw">if </span>max_gas &lt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
+        <span class="comment">// Lower bound only. See the `max_gas` note on this function's doc comment: values
+        // above `max_async_gas + max_gas_per_block - async_msg_cst_gas_cost` are accepted
+        // here but can never be scheduled, and forfeit the fee when they expire.
+        </span><span class="kw">if </span>max_gas &lt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
             <span class="macro">bail!</span>(<span class="string">"max gas is lower than the minimum instance cost"</span>)
         }
         <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>)
