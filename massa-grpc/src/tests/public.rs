@@ -112,7 +112,7 @@ async fn get_transactions_throughput() {
 
 #[cfg(feature = "execution-trace")]
 #[tokio::test]
-async fn get_slot_transfers_gated_on_blockclique_block() {
+async fn get_slot_transfers_reports_every_requested_slot() {
     use massa_execution_exports::Transfer as ExecTransfer;
     use massa_models::amount::Amount;
     use massa_proto_rs::massa::api::v1::GetSlotTransfersRequest;
@@ -120,25 +120,11 @@ async fn get_slot_transfers_gated_on_blockclique_block() {
     let addr: SocketAddr = "[::]:4045".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
 
-    // Query three slots where the middle one has no blockclique block. Like the JSON-RPC
-    // `get_slots_transfers`, it must still appear (empty) so both query APIs agree per slot.
-    let present_a = Slot::new(1, 0);
-    let missing = Slot::new(2, 0);
-    let present_b = Slot::new(3, 0);
-
-    let block_id = create_block(&KeyPair::generate(0).unwrap()).id;
-
-    let mut consensus_ctrl = Box::new(MockConsensusController::new());
-    consensus_ctrl
-        .expect_get_blockclique_block_at_slot()
-        .returning(move |slot| {
-            if slot == missing {
-                None
-            } else {
-                Some(block_id)
-            }
-        });
-    public_server.consensus_controller = consensus_ctrl;
+    // The query reads the execution trace history directly: every requested slot gets its own
+    // slot-tagged entry, in order, without consulting consensus for a block at that slot.
+    let slot_a = Slot::new(1, 0);
+    let slot_b = Slot::new(2, 0);
+    let slot_c = Slot::new(3, 0);
 
     let sample_addr =
         Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
@@ -149,10 +135,13 @@ async fn get_slot_transfers_gated_on_blockclique_block() {
 
     let mut exec_ctrl = Box::new(MockExecutionController::new());
     // Encode the slot period into the transfer amount to prove each response entry maps to
-    // the slot it reports.
+    // the slot it reports. Slot B has no trace, so it must come back empty but present.
     exec_ctrl
         .expect_get_slot_abi_call_stack_and_transfers()
         .returning(move |slot| {
+            if slot == slot_b {
+                return (None, None);
+            }
             (
                 None,
                 Some(vec![ExecTransfer {
@@ -180,7 +169,7 @@ async fn get_slot_transfers_gated_on_blockclique_block() {
 
     let response = public_client
         .get_slot_transfers(GetSlotTransfersRequest {
-            slots: vec![present_a.into(), missing.into(), present_b.into()],
+            slots: vec![slot_a.into(), slot_b.into(), slot_c.into()],
         })
         .await
         .unwrap()
@@ -188,18 +177,17 @@ async fn get_slot_transfers_gated_on_blockclique_block() {
 
     // One slot-tagged entry per input slot, in order.
     assert_eq!(response.transfer_each_slot.len(), 3);
-    // The missing-blockclique slot is present but empty; the others carry their transfer.
     assert_eq!(response.transfer_each_slot[0].transfers.len(), 1);
     assert!(response.transfer_each_slot[1].transfers.is_empty());
     assert_eq!(response.transfer_each_slot[2].transfers.len(), 1);
     // Each entry maps to the slot it reports: the amount was set to the slot period.
     assert_eq!(
         response.transfer_each_slot[0].transfers[0].amount,
-        present_a.period
+        slot_a.period
     );
     assert_eq!(
         response.transfer_each_slot[2].transfers[0].amount,
-        present_b.period
+        slot_c.period
     );
 
     stop_handle.stop();

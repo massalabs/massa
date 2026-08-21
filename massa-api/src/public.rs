@@ -136,9 +136,11 @@ impl MassaRpcServer for API<Public> {
                 .consensus_controller
                 .get_blockclique_block_at_slot(slot)
             else {
-                // Keep `res` positionally aligned with the input `slots`: a slot with no
-                // blockclique block has no transfers, but it must still occupy its slot in the
-                // result, otherwise every later entry would be misattributed to the wrong slot.
+                // Every `Transfer` returned here carries the block ID of the slot, so a slot
+                // with no block (`get_blockclique_block_at_slot` also covers final blocks) has
+                // nothing to report. Keep `res` positionally aligned with the input `slots`
+                // anyway: it must still occupy its position, otherwise every later entry would
+                // be misattributed to the wrong slot.
                 res.push(Vec::new());
                 continue;
             };
