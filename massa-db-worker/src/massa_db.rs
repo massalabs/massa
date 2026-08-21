@@ -209,7 +209,9 @@ where
                 // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
                 // in order to make deserialization easier
                 new_elements_size += key_len + value_len + buffer.len();
-                if new_elements_size <= self.config.max_final_state_elements_size {
+                if new_elements_size <= self.config.max_final_state_elements_size
+                    && new_elements.len() < self.config.max_final_state_elements_count
+                {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -342,7 +344,9 @@ where
                 // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
                 // in order to make deserialization easier
                 new_elements_size += key_len + value_len + buffer.len();
-                if new_elements_size <= self.config.max_versioning_elements_size {
+                if new_elements_size <= self.config.max_versioning_elements_size
+                    && new_elements.len() < self.config.max_versioning_elements_count
+                {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -1071,6 +1075,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1102,6 +1108,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1187,6 +1195,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1273,6 +1283,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1323,6 +1335,8 @@ mod test {
                 max_history_length: 100,
                 max_final_state_elements_size: 100,
                 max_versioning_elements_size: 100,
+                max_final_state_elements_count: 100_000,
+                max_versioning_elements_count: 100_000,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
                 enable_metrics: false,
@@ -1348,6 +1362,8 @@ mod test {
                 max_history_length: 100,
                 max_final_state_elements_size: 100,
                 max_versioning_elements_size: 100,
+                max_final_state_elements_count: 100_000,
+                max_versioning_elements_count: 100_000,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
                 enable_metrics: false,
@@ -1382,6 +1398,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1430,6 +1448,8 @@ mod test {
                 max_history_length: 100,
                 max_final_state_elements_size: 100,
                 max_versioning_elements_size: 100,
+                max_final_state_elements_count: 100_000,
+                max_versioning_elements_count: 100_000,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
                 enable_metrics: false,
@@ -1480,6 +1500,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1574,6 +1596,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1663,6 +1687,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 10,
             max_versioning_elements_size: 10,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1749,6 +1775,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 20,
             max_versioning_elements_size: 20,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1862,6 +1890,8 @@ mod test {
             max_history_length: 4,
             max_final_state_elements_size: 20,
             max_versioning_elements_size: 20,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,

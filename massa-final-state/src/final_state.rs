@@ -1048,6 +1048,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,

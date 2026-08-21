@@ -59,6 +59,8 @@ impl Default for BootstrapConfig {
             max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
             max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
             max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+            max_final_state_elements_count: 100_000,
+            max_versioning_elements_count: 100_000,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
