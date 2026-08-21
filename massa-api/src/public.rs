@@ -1630,7 +1630,7 @@ fn get_address_datastore_keys_to_state_query_item(
         (Some(k), false) => std::ops::Bound::Excluded(k),
     };
 
-    let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+    let (prefix, start_key, end_key, count) = cleanup_datastore_key_range_query(
         &value.prefix,
         start_key,
         end_key,
@@ -1651,7 +1651,7 @@ fn get_address_datastore_keys_to_state_query_item(
             prefix,
             start_key,
             end_key,
-            count: value.count,
+            count,
         })
     } else {
         Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
@@ -1659,7 +1659,7 @@ fn get_address_datastore_keys_to_state_query_item(
             prefix,
             start_key,
             end_key,
-            count: value.count,
+            count,
         })
     }
 }
