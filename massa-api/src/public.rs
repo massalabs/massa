@@ -662,6 +662,12 @@ impl MassaRpcServer for API<Public> {
         &self,
         operations_ids: Vec<OperationId>,
     ) -> RpcResult<Vec<OperationInfo>> {
+        let api_cfg = self.0.api_settings.clone();
+        // bound the request size on the ids provided by the caller, before any storage lookup
+        if operations_ids.len() as u64 > api_cfg.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+
         // get the operations and the list of blocks that contain them from storage
         let secure_share_operations: Vec<SecureShareOperation> = {
             let read_ops = self.0.storage.read_operations();
@@ -690,11 +696,6 @@ impl MassaRpcServer for API<Public> {
 
         // keep only the ops id (found in storage)
         let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
-
-        let api_cfg = self.0.api_settings.clone();
-        if ops.len() as u64 > api_cfg.max_arguments {
-            return Err(ApiError::BadRequest("too many arguments".into()).into());
-        }
 
         // ask pool whether it carries the operations
         let in_pool = self
