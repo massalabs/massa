@@ -44,11 +44,54 @@ impl ExportActiveBlock {
         }
     }
 
+    /// Parent block IDs must match the signed header (order and content).
+    /// Periods are not in the header and remain bootstrap metadata.
+    fn check_parents_match_header(&self, thread_count: u8) -> Result<(), String> {
+        let header_parents = &self.block.content.header.content.parents;
+        if self.parents.is_empty() {
+            if !header_parents.is_empty() {
+                return Err(format!(
+                    "ExportActiveBlock {} has empty parents but header lists {} parents",
+                    self.block.id,
+                    header_parents.len()
+                ));
+            }
+            return Ok(());
+        }
+        let expected_len = thread_count as usize;
+        if self.parents.len() != expected_len || header_parents.len() != expected_len {
+            return Err(format!(
+                "ExportActiveBlock {} parents length mismatch: export={}, header={}, expected={}",
+                self.block.id,
+                self.parents.len(),
+                header_parents.len(),
+                expected_len
+            ));
+        }
+        for (thread, ((export_parent, _), header_parent)) in
+            self.parents.iter().zip(header_parents.iter()).enumerate()
+        {
+            if export_parent != header_parent {
+                return Err(format!(
+                    "ExportActiveBlock {} parent id mismatch in thread {}: export={} header={}",
+                    self.block.id, thread, export_parent, header_parent
+                ));
+            }
+        }
+        Ok(())
+    }
+
     /// consuming conversion from `ExportActiveBlock` to `ActiveBlock`
     pub fn to_active_block(
         self,
         thread_count: u8,
     ) -> Result<(ActiveBlock, StorageOrBlock), ConsensusError> {
+        // Also enforced in ExportActiveBlockDeserializer for the bootstrap wire
+        // path; kept here for ExportActiveBlock values that did not come from it
+        // (e.g. tests or other construction).
+        self.check_parents_match_header(thread_count)
+            .map_err(ConsensusError::ContainerInconsistency)?;
+
         // create ActiveBlock
         let active_block = ActiveBlock {
             creator_address: self.block.content_creator_address,
@@ -201,9 +244,18 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// };
     ///
     /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+    /// let export_parents = full_block
+    ///     .content
+    ///     .header
+    ///     .content
+    ///     .parents
+    ///     .iter()
+    ///     .enumerate()
+    ///     .map(|(n, id)| (*id, n as u64))
+    ///     .collect();
     /// let export_active_block = ExportActiveBlock {
     ///    block: full_block.clone(),
-    ///    parents: vec![],
+    ///    parents: export_parents,
     ///    is_final: false,
     /// };
     ///
@@ -214,13 +266,14 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
+    /// assert_eq!(export_deserialized.parents, export_active_block.parents);
     /// assert_eq!(rest.len(), 0);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], ExportActiveBlock, E> {
-        context(
+        let (rest, (block, parents, is_final)) = context(
             "Failed ExportActiveBlock deserialization",
             tuple((
                 // block
@@ -255,11 +308,23 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
                 ),
             )),
         )
-        .map(|(block, parents, is_final)| ExportActiveBlock {
+        .parse(buffer)?;
+
+        let export = ExportActiveBlock {
             block,
             parents,
             is_final,
-        })
-        .parse(buffer)
+        };
+        if export
+            .check_parents_match_header(self.thread_count)
+            .is_err()
+        {
+            return Err(nom::Err::Failure(ContextError::add_context(
+                rest,
+                "ExportActiveBlock parents must match signed header parents",
+                ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+            )));
+        }
+        Ok((rest, export))
     }
 }
