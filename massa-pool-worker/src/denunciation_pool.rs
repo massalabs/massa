@@ -162,13 +162,21 @@ impl DenunciationPool {
         // layout used to sign the endorsement / block header, otherwise the
         // denunciation fails to verify. See F90 / PDF #11.
         let de_slot = denunciation_precursor.get_slot();
-        let de_slot_ts = get_block_slot_timestamp(
+        let de_slot_ts = match get_block_slot_timestamp(
             self.config.thread_count,
             self.config.t0,
             self.config.genesis_timestamp,
             *de_slot,
-        )
-        .unwrap_or_else(|_| MassaTime::from_millis(0));
+        ) {
+            Ok(ts) => ts,
+            Err(e) => {
+                debug!(
+                    "Denunciation pool cannot compute denounced slot timestamp: {}",
+                    e
+                );
+                return;
+            }
+        };
         let sig_chain_id =
             sig_chain_id_for_slot(&self.channels.mip_store, self.channels.chain_id, de_slot_ts);
 

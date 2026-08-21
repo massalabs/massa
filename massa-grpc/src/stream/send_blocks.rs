@@ -9,7 +9,6 @@ use massa_models::secure_share::SecureShareDeserializer;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_serialization::{DeserializeError, Deserializer};
-use massa_time::MassaTime;
 use massa_versioning::consensus_signature::sig_chain_id_for_slot;
 use massa_versioning::versioning::MipStore;
 use std::io::ErrorKind;
@@ -211,8 +210,7 @@ fn verify_received_block(
         config.t0,
         config.genesis_timestamp,
         header.content.slot,
-    )
-    .unwrap_or_else(|_| MassaTime::from_millis(0));
+    )?;
     header.verify_signature(sig_chain_id_for_slot(mip_store, config.chain_id, header_ts))?;
     for endorsement in header.content.endorsements.iter() {
         let slot_ts = get_block_slot_timestamp(
@@ -220,8 +218,7 @@ fn verify_received_block(
             config.t0,
             config.genesis_timestamp,
             endorsement.content.slot,
-        )
-        .unwrap_or_else(|_| MassaTime::from_millis(0));
+        )?;
         endorsement.verify_signature(sig_chain_id_for_slot(mip_store, config.chain_id, slot_ts))?;
     }
     Ok(())
