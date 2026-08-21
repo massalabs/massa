@@ -438,6 +438,10 @@
 <a href="#438" id="438">438</a>
 <a href="#439" id="439">439</a>
 <a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -737,6 +741,10 @@
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = <span class="number">100_000_000</span>;
 <span class="doccomment">/// Max bytes in final states parts
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = <span class="number">10_000_000</span>;
+<span class="doccomment">/// Max number of `(key, value)` entries in a final-state bootstrap `new_elements` batch
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT: u32 = <span class="number">100_000</span>;
+<span class="doccomment">/// Max number of `(key, value)` entries in a versioning bootstrap `new_elements` batch
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT: u32 = <span class="number">100_000</span>;
 <span class="doccomment">/// Max size of the IP list
 </span><span class="kw">pub const </span>IP_LIST_MAX_SIZE: usize = <span class="number">10000</span>;
 <span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import
