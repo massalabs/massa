@@ -209,7 +209,17 @@ impl ConsensusWorker {
                 .map(|export_b| export_b.to_active_block(config.thread_count))
                 .collect::<Result<_, ConsensusError>>()?;
 
-            // compute latest_final_blocks_periods
+            // Exporters only send blocks with is_final (see get_bootstrap_part). Enforce that
+            // locally so a compromised/misconfigured bootstrap source cannot advance the
+            // finality frontier with non-final blocks.
+            if let Some((b, _)) = final_blocks.iter().find(|(b, _)| !b.is_final) {
+                return Err(ConsensusError::ContainerInconsistency(format!(
+                    "bootstrap final_blocks contains non-final block {} at slot {}",
+                    b.block_id, b.slot
+                )));
+            }
+
+            // compute latest_final_blocks_periods from verified final blocks only
             let mut latest_final_blocks_periods: Vec<(BlockId, u64)> =
                 genesis_block_ids.iter().map(|id| (*id, 0u64)).collect();
             for (b, _) in &final_blocks {
