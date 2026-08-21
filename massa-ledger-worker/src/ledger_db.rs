@@ -108,7 +108,12 @@ impl LedgerDB {
     /// Loads the initial disk ledger
     ///
     /// # Arguments
-    pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
+    pub fn load_initial_ledger(
+        &mut self,
+        initial_ledger: HashMap<Address, LedgerEntry>,
+    ) -> Result<(), LedgerError> {
+        self.ensure_ledger_is_empty()?;
+
         let mut batch = DBBatch::new();
 
         for (address, entry) in initial_ledger {
@@ -120,6 +125,23 @@ impl LedgerDB {
             Default::default(),
             Some(Slot::new(0, self.thread_count.saturating_sub(1))),
         );
+        Ok(())
+    }
+
+    fn ensure_ledger_is_empty(&self) -> Result<(), LedgerError> {
+        let db = self.db.read();
+        let ledger_prefix = LEDGER_PREFIX.as_bytes();
+        let has_ledger_data = db
+            .prefix_iterator_cf(STATE_CF, ledger_prefix)
+            .take_while(|(key, _)| key.starts_with(ledger_prefix))
+            .next()
+            .is_some();
+        if has_ledger_data {
+            return Err(LedgerError::ContainerInconsistency(
+                "cannot load initial ledger: ledger database is not empty".into(),
+            ));
+        }
+        Ok(())
     }
 
     /// Allows applying `LedgerChanges` to the disk ledger
