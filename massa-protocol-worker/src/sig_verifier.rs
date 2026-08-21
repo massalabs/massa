@@ -21,8 +21,9 @@ pub fn verify_sigs_batch(ops: &[(Hash, Signature, PublicKey)]) -> Result<(), Pro
 
     // otherwise, use parallel batch verif
 
-    // compute chunk size for parallelization
-    let chunk_size = std::cmp::max(1, ops.len() / rayon::current_num_threads());
+    // compute chunk size for parallelization with ceiling division to ensure we batch properly.
+    // note that current_num_threads() will not return 0.
+    let chunk_size = ops.len().div_ceil(rayon::current_num_threads());
     // process chunks in parallel
     ops.par_chunks(chunk_size)
         .try_for_each(verify_signature_batch)
