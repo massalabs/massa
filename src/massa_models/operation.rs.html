@@ -1910,41 +1910,6 @@
 <a href="#1910" id="1910">1910</a>
 <a href="#1911" id="1911">1911</a>
 <a href="#1912" id="1912">1912</a>
-<a href="#1913" id="1913">1913</a>
-<a href="#1914" id="1914">1914</a>
-<a href="#1915" id="1915">1915</a>
-<a href="#1916" id="1916">1916</a>
-<a href="#1917" id="1917">1917</a>
-<a href="#1918" id="1918">1918</a>
-<a href="#1919" id="1919">1919</a>
-<a href="#1920" id="1920">1920</a>
-<a href="#1921" id="1921">1921</a>
-<a href="#1922" id="1922">1922</a>
-<a href="#1923" id="1923">1923</a>
-<a href="#1924" id="1924">1924</a>
-<a href="#1925" id="1925">1925</a>
-<a href="#1926" id="1926">1926</a>
-<a href="#1927" id="1927">1927</a>
-<a href="#1928" id="1928">1928</a>
-<a href="#1929" id="1929">1929</a>
-<a href="#1930" id="1930">1930</a>
-<a href="#1931" id="1931">1931</a>
-<a href="#1932" id="1932">1932</a>
-<a href="#1933" id="1933">1933</a>
-<a href="#1934" id="1934">1934</a>
-<a href="#1935" id="1935">1935</a>
-<a href="#1936" id="1936">1936</a>
-<a href="#1937" id="1937">1937</a>
-<a href="#1938" id="1938">1938</a>
-<a href="#1939" id="1939">1939</a>
-<a href="#1940" id="1940">1940</a>
-<a href="#1941" id="1941">1941</a>
-<a href="#1942" id="1942">1942</a>
-<a href="#1943" id="1943">1943</a>
-<a href="#1944" id="1944">1944</a>
-<a href="#1945" id="1945">1945</a>
-<a href="#1946" id="1946">1946</a>
-<a href="#1947" id="1947">1947</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -2946,41 +2911,6 @@
             OperationType::Transaction { .. } =&gt; <span class="number">0</span>,
         }
         .saturating_add(base_operation_gas_cost)
-    }
-
-    <span class="doccomment">/// Check that the operation can ever fit in a block, gas-wise.
-    ///
-    /// Compares the full gas usage (see `get_gas_usage`, mandatory overheads included)
-    /// against the block gas limit, so that every submission interface applies the same
-    /// includability criterion as the block filling logic.
-    ///
-    /// On failure returns the client-facing error message, stating the highest `max_gas`
-    /// the operation could have declared.
-    </span><span class="kw">pub fn </span>check_gas_usage(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        max_gas_per_block: u64,
-        base_operation_gas_cost: u64,
-        sp_compilation_cost: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
-        <span class="comment">// gas that the operation is charged on top of its declared max_gas
-        </span><span class="kw">let </span>(op_name, gas_overhead) = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.content.op {
-            OperationType::CallSC { .. } =&gt; (<span class="string">"CallSC"</span>, base_operation_gas_cost),
-            OperationType::ExecuteSC { .. } =&gt; (
-                <span class="string">"ExecuteSC"</span>,
-                base_operation_gas_cost.saturating_add(sp_compilation_cost),
-            ),
-            OperationType::RollBuy { .. }
-            | OperationType::RollSell { .. }
-            | OperationType::Transaction { .. } =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
-        };
-        <span class="kw">if </span><span class="self">self</span>.get_gas_usage(base_operation_gas_cost, sp_compilation_cost) &gt; max_gas_per_block {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(
-                <span class="string">"Upper gas limit for {} operation is {}. Your operation will never be included in a block."</span>,
-                op_name,
-                max_gas_per_block.saturating_sub(gas_overhead)
-            ));
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// get the addresses that are involved in this operation from a ledger point of view

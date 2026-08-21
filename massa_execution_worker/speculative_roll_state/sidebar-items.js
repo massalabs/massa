@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["SpeculativeRollState"]};
+window.SIDEBAR_ITEMS = {"constant":["SETTLE_ACTIVE_ROLLS_EXEC_VERSION"],"struct":["SpeculativeRollState"]};

@@ -1662,6 +1662,20 @@
 <a href="#1662" id="1662">1662</a>
 <a href="#1663" id="1663">1663</a>
 <a href="#1664" id="1664">1664</a>
+<a href="#1665" id="1665">1665</a>
+<a href="#1666" id="1666">1666</a>
+<a href="#1667" id="1667">1667</a>
+<a href="#1668" id="1668">1668</a>
+<a href="#1669" id="1669">1669</a>
+<a href="#1670" id="1670">1670</a>
+<a href="#1671" id="1671">1671</a>
+<a href="#1672" id="1672">1672</a>
+<a href="#1673" id="1673">1673</a>
+<a href="#1674" id="1674">1674</a>
+<a href="#1675" id="1675">1675</a>
+<a href="#1676" id="1676">1676</a>
+<a href="#1677" id="1677">1677</a>
+<a href="#1678" id="1678">1678</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1710,7 +1724,7 @@
     error::ModelsError,
     execution::EventFilter,
     node::NodeId,
-    operation::{OperationDeserializer, OperationId, SecureShareOperation},
+    operation::{OperationDeserializer, OperationId, OperationType, SecureShareOperation},
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShareDeserializer,
@@ -1803,13 +1817,10 @@
                 <span class="kw">continue</span>;
             };
             <span class="kw">let </span><span class="kw-2">mut </span>transfers = Vec::new();
-            <span class="comment">// Read the ABI call stack and the direct transfers for this slot from a single
-            // consistent snapshot, so the combined response cannot mix data from two
-            // different executions of the same slot (a re-execution between two reads).
-            </span><span class="kw">let </span>(abi_calls, slot_transfers) = <span class="self">self
+            <span class="kw">let </span>abi_calls = <span class="self">self
                 </span>.<span class="number">0
                 </span>.execution_controller
-                .get_slot_abi_call_stack_and_transfers(slot);
+                .get_slot_abi_call_stack(slot.clone().into());
             <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
                 <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
 
@@ -1888,7 +1899,10 @@
                     }
                 }
             }
-            <span class="kw">let </span>transfers_op: Vec&lt;Transfer&gt; = slot_transfers
+            <span class="kw">let </span>transfers_op: Vec&lt;Transfer&gt; = <span class="self">self
+                </span>.<span class="number">0
+                </span>.execution_controller
+                .get_transfers_for_slot(slot)
                 .unwrap_or_default()
                 .iter()
                 .map(|t| Transfer {
@@ -3250,13 +3264,27 @@
     <span class="kw">let </span>(rest, op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = operation_deserializer
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>op_serialized)
         .map_err(|err| ApiError::ModelsError(ModelsError::DeserializeError(err.to_string())))<span class="question-mark">?</span>;
-    <span class="kw">if let </span><span class="prelude-val">Err</span>(err_msg) = op.check_gas_usage(
-        api_cfg.max_gas_per_block,
-        api_cfg.base_operation_gas_cost,
-        api_cfg.sp_compilation_cost,
-    ) {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_msg).into());
-    }
+    <span class="kw">match </span>op.content.op {
+        OperationType::CallSC { .. } =&gt; {
+            <span class="kw">let </span>gas_usage =
+                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
+            <span class="kw">if </span>gas_usage &gt; api_cfg.max_gas_per_block {
+                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">"Upper gas limit for CallSC operation is {}. Your operation will never be included in a block."</span>,
+                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost));
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_msg).into());
+            }
+        }
+        OperationType::ExecuteSC { .. } =&gt; {
+            <span class="kw">let </span>gas_usage =
+                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
+            <span class="kw">if </span>gas_usage &gt; api_cfg.max_gas_per_block {
+                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">"Upper gas limit for ExecuteSC operation is {}. Your operation will never be included in a block."</span>,
+                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost).saturating_sub(api_cfg.sp_compilation_cost));
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_msg).into());
+            }
+        }
+        <span class="kw">_ </span>=&gt; {}
+    };
     <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot {
         <span class="kw">if </span>op.content.expire_period &lt; slot.period {
             <span class="kw">return </span><span class="prelude-val">Err</span>(
