@@ -802,13 +802,6 @@
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
 <a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -973,7 +966,7 @@
                             .get(<span class="kw-2">&amp;</span>block_id)
                             .cloned()
                             .expect(<span class="string">"incoming block not found in storage"</span>);
-                        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="self">self</span>.check_header(
+                        <span class="kw">let </span>res = <span class="self">self</span>.check_header(
                             <span class="kw-2">&amp;</span>block_id,
                             <span class="kw-2">&amp;</span>stored_block.content.header,
                             current_slot,
@@ -983,15 +976,8 @@
                                 <span class="self">self</span>.maybe_note_attack_attempt(reason, <span class="kw-2">&amp;</span>block_id)
                             }
                             <span class="kw">_ </span>=&gt; {
-                                <span class="comment">// Extra equivocation blocks must leave Incoming so Storage is
-                                // not retained indefinitely (Incoming is not pruned / slot-ticked).
-                                </span><span class="kw">if </span><span class="self">self</span>.detect_multistake(<span class="kw-2">&amp;</span>stored_block.content.header) {
-                                    res = HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                                        <span class="macro">format!</span>(
-                                            <span class="string">"more than 2 blocks for slot {}"</span>,
-                                            stored_block.content.header.content.slot
-                                        ),
-                                    ));
+                                <span class="kw">if </span><span class="self">self</span>.detect_multistake(<span class="kw-2">&amp;</span>stored_block.content.header) {
+                                    <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
                                 }
                             }
                         }
