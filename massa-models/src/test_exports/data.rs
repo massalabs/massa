@@ -3,12 +3,19 @@ use massa_signature::KeyPair;
 
 use crate::block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader};
 use crate::block_id::BlockId;
-use crate::config::THREAD_COUNT;
+use crate::config::{CHAINID, THREAD_COUNT};
 use crate::endorsement::{
     Endorsement, EndorsementSerializer, EndorsementSerializerLW, SecureShareEndorsement,
 };
 use crate::secure_share::SecureShareContent;
 use crate::slot::Slot;
+
+/// Default signed-hash layout for tests that are not covering the pre-activation path.
+/// `None` remains the legacy layout and is only for explicit MIP-boundary tests.
+#[inline]
+pub fn test_sig_chain_id() -> Option<u64> {
+    Some(*CHAINID)
+}
 
 /// Helper to generate endorsements ready for denunciation
 pub fn gen_endorsements_for_denunciation(
@@ -30,9 +37,14 @@ pub fn gen_endorsements_for_denunciation(
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     };
 
-    let v_endorsement1 =
-        Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair, 0)
-            .unwrap();
+    let v_endorsement1 = Endorsement::new_verifiable(
+        endorsement_1,
+        EndorsementSerializer::new(),
+        &keypair,
+        *CHAINID,
+        test_sig_chain_id(),
+    )
+    .unwrap();
 
     let endorsement_2 = Endorsement {
         slot,
@@ -40,18 +52,28 @@ pub fn gen_endorsements_for_denunciation(
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
     };
 
-    let v_endorsement2 =
-        Endorsement::new_verifiable(endorsement_2, EndorsementSerializer::new(), &keypair, 0)
-            .unwrap();
+    let v_endorsement2 = Endorsement::new_verifiable(
+        endorsement_2,
+        EndorsementSerializer::new(),
+        &keypair,
+        *CHAINID,
+        test_sig_chain_id(),
+    )
+    .unwrap();
 
     let endorsement_3 = Endorsement {
         slot,
         index: 0,
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk3".as_bytes())),
     };
-    let v_endorsement_3 =
-        Endorsement::new_verifiable(endorsement_3, EndorsementSerializer::new(), &keypair, 0)
-            .unwrap();
+    let v_endorsement_3 = Endorsement::new_verifiable(
+        endorsement_3,
+        EndorsementSerializer::new(),
+        &keypair,
+        *CHAINID,
+        test_sig_chain_id(),
+    )
+    .unwrap();
 
     (
         slot,
@@ -85,9 +107,14 @@ pub fn gen_block_headers_for_denunciation(
         index: 1,
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     };
-    let s_endorsement_1 =
-        Endorsement::new_verifiable(endorsement_1, EndorsementSerializerLW::new(), &keypair, 0)
-            .unwrap();
+    let s_endorsement_1 = Endorsement::new_verifiable(
+        endorsement_1,
+        EndorsementSerializerLW::new(),
+        &keypair,
+        *CHAINID,
+        test_sig_chain_id(),
+    )
+    .unwrap();
 
     let block_header_1 = BlockHeader {
         current_version: 0,
@@ -104,7 +131,8 @@ pub fn gen_block_headers_for_denunciation(
         block_header_1,
         BlockHeaderSerializer::new(),
         &keypair,
-        0,
+        *CHAINID,
+        test_sig_chain_id(),
     )
     .expect("error while producing block header");
 
@@ -123,7 +151,8 @@ pub fn gen_block_headers_for_denunciation(
         block_header_2,
         BlockHeaderSerializer::new(),
         &keypair,
-        0,
+        *CHAINID,
+        test_sig_chain_id(),
     )
     .expect("error while producing block header");
 
@@ -142,7 +171,8 @@ pub fn gen_block_headers_for_denunciation(
         block_header_3,
         BlockHeaderSerializer::new(),
         &keypair,
-        0,
+        *CHAINID,
+        test_sig_chain_id(),
     )
     .expect("error while producing block header");
 

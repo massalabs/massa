@@ -12,6 +12,7 @@ use massa_models::{
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
+    config::CHAINID,
     config::ENDORSEMENT_COUNT,
     secure_share::SecureShareContent,
     slot::Slot,
@@ -135,6 +136,8 @@ pub fn create_block_with_merkle_root(
         },
         BlockHeaderSerializer::new(),
         creator,
+        *CHAINID,
+        Some(*CHAINID),
     )
     .unwrap();
 
@@ -145,6 +148,8 @@ pub fn create_block_with_merkle_root(
         },
         BlockSerializer::new(),
         creator,
+        *CHAINID,
+        None,
     )
     .unwrap()
 }

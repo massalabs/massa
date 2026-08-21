@@ -114,7 +114,7 @@ impl InterfaceImpl {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config)).unwrap();
         let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
             .expect("could not start selector controller");
         let disk_ledger = TempDir::new().expect("cannot create temp directory");
