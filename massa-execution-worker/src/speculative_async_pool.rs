@@ -101,6 +101,11 @@ impl SpeculativeAsyncPool {
     /// removing them from the speculative asynchronous pool and settling their deletion from it
     /// in the changes accumulator.
     ///
+    /// A message is only taken when `message.max_gas + async_msg_cst_gas_cost` still fits in
+    /// the remaining budget. `send_message` does not bound `max_gas` from above, so a message
+    /// requesting more than the largest budget a slot can ever get
+    /// (`max_async_gas + max_gas_per_block`) is never taken here and expires unexecuted.
+    ///
     /// # Arguments
     /// * `slot`: slot at which the batch is taken (allows filtering by validity interval)
     /// * `max_gas`: maximum amount of gas available

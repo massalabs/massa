@@ -1426,7 +1426,16 @@ impl Interface for InterfaceImpl {
     /// * `target_function`: Name of the message handling function
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
-    /// * `max_gas`: Maximum gas for the message execution
+    /// * `max_gas`: Maximum gas for the message execution.
+    ///   Only a lower bound is enforced here (`max_instance_cost`). Note that no upper
+    ///   bound is checked: `take_batch_to_execute` only schedules a message when
+    ///   `max_gas + async_msg_cst_gas_cost` fits the slot's async gas budget, which can
+    ///   never exceed `max_async_gas + max_gas_per_block` (see `execute_slot`). A message
+    ///   emitted above that ceiling is therefore accepted here but is permanently
+    ///   unschedulable: it occupies async pool capacity until its validity end, and on
+    ///   expiry `cancel_async_message` refunds `raw_coins` but not `raw_fee`.
+    ///   Rejecting it here instead would change execution results, so it is a consensus
+    ///   change and would need to be gated behind a `MipComponent::Execution` bump.
     /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
@@ -1467,6 +1476,9 @@ impl Interface for InterfaceImpl {
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
 
+        // Lower bound only. See the `max_gas` note on this function's doc comment: values
+        // above `max_async_gas + max_gas_per_block - async_msg_cst_gas_cost` are accepted
+        // here but can never be scheduled, and forfeit the fee when they expire.
         if max_gas < self.config.gas_costs.max_instance_cost {
             bail!("max gas is lower than the minimum instance cost")
         }
