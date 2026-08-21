@@ -162,7 +162,7 @@ impl ConsensusState {
                             .get(&block_id)
                             .cloned()
                             .expect("incoming block not found in storage");
-                        let res = self.check_header(
+                        let mut res = self.check_header(
                             &block_id,
                             &stored_block.content.header,
                             current_slot,
@@ -172,8 +172,15 @@ impl ConsensusState {
                                 self.maybe_note_attack_attempt(reason, &block_id)
                             }
                             _ => {
+                                // Extra equivocation blocks must leave Incoming so Storage is
+                                // not retained indefinitely (Incoming is not pruned / slot-ticked).
                                 if self.detect_multistake(&stored_block.content.header) {
-                                    return Ok(BTreeSet::new());
+                                    res = HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                                        format!(
+                                            "more than 2 blocks for slot {}",
+                                            stored_block.content.header.content.slot
+                                        ),
+                                    ));
                                 }
                             }
                         }
