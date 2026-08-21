@@ -74,6 +74,12 @@ pub struct ProtocolConfig {
     pub max_operations_per_block: u32,
     /// Maximum size in bytes of all serialized operations size in a block
     pub max_serialized_operations_size_per_block: usize,
+    /// Maximum gas allowed in a block
+    pub max_block_gas: u64,
+    /// Gas used by a base operation (transaction, roll buy, roll sell)
+    pub base_operation_gas_cost: u64,
+    /// Gas cost of smart contract compilation
+    pub sp_compilation_cost: u64,
     /// Controller channel size
     pub controller_channel_size: usize,
     /// Event channel size
