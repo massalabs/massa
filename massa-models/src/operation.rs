@@ -1387,7 +1387,7 @@ impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair, *CHAINID).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair, *CHAINID, None).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
@@ -1466,7 +1466,7 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair, *CHAINID).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair, *CHAINID, None).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();

@@ -438,7 +438,8 @@ where
     ///    content,
     ///    EndorsementSerializer::new(),
     ///    &keypair,
-    ///    *CHAINID
+    ///    *CHAINID,
+    ///    None
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = SecureShareSerializer::new().serialize(&secured, &mut serialized_data).unwrap();
