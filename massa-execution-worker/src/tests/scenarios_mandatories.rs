@@ -1051,7 +1051,7 @@ fn send_and_receive_async_message() {
             Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
         }
         77658377 => {
-            Address::from_str("AS1Ua3PVmURnETZMLeFXDFGkbgqGjz8NfEHTyGRRGe15sk1kCM9a").unwrap()
+            Address::from_str("AS1vipJvf2MeQUN5rosJJE3TfNMJvUgCpYnQzHG9pGahgmd4MVxN").unwrap()
         }
         _ => panic!("CHAINID not supported"),
     };
@@ -4425,7 +4425,7 @@ fn send_and_receive_async_message_with_reset() {
             Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
         }
         77658377 => {
-            Address::from_str("AS1g6jtsCD2ptEKJ4f6Bj5xJnCxu1Uimdkgwx7vEXfgCLMQNoxRv").unwrap()
+            Address::from_str("AS1zTmZ4y1ugi2qBLJjAtihanaaXw2M6fCmsEiFrLgAgmtMFyf28").unwrap()
         }
         _ => panic!("CHAINID not supported"),
     };
@@ -4783,7 +4783,7 @@ fn execution_trace_nested() {
 
     let from_addr = match *CHAINID {
         77 => "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string(),
-        77658377 => "AS128FLq3PrWe7RQKD1UoNzk4fKeGwm4PjEYHiTXi2QHyQx5UE71L".to_string(),
+        77658377 => "AS1j9gTwCRaCtBsA2hyjZAYrjmK12GBQfVRQS8LLbnGkCWJsRAJV".to_string(),
         _ => {
             panic!("Invalid chain id for this test");
         }
