@@ -447,9 +447,12 @@ async fn launch(
         let last_shutdown_start = last_slot_before_downtime
             .get_next_slot(THREAD_COUNT)
             .unwrap();
-        let last_shutdown_end = Slot::new(final_state.read().get_last_start_period(), 0)
-            .get_prev_slot(THREAD_COUNT)
-            .unwrap();
+        // Match snapshot interpolation: last_start_period is still downtime through
+        // its last thread; production resumes at Slot(last_start_period + 1, 0).
+        let last_shutdown_end = Slot::new(
+            final_state.read().get_last_start_period(),
+            THREAD_COUNT.saturating_sub(1),
+        );
 
         final_state
             .read()
