@@ -325,6 +325,20 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -343,6 +357,8 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning::consensus_signature::sig_chain_id_for_slot;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
@@ -375,6 +391,7 @@
     storage: Storage,
     peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
     metrics: MassaMetrics,
+    mip_store: MipStore,
     endorsement_message_deserializer: EndorsementMessageDeserializer,
 }
 
@@ -458,6 +475,7 @@
                     <span class="kw-2">&amp;</span><span class="self">self</span>.config,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.internal_sender,
                     <span class="self">self</span>.pool_controller.as_mut(),
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.mip_store,
                 ) {
                     <span class="macro">warn!</span>(
                         <span class="string">"peer {} sent us critically incorrect endorsements, \
@@ -501,6 +519,7 @@
     config: <span class="kw-2">&amp;</span>ProtocolConfig,
     endorsement_propagation_sender: <span class="kw-2">&amp;</span>MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
     pool_controller: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>PoolController,
+    mip_store: <span class="kw-2">&amp;</span>MipStore,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>new_endorsements = PreHashMap::with_capacity(endorsements.len());
     <span class="kw">let </span><span class="kw-2">mut </span>all_endorsement_ids = PreHashSet::with_capacity(endorsements.len());
@@ -523,19 +542,26 @@
         }
     }
 
-    <span class="comment">// Batch signature verification
-    </span>verify_sigs_batch(
-        <span class="kw-2">&amp;</span>new_endorsements
-            .values()
-            .map(|endorsement| {
-                (
-                    endorsement.compute_signed_hash(),
-                    endorsement.signature,
-                    endorsement.content_creator_pub_key,
-                )
-            })
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-    )<span class="question-mark">?</span>;
+    <span class="comment">// Batch signature verification. Layout is per-endorsement slot: the
+    // network-agreed Execution component version at that slot timestamp.
+    </span><span class="kw">let </span>sig_batch = new_endorsements
+        .values()
+        .map(|endorsement| {
+            <span class="kw">let </span>slot_ts = get_block_slot_timestamp(
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+                endorsement.content.slot,
+            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>sig_chain_id = sig_chain_id_for_slot(mip_store, config.chain_id, slot_ts);
+            <span class="prelude-val">Ok</span>((
+                endorsement.compute_signed_hash(sig_chain_id),
+                endorsement.signature,
+                endorsement.content_creator_pub_key,
+            ))
+        })
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, ProtocolError&gt;&gt;()<span class="question-mark">?</span>;
+    verify_sigs_batch(<span class="kw-2">&amp;</span>sig_batch)<span class="question-mark">?</span>;
 
     <span class="comment">// Check PoS draws
     </span><span class="kw">for </span>endorsement <span class="kw">in </span>new_endorsements.values() {
@@ -624,6 +650,7 @@
     config: ProtocolConfig,
     storage: Storage,
     metrics: MassaMetrics,
+    mip_store: MipStore,
 ) -&gt; JoinHandle&lt;()&gt; {
     <span class="kw">let </span>endorsement_message_deserializer =
         EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
@@ -646,6 +673,7 @@
                 config,
                 storage,
                 metrics,
+                mip_store,
                 endorsement_message_deserializer,
             };
             retrieval_thread.run();

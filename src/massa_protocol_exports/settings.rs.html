@@ -177,14 +177,6 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::{
@@ -261,12 +253,6 @@
     </span><span class="kw">pub </span>max_operations_per_block: u32,
     <span class="doccomment">/// Maximum size in bytes of all serialized operations size in a block
     </span><span class="kw">pub </span>max_serialized_operations_size_per_block: usize,
-    <span class="doccomment">/// Maximum gas allowed in a block
-    </span><span class="kw">pub </span>max_block_gas: u64,
-    <span class="doccomment">/// Gas used by a base operation (transaction, roll buy, roll sell)
-    </span><span class="kw">pub </span>base_operation_gas_cost: u64,
-    <span class="doccomment">/// Gas cost of smart contract compilation
-    </span><span class="kw">pub </span>sp_compilation_cost: u64,
     <span class="doccomment">/// Controller channel size
     </span><span class="kw">pub </span>controller_channel_size: usize,
     <span class="doccomment">/// Event channel size
@@ -277,8 +263,6 @@
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
     <span class="doccomment">/// max number of operations kept in memory for propagation
     </span><span class="kw">pub </span>max_ops_kept_for_propagation: usize,
-    <span class="doccomment">/// max number of endorsements merged into a single propagation round
-    </span><span class="kw">pub </span>max_endorsements_per_propagation_round: usize,
     <span class="doccomment">/// max time we propagate operations
     </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
     <span class="doccomment">/// max time we propagate endorsements

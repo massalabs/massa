@@ -378,6 +378,17 @@
 <a href="#378" id="378">378</a>
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -393,6 +404,7 @@
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning::consensus_signature::sig_chain_id_for_slot;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -664,6 +676,14 @@
         timings.push((<span class="string">"get_block_denunciations END"</span>, MassaTime::now()));
 
         timings.push((<span class="string">"block creation START"</span>, MassaTime::now()));
+        <span class="kw">let </span>slot_ts = get_block_slot_timestamp(
+            <span class="self">self</span>.cfg.thread_count,
+            <span class="self">self</span>.cfg.t0,
+            <span class="self">self</span>.cfg.genesis_timestamp,
+            slot,
+        )
+        .expect(<span class="string">"could not get block slot timestamp"</span>);
+        <span class="kw">let </span>sig_chain_id = sig_chain_id_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>.mip_store, <span class="self">self</span>.cfg.chain_id, slot_ts);
         <span class="kw">let </span>header: SecuredHeader = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
             BlockHeader {
                 current_version,
@@ -677,6 +697,7 @@
             BlockHeaderSerializer::new(), <span class="comment">// TODO reuse self.block_header_serializer
             </span><span class="kw-2">&amp;</span>block_producer_keypair,
             <span class="self">self</span>.cfg.chain_id,
+            sig_chain_id,
         )
         .expect(<span class="string">"error while producing block header"</span>);
         <span class="comment">// create block
@@ -689,6 +710,7 @@
             BlockSerializer::new(), <span class="comment">// TODO reuse self.block_serializer
             </span><span class="kw-2">&amp;</span>block_producer_keypair,
             <span class="self">self</span>.cfg.chain_id,
+            <span class="prelude-val">None</span>,
         )
         .expect(<span class="string">"error while producing block"</span>);
         <span class="kw">let </span>block_id = block.id;

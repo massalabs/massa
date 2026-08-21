@@ -20,14 +20,12 @@
 <a href="#20" id="20">20</a>
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::types::SlotExecutionOutput;
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::types_trace_info::{SlotAbiCallStack, Transfer};
+</span><span class="kw">use </span><span class="kw">crate</span>::types_trace_info::SlotAbiCallStack;
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::execution_info::ExecutionInfoForSlot;
@@ -37,11 +35,9 @@
 </span><span class="kw">pub struct </span>ExecutionChannels {
     <span class="doccomment">/// Broadcast channel for new slot execution outputs
     </span><span class="kw">pub </span>slot_execution_output_sender: tokio::sync::broadcast::Sender&lt;SlotExecutionOutput&gt;,
-    <span class="doccomment">/// Broadcast channel for execution traces (abi call stacks, the slot's transfers, boolean true if the slot is finalized, false otherwise).
-    /// The transfers are bound to the same execution instance as the abi call stacks so subscribers never need a separate slot-keyed lookup (which could be overwritten by a re-execution of the same slot).
+    <span class="doccomment">/// Broadcast channel for execution traces (abi call stacks, boolean true if the slot is finalized, false otherwise)
     </span><span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-    </span><span class="kw">pub </span>slot_execution_traces_sender:
-        tokio::sync::broadcast::Sender&lt;(SlotAbiCallStack, Vec&lt;Transfer&gt;, bool)&gt;,
+    </span><span class="kw">pub </span>slot_execution_traces_sender: tokio::sync::broadcast::Sender&lt;(SlotAbiCallStack, bool)&gt;,
     <span class="doccomment">/// Broadcast channel for execution info
     </span><span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
     </span><span class="kw">pub </span>slot_execution_info_sender: tokio::sync::broadcast::Sender&lt;ExecutionInfoForSlot&gt;,
