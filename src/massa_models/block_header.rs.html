@@ -818,6 +818,37 @@
 <a href="#818" id="818">818</a>
 <a href="#819" id="819">819</a>
 <a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
@@ -920,11 +951,22 @@
 </span><span class="kw">pub type </span>SecuredHeader = SecureShare&lt;BlockHeader, BlockId&gt;;
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>BlockHeader {
-    <span class="doccomment">/// compute the signed hash
-    </span><span class="kw">fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key: <span class="kw-2">&amp;</span>PublicKey, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; Hash {
+    <span class="doccomment">/// Compute the signed hash. `sig_chain_id` selects the layout:
+    /// * `None` -&gt; legacy (chain-agnostic) layout, byte-for-byte identical to the
+    ///   pre-fix layout (used pre MIP-0002 activation).
+    /// * `Some(chain_id)` -&gt; chain-scoped layout: `chain_id` is folded into the
+    ///   signed hash so the same block header signed on two different chains
+    ///   produces two different signed hashes. This prevents cross-chain replay
+    ///   of block headers as denunciations (F90 / PDF #11).
+    </span><span class="kw">fn </span>compute_signed_hash(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        public_key: <span class="kw-2">&amp;</span>PublicKey,
+        content_hash: <span class="kw-2">&amp;</span>Hash,
+        sig_chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    ) -&gt; Hash {
         <span class="kw">let </span><span class="kw-2">mut </span>signed_data: Vec&lt;u8&gt; = Vec::new();
         signed_data.extend(public_key.to_bytes());
-        signed_data.extend(BlockHeaderDenunciationData::new(<span class="self">self</span>.slot).to_bytes());
+        signed_data.extend(BlockHeaderDenunciationData::new(<span class="self">self</span>.slot, sig_chain_id).to_bytes());
         signed_data.extend(content_hash.to_bytes());
         Hash::compute_from(<span class="kw-2">&amp;</span>signed_data)
     }
@@ -945,7 +987,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
         <span class="self">self</span>.content
             .assert_invariants(thread_count, endorsement_count)<span class="question-mark">?</span>;
-        <span class="self">self</span>.verify_signature()
+        <span class="self">self</span>.verify_signature(<span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="kw">crate</span>::config::CHAINID))
             .map_err(|er| <span class="macro">format!</span>(<span class="string">"{}"</span>, er).into())
     }
 }
@@ -1414,18 +1456,36 @@
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>BlockHeaderDenunciationData {
     slot: Slot,
+    <span class="doccomment">/// `None` for the legacy (chain-agnostic) signed-hash layout.
+    /// `Some(chain_id)` for the chain-scoped layout (post MIP-0002 `Execution` v2).
+    </span>chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 }
 
 <span class="kw">impl </span>BlockHeaderDenunciationData {
-    <span class="doccomment">/// Create a new DenunciationData for block hedader
-    </span><span class="kw">pub fn </span>new(slot: Slot) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ slot }
+    <span class="doccomment">/// Create a new DenunciationData for block header. Pass `None` for the legacy
+    /// layout, `Some(chain_id)` for the chain-scoped layout.
+    </span><span class="kw">pub fn </span>new(slot: Slot, chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ slot, chain_id }
+    }
+
+    <span class="doccomment">/// Legacy layout: bytes are byte-for-byte identical to the pre-fix layout, so
+    /// block headers signed before MIP-0002 activation keep verifying.
+    /// Equivalent to `Self::new(slot, None)`.
+    </span><span class="attr">#[allow(dead_code)]
+    </span><span class="kw">pub fn </span>new_legacy(slot: Slot) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            slot,
+            chain_id: <span class="prelude-val">None</span>,
+        }
     }
 
     <span class="doccomment">/// Get byte array
     </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
         buf.extend(<span class="self">self</span>.slot.to_bytes_key());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(chain_id) = <span class="self">self</span>.chain_id {
+            buf.extend(chain_id.to_be_bytes());
+        }
         buf
     }
 }
@@ -1478,15 +1538,16 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
         <span class="kw">let </span>(slot_a, <span class="kw">_</span>, s_header_1, s_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(slot_a &lt; slot);
-        <span class="kw">let </span>de_a = Denunciation::try_from((<span class="kw-2">&amp;</span>s_header_1, <span class="kw-2">&amp;</span>s_header_2)).unwrap();
+        <span class="kw">let </span>de_a = Denunciation::try_from((<span class="kw-2">&amp;</span>s_header_1, <span class="kw-2">&amp;</span>s_header_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))).unwrap();
         <span class="kw">let </span>(slot_b, <span class="kw">_</span>, s_endo_1, s_endo_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(slot_b &lt; slot);
-        <span class="kw">let </span>de_b = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endo_1, <span class="kw-2">&amp;</span>s_endo_2)).unwrap();
+        <span class="kw">let </span>de_b = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endo_1, <span class="kw-2">&amp;</span>s_endo_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))).unwrap();
 
         <span class="kw">let </span>block_header_1 = BlockHeader {
             current_version: <span class="number">0</span>,
@@ -1552,7 +1613,7 @@
 
         <span class="comment">// Test with batch len == 1 (no // verif)
         </span><span class="kw">let </span>batch_1 = [(
-            secured_header_1.compute_signed_hash(),
+            secured_header_1.compute_signed_hash(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)),
             secured_header_1.signature,
             secured_header_1.content_creator_pub_key,
         )];
@@ -1561,17 +1622,17 @@
         <span class="comment">// Test with batch len &gt; 1 (// verif)
         </span><span class="kw">let </span>batch_2 = [
             (
-                secured_header_1.compute_signed_hash(),
+                secured_header_1.compute_signed_hash(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)),
                 secured_header_1.signature,
                 secured_header_1.content_creator_pub_key,
             ),
             (
-                secured_header_2.compute_signed_hash(),
+                secured_header_2.compute_signed_hash(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)),
                 secured_header_2.signature,
                 secured_header_2.content_creator_pub_key,
             ),
             (
-                secured_header_3.compute_signed_hash(),
+                secured_header_3.compute_signed_hash(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)),
                 secured_header_3.signature,
                 secured_header_3.content_creator_pub_key,
             ),
@@ -1601,15 +1662,16 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
         <span class="kw">let </span>(slot_a, <span class="kw">_</span>, s_header_1, s_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(slot_a &lt; slot);
-        <span class="kw">let </span>de_a = Denunciation::try_from((<span class="kw-2">&amp;</span>s_header_1, <span class="kw-2">&amp;</span>s_header_2)).unwrap();
+        <span class="kw">let </span>de_a = Denunciation::try_from((<span class="kw-2">&amp;</span>s_header_1, <span class="kw-2">&amp;</span>s_header_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))).unwrap();
         <span class="kw">let </span>(slot_b, <span class="kw">_</span>, s_endo_1, s_endo_2, <span class="kw">_</span>) = gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(slot_b &lt; slot);
-        <span class="kw">let </span>de_b = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endo_1, <span class="kw-2">&amp;</span>s_endo_2)).unwrap();
+        <span class="kw">let </span>de_b = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endo_1, <span class="kw-2">&amp;</span>s_endo_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))).unwrap();
 
         <span class="kw">let </span>block_header_1 = BlockHeader {
             current_version: <span class="number">0</span>,

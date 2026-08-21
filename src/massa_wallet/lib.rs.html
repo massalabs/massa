@@ -276,6 +276,7 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Standalone massa wallet
 //! Keypair management
@@ -534,6 +535,7 @@
             OperationSerializer::new(),
             sender_keypair,
             <span class="self">self</span>.chain_id,
+            <span class="prelude-val">None</span>,
         )
         .unwrap())
     }

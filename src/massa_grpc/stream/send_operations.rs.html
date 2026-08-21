@@ -373,7 +373,7 @@
                                             }
 
                                             <span class="kw">if </span>rest.is_empty() {
-                                                res_operation.verify_signature()
+                                                res_operation.verify_signature(<span class="prelude-val">None</span>)
                                                     .map(|<span class="kw">_</span>| (res_operation.id.to_string(), res_operation))
                                                     .map_err(|e| e.into())
                                             } <span class="kw">else </span>{

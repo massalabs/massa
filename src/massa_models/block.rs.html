@@ -1358,6 +1358,40 @@
 <a href="#1358" id="1358">1358</a>
 <a href="#1359" id="1359">1359</a>
 <a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
+<a href="#1394" id="1394">1394</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="comment">// use crate::config::THREAD_COUNT;
@@ -1431,6 +1465,7 @@
         content_serializer: SC,
         _keypair: <span class="kw-2">&amp;</span>KeyPair,
         _chain_id: u64,
+        _sig_chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShare&lt;<span class="self">Self</span>, U&gt;, ModelsError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
         content_serializer.serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
@@ -1835,6 +1870,7 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
         <span class="kw">let </span>endo2 = Endorsement::new_verifiable(
@@ -1849,6 +1885,7 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -1866,6 +1903,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -1881,6 +1919,7 @@
             BlockSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">None</span>,
         )
         .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
@@ -1925,9 +1964,9 @@
         );
 
         <span class="macro">assert_eq!</span>(orig_block.header.signature, res_block.signature);
-        orig_header.verify_signature().unwrap();
+        orig_header.verify_signature(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)).unwrap();
         <span class="kw">for </span>ed <span class="kw">in </span>orig_block.header.content.endorsements.iter() {
-            ed.verify_signature().unwrap();
+            ed.verify_signature(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)).unwrap();
         }
 
         res_block
@@ -1957,6 +1996,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -1972,6 +2012,7 @@
             BlockSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">None</span>,
         )
         .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
@@ -2051,6 +2092,7 @@
                     EndorsementSerializer::new(),
                     <span class="kw-2">&amp;</span>keypair,
                     <span class="kw-2">*</span>CHAINID,
+                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
                 )
                 .unwrap()],
                 denunciations: <span class="macro">vec!</span>[],
@@ -2058,6 +2100,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2069,7 +2112,8 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+                .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2117,6 +2161,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2128,7 +2173,8 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+                .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2171,6 +2217,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2182,7 +2229,8 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+                .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2228,6 +2276,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2239,7 +2288,8 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+                .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2291,6 +2341,7 @@
                     EndorsementSerializer::new(),
                     <span class="kw-2">&amp;</span>keypair,
                     <span class="kw-2">*</span>CHAINID,
+                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
                 )
                 .unwrap()
             })
@@ -2309,6 +2360,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2320,7 +2372,8 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+                .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2368,6 +2421,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2379,7 +2433,8 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+                .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2422,6 +2477,7 @@
                     EndorsementSerializer::new(),
                     <span class="kw-2">&amp;</span>keypair,
                     <span class="kw-2">*</span>CHAINID,
+                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
                 )
                 .unwrap()
             })
@@ -2440,6 +2496,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2451,7 +2508,8 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+                .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2500,6 +2558,7 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2517,6 +2576,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2528,7 +2588,8 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+                .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2576,6 +2637,7 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
         <span class="kw">let </span>endo2 = Endorsement::new_verifiable(
@@ -2590,6 +2652,7 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2607,6 +2670,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2618,7 +2682,8 @@
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+                .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2668,6 +2733,7 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
         <span class="kw">let </span>endo2 = Endorsement::new_verifiable(
@@ -2682,6 +2748,7 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -2699,6 +2766,7 @@
             BlockHeaderSerializer::new(),
             <span class="kw-2">&amp;</span>keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 

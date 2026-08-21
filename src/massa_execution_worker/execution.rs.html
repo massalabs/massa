@@ -2739,6 +2739,32 @@
 <a href="#2739" id="2739">2739</a>
 <a href="#2740" id="2740">2740</a>
 <a href="#2741" id="2741">2741</a>
+<a href="#2742" id="2742">2742</a>
+<a href="#2743" id="2743">2743</a>
+<a href="#2744" id="2744">2744</a>
+<a href="#2745" id="2745">2745</a>
+<a href="#2746" id="2746">2746</a>
+<a href="#2747" id="2747">2747</a>
+<a href="#2748" id="2748">2748</a>
+<a href="#2749" id="2749">2749</a>
+<a href="#2750" id="2750">2750</a>
+<a href="#2751" id="2751">2751</a>
+<a href="#2752" id="2752">2752</a>
+<a href="#2753" id="2753">2753</a>
+<a href="#2754" id="2754">2754</a>
+<a href="#2755" id="2755">2755</a>
+<a href="#2756" id="2756">2756</a>
+<a href="#2757" id="2757">2757</a>
+<a href="#2758" id="2758">2758</a>
+<a href="#2759" id="2759">2759</a>
+<a href="#2760" id="2760">2760</a>
+<a href="#2761" id="2761">2761</a>
+<a href="#2762" id="2762">2762</a>
+<a href="#2763" id="2763">2763</a>
+<a href="#2764" id="2764">2764</a>
+<a href="#2765" id="2765">2765</a>
+<a href="#2766" id="2766">2766</a>
+<a href="#2767" id="2767">2767</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3460,7 +3486,33 @@
         }
 
         <span class="comment">// ignore denunciation if not valid
-        </span><span class="kw">if </span>!denunciation.is_valid() {
+        //
+        // The signature reconstruction is chain-scoped once MIP-0002's `Execution`
+        // component v2 is active for the denounced slot: the signed hash then folds
+        // in the local chain id. This prevents an attacker from combining two
+        // legitimate same-(slot, index) endorsements / block headers produced by
+        // the same validator on two different chains into a denunciation on either
+        // chain (F90 / PDF #11). Pre-activation `sig_chain_id` is `None` and the
+        // legacy (chain-agnostic) layout is used, so existing denunciations keep
+        // verifying. The layout is decided by the network-agreed active version for
+        // the denounced slot, not any self-claimed header field.
+        </span><span class="kw">let </span>de_slot_ts = get_block_slot_timestamp(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.t0,
+            <span class="self">self</span>.config.genesis_timestamp,
+            <span class="kw-2">*</span>de_slot,
+        )
+        .map_err(|e| {
+            ExecutionError::IncludeDenunciationError(<span class="macro">format!</span>(
+                <span class="string">"cannot compute denounced slot timestamp: {e}"
+            </span>))
+        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>sig_chain_id = massa_versioning::consensus_signature::sig_chain_id_for_slot(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.mip_store,
+            <span class="self">self</span>.config.chain_id,
+            de_slot_ts,
+        );
+        <span class="kw">if </span>!denunciation.is_valid_with_chain(sig_chain_id) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeDenunciationError(
                 <span class="string">"denunciation is not valid"</span>.to_string(),
             ));
