@@ -50,9 +50,12 @@ pub trait TestUniverse {
     ) -> SecureShareBlock {
         let op_ids = operations.iter().map(|op| op.id).collect::<Vec<_>>();
         let operation_merkle_root = compute_operations_hash(&op_ids, &OperationIdSerializer::new());
+        // Must match the latest Active MIP network version from
+        // `get_mip_list()` under `test-exports` (MIP-0002 → 2). Protocol
+        // verification rejects headers whose `current_version` disagrees.
         let header = BlockHeader::new_verifiable(
             BlockHeader {
-                current_version: 0,
+                current_version: 2,
                 announced_version: None,
                 slot,
                 parents: vec![
