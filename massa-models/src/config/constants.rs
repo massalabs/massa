@@ -320,8 +320,13 @@ pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// up with the gas left unused by the block at that slot (and subtracts the gas booked
 /// by deferred calls), so async execution can exceed this value on underfilled slots.
 /// The bound that always holds is `MAX_GAS_PER_BLOCK + MAX_ASYNC_GAS` for the whole slot.
+/// That same bound caps what an async message may ever request: the `send_message` ABI
+/// enforces no upper bound on `max_gas`, so a message asking for more than
+/// `MAX_GAS_PER_BLOCK + MAX_ASYNC_GAS - ASYNC_MSG_CST_GAS_COST` is accepted but can never
+/// be scheduled, and forfeits its fee when it expires.
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 /// Constant cost applied to asynchronous messages (to take into account some costs related to snapshot)
+/// Counted against the slot's async gas budget on top of the message's own `max_gas`.
 pub const ASYNC_MSG_CST_GAS_COST: u64 = 1_000_000;
 /// Gas used by a base operation (transaction, roll buy, roll sell)
 pub const BASE_OPERATION_GAS_COST: u64 = 800_000; // approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
