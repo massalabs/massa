@@ -204,7 +204,8 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///        },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     ///     )
     ///     .unwrap(),
     ///     Endorsement::new_verifiable(
@@ -215,7 +216,8 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///       },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     ///     )
     ///     .unwrap(),
     ///    ],
@@ -370,7 +372,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///        },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     ///     )
     ///     .unwrap(),
     ///     Endorsement::new_verifiable(
@@ -381,7 +384,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///       },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     ///     )
     ///     .unwrap(),
     ///    ],
