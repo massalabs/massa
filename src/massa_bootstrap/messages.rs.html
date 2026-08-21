@@ -922,6 +922,68 @@
 <a href="#922" id="922">922</a>
 <a href="#923" id="923">923</a>
 <a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -933,6 +995,7 @@
 
 <span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 
+<span class="kw">use </span>massa_models::config::MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::serialization::{
     PreHashSetDeserializer, PreHashSetSerializer, VecU8Deserializer, VecU8Serializer,
@@ -950,10 +1013,11 @@
     SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
+<span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 <span class="kw">use </span>nom::error::context;
-<span class="kw">use </span>nom::multi::{length_data, length_value, many0};
+<span class="kw">use </span>nom::multi::{fold_many0, length_data, length_value};
 <span class="kw">use </span>nom::sequence::tuple;
 <span class="kw">use </span>nom::Parser;
 <span class="kw">use </span>nom::{
@@ -1304,9 +1368,13 @@
                 Included(<span class="number">0</span>),
                 Included(args.max_final_state_elements_size.into()),
             ),
-            stream_batch_updates_length_deserializer: U64VarIntDeserializer::new(
+            <span class="comment">// The updates section is deliberately allowed to be large (see the
+            // `MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE` doc: update sizes are not capped by
+            // the per-part limits), but it can never exceed the whole message, so bound it
+            // to the maximum message size instead of `u64::MAX`.
+            </span>stream_batch_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Included(u64::MAX),
+                Included(MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE <span class="kw">as </span>u64),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
@@ -1424,10 +1492,25 @@
                                         <span class="self">self</span>.state_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
-                                        |input| <span class="self">self</span>.datastore_val_deserializer.deserialize(input),
-                                    ))),
+                                    <span class="comment">// Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the new_elements
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    </span>fold_many0(
+                                        tuple((
+                                            |input| {
+                                                <span class="self">self</span>.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| {
+                                                <span class="self">self</span>.datastore_val_deserializer.deserialize(input)
+                                            },
+                                        )),
+                                        BTreeMap::new,
+                                        |<span class="kw-2">mut </span>acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context(
@@ -1437,10 +1520,23 @@
                                         <span class="self">self</span>.stream_batch_updates_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
-                                        |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
-                                    ))),
+                                    <span class="comment">// Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the updates
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    </span>fold_many0(
+                                        tuple((
+                                            |input| {
+                                                <span class="self">self</span>.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
+                                        )),
+                                        BTreeMap::new,
+                                        |<span class="kw-2">mut </span>acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context(<span class="string">"Failed slot deserialization"</span>, |input| {
@@ -1458,10 +1554,25 @@
                                         <span class="self">self</span>.versioning_part_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
-                                        |input| <span class="self">self</span>.datastore_val_deserializer.deserialize(input),
-                                    ))),
+                                    <span class="comment">// Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the new_elements
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    </span>fold_many0(
+                                        tuple((
+                                            |input| {
+                                                <span class="self">self</span>.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| {
+                                                <span class="self">self</span>.datastore_val_deserializer.deserialize(input)
+                                            },
+                                        )),
+                                        BTreeMap::new,
+                                        |<span class="kw-2">mut </span>acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context(
@@ -1471,10 +1582,23 @@
                                         <span class="self">self</span>.stream_batch_updates_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
-                                        |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
-                                    ))),
+                                    <span class="comment">// Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the updates
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    </span>fold_many0(
+                                        tuple((
+                                            |input| {
+                                                <span class="self">self</span>.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
+                                        )),
+                                        BTreeMap::new,
+                                        |<span class="kw-2">mut </span>acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context(<span class="string">"Failed slot deserialization"</span>, |input| {
@@ -1514,15 +1638,15 @@
                         last_slot_before_downtime,
                     )| {
                         <span class="kw">let </span>state_part = StreamBatch::&lt;Slot&gt; {
-                            new_elements: state_part_new_elems.into_iter().collect(),
-                            updates_on_previous_elements: state_part_updates.into_iter().collect(),
+                            <span class="comment">// both already `BTreeMap`s (folded during parsing)
+                            </span>new_elements: state_part_new_elems,
+                            updates_on_previous_elements: state_part_updates,
                             change_id: state_part_change_id,
                         };
                         <span class="kw">let </span>versioning_part = StreamBatch::&lt;Slot&gt; {
-                            new_elements: versioning_part_new_elems.into_iter().collect(),
-                            updates_on_previous_elements: versioning_part_updates
-                                .into_iter()
-                                .collect(),
+                            <span class="comment">// both already `BTreeMap`s (folded during parsing)
+                            </span>new_elements: versioning_part_new_elems,
+                            updates_on_previous_elements: versioning_part_updates,
                             change_id: versioning_part_change_id,
                         };
 

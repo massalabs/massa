@@ -117,6 +117,64 @@
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mio::net::TcpListener;
 <span class="kw">use </span>mio::{Events, Interest, Poll, Token, Waker};
 <span class="kw">use </span>std::io::ErrorKind;
@@ -137,6 +195,26 @@
 }
 
 <span class="kw">pub struct </span>BootstrapListenerStopHandle(<span class="kw">pub</span>(<span class="kw">crate</span>) Waker);
+
+<span class="doccomment">/// Drain all currently-ready connections from `accept` into `out`.
+///
+/// The drain ends on the first error, whether it is `WouldBlock` (no more
+/// pending connections) or any other error such as a persistent `EMFILE` /
+/// `ENFILE`. Ending the drain on a non-`WouldBlock` error (instead of
+/// `continue`-ing) is what prevents a sticky listener-level failure from
+/// spinning `poll()` forever and starving the `STOP_LISTENER` token.
+</span><span class="kw">fn </span>drain_accept&lt;S&gt;(<span class="kw-2">mut </span>accept: <span class="kw">impl </span>FnMut() -&gt; std::io::Result&lt;S&gt;, out: <span class="kw-2">&amp;mut </span>Vec&lt;S&gt;) {
+    <span class="kw">loop </span>{
+        <span class="kw">match </span>accept() {
+            <span class="prelude-val">Ok</span>(item) =&gt; out.push(item),
+            <span class="prelude-val">Err</span>(<span class="kw-2">ref </span>e) <span class="kw">if </span>e.kind() == ErrorKind::WouldBlock =&gt; <span class="kw">break</span>,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">warn!</span>(<span class="string">"Error accepting connection in bootstrap: {:?}"</span>, e);
+                <span class="kw">break</span>;
+            }
+        }
+    }
+}
 
 <span class="kw">pub enum </span>PollEvent {
     NewConnections(Vec&lt;(TcpStream, SocketAddr)&gt;),
@@ -202,23 +280,21 @@
         <span class="comment">// Process each event.
         </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.iter() {
             <span class="kw">match </span>event.token() {
-                NEW_CONNECTION =&gt; <span class="kw">loop </span>{
-                    <span class="kw">match </span><span class="self">self</span>.server.accept() {
-                        <span class="prelude-val">Ok</span>((<span class="kw-2">mut </span>stream, remote_addr)) =&gt; {
-                            <span class="kw">let _ </span>= <span class="self">self</span>.poll.registry().deregister(<span class="kw-2">&amp;mut </span>stream);
-                            <span class="kw">let </span>stream: std::net::TcpStream = mio_stream_to_std(stream);
-                            stream.set_nonblocking(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
-                            results.push((stream, remote_addr));
-                        }
-                        <span class="prelude-val">Err</span>(<span class="kw-2">ref </span>e) <span class="kw">if </span>e.kind() == ErrorKind::WouldBlock =&gt; {
-                            <span class="kw">break</span>;
-                        }
-                        <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="macro">warn!</span>(<span class="string">"Error accepting connection in bootstrap: {:?}"</span>, e);
-                            <span class="kw">continue</span>;
-                        }
+                NEW_CONNECTION =&gt; {
+                    <span class="comment">// Drain the currently-ready connections, borrowing only
+                    // `self.server`, then post-process them (which borrows
+                    // `self.poll`). The drain never spins on a persistent
+                    // accept error, so control always returns to the poller and
+                    // the STOP token can be serviced.
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>accepted = Vec::new();
+                    drain_accept(|| <span class="self">self</span>.server.accept(), <span class="kw-2">&amp;mut </span>accepted);
+                    <span class="kw">for </span>(<span class="kw-2">mut </span>stream, remote_addr) <span class="kw">in </span>accepted {
+                        <span class="kw">let _ </span>= <span class="self">self</span>.poll.registry().deregister(<span class="kw-2">&amp;mut </span>stream);
+                        <span class="kw">let </span>stream: std::net::TcpStream = mio_stream_to_std(stream);
+                        stream.set_nonblocking(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
+                        results.push((stream, remote_addr));
                     }
-                },
+                }
                 STOP_LISTENER =&gt; {
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(PollEvent::Stop);
                 }
@@ -234,6 +310,46 @@
     <span class="doccomment">/// Stop the bootstrap listener.
     </span><span class="kw">pub fn </span>stop(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="self">self</span>.<span class="number">0</span>.wake().map_err(BootstrapError::from)
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">super</span>::drain_accept;
+    <span class="kw">use </span>std::io::{Error, ErrorKind};
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>drain_stops_on_persistent_error_instead_of_spinning() {
+        <span class="kw">let </span><span class="kw-2">mut </span>calls = <span class="number">0u32</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>out: Vec&lt;u8&gt; = Vec::new();
+        drain_accept(
+            || {
+                calls += <span class="number">1</span>;
+                <span class="comment">// A persistent non-WouldBlock error (e.g. EMFILE/ENFILE).
+                </span><span class="prelude-val">Err</span>::&lt;u8, <span class="kw">_</span>&gt;(Error::from(ErrorKind::Other))
+            },
+            <span class="kw-2">&amp;mut </span>out,
+        );
+        <span class="macro">assert_eq!</span>(
+            calls, <span class="number">1</span>,
+            <span class="string">"a persistent accept error must break the drain, not loop forever"
+        </span>);
+        <span class="macro">assert!</span>(out.is_empty());
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>drain_collects_ready_connections_until_would_block() {
+        <span class="kw">let </span><span class="kw-2">mut </span>seq = <span class="macro">vec!</span>[
+            <span class="prelude-val">Ok</span>(<span class="number">1u8</span>),
+            <span class="prelude-val">Ok</span>(<span class="number">2u8</span>),
+            <span class="prelude-val">Err</span>(Error::from(ErrorKind::WouldBlock)),
+            <span class="prelude-val">Ok</span>(<span class="number">3u8</span>),
+        ]
+        .into_iter();
+        <span class="kw">let </span><span class="kw-2">mut </span>out = Vec::new();
+        drain_accept(|| seq.next().unwrap(), <span class="kw-2">&amp;mut </span>out);
+        <span class="comment">// Stops at the WouldBlock, leaving the trailing item untouched.
+        </span><span class="macro">assert_eq!</span>(out, <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>]);
     }
 }
 </code></pre></div></section></main></body></html>

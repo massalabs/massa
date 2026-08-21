@@ -1628,6 +1628,30 @@
 <a href="#1628" id="1628">1628</a>
 <a href="#1629" id="1629">1629</a>
 <a href="#1630" id="1630">1630</a>
+<a href="#1631" id="1631">1631</a>
+<a href="#1632" id="1632">1632</a>
+<a href="#1633" id="1633">1633</a>
+<a href="#1634" id="1634">1634</a>
+<a href="#1635" id="1635">1635</a>
+<a href="#1636" id="1636">1636</a>
+<a href="#1637" id="1637">1637</a>
+<a href="#1638" id="1638">1638</a>
+<a href="#1639" id="1639">1639</a>
+<a href="#1640" id="1640">1640</a>
+<a href="#1641" id="1641">1641</a>
+<a href="#1642" id="1642">1642</a>
+<a href="#1643" id="1643">1643</a>
+<a href="#1644" id="1644">1644</a>
+<a href="#1645" id="1645">1645</a>
+<a href="#1646" id="1646">1646</a>
+<a href="#1647" id="1647">1647</a>
+<a href="#1648" id="1648">1648</a>
+<a href="#1649" id="1649">1649</a>
+<a href="#1650" id="1650">1650</a>
+<a href="#1651" id="1651">1651</a>
+<a href="#1652" id="1652">1652</a>
+<a href="#1653" id="1653">1653</a>
+<a href="#1654" id="1654">1654</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2328,8 +2352,6 @@
         },
         selector: selector_controller.clone(),
         execution_controller: execution_controller.clone(),
-        mip_store: mip_store.clone(),
-        chain_id: <span class="kw-2">*</span>CHAINID,
     };
 
     <span class="kw">let </span>(pool_manager, pool_controller) = start_pool_controller(
@@ -2373,6 +2395,9 @@
         endorsement_count: ENDORSEMENT_COUNT,
         max_message_size: MAX_MESSAGE_SIZE <span class="kw">as </span>usize,
         max_ops_kept_for_propagation: SETTINGS.protocol.max_ops_kept_for_propagation,
+        max_endorsements_per_propagation_round: SETTINGS
+            .protocol
+            .max_endorsements_per_propagation_round,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().get_last_start_period(),
@@ -2471,6 +2496,24 @@
             .force_keep_final_periods_without_ops,
         chain_id: <span class="kw-2">*</span>CHAINID,
     };
+
+    <span class="comment">// Blocks are kept in the shared storage by consensus until they are older than
+    // `force_keep_final_periods` (past that point `strip_to_block` drops the storage
+    // reference, so the block is no longer servable to peers). That retention is what
+    // covers the tail of the propagation window when the propagation cache has to evict
+    // an entry early because of its `max_blocks_kept_for_propagation` size cap.
+    </span><span class="kw">let </span>consensus_block_retention = consensus_config
+        .t0
+        .saturating_mul(consensus_config.force_keep_final_periods);
+    <span class="kw">if </span>consensus_block_retention &lt; protocol_config.max_block_propagation_time {
+        <span class="macro">warn!</span>(
+            <span class="string">"consensus only keeps blocks for {:?} (force_keep_final_periods={} * t0={:?}) which is shorter than max_block_propagation_time={:?}: a block evicted early by the max_blocks_kept_for_propagation cap will not be retrievable by peers anymore, consider raising force_keep_final_periods or lowering max_block_propagation_time"</span>,
+            consensus_block_retention.to_duration(),
+            consensus_config.force_keep_final_periods,
+            consensus_config.t0.to_duration(),
+            protocol_config.max_block_propagation_time.to_duration()
+        );
+    }
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
         MassaChannel::new(<span class="string">"consensus_event"</span>.to_string(), <span class="prelude-val">Some</span>(CHANNEL_SIZE));
@@ -2646,6 +2689,7 @@
             keypair.clone(),
             <span class="kw-2">&amp;</span>final_state,
             SETTINGS.pool.minimal_fees,
+            gas_costs.sp_compilation_cost,
         );
 
         <span class="kw">let </span>grpc_public_api = MassaPublicGrpc {
@@ -2687,6 +2731,7 @@
             keypair.clone(),
             <span class="kw-2">&amp;</span>final_state,
             SETTINGS.pool.minimal_fees,
+            gas_costs.sp_compilation_cost,
         );
 
         <span class="kw">let </span>bs_white_black_list = bootstrap_manager
@@ -2845,6 +2890,7 @@
     keypair: KeyPair,
     final_state: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     minimal_fees: Amount,
+    sp_compilation_cost: u64,
 ) -&gt; GrpcConfig {
     GrpcConfig {
         name,
@@ -2887,6 +2933,8 @@
         max_parameter_size: MAX_PARAMETERS_SIZE,
         max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        sp_compilation_cost,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
