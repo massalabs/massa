@@ -28,6 +28,7 @@ pub struct CliSettings {
 pub struct ExecutionSettings {
     pub max_final_events: usize,
     pub readonly_queue_length: usize,
+    pub readonly_starvation_timeout: MassaTime,
     pub cursor_delay: MassaTime,
     pub stats_time_window_duration: MassaTime,
     pub max_read_only_gas: u64,

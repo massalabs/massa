@@ -208,6 +208,13 @@
     max_final_events = 10000
     # maximum length of the read-only execution requests queue
     readonly_queue_length = 100
+    # maximum time in milliseconds a queued read-only request may wait behind slot
+    # execution before being served, even if slot work is still pending.
+    # Slot execution keeps priority overall: this only bounds read-only starvation
+    # when the worker is lagging behind real time (e.g. catching up after bootstrap).
+    # Kept well below the API request handler timeout (60s) so that callers still get
+    # an answer, while staying high enough (10 slots) not to slow down catch-up.
+    readonly_starvation_timeout = 5000
     # by how many milliseconds should the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
     cursor_delay = 2000
