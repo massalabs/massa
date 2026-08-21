@@ -799,6 +799,8 @@ impl ExecutionState {
 
         context.insert_executed_denunciation(&de_idx);
 
+        // Punishment is roll slashing only; same-slot block/endorsement rewards are not forfeited
+        // (see comment after the denunciation loop in execute_slot).
         let slashed = context.try_slash_rolls(
             &addr_denounced,
             self.config.roll_count_to_slash_on_denunciation,
@@ -1782,6 +1784,12 @@ impl ExecutionState {
                     }
                 }
             }
+
+            // Denunciation punishment is limited to slashing locked rolls (see execute_denunciation).
+            // Addresses denounced in this block are intentionally still eligible for the slot's
+            // EndorsementCreatorReward, EndorsementTargetReward, and BlockCreatorReward below.
+            // Excluding them would make the effective penalty depend on whether the denounced
+            // address was also selected by draws for this slot, which is not a coherent punishment model.
 
             // Get block creator address
             let block_creator_addr = stored_block.content_creator_address;
