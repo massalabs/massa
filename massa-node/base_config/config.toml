@@ -212,7 +212,9 @@
     # execution before being served, even if slot work is still pending.
     # Slot execution keeps priority overall: this only bounds read-only starvation
     # when the worker is lagging behind real time (e.g. catching up after bootstrap).
-    readonly_starvation_timeout = 200
+    # Kept well below the API request handler timeout (60s) so that callers still get
+    # an answer, while staying high enough (10 slots) not to slow down catch-up.
+    readonly_starvation_timeout = 5000
     # by how many milliseconds should the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
     cursor_delay = 2000
