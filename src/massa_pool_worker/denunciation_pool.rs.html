@@ -475,6 +475,14 @@
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::HashMap;
@@ -639,13 +647,21 @@
         // layout used to sign the endorsement / block header, otherwise the
         // denunciation fails to verify. See F90 / PDF #11.
         </span><span class="kw">let </span>de_slot = denunciation_precursor.get_slot();
-        <span class="kw">let </span>de_slot_ts = get_block_slot_timestamp(
+        <span class="kw">let </span>de_slot_ts = <span class="kw">match </span>get_block_slot_timestamp(
             <span class="self">self</span>.config.thread_count,
             <span class="self">self</span>.config.t0,
             <span class="self">self</span>.config.genesis_timestamp,
             <span class="kw-2">*</span>de_slot,
-        )
-        .unwrap_or_else(|<span class="kw">_</span>| MassaTime::from_millis(<span class="number">0</span>));
+        ) {
+            <span class="prelude-val">Ok</span>(ts) =&gt; ts,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">debug!</span>(
+                    <span class="string">"Denunciation pool cannot compute denounced slot timestamp: {}"</span>,
+                    e
+                );
+                <span class="kw">return</span>;
+            }
+        };
         <span class="kw">let </span>sig_chain_id =
             sig_chain_id_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>.channels.mip_store, <span class="self">self</span>.channels.chain_id, de_slot_ts);
 

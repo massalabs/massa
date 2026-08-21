@@ -682,7 +682,7 @@
             <span class="self">self</span>.cfg.genesis_timestamp,
             slot,
         )
-        .unwrap_or_else(|<span class="kw">_</span>| MassaTime::from_millis(<span class="number">0</span>));
+        .expect(<span class="string">"could not get block slot timestamp"</span>);
         <span class="kw">let </span>sig_chain_id = sig_chain_id_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>.mip_store, <span class="self">self</span>.cfg.chain_id, slot_ts);
         <span class="kw">let </span>header: SecuredHeader = BlockHeader::new_verifiable::&lt;BlockHeaderSerializer, BlockId&gt;(
             BlockHeader {

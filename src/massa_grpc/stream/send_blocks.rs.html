@@ -223,9 +223,6 @@
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -237,7 +234,6 @@
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
-<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::consensus_signature::sig_chain_id_for_slot;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>std::io::ErrorKind;
@@ -439,8 +435,7 @@
         config.t0,
         config.genesis_timestamp,
         header.content.slot,
-    )
-    .unwrap_or_else(|<span class="kw">_</span>| MassaTime::from_millis(<span class="number">0</span>));
+    )<span class="question-mark">?</span>;
     header.verify_signature(sig_chain_id_for_slot(mip_store, config.chain_id, header_ts))<span class="question-mark">?</span>;
     <span class="kw">for </span>endorsement <span class="kw">in </span>header.content.endorsements.iter() {
         <span class="kw">let </span>slot_ts = get_block_slot_timestamp(
@@ -448,8 +443,7 @@
             config.t0,
             config.genesis_timestamp,
             endorsement.content.slot,
-        )
-        .unwrap_or_else(|<span class="kw">_</span>| MassaTime::from_millis(<span class="number">0</span>));
+        )<span class="question-mark">?</span>;
         endorsement.verify_signature(sig_chain_id_for_slot(mip_store, config.chain_id, slot_ts))<span class="question-mark">?</span>;
     }
     <span class="prelude-val">Ok</span>(())
