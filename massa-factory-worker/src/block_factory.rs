@@ -303,7 +303,7 @@ impl BlockFactoryWorker {
             self.cfg.genesis_timestamp,
             slot,
         )
-        .unwrap_or_else(|_| MassaTime::from_millis(0));
+        .expect("could not get block slot timestamp");
         let sig_chain_id = sig_chain_id_for_slot(&self.mip_store, self.cfg.chain_id, slot_ts);
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {

@@ -10,7 +10,6 @@ use massa_pos_exports::SelectorController;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_serialization::{DeserializeError, Deserializer};
-use massa_time::MassaTime;
 use massa_versioning::consensus_signature::sig_chain_id_for_slot;
 use std::collections::HashMap;
 use std::io::ErrorKind;
@@ -90,8 +89,7 @@ pub(crate) async fn send_endorsements(
                                                     config.t0,
                                                     config.genesis_timestamp,
                                                     res_endorsement.content.slot,
-                                                )
-                                                .unwrap_or_else(|_| MassaTime::from_millis(0));
+                                                )?;
                                                 let sig_chain_id = sig_chain_id_for_slot(
                                                     &mip_store,
                                                     config.chain_id,

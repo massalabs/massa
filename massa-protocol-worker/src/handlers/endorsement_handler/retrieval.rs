@@ -229,26 +229,24 @@ pub(crate) fn note_endorsements_from_peer(
 
     // Batch signature verification. Layout is per-endorsement slot: the
     // network-agreed Execution component version at that slot timestamp.
-    verify_sigs_batch(
-        &new_endorsements
-            .values()
-            .map(|endorsement| {
-                let slot_ts = get_block_slot_timestamp(
-                    config.thread_count,
-                    config.t0,
-                    config.genesis_timestamp,
-                    endorsement.content.slot,
-                )
-                .unwrap_or_else(|_| MassaTime::from_millis(0));
-                let sig_chain_id = sig_chain_id_for_slot(mip_store, config.chain_id, slot_ts);
-                (
-                    endorsement.compute_signed_hash(sig_chain_id),
-                    endorsement.signature,
-                    endorsement.content_creator_pub_key,
-                )
-            })
-            .collect::<Vec<_>>(),
-    )?;
+    let sig_batch = new_endorsements
+        .values()
+        .map(|endorsement| {
+            let slot_ts = get_block_slot_timestamp(
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+                endorsement.content.slot,
+            )?;
+            let sig_chain_id = sig_chain_id_for_slot(mip_store, config.chain_id, slot_ts);
+            Ok((
+                endorsement.compute_signed_hash(sig_chain_id),
+                endorsement.signature,
+                endorsement.content_creator_pub_key,
+            ))
+        })
+        .collect::<Result<Vec<_>, ProtocolError>>()?;
+    verify_sigs_batch(&sig_batch)?;
 
     let now = MassaTime::now();
 
