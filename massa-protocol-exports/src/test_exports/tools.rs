@@ -23,10 +23,13 @@ use massa_signature::KeyPair;
 /// Creates a block for use in protocol,
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
+///
+/// `current_version` is 2 to match the latest Active MIP network version from
+/// `get_mip_list()` under `test-exports` (MIP-0002).
 pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            current_version: 0,
+            current_version: 2,
             announced_version: None,
             slot: Slot::new(1, 0),
             parents: vec![
@@ -74,7 +77,7 @@ pub fn create_block_with_operations(
 
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            current_version: 0,
+            current_version: 2,
             announced_version: None,
             slot,
             parents: vec![
@@ -118,7 +121,7 @@ pub fn create_block_with_endorsements(
 ) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            current_version: 0,
+            current_version: 2,
             announced_version: None,
             slot,
             parents: vec![
