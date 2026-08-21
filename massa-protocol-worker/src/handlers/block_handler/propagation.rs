@@ -151,19 +151,20 @@ impl PropagationThread {
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) => {
                             debug!("received AttackBlockDetected({})", block_id);
-                            let peers_to_ban: Vec<PeerId> = self
-                                .cache
-                                .read()
-                                .blocks_known_by_peer
-                                .iter()
-                                .filter_map(|(peer_id, knowledge)| {
-                                    match knowledge.peek(&block_id) {
-                                        Some((true, _)) => Some(*peer_id),
-                                        _ => None,
-                                    }
-                                })
-                                .collect();
-                            self.ban_peers(&peers_to_ban);
+                            // Only ban peers that actually sent us data for that block.
+                            // `blocks_known_by_peer` must not be used here: it is mutable
+                            // propagation state that also marks peers we announced the block to,
+                            // and it is pruned on disconnection and by LRU eviction.
+                            let peers_to_ban: Vec<PeerId> =
+                                self.cache.read().get_block_senders(&block_id);
+                            if peers_to_ban.is_empty() {
+                                warn!(
+                                    "attack block {} detected but no peer could be attributed as its sender: not banning anyone",
+                                    block_id
+                                );
+                            } else {
+                                self.ban_peers(&peers_to_ban);
+                            }
                         }
                         BlockHandlerPropagationCommand::Stop => {
                             info!("Stop block propagation thread");

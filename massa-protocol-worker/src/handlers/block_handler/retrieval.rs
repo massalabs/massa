@@ -53,7 +53,7 @@ use tracing::{debug, info, warn};
 
 use super::{
     super::operation_handler::note_operations_from_peer,
-    cache::SharedBlockCache,
+    cache::{BlockDataKind, SharedBlockCache},
     commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand,
     messages::{
@@ -435,6 +435,12 @@ impl RetrievalThread {
 
         let block_id = header.id;
 
+        // durably record that this peer sent us the header of that block, so that a later
+        // attack detection can be attributed to it even if it disconnects in the meantime
+        self.cache
+            .write()
+            .insert_block_sender(&block_id, &from_peer_id, BlockDataKind::Header);
+
         // Check header and update knowledge info
         let is_new = match self.note_header_from_peer(&header, &from_peer_id) {
             Ok(is_new) => is_new,
@@ -693,23 +699,23 @@ impl RetrievalThread {
             }
         }
 
-        // ban all peers that know about this block
-        let mut peers_to_ban = Vec::new();
-        {
-            let cache_read = self.cache.read();
-            for (peer_id, peer_known_blocks) in cache_read.blocks_known_by_peer.iter() {
-                if peer_known_blocks.peek(block_id).is_some() {
-                    peers_to_ban.push(*peer_id);
-                }
-            }
-        }
-        if !peers_to_ban.is_empty() {
-            if let Err(err) = self.ban_peers(&peers_to_ban) {
-                warn!(
-                    "Error while banning peers {:?} err: {:?}",
-                    peers_to_ban, err
-                );
-            }
+        // ban the peers that actually sent us the contents of this block.
+        // this is a contents-level defect, so peers that only relayed the header are spared:
+        // they had no way of checking the contents before propagating.
+        // `blocks_known_by_peer` must not be used here: it is mutable propagation state that
+        // also marks peers we announced the block to (and even peers marked as *not* knowing it),
+        // and it is pruned on disconnection and by LRU eviction.
+        let peers_to_ban = self.cache.read().get_block_contents_senders(block_id);
+        if peers_to_ban.is_empty() {
+            warn!(
+                "block {} marked as invalid but no peer could be attributed as a sender of its contents: not banning anyone",
+                block_id
+            );
+        } else if let Err(err) = self.ban_peers(&peers_to_ban) {
+            warn!(
+                "Error while banning peers {:?} err: {:?}",
+                peers_to_ban, err
+            );
         }
 
         // clear retrieval cache
@@ -733,6 +739,11 @@ impl RetrievalThread {
             block_id, &from_peer_id
         );
         // Note that the length of the operation list was checked at deserialization to not overflow the max per block.
+
+        // durably record that this peer sent us contents for that block (see `insert_block_sender`)
+        self.cache
+            .write()
+            .insert_block_sender(&block_id, &from_peer_id, BlockDataKind::Contents);
 
         // All operation ids sent into a set to deduplicate and search quickly for presence
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
@@ -814,6 +825,11 @@ impl RetrievalThread {
             "received full operations for block {} from {}",
             block_id, &from_peer_id
         );
+
+        // durably record that this peer sent us contents for that block (see `insert_block_sender`)
+        self.cache
+            .write()
+            .insert_block_sender(&block_id, &from_peer_id, BlockDataKind::Contents);
 
         // Ensure that we were looking for that data.
         let wishlist_info = if let Some(info) = self
