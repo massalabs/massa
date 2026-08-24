@@ -468,6 +468,23 @@ impl RetrievalThread {
     }
 }
 
+/// Tells whether a `note_operations_from_peer` failure is caused by the operation contents
+/// themselves, rather than by the way the sender delivered them.
+///
+/// An operation ID commits to the operation contents, but not to its signature. A failure that
+/// depends only on those contents can therefore never be fixed by asking another peer: any
+/// operation carrying the same ID fails the same check. When such an operation is committed by a
+/// block's operation ID list, that block is permanently invalid and must not be retried.
+pub(crate) fn is_block_intrinsic_operation_failure(err: &ProtocolError) -> bool {
+    match err {
+        // the operation is bigger than a whole block is allowed to be: fully determined by its contents
+        ProtocolError::InvalidOperationError(_) => true,
+        // e.g. `WrongSignature`: the signature is not covered by the operation ID,
+        // so another peer may still deliver the same operation properly signed
+        _ => false,
+    }
+}
+
 pub(crate) fn note_operations_from_peer(
     base_storage: &Storage,
     operations_cache: &mut SharedOperationCache,

@@ -22,7 +22,7 @@ mod propagation;
 mod retrieval;
 
 pub(crate) use messages::{OperationMessage, OperationMessageSerializer};
-pub(crate) use retrieval::note_operations_from_peer;
+pub(crate) use retrieval::{is_block_intrinsic_operation_failure, note_operations_from_peer};
 
 use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
