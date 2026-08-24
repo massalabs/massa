@@ -69,20 +69,90 @@
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
 
-<span class="kw">use </span>massa_models::endorsement::EndorsementId;
+<span class="kw">use </span>massa_models::{endorsement::EndorsementId, prehash::PreHashSet, slot::Slot};
 <span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
+
+<span class="doccomment">/// Maximum number of distinct endorsements we accept and propagate for a given `(slot, index)`
+/// endorsement draw. An honest drawn endorser signs exactly one endorsement per draw, so several
+/// distinct ones mean it equivocated.
+///
+/// The bound is kept above 1 for two reasons: the denunciation pool needs to see two conflicting
+/// endorsements to build a denunciation, and dropping everything after the first variant would let
+/// an equivocating endorser pick which variant we keep, denying us the endorsement slot when it
+/// endorses a block that is not the parent our block factory settles on. It matches the pool-side
+/// bound (`MAX_ENDORSEMENTS_PER_SLOT_INDEX`) so that the propagation path never becomes the tighter
+/// of the two limits.
+</span><span class="kw">pub const </span>MAX_ENDORSEMENTS_PER_DRAW: usize = <span class="number">4</span>;
 
 <span class="doccomment">/// Cache of endorsements
 </span><span class="kw">pub struct </span>EndorsementCache {
     <span class="doccomment">/// List of endorsements we checked recently
     </span><span class="kw">pub </span>checked_endorsements: LruMap&lt;EndorsementId, ()&gt;,
+    <span class="doccomment">/// Endorsements accepted for a given `(inclusion slot, index)` draw, used to bound how many
+    /// conflicting variants a single drawn endorser can push through us
+    </span><span class="kw">pub </span>endorsements_by_draw: LruMap&lt;(Slot, u32), PreHashSet&lt;EndorsementId&gt;&gt;,
     <span class="doccomment">/// List of endorsements known by peers
     </span><span class="kw">pub </span>endorsements_known_by_peer: HashMap&lt;PeerId, LruMap&lt;EndorsementId, ()&gt;&gt;,
     <span class="doccomment">/// Maximum number of endorsements known by a peer
@@ -94,6 +164,13 @@
     </span><span class="kw">pub fn </span>new(max_known_endorsements: u32, max_known_endorsements_by_peer: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             checked_endorsements: LruMap::new(ByLength::new(max_known_endorsements)),
+            <span class="comment">// one entry per draw holds up to `MAX_ENDORSEMENTS_PER_DRAW` ids, so scaling the
+            // capacity down keeps this index's memory in line with `checked_endorsements` while
+            // covering the same horizon of endorsements
+            </span>endorsements_by_draw: LruMap::new(ByLength::new(std::cmp::max(
+                max_known_endorsements / MAX_ENDORSEMENTS_PER_DRAW <span class="kw">as </span>u32,
+                <span class="number">1</span>,
+            ))),
             endorsements_known_by_peer: HashMap::new(),
             max_known_endorsements_by_peer,
         }
@@ -118,6 +195,39 @@
     </span><span class="kw">pub fn </span>insert_checked_endorsement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, enrodsement_id: EndorsementId) {
         <span class="self">self</span>.checked_endorsements.insert(enrodsement_id, ());
     }
+
+    <span class="doccomment">/// Register an endorsement against its `(slot, index)` draw and tell whether we accept it.
+    ///
+    /// The endorsement id is derived from the whole signed content, so an equivocating endorser can
+    /// mint unlimited distinct-but-valid endorsements for the draw it won just by varying the
+    /// endorsed block: deduplicating on `checked_endorsements` alone does not stop them from being
+    /// noted and gossiped further. Returns `false` once `MAX_ENDORSEMENTS_PER_DRAW` distinct
+    /// endorsements have already been registered for that draw.
+    ///
+    /// Registering the id rather than only counting keeps this idempotent, so an endorsement that
+    /// gets re-checked after being evicted from `checked_endorsements` does not consume the budget
+    /// twice.
+    </span><span class="kw">pub fn </span>register_draw_endorsement(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        slot: Slot,
+        index: u32,
+        endorsement_id: EndorsementId,
+    ) -&gt; bool {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(draw_endorsements) = <span class="self">self
+            </span>.endorsements_by_draw
+            .get_or_insert((slot, index), PreHashSet::default)
+        <span class="kw">else </span>{
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        };
+        <span class="kw">if </span>draw_endorsements.contains(<span class="kw-2">&amp;</span>endorsement_id) {
+            <span class="kw">return </span><span class="bool-val">true</span>;
+        }
+        <span class="kw">if </span>draw_endorsements.len() &gt;= MAX_ENDORSEMENTS_PER_DRAW {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+        draw_endorsements.insert(endorsement_id);
+        <span class="bool-val">true
+    </span>}
 
     <span class="doccomment">/// Update caches to remove all data from disconnected peers
     </span><span class="kw">pub fn </span>update_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peers_connected: <span class="kw-2">&amp;</span>HashSet&lt;PeerId&gt;) {
