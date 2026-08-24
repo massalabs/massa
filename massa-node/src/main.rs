@@ -378,6 +378,8 @@ async fn launch(
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
         periods_per_cycle: PERIODS_PER_CYCLE,
         endorsement_count: ENDORSEMENT_COUNT,
         max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -444,12 +446,14 @@ async fn launch(
 
     let last_slot_before_downtime_ = *final_state.read().get_last_slot_before_downtime();
     if let Some(last_slot_before_downtime) = last_slot_before_downtime_ {
+        // bootstrap validates this metadata before storing it, so a failure here means a local
+        // restart configuration that cannot describe any downtime
         let last_shutdown_start = last_slot_before_downtime
             .get_next_slot(THREAD_COUNT)
-            .unwrap();
+            .expect("invalid last slot before downtime: it has no next slot");
         let last_shutdown_end = Slot::new(final_state.read().get_last_start_period(), 0)
             .get_prev_slot(THREAD_COUNT)
-            .unwrap();
+            .expect("invalid last start period: it has no previous slot");
 
         final_state
             .read()

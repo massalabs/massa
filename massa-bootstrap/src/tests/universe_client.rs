@@ -73,6 +73,12 @@ impl TestUniverse for BootstrapClientTestUniverse {
             .write()
             .expect_set_last_slot_before_downtime()
             .returning(move |_| ());
+        // the mocked setters are no-ops, so the restart metadata always reads back as absent
+        controllers
+            .final_state_controller
+            .write()
+            .expect_get_last_slot_before_downtime()
+            .return_const(None);
         controllers
             .final_state_controller
             .write()
