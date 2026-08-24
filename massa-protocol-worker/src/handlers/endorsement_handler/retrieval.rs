@@ -122,6 +122,19 @@ impl RetrievalThread {
         match message {
             EndorsementMessage::Endorsements(endorsements) => {
                 debug!("Received endorsement message: Endorsement from {}", peer_id);
+                // Discard endorsements that are already too old to be useful before doing
+                // any expensive work on them (signature verification, PoS draw lookup):
+                // otherwise a peer could replay arbitrary amounts of old endorsements
+                // to make us burn CPU, cycling through IDs faster than the
+                // `checked_endorsements` cache can remember them.
+                let now = MassaTime::now();
+                let endorsements: Vec<_> = endorsements
+                    .into_iter()
+                    .filter(|endorsement| is_endorsement_fresh(endorsement, &self.config, now))
+                    .collect();
+                if endorsements.is_empty() {
+                    return;
+                }
                 if let Err(err) = note_endorsements_from_peer(
                     endorsements,
                     &peer_id,
@@ -152,6 +165,24 @@ impl RetrievalThread {
         self.peer_cmd_sender
             .try_send(PeerManagementCmd::Ban(vec![*peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
+    }
+}
+
+/// Returns true if the inclusion slot of the endorsement is recent enough for the
+/// endorsement to still be worth processing (see `max_endorsements_propagation_time`).
+fn is_endorsement_fresh(
+    endorsement: &SecureShareEndorsement,
+    config: &ProtocolConfig,
+    now: MassaTime,
+) -> bool {
+    match get_block_slot_timestamp(
+        config.thread_count,
+        config.t0,
+        config.genesis_timestamp,
+        endorsement.content.slot,
+    ) {
+        Ok(t) => t.saturating_add(config.max_endorsements_propagation_time) >= now,
+        Err(_) => false,
     }
 }
 
@@ -248,17 +279,7 @@ pub(crate) fn note_endorsements_from_peer(
 
     // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
     let now = MassaTime::now();
-    new_endorsements.retain(|_id, endorsement| {
-        match get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            endorsement.content.slot,
-        ) {
-            Ok(t) => t.saturating_add(config.max_endorsements_propagation_time) >= now,
-            Err(_) => false,
-        }
-    });
+    new_endorsements.retain(|_id, endorsement| is_endorsement_fresh(endorsement, config, now));
 
     if new_endorsements.is_empty() {
         // no endorsements to note or propagate
