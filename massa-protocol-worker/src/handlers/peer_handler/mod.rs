@@ -13,6 +13,7 @@ use massa_protocol_exports::{
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::Signature;
+use massa_time::MassaTime;
 use peernet::context::Context as _;
 use peernet::messages::MessagesSerializer as _;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -460,6 +461,14 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                     {
                         return Err(PeerNetError::HandshakeError
                             .error("Massa Handshake", Some("Invalid signature".to_string())));
+                    }
+                    // the announcement timestamp is the freshness signal used to decide which
+                    // peers we keep sharing, so refuse one that is dated too far ahead of us
+                    if announcement.is_future_dated(MassaTime::now().as_millis()) {
+                        return Err(PeerNetError::HandshakeError.error(
+                            "Massa Handshake",
+                            Some("Announcement timestamp too far in the future".to_string()),
+                        ));
                     }
                     // The announcement is signed but its listeners are peer controlled:
                     // only spread endpoints that are acceptable to probe.

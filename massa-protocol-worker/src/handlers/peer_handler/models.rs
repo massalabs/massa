@@ -13,7 +13,7 @@ use tracing::info;
 
 use crate::wrap_peer_db::PeerDBTrait;
 
-use super::announcement::Announcement;
+use super::announcement::{Announcement, MAX_ANNOUNCEMENT_CLOCK_SKEW_MS};
 
 const THREE_DAYS_MS: u64 = 3 * 24 * 60 * 60 * 1_000;
 
@@ -248,6 +248,9 @@ impl PeerDBTrait for PeerDB {
         let now = MassaTime::now().as_millis();
 
         let min_time = now - THREE_DAYS_MS;
+        // defense in depth: announcement timestamps are peer-controlled, a future-dated one
+        // must not be treated as fresh even if it slipped past the handshake checks
+        let max_time = now.saturating_add(MAX_ANNOUNCEMENT_CLOCK_SKEW_MS);
 
         let mut keys = self.peers.keys().cloned().collect::<Vec<_>>();
         let mut rng = rand::thread_rng();
@@ -262,7 +265,7 @@ impl PeerDBTrait for PeerDB {
             if let Some(peer) = self.peers.get(&key) {
                 // skip old peers
                 if let Some(last_announce) = &peer.last_announce {
-                    if last_announce.timestamp < min_time {
+                    if last_announce.timestamp < min_time || last_announce.timestamp > max_time {
                         continue;
                     }
                     let listeners: HashMap<SocketAddr, TransportType> =
@@ -351,5 +354,64 @@ impl PeerDBTrait for PeerDB {
 
     fn get_tested_addresses(&self) -> &HashMap<SocketAddr, MassaTime> {
         &self.tested_addresses
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use massa_protocol_exports::PeerId;
+    use massa_signature::KeyPair;
+    use massa_time::MassaTime;
+    use peernet::transports::TransportType;
+    use std::collections::HashMap;
+
+    use super::super::announcement::{Announcement, MAX_ANNOUNCEMENT_CLOCK_SKEW_MS};
+    use super::{PeerDB, PeerInfo, PeerState, THREE_DAYS_MS};
+    use crate::wrap_peer_db::PeerDBTrait;
+
+    /// Build a peer announcing one listener, with its announcement timestamp forced to `timestamp`.
+    fn peer_announcing_at(timestamp: u64) -> (PeerId, PeerInfo) {
+        let keypair = KeyPair::generate(0).unwrap();
+        let mut listeners = HashMap::new();
+        listeners.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
+        let mut announcement =
+            Announcement::new(listeners, Some("1.2.3.4".parse().unwrap()), &keypair).unwrap();
+        announcement.timestamp = timestamp;
+        (
+            PeerId::from_public_key(keypair.get_public_key()),
+            PeerInfo {
+                last_announce: Some(announcement),
+                state: PeerState::Trusted,
+            },
+        )
+    }
+
+    #[test]
+    fn test_get_rand_peers_to_send_skips_out_of_window_announcements() {
+        let now = MassaTime::now().as_millis();
+        let mut peer_db = PeerDB::default();
+
+        let (fresh_id, fresh) = peer_announcing_at(now);
+        let (stale_id, stale) = peer_announcing_at(now - THREE_DAYS_MS - 1);
+        let (future_id, future) = peer_announcing_at(now + MAX_ANNOUNCEMENT_CLOCK_SKEW_MS + 60_000);
+        peer_db.peers.insert(fresh_id, fresh);
+        peer_db.peers.insert(stale_id, stale);
+        peer_db.peers.insert(future_id, future);
+
+        let sent: Vec<_> = peer_db
+            .get_rand_peers_to_send(10)
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        assert_eq!(sent, vec![fresh_id]);
+    }
+
+    #[test]
+    fn test_is_future_dated() {
+        let now = MassaTime::now().as_millis();
+        let (_, within_skew) = peer_announcing_at(now + MAX_ANNOUNCEMENT_CLOCK_SKEW_MS);
+        assert!(!within_skew.last_announce.unwrap().is_future_dated(now));
+        let (_, beyond_skew) = peer_announcing_at(now + MAX_ANNOUNCEMENT_CLOCK_SKEW_MS + 1);
+        assert!(beyond_skew.last_announce.unwrap().is_future_dated(now));
     }
 }
