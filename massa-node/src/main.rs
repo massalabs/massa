@@ -444,29 +444,10 @@ async fn launch(
             .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     }
 
-    let last_slot_before_downtime_ = *final_state.read().get_last_slot_before_downtime();
-    if let Some(last_slot_before_downtime) = last_slot_before_downtime_ {
-        // bootstrap validates this metadata before storing it, so a failure here means a local
-        // restart configuration that cannot describe any downtime
-        let last_shutdown_start = last_slot_before_downtime
-            .get_next_slot(THREAD_COUNT)
-            .expect("invalid last slot before downtime: it has no next slot");
-        let last_shutdown_end = Slot::new(final_state.read().get_last_start_period(), 0)
-            .get_prev_slot(THREAD_COUNT)
-            .expect("invalid last start period: it has no previous slot");
-
-        final_state
-            .read()
-            .get_mip_store()
-            .is_consistent_with_shutdown_period(
-                last_shutdown_start,
-                last_shutdown_end,
-                THREAD_COUNT,
-                T0,
-                *GENESIS_TIMESTAMP,
-            )
-            .expect("Mip store is not consistent with shutdown period");
-
+    // Note: the consistency of the network restart metadata with the MIP store has already been
+    // checked, either by the bootstrap client before storing what the server sent, or by
+    // `FinalState::new_derived_from_snapshot` when restarting from a local snapshot.
+    if final_state.read().get_last_slot_before_downtime().is_some() {
         // If we are before a network restart, print the hash to make it easier to debug bootstrapping issues
         let now = MassaTime::now();
         let last_start_slot = Slot::new(
