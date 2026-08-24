@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["NEW_CONNECTION","STOP_LISTENER"],"enum":["PollEvent"],"fn":["drain_accept"],"struct":["BootstrapListenerStopHandle","BootstrapTcpListener"]};
+window.SIDEBAR_ITEMS = {"constant":["MAX_ACCEPTS_PER_POLL","NEW_CONNECTION","STOP_LISTENER"],"enum":["PollEvent"],"fn":["drain_accept"],"struct":["BootstrapListenerStopHandle","BootstrapTcpListener"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["MAX_ANNOUNCEMENT_CLOCK_SKEW_MS"],"struct":["Announcement","AnnouncementDeserializer","AnnouncementDeserializerArgs","AnnouncementSerializer"]};
+window.SIDEBAR_ITEMS = {"struct":["Announcement","AnnouncementDeserializer","AnnouncementDeserializerArgs","AnnouncementSerializer"]};

@@ -821,15 +821,6 @@
 <a href="#821" id="821">821</a>
 <a href="#822" id="822">822</a>
 <a href="#823" id="823">823</a>
-<a href="#824" id="824">824</a>
-<a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
-<a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -845,7 +836,6 @@
 };
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>massa_signature::Signature;
-<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>peernet::context::Context <span class="kw">as _</span>;
 <span class="kw">use </span>peernet::messages::MessagesSerializer <span class="kw">as _</span>;
 <span class="kw">use </span>rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -1293,14 +1283,6 @@
                     {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError
                             .error(<span class="string">"Massa Handshake"</span>, <span class="prelude-val">Some</span>(<span class="string">"Invalid signature"</span>.to_string())));
-                    }
-                    <span class="comment">// the announcement timestamp is the freshness signal used to decide which
-                    // peers we keep sharing, so refuse one that is dated too far ahead of us
-                    </span><span class="kw">if </span>announcement.is_future_dated(MassaTime::now().as_millis()) {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                            <span class="string">"Massa Handshake"</span>,
-                            <span class="prelude-val">Some</span>(<span class="string">"Announcement timestamp too far in the future"</span>.to_string()),
-                        ));
                     }
                     <span class="comment">// The announcement is signed but its listeners are peer controlled:
                     // only spread endpoints that are acceptable to probe.
