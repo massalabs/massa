@@ -1652,10 +1652,6 @@
 <a href="#1652" id="1652">1652</a>
 <a href="#1653" id="1653">1653</a>
 <a href="#1654" id="1654">1654</a>
-<a href="#1655" id="1655">1655</a>
-<a href="#1656" id="1656">1656</a>
-<a href="#1657" id="1657">1657</a>
-<a href="#1658" id="1658">1658</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2036,8 +2032,6 @@
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
-        t0: T0,
-        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         periods_per_cycle: PERIODS_PER_CYCLE,
         endorsement_count: ENDORSEMENT_COUNT,
         max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -2104,14 +2098,12 @@
 
     <span class="kw">let </span>last_slot_before_downtime_ = <span class="kw-2">*</span>final_state.read().get_last_slot_before_downtime();
     <span class="kw">if let </span><span class="prelude-val">Some</span>(last_slot_before_downtime) = last_slot_before_downtime_ {
-        <span class="comment">// bootstrap validates this metadata before storing it, so a failure here means a local
-        // restart configuration that cannot describe any downtime
-        </span><span class="kw">let </span>last_shutdown_start = last_slot_before_downtime
+        <span class="kw">let </span>last_shutdown_start = last_slot_before_downtime
             .get_next_slot(THREAD_COUNT)
-            .expect(<span class="string">"invalid last slot before downtime: it has no next slot"</span>);
+            .unwrap();
         <span class="kw">let </span>last_shutdown_end = Slot::new(final_state.read().get_last_start_period(), <span class="number">0</span>)
             .get_prev_slot(THREAD_COUNT)
-            .expect(<span class="string">"invalid last start period: it has no previous slot"</span>);
+            .unwrap();
 
         final_state
             .read()

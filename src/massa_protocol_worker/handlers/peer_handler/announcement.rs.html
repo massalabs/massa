@@ -292,6 +292,18 @@
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -317,6 +329,12 @@
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
+
+<span class="doccomment">/// Maximum tolerated clock skew between our local clock and the timestamp carried by a
+/// remote peer's announcement. The timestamp is attacker-controlled and is used as the peer
+/// freshness signal, so an announcement dated arbitrarily far in the future would otherwise
+/// stay "fresh" (and thus eligible for peer sharing and bootstrap responses) forever.
+</span><span class="kw">pub const </span>MAX_ANNOUNCEMENT_CLOCK_SKEW_MS: u64 = <span class="number">5 </span>* <span class="number">60 </span>* <span class="number">1_000</span>;
 
 <span class="attr">#[derive(Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>Announcement {
@@ -464,6 +482,12 @@
 }
 
 <span class="kw">impl </span>Announcement {
+    <span class="doccomment">/// Check the announcement timestamp against the local clock: a peer cannot legitimately
+    /// announce more than `MAX_ANNOUNCEMENT_CLOCK_SKEW_MS` ahead of us.
+    </span><span class="kw">pub fn </span>is_future_dated(<span class="kw-2">&amp;</span><span class="self">self</span>, now_millis: u64) -&gt; bool {
+        <span class="self">self</span>.timestamp &gt; now_millis.saturating_add(MAX_ANNOUNCEMENT_CLOCK_SKEW_MS)
+    }
+
     <span class="kw">pub fn </span>new(
         listeners: HashMap&lt;SocketAddr, TransportType&gt;,
         routable_ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
