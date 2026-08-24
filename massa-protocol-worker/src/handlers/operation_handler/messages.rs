@@ -95,7 +95,7 @@ pub struct OperationMessageDeserializerArgs {
     /// Maximum of full operations sent in one message
     pub max_operations: u32,
     //TODO: All of this arguments should be in a `OperationDeserializer` struct that would be used here
-    /// Maximum size of a user datastore value
+    /// Maximum size of an `ExecuteSC` bytecode (ledger datastore value bound)
     pub max_datastore_value_length: u64,
     /// Maximum size of a function name
     pub max_function_name_length: u16,
