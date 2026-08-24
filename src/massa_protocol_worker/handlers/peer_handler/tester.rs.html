@@ -490,6 +490,10 @@
 <a href="#490" id="490">490</a>
 <a href="#491" id="491">491</a>
 <a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -498,7 +502,10 @@
     time::Duration,
 };
 
-<span class="kw">use crate</span>::{ip::to_canonical, messages::MessagesHandler};
+<span class="kw">use crate</span>::{
+    ip::{is_routable_peer_addr, to_canonical},
+    messages::MessagesHandler,
+};
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::version::VersionDeserializer;
@@ -678,15 +685,6 @@
                                 <span class="prelude-val">Some</span>(String::from(<span class="string">"Invalid signature"</span>)),
                             ));
                         }
-                        <span class="comment">// the announcement timestamp is the freshness signal used to decide
-                        // which peers we keep sharing, so refuse one that is dated too far
-                        // ahead of us
-                        </span><span class="kw">if </span>announcement.is_future_dated(MassaTime::now().as_millis()) {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                                <span class="string">"Tester Handshake"</span>,
-                                <span class="prelude-val">Some</span>(String::from(<span class="string">"Announcement timestamp too far in the future"</span>)),
-                            ));
-                        }
                         <span class="comment">//TODO: Check ip we are connected match one of the announced ips
                         </span>{
                             <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
@@ -794,6 +792,7 @@
 
             <span class="comment">//let mut network_manager = PeerNetManager::new(config);
             </span><span class="kw">let </span>protocol_config = protocol_config.clone();
+            <span class="kw">let </span>allow_local_peers = protocol_config.allow_local_peers();
             <span class="lifetime">'main_loop</span>: <span class="kw">loop </span>{
                 <span class="macro">crossbeam::select!</span> {
                     recv(receiver) -&gt; res =&gt; {
@@ -836,6 +835,11 @@
                                     <span class="kw">let </span>db = db.clone();
                                     <span class="comment">// receive new listener to test
                                     </span><span class="kw">for </span>(addr, <span class="kw">_</span>) <span class="kw">in </span>listener.<span class="number">1</span>.iter() {
+                                        <span class="comment">// Announced endpoints are peer controlled: never probe one
+                                        // that isn't a routable address (loopback, private, ...)
+                                        </span><span class="kw">if </span>!is_routable_peer_addr(addr, allow_local_peers) {
+                                            <span class="kw">continue</span>;
+                                        }
                                         <span class="kw">if </span>!db.write().insert_peer_in_test(addr) {
                                             <span class="comment">// if the peer is already in test, we skip it
                                             </span><span class="kw">continue</span>;
@@ -934,7 +938,11 @@
                         };
 
                         <span class="comment">// we try to connect to all peer listener (For now we have only one listener)
-                        </span><span class="kw">let </span>ip_canonical = to_canonical(listener.ip());
+                        </span><span class="kw">if </span>!is_routable_peer_addr(<span class="kw-2">&amp;</span>listener, allow_local_peers) {
+                            db.write().remove_peer_in_test(<span class="kw-2">&amp;</span>listener);
+                            <span class="kw">continue</span>;
+                        }
+                        <span class="kw">let </span>ip_canonical = to_canonical(listener.ip());
                         <span class="kw">if </span>active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| to_canonical(addr.ip()) == ip_canonical) {
                             db.write().remove_peer_in_test(<span class="kw-2">&amp;</span>listener);
                             <span class="kw">continue</span>;
