@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["MAX_ENDORSEMENTS_PER_DRAW"],"struct":["EndorsementCache"],"type":["SharedEndorsementCache"]};
+window.SIDEBAR_ITEMS = {"struct":["EndorsementCache"],"type":["SharedEndorsementCache"]};
