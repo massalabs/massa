@@ -1339,11 +1339,6 @@
 <a href="#1339" id="1339">1339</a>
 <a href="#1340" id="1340">1340</a>
 <a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1398,7 +1393,7 @@
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use super</span>::{
-    <span class="kw">super</span>::operation_handler::{is_block_intrinsic_operation_failure, note_operations_from_peer},
+    <span class="kw">super</span>::operation_handler::note_operations_from_peer,
     cache::{BlockDataKind, SharedBlockCache},
     commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand,
@@ -1467,6 +1462,9 @@
                 thread_count: <span class="self">self</span>.config.thread_count,
                 endorsement_count: <span class="self">self</span>.config.endorsement_count,
                 max_operations_per_block: <span class="self">self</span>.config.max_operations_per_block,
+                max_serialized_operations_size_per_block: <span class="self">self
+                    </span>.config
+                    .max_serialized_operations_size_per_block,
                 max_datastore_value_length: <span class="self">self</span>.config.max_size_value_datastore,
                 max_function_name_length: <span class="self">self</span>.config.max_size_function_name,
                 max_parameters_size: <span class="self">self</span>.config.max_size_call_sc_parameter,
@@ -2246,6 +2244,9 @@
         <span class="comment">// Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
 
         // Check the validity of the received operations.
+        // TODO: in the future if the validiy check fails for something non-malleable (eg. not sig verif),
+        //       we should stop retrieving the block and ban everyone who knows it
+        //       because we know for sure that this op's ID belongs to the block.
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = note_operations_from_peer(
             <span class="kw-2">&amp;</span><span class="self">self</span>.storage,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.operation_cache,
@@ -2255,17 +2256,6 @@
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.sender_propagation_ops,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller,
         ) {
-            <span class="kw">if </span>is_block_intrinsic_operation_failure(<span class="kw-2">&amp;</span>err) {
-                <span class="comment">// The failure is fully determined by operation contents that the block's operation IDs
-                // already commit to: no peer can ever deliver a valid version of this block.
-                // Stop retrieving it instead of asking around forever.
-                </span><span class="macro">warn!</span>(
-                    <span class="string">"block id {} is invalid: one of the operations it commits to failed a content-level check: {}"</span>,
-                    block_id, err
-                );
-                <span class="self">self</span>.mark_block_as_invalid(<span class="kw-2">&amp;</span>block_id);
-                <span class="kw">return</span>;
-            }
             <span class="macro">warn!</span>(
                 <span class="string">"Peer id {} sent us operations for block id {} but they failed validity checks: {}"</span>,
                 from_peer_id, block_id, err

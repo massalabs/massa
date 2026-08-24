@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["AskForBlockInfo","BlockInfoReply","BlockInfoType","BlockMessage","MessageTypeId"],"struct":["BlockMessageDeserializer","BlockMessageDeserializerArgs","BlockMessageSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["OPERATION_COUNT_PREFIX_MAX_SIZE"],"enum":["AskForBlockInfo","BlockInfoReply","BlockInfoType","BlockMessage","MessageTypeId"],"struct":["BlockMessageDeserializer","BlockMessageDeserializerArgs","BlockMessageSerializer"]};
