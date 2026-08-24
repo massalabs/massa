@@ -16,6 +16,10 @@ use nom::{
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
+/// Maximum size in bytes of the varint prefix encoding the number of operations
+/// of a `BlockInfoReply::Operations` payload (a `u32` varint).
+const OPERATION_COUNT_PREFIX_MAX_SIZE: usize = 5;
+
 /// Request block data
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum AskForBlockInfo {
@@ -197,6 +201,7 @@ pub struct BlockMessageDeserializer {
     block_id_deserializer: BlockIdDeserializer,
     operation_ids_deserializer: OperationIdsDeserializer,
     operations_deserializer: OperationsDeserializer,
+    max_serialized_operations_size_per_block: usize,
 }
 
 pub struct BlockMessageDeserializerArgs {
@@ -204,6 +209,7 @@ pub struct BlockMessageDeserializerArgs {
     pub endorsement_count: u32,
     pub max_operations_per_block: u32,
     pub max_bytecode_size: u64,
+    pub max_serialized_operations_size_per_block: usize,
     pub max_function_name_length: u16,
     pub max_parameters_size: u32,
     pub max_op_datastore_entry_count: u64,
@@ -242,7 +248,16 @@ impl BlockMessageDeserializer {
                 args.max_op_datastore_value_length,
                 args.chain_id,
             ),
+            max_serialized_operations_size_per_block: args.max_serialized_operations_size_per_block,
         }
+    }
+
+    /// Maximum size of a serialized `BlockInfoReply::Operations` payload:
+    /// the block-level aggregate operations size, plus the varint prefix
+    /// holding the number of operations.
+    fn max_operations_payload_size(&self) -> usize {
+        self.max_serialized_operations_size_per_block
+            .saturating_add(OPERATION_COUNT_PREFIX_MAX_SIZE)
     }
 }
 
@@ -330,12 +345,25 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                                     .map(|(rest, operation_ids)| {
                                         (rest, BlockInfoReply::OperationIds(operation_ids))
                                     }),
-                                BlockInfoType::Operations => self
-                                    .operations_deserializer
-                                    .deserialize(rest)
-                                    .map(|(rest, operations)| {
-                                        (rest, BlockInfoReply::Operations(operations))
-                                    }),
+                                BlockInfoType::Operations => {
+                                    // The operations of a block are the last field of the message,
+                                    // so the remaining bytes are exactly the serialized operation
+                                    // list. Reject it right away if it cannot possibly fit in a
+                                    // block: the generic message size limit is orders of magnitude
+                                    // larger than a block, so parsing first would let a peer make
+                                    // us allocate far more than any valid block can hold.
+                                    if rest.len() > self.max_operations_payload_size() {
+                                        return Err(nom::Err::Error(ParseError::from_error_kind(
+                                            rest,
+                                            nom::error::ErrorKind::TooLarge,
+                                        )));
+                                    }
+                                    self.operations_deserializer.deserialize(rest).map(
+                                        |(rest, operations)| {
+                                            (rest, BlockInfoReply::Operations(operations))
+                                        },
+                                    )
+                                }
                                 BlockInfoType::NotFound => Ok((rest, BlockInfoReply::NotFound)),
                             }
                         }),
@@ -376,6 +404,7 @@ mod tests {
                 endorsement_count: 1,
                 max_operations_per_block: 1,
                 max_bytecode_size: 1,
+                max_serialized_operations_size_per_block: 1024,
                 max_function_name_length: 1,
                 max_parameters_size: 1,
                 max_op_datastore_entry_count: 1,
@@ -463,6 +492,7 @@ mod tests {
                 endorsement_count: 1,
                 max_operations_per_block: 1,
                 max_bytecode_size: 1,
+                max_serialized_operations_size_per_block: 1024,
                 max_function_name_length: 1,
                 max_parameters_size: 1,
                 max_op_datastore_entry_count: 1,
@@ -481,6 +511,7 @@ mod tests {
                 endorsement_count: 1,
                 max_operations_per_block: 2,
                 max_bytecode_size: 1,
+                max_serialized_operations_size_per_block: 1024,
                 max_function_name_length: 1,
                 max_parameters_size: 1,
                 max_op_datastore_entry_count: 1,
@@ -510,5 +541,70 @@ mod tests {
             }
             _ => panic!("Wrong message type"),
         }
+    }
+
+    /// A `DataResponse` carrying more serialized operations than a block can hold
+    /// must be rejected before the operation list is materialized.
+    #[test]
+    fn test_operations_response_over_block_size_limit() {
+        use massa_models::amount::Amount;
+        use massa_models::operation::{Operation, OperationType, SecureShareOperation};
+        use massa_models::secure_share::SecureShareContent;
+        use massa_models::{address::Address, operation::OperationSerializer};
+        use massa_signature::KeyPair;
+
+        let keypair = KeyPair::generate(0).unwrap();
+        let content = Operation {
+            fee: Amount::from_str("20").unwrap(),
+            op: OperationType::Transaction {
+                recipient_address: Address::from_public_key(&keypair.get_public_key()),
+                amount: Amount::from_str("300").unwrap(),
+            },
+            expire_period: 50,
+        };
+        let operation: SecureShareOperation =
+            Operation::new_verifiable(content, OperationSerializer::new(), &keypair, *CHAINID)
+                .unwrap();
+        let operations = vec![operation.clone(), operation];
+        let total_operations_size: usize = operations.iter().map(|op| op.serialized_size()).sum();
+
+        let message = super::BlockMessage::DataResponse {
+            block_id: BlockId::from_str("B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg")
+                .unwrap(),
+            block_info: super::BlockInfoReply::Operations(operations),
+        };
+        let mut buffer = Vec::new();
+        super::BlockMessageSerializer::new()
+            .serialize(&message, &mut buffer)
+            .unwrap();
+
+        let make_deserializer = |max_serialized_operations_size_per_block: usize| {
+            super::BlockMessageDeserializer::new(super::BlockMessageDeserializerArgs {
+                thread_count: 1,
+                endorsement_count: 1,
+                max_operations_per_block: 2,
+                max_serialized_operations_size_per_block,
+                max_bytecode_size: 1000,
+                max_function_name_length: 255,
+                max_parameters_size: 1000,
+                max_op_datastore_entry_count: 10,
+                max_op_datastore_key_length: 255,
+                max_op_datastore_value_length: 1000,
+                max_denunciations_in_block_header: 1,
+                last_start_period: None,
+                chain_id: *CHAINID,
+            })
+        };
+
+        // within the block-level limit: accepted
+        let (rest, _) = make_deserializer(total_operations_size)
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+        assert!(rest.is_empty());
+
+        // over the block-level limit: rejected without parsing the operations
+        make_deserializer(0)
+            .deserialize::<DeserializeError>(&buffer)
+            .expect_err("operations exceeding the block size limit should be rejected");
     }
 }
