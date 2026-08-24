@@ -27,6 +27,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::context::Context;
 use crate::handlers::peer_handler::models::PeerState;
+use crate::ip::filter_routable_listeners;
 use crate::messages::{Message, MessagesHandler, MessagesSerializer};
 use crate::wrap_network::ActiveConnectionsTrait;
 
@@ -55,6 +56,26 @@ pub mod models;
 mod tester;
 
 pub(crate) use messages::{PeerManagementMessage, PeerManagementMessageSerializer};
+
+/// Drops the endpoints we must not re-advertise from a peer list, along with the
+/// peers left without any announced listener. Peer listeners come from signed
+/// but peer controlled announcements: we only pass around endpoints we would
+/// probe ourselves (see [`filter_routable_listeners`]).
+fn filter_peers_listeners(
+    peers: Vec<(PeerId, HashMap<SocketAddr, TransportType>)>,
+    allow_local_peers: bool,
+) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
+    peers
+        .into_iter()
+        .map(|(peer_id, listeners)| {
+            (
+                peer_id,
+                filter_routable_listeners(listeners, allow_local_peers),
+            )
+        })
+        .filter(|(_, listeners)| !listeners.is_empty())
+        .collect()
+}
 
 #[allow(dead_code)]
 pub struct PeerManagementHandler {
@@ -119,7 +140,10 @@ impl PeerManagementHandler {
                 loop {
                     select! {
                         recv(ticker) -> _ => {
-                            let peers_to_send = peer_db.read().get_rand_peers_to_send(100);
+                            let peers_to_send = filter_peers_listeners(
+                                peer_db.read().get_rand_peers_to_send(100),
+                                config.allow_local_peers(),
+                            );
                             if peers_to_send.is_empty() {
                                 continue;
                             }
@@ -152,7 +176,10 @@ impl PeerManagementHandler {
                                 }
                             },
                              Ok(PeerManagementCmd::GetBootstrapPeers { responder }) => {
-                                let mut peers = peer_db.read().get_rand_peers_to_send(100);
+                                let mut peers = filter_peers_listeners(
+                                    peer_db.read().get_rand_peers_to_send(100),
+                                    config.allow_local_peers(),
+                                );
                                 // Add myself
                                 if let Some(routable_ip) = config.routable_ip {
                                     let listeners = config.listeners.iter().map(|(addr, ty)| {
@@ -434,9 +461,14 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         return Err(PeerNetError::HandshakeError
                             .error("Massa Handshake", Some("Invalid signature".to_string())));
                     }
+                    // The announcement is signed but its listeners are peer controlled:
+                    // only spread endpoints that are acceptable to probe.
                     let message = PeerManagementMessage::NewPeerConnected((
                         peer_id,
-                        announcement.clone().listeners,
+                        filter_routable_listeners(
+                            announcement.listeners.clone(),
+                            self.config.allow_local_peers(),
+                        ),
                     ));
                     let mut bytes = Vec::new();
                     let peer_management_message_serializer = MessagesSerializer::new()

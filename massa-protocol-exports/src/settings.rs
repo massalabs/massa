@@ -179,3 +179,18 @@ pub struct ProtocolConfig {
     /// Chain id
     pub chain_id: u64,
 }
+
+impl ProtocolConfig {
+    /// Whether the node is configured to deal with peers that do not have a
+    /// globally routable address, i.e. local networks. Mirrors the
+    /// `allow_local_peers` category setting: as soon as one category accepts
+    /// local peers, non global endpoints are kept in the peer management
+    /// pipeline, the per category check being done when connecting out.
+    pub fn allow_local_peers(&self) -> bool {
+        self.default_category_info.allow_local_peers
+            || self
+                .peers_categories
+                .values()
+                .any(|category| category.allow_local_peers)
+    }
+}

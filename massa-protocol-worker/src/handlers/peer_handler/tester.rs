@@ -6,7 +6,10 @@ use std::{
     time::Duration,
 };
 
-use crate::{ip::to_canonical, messages::MessagesHandler};
+use crate::{
+    ip::{is_routable_peer_addr, to_canonical},
+    messages::MessagesHandler,
+};
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 use massa_metrics::MassaMetrics;
 use massa_models::version::VersionDeserializer;
@@ -293,6 +296,7 @@ impl Tester {
 
             //let mut network_manager = PeerNetManager::new(config);
             let protocol_config = protocol_config.clone();
+            let allow_local_peers = protocol_config.allow_local_peers();
             'main_loop: loop {
                 crossbeam::select! {
                     recv(receiver) -> res => {
@@ -335,6 +339,11 @@ impl Tester {
                                     let db = db.clone();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
+                                        // Announced endpoints are peer controlled: never probe one
+                                        // that isn't a routable address (loopback, private, ...)
+                                        if !is_routable_peer_addr(addr, allow_local_peers) {
+                                            continue;
+                                        }
                                         if !db.write().insert_peer_in_test(addr) {
                                             // if the peer is already in test, we skip it
                                             continue;
@@ -433,6 +442,10 @@ impl Tester {
                         };
 
                         // we try to connect to all peer listener (For now we have only one listener)
+                        if !is_routable_peer_addr(&listener, allow_local_peers) {
+                            db.write().remove_peer_in_test(&listener);
+                            continue;
+                        }
                         let ip_canonical = to_canonical(listener.ip());
                         if active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| to_canonical(addr.ip()) == ip_canonical) {
                             db.write().remove_peer_in_test(&listener);
