@@ -1336,18 +1336,6 @@
 <a href="#1336" id="1336">1336</a>
 <a href="#1337" id="1337">1337</a>
 <a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1402,7 +1390,7 @@
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use super</span>::{
-    <span class="kw">super</span>::operation_handler::{is_block_intrinsic_operation_failure, note_operations_from_peer},
+    <span class="kw">super</span>::operation_handler::note_operations_from_peer,
     cache::{BlockDataKind, SharedBlockCache},
     commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand,
@@ -1501,16 +1489,12 @@
                                 <span class="comment">// A valid message prefix followed by trailing bytes must not
                                 // tear down this long-lived shared retrieval thread (doing so
                                 // would let a single peer deny block handling for everyone).
-                                // A compliant peer never sends trailing bytes, so ban the
-                                // sender and keep serving other peers.
+                                // Skip the malformed message and keep serving other peers.
                                 </span><span class="macro">warn!</span>(
-                                    <span class="string">"peer {} sent a block message with {} unexpected trailing byte(s); banning it"</span>,
+                                    <span class="string">"peer {} sent a block message with {} unexpected trailing byte(s); ignoring it"</span>,
                                     peer_id,
                                     rest.len()
                                 );
-                                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[peer_id]) {
-                                    <span class="macro">warn!</span>(<span class="string">"Error while banning peer {} err: {:?}"</span>, peer_id, err);
-                                }
                                 <span class="kw">continue</span>;
                             }
                             <span class="kw">match </span>message {
@@ -2254,6 +2238,9 @@
         <span class="comment">// Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
 
         // Check the validity of the received operations.
+        // TODO: in the future if the validiy check fails for something non-malleable (eg. not sig verif),
+        //       we should stop retrieving the block and ban everyone who knows it
+        //       because we know for sure that this op's ID belongs to the block.
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = note_operations_from_peer(
             <span class="kw-2">&amp;</span><span class="self">self</span>.storage,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.operation_cache,
@@ -2263,17 +2250,6 @@
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.sender_propagation_ops,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller,
         ) {
-            <span class="kw">if </span>is_block_intrinsic_operation_failure(<span class="kw-2">&amp;</span>err) {
-                <span class="comment">// The failure is fully determined by operation contents that the block's operation IDs
-                // already commit to: no peer can ever deliver a valid version of this block.
-                // Stop retrieving it instead of asking around forever.
-                </span><span class="macro">warn!</span>(
-                    <span class="string">"block id {} is invalid: one of the operations it commits to failed a content-level check: {}"</span>,
-                    block_id, err
-                );
-                <span class="self">self</span>.mark_block_as_invalid(<span class="kw-2">&amp;</span>block_id);
-                <span class="kw">return</span>;
-            }
             <span class="macro">warn!</span>(
                 <span class="string">"Peer id {} sent us operations for block id {} but they failed validity checks: {}"</span>,
                 from_peer_id, block_id, err
