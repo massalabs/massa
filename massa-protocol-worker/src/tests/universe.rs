@@ -122,6 +122,21 @@ impl ProtocolTestUniverse {
             .unwrap();
     }
 
+    /// Like `mock_message_receive` but appends junk bytes after the valid
+    /// serialized message, to simulate a peer sending trailing bytes.
+    pub fn mock_message_receive_with_trailing_bytes(&self, peer_id: &PeerId, message: Message) {
+        let mut data = Vec::new();
+        self.message_serializer
+            .serialize(&message, &mut data)
+            .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))
+            .unwrap();
+        data.extend_from_slice(&[42, 42, 42]);
+        self.messages_handler
+            .handle(&data, peer_id)
+            .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))
+            .unwrap();
+    }
+
     pub fn peer_db_boilerplate(mock_peer_db: &mut RwLockWriteGuard<MockPeerDBTrait>) {
         mock_peer_db
             .expect_get_peers_in_test()

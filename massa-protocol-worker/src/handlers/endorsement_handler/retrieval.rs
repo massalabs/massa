@@ -116,7 +116,15 @@ impl RetrievalThread {
             }
         };
         if !rest.is_empty() {
-            debug!("Message not fully consumed");
+            // A compliant peer never sends trailing bytes, so ban the sender.
+            warn!(
+                "peer {} sent an endorsement message with {} unexpected trailing byte(s); banning it",
+                peer_id,
+                rest.len()
+            );
+            if let Err(err) = self.ban_peer(&peer_id) {
+                warn!("Error while banning peer {} err: {:?}", peer_id, err);
+            }
             return;
         }
         match message {
