@@ -349,6 +349,11 @@
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -467,12 +472,33 @@
             }
         };
         <span class="kw">if </span>!rest.is_empty() {
-            <span class="macro">debug!</span>(<span class="string">"Message not fully consumed"</span>);
+            <span class="comment">// A compliant peer never sends trailing bytes, so ban the sender.
+            </span><span class="macro">warn!</span>(
+                <span class="string">"peer {} sent an endorsement message with {} unexpected trailing byte(s); banning it"</span>,
+                peer_id,
+                rest.len()
+            );
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peer(<span class="kw-2">&amp;</span>peer_id) {
+                <span class="macro">warn!</span>(<span class="string">"Error while banning peer {} err: {:?}"</span>, peer_id, err);
+            }
             <span class="kw">return</span>;
         }
         <span class="kw">match </span>message {
             EndorsementMessage::Endorsements(endorsements) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">"Received endorsement message: Endorsement from {}"</span>, peer_id);
+                <span class="comment">// Discard endorsements that are already too old to be useful before doing
+                // any expensive work on them (signature verification, PoS draw lookup):
+                // otherwise a peer could replay arbitrary amounts of old endorsements
+                // to make us burn CPU, cycling through IDs faster than the
+                // `checked_endorsements` cache can remember them.
+                </span><span class="kw">let </span>now = MassaTime::now();
+                <span class="kw">let </span>endorsements: Vec&lt;<span class="kw">_</span>&gt; = endorsements
+                    .into_iter()
+                    .filter(|endorsement| is_endorsement_fresh(endorsement, <span class="kw-2">&amp;</span><span class="self">self</span>.config, now))
+                    .collect();
+                <span class="kw">if </span>endorsements.is_empty() {
+                    <span class="kw">return</span>;
+                }
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = note_endorsements_from_peer(
                     endorsements,
                     <span class="kw-2">&amp;</span>peer_id,
@@ -506,6 +532,24 @@
     }
 }
 
+<span class="doccomment">/// Returns true if the inclusion slot of the endorsement is recent enough for the
+/// endorsement to still be worth processing (see `max_endorsements_propagation_time`).
+</span><span class="kw">fn </span>is_endorsement_fresh(
+    endorsement: <span class="kw-2">&amp;</span>SecureShareEndorsement,
+    config: <span class="kw-2">&amp;</span>ProtocolConfig,
+    now: MassaTime,
+) -&gt; bool {
+    <span class="kw">match </span>get_block_slot_timestamp(
+        config.thread_count,
+        config.t0,
+        config.genesis_timestamp,
+        endorsement.content.slot,
+    ) {
+        <span class="prelude-val">Ok</span>(t) =&gt; t.saturating_add(config.max_endorsements_propagation_time) &gt;= now,
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+    }
+}
+
 <span class="doccomment">/// Note endorsements coming from a given node,
 /// and propagate them when they were received outside of a header.
 ///
@@ -515,9 +559,6 @@
 ///
 /// Checks performed:
 /// - Valid signature.
-/// - The creator is the endorser drawn for the endorsement's `(slot, index)` pair.
-/// - At most `MAX_ENDORSEMENTS_PER_SLOT_INDEX` distinct endorsements are noted for a given draw,
-///   so that an equivocating endorser cannot have us relay unlimited variants of its endorsement.
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_peer(
     endorsements: Vec&lt;SecureShareEndorsement&gt;,
@@ -583,22 +624,6 @@
         }
     }
 
-    <span class="comment">// From there we note new endorsements and propagate them
-
-    // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
-    </span><span class="kw">let </span>now = MassaTime::now();
-    new_endorsements.retain(|_id, endorsement| {
-        <span class="kw">match </span>get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            endorsement.content.slot,
-        ) {
-            <span class="prelude-val">Ok</span>(t) =&gt; t.saturating_add(config.max_endorsements_propagation_time) &gt;= now,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-        }
-    });
-
     {
         <span class="kw">let </span><span class="kw-2">mut </span>cache_write = cache.write();
 
@@ -612,28 +637,13 @@
             from_peer_id,
             <span class="kw-2">&amp;</span>all_endorsement_ids.iter().copied().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
-
-        <span class="comment">// Drop conflicting endorsements beyond the per-draw bound. Nothing here constrains the
-        // endorsed block, so the drawn endorser of a `(slot, index)` pair can sign arbitrarily many
-        // valid endorsements differing only by that field, each with its own id: without this bound
-        // they would all be treated as new data, noted and gossiped further. We keep a few variants
-        // so the denunciation pool still gets to see the equivocation, and silently ignore the
-        // rest: equivocating is denounceable, not a reason to ban the peer that relayed it to us.
-        </span>new_endorsements.retain(|id, endorsement| {
-            <span class="kw">let </span>accepted = cache_write.register_draw_endorsement(
-                endorsement.content.slot,
-                endorsement.content.index,
-                <span class="kw-2">*</span>id,
-            );
-            <span class="kw">if </span>!accepted {
-                <span class="macro">debug!</span>(
-                    <span class="string">"ignoring endorsement {} from peer {}: too many conflicting endorsements for the draw at slot {} index {}"</span>,
-                    id, from_peer_id, endorsement.content.slot, endorsement.content.index
-                );
-            }
-            accepted
-        });
     }
+
+    <span class="comment">// From there we note new endorsements and propagate them
+
+    // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
+    </span><span class="kw">let </span>now = MassaTime::now();
+    new_endorsements.retain(|_id, endorsement| is_endorsement_fresh(endorsement, config, now));
 
     <span class="kw">if </span>new_endorsements.is_empty() {
         <span class="comment">// no endorsements to note or propagate

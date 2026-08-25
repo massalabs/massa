@@ -494,6 +494,15 @@
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
 <a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -683,6 +692,15 @@
                             <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
                                 <span class="string">"Tester Handshake"</span>,
                                 <span class="prelude-val">Some</span>(String::from(<span class="string">"Invalid signature"</span>)),
+                            ));
+                        }
+                        <span class="comment">// the announcement timestamp is the freshness signal used to decide
+                        // which peers we keep sharing, so refuse one that is dated too far
+                        // ahead of us
+                        </span><span class="kw">if </span>announcement.is_future_dated(MassaTime::now().as_millis()) {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
+                                <span class="string">"Tester Handshake"</span>,
+                                <span class="prelude-val">Some</span>(String::from(<span class="string">"Announcement timestamp too far in the future"</span>)),
                             ));
                         }
                         <span class="comment">//TODO: Check ip we are connected match one of the announced ips
