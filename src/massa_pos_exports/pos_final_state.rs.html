@@ -2405,63 +2405,6 @@
 <a href="#2405" id="2405">2405</a>
 <a href="#2406" id="2406">2406</a>
 <a href="#2407" id="2407">2407</a>
-<a href="#2408" id="2408">2408</a>
-<a href="#2409" id="2409">2409</a>
-<a href="#2410" id="2410">2410</a>
-<a href="#2411" id="2411">2411</a>
-<a href="#2412" id="2412">2412</a>
-<a href="#2413" id="2413">2413</a>
-<a href="#2414" id="2414">2414</a>
-<a href="#2415" id="2415">2415</a>
-<a href="#2416" id="2416">2416</a>
-<a href="#2417" id="2417">2417</a>
-<a href="#2418" id="2418">2418</a>
-<a href="#2419" id="2419">2419</a>
-<a href="#2420" id="2420">2420</a>
-<a href="#2421" id="2421">2421</a>
-<a href="#2422" id="2422">2422</a>
-<a href="#2423" id="2423">2423</a>
-<a href="#2424" id="2424">2424</a>
-<a href="#2425" id="2425">2425</a>
-<a href="#2426" id="2426">2426</a>
-<a href="#2427" id="2427">2427</a>
-<a href="#2428" id="2428">2428</a>
-<a href="#2429" id="2429">2429</a>
-<a href="#2430" id="2430">2430</a>
-<a href="#2431" id="2431">2431</a>
-<a href="#2432" id="2432">2432</a>
-<a href="#2433" id="2433">2433</a>
-<a href="#2434" id="2434">2434</a>
-<a href="#2435" id="2435">2435</a>
-<a href="#2436" id="2436">2436</a>
-<a href="#2437" id="2437">2437</a>
-<a href="#2438" id="2438">2438</a>
-<a href="#2439" id="2439">2439</a>
-<a href="#2440" id="2440">2440</a>
-<a href="#2441" id="2441">2441</a>
-<a href="#2442" id="2442">2442</a>
-<a href="#2443" id="2443">2443</a>
-<a href="#2444" id="2444">2444</a>
-<a href="#2445" id="2445">2445</a>
-<a href="#2446" id="2446">2446</a>
-<a href="#2447" id="2447">2447</a>
-<a href="#2448" id="2448">2448</a>
-<a href="#2449" id="2449">2449</a>
-<a href="#2450" id="2450">2450</a>
-<a href="#2451" id="2451">2451</a>
-<a href="#2452" id="2452">2452</a>
-<a href="#2453" id="2453">2453</a>
-<a href="#2454" id="2454">2454</a>
-<a href="#2455" id="2455">2455</a>
-<a href="#2456" id="2456">2456</a>
-<a href="#2457" id="2457">2457</a>
-<a href="#2458" id="2458">2458</a>
-<a href="#2459" id="2459">2459</a>
-<a href="#2460" id="2460">2460</a>
-<a href="#2461" id="2461">2461</a>
-<a href="#2462" id="2462">2462</a>
-<a href="#2463" id="2463">2463</a>
-<a href="#2464" id="2464">2464</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2705,41 +2648,14 @@
         <span class="self">self</span>.cycle_history_cache = <span class="self">self</span>.get_cycle_history_cycles().into();
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>((cycle, <span class="kw">_</span>)) = <span class="self">self</span>.cycle_history_cache.back() {
-            <span class="self">self</span>.rng_seed_cache = <span class="self">self
-                </span>.get_cycle_history_rng_seed(<span class="kw-2">*</span>cycle)
-                .map(|rng_seed| (<span class="kw-2">*</span>cycle, rng_seed));
+            <span class="self">self</span>.rng_seed_cache = <span class="prelude-val">Some</span>((
+                <span class="kw-2">*</span>cycle,
+                <span class="self">self</span>.get_cycle_history_rng_seed(<span class="kw-2">*</span>cycle)
+                    .expect(<span class="string">"cycle RNG seed not found"</span>),
+            ));
         } <span class="kw">else </span>{
             <span class="self">self</span>.rng_seed_cache = <span class="prelude-val">None</span>;
         }
-    }
-
-    <span class="doccomment">/// Ensures every complete cycle has the persisted fields required for selector feeding.
-    ///
-    /// A cycle marked complete must have an RNG seed and a non-empty
-    /// `final_state_hash_snapshot`. Used after load/bootstrap and during DB validation so
-    /// malformed history fails fast instead of panicking later in `feed_selector`.
-    </span><span class="kw">pub fn </span>validate_selector_history(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PosResult&lt;()&gt; {
-        <span class="kw">for </span>(cycle, complete) <span class="kw">in </span><span class="self">self</span>.get_cycle_history_cycles() {
-            <span class="kw">if </span>!complete {
-                <span class="kw">continue</span>;
-            }
-            <span class="kw">if </span><span class="self">self</span>.get_cycle_history_rng_seed(cycle).is_none() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(PosError::ContainerInconsistency(<span class="macro">format!</span>(
-                    <span class="string">"complete cycle {} is missing RNG seed required for selector feeding"</span>,
-                    cycle
-                )));
-            }
-            <span class="kw">if </span><span class="self">self
-                </span>.get_cycle_history_final_state_hash_snapshot(cycle)
-                .is_none()
-            {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(PosError::ContainerInconsistency(<span class="macro">format!</span>(
-                    <span class="string">"complete cycle {} is missing final state hash snapshot required for selector feeding"</span>,
-                    cycle
-                )));
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Reset the state of the PoS final state
@@ -2844,9 +2760,6 @@
     <span class="doccomment">/// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     </span><span class="kw">pub fn </span>compute_initial_draws(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; PosResult&lt;()&gt; {
-        <span class="comment">// Reject incomplete selector inputs before recomputing draws from history.
-        </span><span class="self">self</span>.validate_selector_history()<span class="question-mark">?</span>;
-
         <span class="comment">// if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
         </span><span class="kw">let </span>history_starts_late = <span class="self">self
             </span>.cycle_history_cache
@@ -2933,20 +2846,8 @@
                 <span class="comment">// extend the last incomplete cycle
             </span>} <span class="kw">else if </span>info.<span class="number">0</span>.checked_add(<span class="number">1</span>) == <span class="prelude-val">Some</span>(cycle) &amp;&amp; info.<span class="number">1 </span>{
                 <span class="comment">// the previous cycle is complete, push a new incomplete/empty one to extend
-                // By now `_finalize` should already have written its final_state_hash_snapshot.
-                // Catch a missing snapshot here (first slot of the new cycle) instead of waiting
-                // until feed_selector needs it as a lookback (~1 cycle later).
-                </span><span class="kw">if </span><span class="self">self
-                    </span>.get_cycle_history_final_state_hash_snapshot(info.<span class="number">0</span>)
-                    .is_none()
-                {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(PosError::ContainerInconsistency(<span class="macro">format!</span>(
-                        <span class="string">"complete cycle {} is missing final state hash snapshot before starting cycle {}"</span>,
-                        info.<span class="number">0</span>, cycle
-                    )));
-                }
 
-                <span class="kw">let </span>roll_counts = <span class="self">self</span>.get_all_roll_counts(info.<span class="number">0</span>);
+                </span><span class="kw">let </span>roll_counts = <span class="self">self</span>.get_all_roll_counts(info.<span class="number">0</span>);
                 <span class="self">self</span>.put_new_cycle_info(
                     <span class="kw-2">&amp;</span>CycleInfo::new(
                         cycle,
@@ -2975,26 +2876,13 @@
 
         <span class="kw">let </span>complete: bool =
             slot.is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count);
+        <span class="self">self</span>.put_cycle_history_complete(cycle, complete, batch);
 
         <span class="comment">// OPTIM: we could avoid reading the previous seed bits with a cache or with an update function
-        // Validate selector inputs before marking the cycle complete so a malformed seed cannot
-        // leave `complete=true` in the in-memory cache when we return an error.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>rng_seed = <span class="self">self</span>.get_cycle_history_rng_seed(cycle).ok_or_else(|| {
-            PosError::ContainerInconsistency(<span class="macro">format!</span>(
-                <span class="string">"missing RNG seed for cycle {} while applying PoS changes"</span>,
-                cycle
-            ))
-        })<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>rng_seed = <span class="self">self
+            </span>.get_cycle_history_rng_seed(cycle)
+            .expect(<span class="string">"missing RNG seed"</span>);
         rng_seed.extend(changes.seed_bits);
-        <span class="kw">if </span>complete &amp;&amp; rng_seed.len() != slots_per_cycle {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(PosError::ContainerInconsistency(<span class="macro">format!</span>(
-                <span class="string">"cycle completed with incorrect number of seed bits: {} instead of {}"</span>,
-                rng_seed.len(),
-                slots_per_cycle
-            )));
-        }
-
-        <span class="self">self</span>.put_cycle_history_complete(cycle, complete, batch);
         <span class="self">self</span>.put_cycle_history_rng_seed(cycle, rng_seed.clone(), batch);
 
         <span class="comment">// extend roll counts
@@ -3018,6 +2906,15 @@
             } <span class="kw">else </span>{
                 <span class="self">self</span>.put_cycle_history_address_entry(cycle, <span class="kw-2">&amp;</span>addr, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>stats), batch);
             }
+        }
+
+        <span class="comment">// if the cycle just completed, check that it has the right number of seed bits
+        </span><span class="kw">if </span>complete &amp;&amp; rng_seed.len() != slots_per_cycle {
+            <span class="macro">panic!</span>(
+                <span class="string">"cycle completed with incorrect number of seed bits: {} instead of {}"</span>,
+                rng_seed.len(),
+                slots_per_cycle
+            );
         }
 
         <span class="comment">// extend deferred_credits with changes.deferred_credits and remove zeros
@@ -3060,15 +2957,13 @@
                 <span class="comment">// take the final_state_hash_snapshot at cycle - 3
                 // it will later be combined with rng_seed from cycle - 2 to determine the selection seed
                 // do this here to avoid a potential attacker manipulating the selections
-                </span><span class="kw">let </span>state_hash = <span class="self">self
-                    </span>.get_cycle_history_final_state_hash_snapshot(cycle_info.<span class="number">0</span>)
-                    .ok_or_else(|| {
-                        PosError::ContainerInconsistency(<span class="macro">format!</span>(
-                            <span class="string">"complete cycle {} is missing final state hash snapshot required for selector feeding"</span>,
-                            c
-                        ))
-                    })<span class="question-mark">?</span>;
-                (<span class="self">self</span>.get_all_roll_counts(cycle_info.<span class="number">0</span>), <span class="prelude-val">Some</span>(state_hash))
+                </span><span class="kw">let </span>state_hash = <span class="self">self</span>.get_cycle_history_final_state_hash_snapshot(cycle_info.<span class="number">0</span>);
+                (
+                    <span class="self">self</span>.get_all_roll_counts(cycle_info.<span class="number">0</span>),
+                    <span class="prelude-val">Some</span>(state_hash.expect(
+                        <span class="string">"critical: a complete cycle must contain a final state hash snapshot"</span>,
+                    )),
+                )
             }
             <span class="comment">// looking back to negative cycles
             </span><span class="prelude-val">None </span>=&gt; (<span class="self">self</span>.initial_rolls.clone(), <span class="prelude-val">None</span>),
@@ -3088,15 +2983,11 @@
                 <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
                 <span class="kw">let </span><span class="kw-2">mut </span>seed = Vec::new();
                 u64_ser.serialize(<span class="kw-2">&amp;</span>c, <span class="kw-2">&amp;mut </span>seed).unwrap();
-                <span class="kw">let </span>rng_seed = <span class="self">self
-                    </span>.get_cycle_history_rng_seed(cycle_info.<span class="number">0</span>)
-                    .ok_or_else(|| {
-                        PosError::ContainerInconsistency(<span class="macro">format!</span>(
-                            <span class="string">"complete cycle {} is missing RNG seed required for selector feeding"</span>,
-                            c
-                        ))
-                    })<span class="question-mark">?</span>;
-                seed.extend(rng_seed.into_vec());
+                seed.extend(
+                    <span class="self">self</span>.get_cycle_history_rng_seed(cycle_info.<span class="number">0</span>)
+                        .expect(<span class="string">"missing RNG seed"</span>)
+                        .into_vec(),
+                );
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(lookback_state_hash) = lookback_state_hash {
                     seed.extend(lookback_state_hash.to_bytes());
                 }
@@ -3435,7 +3326,7 @@
 
     <span class="doccomment">/// Getter for the final_state_hash_snapshot of a given cycle.
     ///
-    /// Returns `None` if the RocksDB key is absent or if the stored value is `None`.
+    /// Panics if the cycle is not in the history.
     </span><span class="kw">fn </span>get_cycle_history_final_state_hash_snapshot(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cycle: u64,
@@ -3447,7 +3338,8 @@
                 STATE_CF,
                 <span class="macro">final_state_hash_snapshot_key!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(cycle)),
             )
-            .expect(CYCLE_HISTORY_DESER_ERROR)<span class="question-mark">?</span>;
+            .expect(CYCLE_HISTORY_DESER_ERROR)
+            .expect(CYCLE_HISTORY_DESER_ERROR);
         <span class="kw">let </span>(<span class="kw">_</span>, state_hash) = <span class="self">self
             </span>.cycle_info_deserializer
             .cycle_info_deserializer
@@ -4710,6 +4602,7 @@
     }
 
     <span class="attr">#[test]
+    #[should_panic]
     </span><span class="kw">fn </span>test_feed_selector() {
         <span class="kw">let </span>initial_deferred_credits_file =
             tempfile::NamedTempFile::new().expect(<span class="string">"could not create temporary initial rolls file"</span>);
@@ -4811,15 +4704,8 @@
             <span class="prelude-val">Err</span>(PosError::CycleUnfinished(<span class="number">4</span>))
         );
 
-        <span class="comment">// F100: complete cycles without a final state hash snapshot must error, not panic
-        </span><span class="macro">assert_matches!</span>(
-            pos_state_0.feed_selector(<span class="number">4</span>),
-            <span class="prelude-val">Err</span>(PosError::ContainerInconsistency(<span class="kw">_</span>))
-        );
-        <span class="macro">assert_matches!</span>(
-            pos_state_0.validate_selector_history(),
-            <span class="prelude-val">Err</span>(PosError::ContainerInconsistency(<span class="kw">_</span>))
-        );
+        <span class="comment">// Will panic (no final state hash snapshot)
+        </span><span class="kw">let _ </span>= pos_state_0.feed_selector(<span class="number">4</span>);
     }
 
     <span class="attr">#[test]
