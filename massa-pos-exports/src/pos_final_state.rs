@@ -344,9 +344,19 @@ impl PoSFinalState {
         );
     }
 
-    /// Create the a cycle based off of another cycle_info.
+    /// Create a cycle based off of another cycle_info.
     ///
     /// Used for downtime interpolation, when restarting from a snapshot.
+    /// Roll counts are always carried over from `last_cycle_info`.
+    ///
+    /// `rng_seed` and `production_stats` are kept only when continuing the same
+    /// incomplete cycle (`last_cycle_info.cycle` matches the target cycle and
+    /// `first_slot` is not the first slot of that cycle). Otherwise the seed
+    /// starts fresh and `production_stats` are empty, so interpolated future
+    /// cycles do not inherit stale production results from the snapshot.
+    ///
+    /// In all cases, `rng_seed` is then extended with `false` bits for every
+    /// interpolated slot in `[first_slot, last_slot]`.
     pub fn create_new_cycle_from_last(
         &mut self,
         last_cycle_info: &CycleInfo,
@@ -354,13 +364,25 @@ impl PoSFinalState {
         last_slot: Slot,
         batch: &mut DBBatch,
     ) -> Result<(), PosError> {
-        let mut rng_seed = if first_slot.is_first_of_cycle(self.config.periods_per_cycle) {
-            BitVec::with_capacity(self.slots_per_cycle())
-        } else {
-            last_cycle_info.rng_seed.clone()
-        };
-
         let cycle = last_slot.get_cycle(self.config.periods_per_cycle);
+
+        // Keep seed/stats only when filling the gap in the same incomplete cycle.
+        // Require both same cycle id and a non-first first_slot (defense in depth:
+        // callers may reuse a snapshot CycleInfo across several target cycles).
+        let continuing_same_cycle = last_cycle_info.cycle == cycle
+            && !first_slot.is_first_of_cycle(self.config.periods_per_cycle);
+
+        let (mut rng_seed, production_stats) = if continuing_same_cycle {
+            (
+                last_cycle_info.rng_seed.clone(),
+                last_cycle_info.production_stats.clone(),
+            )
+        } else {
+            (
+                BitVec::with_capacity(self.slots_per_cycle()),
+                PreHashMap::default(),
+            )
+        };
 
         let num_slots = match last_slot.slots_since(&first_slot, self.config.thread_count) {
             Ok(slots_since) => slots_since.saturating_add(1),
@@ -379,6 +401,7 @@ impl PoSFinalState {
                 slots_per_cycle
             )));
         }
+        // Pad downtime slots; not the same as leaving the seed empty.
         let to_add = (num_slots as usize).min(slots_per_cycle.saturating_sub(rng_seed.len()));
         rng_seed.extend(vec![false; to_add]);
 
@@ -400,7 +423,7 @@ impl PoSFinalState {
                 complete,
                 last_cycle_info.roll_counts.clone(),
                 rng_seed,
-                last_cycle_info.production_stats.clone(),
+                production_stats,
             ),
             batch,
         );
