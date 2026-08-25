@@ -720,88 +720,6 @@
 <a href="#720" id="720">720</a>
 <a href="#721" id="721">721</a>
 <a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
-<a href="#729" id="729">729</a>
-<a href="#730" id="730">730</a>
-<a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
-<a href="#753" id="753">753</a>
-<a href="#754" id="754">754</a>
-<a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
-<a href="#757" id="757">757</a>
-<a href="#758" id="758">758</a>
-<a href="#759" id="759">759</a>
-<a href="#760" id="760">760</a>
-<a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
-<a href="#763" id="763">763</a>
-<a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
-<a href="#773" id="773">773</a>
-<a href="#774" id="774">774</a>
-<a href="#775" id="775">775</a>
-<a href="#776" id="776">776</a>
-<a href="#777" id="777">777</a>
-<a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
-<a href="#780" id="780">780</a>
-<a href="#781" id="781">781</a>
-<a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -853,20 +771,9 @@
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>thiserror::Error;
 
-<span class="comment">// dev-dependencies used only by the integration tests
-</span><span class="attr">#[cfg(test)]
-</span><span class="kw">use </span>tempfile <span class="kw">as _</span>;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span>tokio <span class="kw">as _</span>;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span>tokio_stream <span class="kw">as _</span>;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span>tonic_health <span class="kw">as _</span>;
-
 <span class="kw">pub mod </span>cert_manager;
 <span class="kw">mod </span>config;
 <span class="kw">pub use </span>config::ClientConfig;
-<span class="kw">pub use </span>config::GrpcTlsConfig;
 <span class="kw">pub use </span>config::HttpConfig;
 <span class="kw">pub use </span>config::WsConfig;
 
@@ -879,66 +786,6 @@
     <span class="doccomment">/// Connection error
     </span><span class="attr">#[error(<span class="string">"Cannot connect to grpc server: {0}"</span>)]
     </span>Connect(<span class="attr">#[from] </span>tonic::transport::Error),
-    <span class="doccomment">/// TLS configuration error
-    </span><span class="attr">#[error(<span class="string">"Invalid grpc TLS configuration: {0}"</span>)]
-    </span>InvalidTlsConfig(String),
-}
-
-<span class="doccomment">/// Connect a gRPC channel to `addr`: in plaintext when `tls_config` is `None`, over TLS
-/// (or mTLS when a client identity is configured) otherwise.
-///
-/// Errors on an invalid TLS configuration (unreadable certificate material, or a client
-/// certificate without its key and vice versa) as well as on connection failure.
-</span><span class="kw">pub async fn </span>connect_grpc_channel(
-    addr: SocketAddr,
-    tls_config: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>GrpcTlsConfig&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::transport::Channel, ClientError&gt; {
-    <span class="kw">let </span>endpoint = <span class="kw">match </span>tls_config {
-        <span class="prelude-val">Some</span>(tls) =&gt; {
-            <span class="kw">let </span>ca_pem = std::fs::read(<span class="kw-2">&amp;</span>tls.certificate_authority_root_path).map_err(|err| {
-                ClientError::InvalidTlsConfig(<span class="macro">format!</span>(
-                    <span class="string">"failed to read certificate authority root {}: {}"</span>,
-                    tls.certificate_authority_root_path.display(),
-                    err
-                ))
-            })<span class="question-mark">?</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>client_tls_config = tonic::transport::ClientTlsConfig::new()
-                .ca_certificate(tonic::transport::Certificate::from_pem(ca_pem))
-                <span class="comment">// the certificate is verified under this name while dialing `addr`
-                </span>.domain_name(tls.server_name.clone());
-            <span class="kw">match </span>(<span class="kw-2">&amp;</span>tls.client_certificate_path, <span class="kw-2">&amp;</span>tls.client_private_key_path) {
-                (<span class="prelude-val">Some</span>(cert_path), <span class="prelude-val">Some</span>(key_path)) =&gt; {
-                    <span class="kw">let </span>cert = std::fs::read(cert_path).map_err(|err| {
-                        ClientError::InvalidTlsConfig(<span class="macro">format!</span>(
-                            <span class="string">"failed to read client certificate {}: {}"</span>,
-                            cert_path.display(),
-                            err
-                        ))
-                    })<span class="question-mark">?</span>;
-                    <span class="kw">let </span>key = std::fs::read(key_path).map_err(|err| {
-                        ClientError::InvalidTlsConfig(<span class="macro">format!</span>(
-                            <span class="string">"failed to read client private key {}: {}"</span>,
-                            key_path.display(),
-                            err
-                        ))
-                    })<span class="question-mark">?</span>;
-                    client_tls_config =
-                        client_tls_config.identity(tonic::transport::Identity::from_pem(cert, key));
-                }
-                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; {}
-                <span class="kw">_ </span>=&gt; {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ClientError::InvalidTlsConfig(
-                        <span class="string">"client_certificate_path and client_private_key_path must be set together"
-                            </span>.to_string(),
-                    ));
-                }
-            }
-            tonic::transport::Channel::from_shared(<span class="macro">format!</span>(<span class="string">"https://{}"</span>, addr))<span class="question-mark">?
-                </span>.tls_config(client_tls_config)<span class="question-mark">?
-        </span>}
-        <span class="prelude-val">None </span>=&gt; tonic::transport::Channel::from_shared(<span class="macro">format!</span>(<span class="string">"grpc://{}"</span>, addr))<span class="question-mark">?</span>,
-    };
-    endpoint.connect().<span class="kw">await</span>.map_err(ClientError::Connect)
 }
 
 <span class="doccomment">/// Client
@@ -958,15 +805,10 @@
 <span class="kw">impl </span>Client {
     <span class="doccomment">/// creates a new client
     ///
-    /// The gRPC transports are plaintext when the corresponding TLS configuration is
-    /// `None`, TLS (or mTLS) otherwise. An invalid TLS configuration is a hard error; a
-    /// connection failure leaves the corresponding gRPC client to `None`, so the JSON-RPC
-    /// clients stay usable when the node is unreachable.
-    ///
-    /// Note: the JSON-RPC transports of this constructor are plaintext `http`. For a
-    /// TLS-enabled JSON-RPC endpoint, build the client with [`RpcClient::from_url`] and
-    /// an `https` url instead.
-    </span><span class="attr">#[allow(clippy::too_many_arguments)]
+    /// Note: this constructor always uses plaintext transports (`http` for the JSON-RPC
+    /// APIs, `grpc` for the gRPC APIs) and cannot connect to a node whose gRPC server has
+    /// `enable_tls` set. For a TLS-enabled JSON-RPC endpoint, build the client with
+    /// [`RpcClient::from_url`] and an `https` url instead.
     </span><span class="kw">pub async fn </span>new(
         ip: IpAddr,
         public_port: u16,
@@ -975,8 +817,6 @@
         grpc_private_port: u16,
         chain_id: u64,
         http_config: <span class="kw-2">&amp;</span>HttpConfig,
-        grpc_public_tls: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>GrpcTlsConfig&gt;,
-        grpc_private_tls: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>GrpcTlsConfig&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Client, ClientError&gt; {
         <span class="kw">let </span>public_socket_addr = SocketAddr::new(ip, public_port);
         <span class="kw">let </span>private_socket_addr = SocketAddr::new(ip, private_port);
@@ -984,36 +824,32 @@
         <span class="kw">let </span>grpc_private_socket_addr = SocketAddr::new(ip, grpc_private_port);
         <span class="kw">let </span>public_url = <span class="macro">format!</span>(<span class="string">"http://{}"</span>, public_socket_addr);
         <span class="kw">let </span>private_url = <span class="macro">format!</span>(<span class="string">"http://{}"</span>, private_socket_addr);
+        <span class="kw">let </span>grpc_public_url = <span class="macro">format!</span>(<span class="string">"grpc://{}"</span>, grpc_public_socket_addr);
+        <span class="kw">let </span>grpc_private_url = <span class="macro">format!</span>(<span class="string">"grpc://{}"</span>, grpc_private_socket_addr);
 
         <span class="comment">// try to start grpc client (public api) and connect to the server
-        </span><span class="kw">let </span>grpc_pub_client =
-            <span class="kw">match </span>connect_grpc_channel(grpc_public_socket_addr, grpc_public_tls).<span class="kw">await </span>{
-                <span class="prelude-val">Ok</span>(channel) =&gt; <span class="prelude-val">Some</span>(PublicServiceClient::new(channel)),
-                <span class="prelude-val">Err</span>(err @ ClientError::InvalidTlsConfig(<span class="kw">_</span>)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(err),
-                <span class="prelude-val">Err</span>(err) =&gt; {
-                    <span class="macro">tracing::error!</span>(
-                        <span class="string">"unable to connect to the public grpc server at {}: {}"</span>,
-                        grpc_public_socket_addr,
-                        err
-                    );
-                    <span class="prelude-val">None
-                </span>}
-            };
+        </span><span class="kw">let </span>grpc_pub_client = <span class="kw">match </span>tonic::transport::Channel::from_shared(grpc_public_url)<span class="question-mark">?
+            </span>.connect()
+            .<span class="kw">await
+        </span>{
+            <span class="prelude-val">Ok</span>(channel) =&gt; <span class="prelude-val">Some</span>(PublicServiceClient::new(channel)),
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">tracing::warn!</span>(<span class="string">"unable to connect to grpc server {}"</span>, e);
+                <span class="prelude-val">None
+            </span>}
+        };
 
         <span class="comment">// try to start grpc client (private api) and connect to the server
-        </span><span class="kw">let </span>grpc_priv_client =
-            <span class="kw">match </span>connect_grpc_channel(grpc_private_socket_addr, grpc_private_tls).<span class="kw">await </span>{
-                <span class="prelude-val">Ok</span>(channel) =&gt; <span class="prelude-val">Some</span>(PrivateServiceClient::new(channel)),
-                <span class="prelude-val">Err</span>(err @ ClientError::InvalidTlsConfig(<span class="kw">_</span>)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(err),
-                <span class="prelude-val">Err</span>(err) =&gt; {
-                    <span class="macro">tracing::error!</span>(
-                        <span class="string">"unable to connect to the private grpc server at {}: {}"</span>,
-                        grpc_private_socket_addr,
-                        err
-                    );
-                    <span class="prelude-val">None
-                </span>}
-            };
+        </span><span class="kw">let </span>grpc_priv_client = <span class="kw">match </span>tonic::transport::Channel::from_shared(grpc_private_url)<span class="question-mark">?
+            </span>.connect()
+            .<span class="kw">await
+        </span>{
+            <span class="prelude-val">Ok</span>(channel) =&gt; <span class="prelude-val">Some</span>(PrivateServiceClient::new(channel)),
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">tracing::warn!</span>(<span class="string">"unable to connect to grpc server {}"</span>, e);
+                <span class="prelude-val">None
+            </span>}
+        };
 
         <span class="prelude-val">Ok</span>(Client {
             public: RpcClient::from_url(<span class="kw-2">&amp;</span>public_url, http_config).<span class="kw">await</span>,

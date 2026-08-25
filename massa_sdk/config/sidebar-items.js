@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ClientConfig","GrpcTlsConfig","HttpConfig","WsConfig"]};
+window.SIDEBAR_ITEMS = {"struct":["ClientConfig","HttpConfig","WsConfig"]};
