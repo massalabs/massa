@@ -1452,7 +1452,6 @@ impl ExecutionContext {
     }
 
     /// Returns `true` if the execution component version is at least `version`.
-    #[allow(dead_code)]
     pub fn is_execution_component_version_at_least(&self, version: u32) -> bool {
         self.execution_component_version >= version
     }
