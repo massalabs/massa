@@ -10,7 +10,7 @@ use console::style;
 use dialoguer::Password;
 use is_terminal::IsTerminal;
 use massa_models::config::handle_disclaimer;
-use massa_sdk::{Client, ClientConfig, HttpConfig};
+use massa_sdk::{Client, ClientConfig, GrpcTlsConfig, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
 use std::env;
@@ -104,6 +104,27 @@ fn main() -> anyhow::Result<()> {
     tokio_rt.block_on(run(args))
 }
 
+/// Build the SDK TLS configuration for one gRPC endpoint from the client settings.
+fn grpc_tls_config(settings: &settings::GrpcTlsSettings) -> Option<GrpcTlsConfig> {
+    if !settings.enable_tls {
+        return None;
+    }
+    let (client_certificate_path, client_private_key_path) = if settings.enable_mtls {
+        (
+            Some(settings.client_certificate_path.clone()),
+            Some(settings.client_private_key_path.clone()),
+        )
+    } else {
+        (None, None)
+    };
+    Some(GrpcTlsConfig {
+        server_name: settings.server_name.clone(),
+        certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
+        client_certificate_path,
+        client_private_key_path,
+    })
+}
+
 async fn run(args: Args) -> Result<()> {
     let client_config = ClientConfig {
         max_request_body_size: SETTINGS.client.max_request_body_size,
@@ -119,6 +140,9 @@ async fn run(args: Args) -> Result<()> {
         client_config,
         enabled: SETTINGS.client.http.enabled,
     };
+
+    let grpc_public_tls = grpc_tls_config(&SETTINGS.client.grpc.public);
+    let grpc_private_tls = grpc_tls_config(&SETTINGS.client.grpc.private);
 
     // TODO: move settings loading in another crate ... see #1277
     let settings = SETTINGS.clone();
@@ -175,6 +199,8 @@ async fn run(args: Args) -> Result<()> {
         grpc_priv_port,
         chain_id,
         &http_config,
+        grpc_public_tls.as_ref(),
+        grpc_private_tls.as_ref(),
     )
     .await?;
     if std::io::stdout().is_terminal() && args.command == Command::help && !args.json {

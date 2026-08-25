@@ -3702,8 +3702,12 @@ dependencies = [
  "massa_models",
  "massa_time",
  "rcgen",
+ "tempfile",
  "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
  "tonic",
+ "tonic-health",
  "tracing",
 ]
 

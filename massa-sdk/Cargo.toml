@@ -8,7 +8,7 @@ jsonrpsee = {workspace = true, "features" = ["client"]}
 jsonrpsee-http-client = {workspace = true}
 jsonrpsee-ws-client = {workspace = true}
 http = {workspace = true}
-tonic = {workspace = true, "features" = ["gzip"]}   # BOM UPGRADE     Revert to {"version": "0.9.1", "features": ["gzip"]} if problem
+tonic = {workspace = true, "features" = ["gzip", "tls"]}   # BOM UPGRADE     Revert to {"version": "0.9.1", "features": ["gzip"]} if problem
 thiserror = {workspace = true}
 tracing = {workspace = true, "features" = ["log"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["log"]} if problem
 massa_api_exports = {workspace = true}
@@ -16,3 +16,9 @@ massa_models = {workspace = true}
 massa_time = {workspace = true}
 massa-proto-rs = {workspace = true, "features" = ["tonic"]}
 rcgen = {workspace = true , features = ["pem", "x509-parser"]}
+
+[dev-dependencies]
+tempfile = {workspace = true}
+tokio = {workspace = true, "features" = ["macros", "rt-multi-thread", "net"]}
+tokio-stream = {workspace = true, "features" = ["net"]}
+tonic-health = {workspace = true}
