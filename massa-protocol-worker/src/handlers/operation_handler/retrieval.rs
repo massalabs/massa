@@ -142,12 +142,16 @@ impl RetrievalThread {
                                 // A valid message prefix followed by trailing bytes must not
                                 // tear down this long-lived shared retrieval thread (doing so
                                 // would let a single peer deny operation handling for everyone).
-                                // Skip the malformed message and keep serving other peers.
+                                // A compliant peer never sends trailing bytes, so ban the
+                                // sender and keep serving other peers.
                                 warn!(
-                                    "peer {} sent an operation message with {} unexpected trailing byte(s); ignoring it",
+                                    "peer {} sent an operation message with {} unexpected trailing byte(s); banning it",
                                     peer_id,
                                     rest.len()
                                 );
+                                if let Err(e) = self.ban_node(&peer_id) {
+                                    warn!("Error when banning node: {}", e);
+                                }
                                 continue;
                             }
                             match message {

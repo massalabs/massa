@@ -20,7 +20,9 @@ use crate::wrap_peer_db::MockPeerDBTrait;
 use crate::{
     handlers::{
         block_handler::{BlockInfoReply, BlockMessage},
+        endorsement_handler::EndorsementMessage,
         operation_handler::OperationMessage,
+        peer_handler::PeerManagementMessage,
     },
     messages::Message,
 };
@@ -1016,5 +1018,159 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
         .notify_block_attack(block.id)
         .unwrap();
 
+    ban_waitpoint.wait();
+}
+
+/// Common mock setup for the trailing-bytes ban tests: the peer must be
+/// disconnected and banned, and nothing else must happen.
+fn trailing_bytes_ban_setup(
+    foreign_controllers: &mut ProtocolForeignControllers,
+    node_a_peer_id: PeerId,
+    ban_waitpoint: &WaitPoint,
+) {
+    let ban_waitpoint_trigger_handle = ban_waitpoint.get_trigger_handle();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .returning(move |peer_id| {
+            assert_eq!(peer_id, &node_a_peer_id);
+            ban_waitpoint_trigger_handle.trigger();
+        });
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    ProtocolTestUniverse::active_connections_boilerplate(
+        &mut shared_active_connections,
+        [node_a_peer_id].into_iter().collect(),
+    );
+    shared_active_connections.set_expectations(|active_connections| {
+        active_connections
+            .expect_shutdown_connection()
+            .returning(move |peer_id| {
+                assert_eq!(peer_id, &node_a_peer_id);
+            });
+    });
+    foreign_controllers
+        .network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(shared_active_connections.clone()));
+}
+
+#[test]
+fn test_protocol_bans_node_sending_block_message_with_trailing_bytes() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let block_creator = KeyPair::generate(0).unwrap();
+    let block =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    let ban_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    trailing_bytes_ban_setup(&mut foreign_controllers, node_a_peer_id, &ban_waitpoint);
+    // the message must be dropped, not processed
+    foreign_controllers
+        .consensus_controller
+        .expect_register_block_header()
+        .never();
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive_with_trailing_bytes(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
+    );
+    ban_waitpoint.wait();
+}
+
+#[test]
+fn test_protocol_bans_node_sending_operation_message_with_trailing_bytes() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let op_creator = KeyPair::generate(0).unwrap();
+    let operation = tools::create_operation_with_expire_period(&op_creator, 1);
+
+    let ban_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    trailing_bytes_ban_setup(&mut foreign_controllers, node_a_peer_id, &ban_waitpoint);
+    // the message must be dropped, not processed
+    foreign_controllers
+        .pool_controller
+        .set_expectations(|pool_controller| {
+            pool_controller.expect_add_operations().never();
+        });
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive_with_trailing_bytes(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::Operations(vec![operation])),
+    );
+    ban_waitpoint.wait();
+}
+
+#[test]
+fn test_protocol_bans_node_sending_endorsement_message_with_trailing_bytes() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let endorsement_creator = KeyPair::generate(0).unwrap();
+    let endorsement =
+        ProtocolTestUniverse::create_endorsement(&endorsement_creator, Slot::new(1, 1));
+
+    let ban_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    trailing_bytes_ban_setup(&mut foreign_controllers, node_a_peer_id, &ban_waitpoint);
+    // the message must be dropped, not processed
+    foreign_controllers
+        .pool_controller
+        .set_expectations(|pool_controller| {
+            pool_controller.expect_add_endorsements().never();
+        });
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive_with_trailing_bytes(
+        &node_a_peer_id,
+        Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement])),
+    );
+    ban_waitpoint.wait();
+}
+
+#[test]
+fn test_protocol_bans_node_sending_peer_management_message_with_trailing_bytes() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+
+    let ban_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    trailing_bytes_ban_setup(&mut foreign_controllers, node_a_peer_id, &ban_waitpoint);
+    // banned-state lookup done by the peer handler before deserializing
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers()
+        .return_const(HashMap::new());
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive_with_trailing_bytes(
+        &node_a_peer_id,
+        Message::PeerManagement(Box::new(PeerManagementMessage::ListPeers(vec![]))),
+    );
     ban_waitpoint.wait();
 }

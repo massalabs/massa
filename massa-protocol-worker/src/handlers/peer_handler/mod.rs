@@ -227,7 +227,14 @@ impl PeerManagementHandler {
                                 }
                             };
                             if !rest.is_empty() {
-                                warn!("message not fully deserialized");
+                                // A compliant peer never sends trailing bytes, so ban the sender.
+                                warn!(
+                                    "peer {} sent a peer management message with {} unexpected trailing byte(s); banning it",
+                                    peer_id,
+                                    rest.len()
+                                );
+                                active_connections.shutdown_connection(&peer_id);
+                                peer_db.write().ban_peer(&peer_id);
                                 continue;
                             }
                             match message {
