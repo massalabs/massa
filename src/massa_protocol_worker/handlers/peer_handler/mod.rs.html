@@ -830,6 +830,13 @@
 <a href="#830" id="830">830</a>
 <a href="#831" id="831">831</a>
 <a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -1059,7 +1066,14 @@
                                 }
                             };
                             <span class="kw">if </span>!rest.is_empty() {
-                                <span class="macro">warn!</span>(<span class="string">"message not fully deserialized"</span>);
+                                <span class="comment">// A compliant peer never sends trailing bytes, so ban the sender.
+                                </span><span class="macro">warn!</span>(
+                                    <span class="string">"peer {} sent a peer management message with {} unexpected trailing byte(s); banning it"</span>,
+                                    peer_id,
+                                    rest.len()
+                                );
+                                active_connections.shutdown_connection(<span class="kw-2">&amp;</span>peer_id);
+                                peer_db.write().ban_peer(<span class="kw-2">&amp;</span>peer_id);
                                 <span class="kw">continue</span>;
                             }
                             <span class="kw">match </span>message {

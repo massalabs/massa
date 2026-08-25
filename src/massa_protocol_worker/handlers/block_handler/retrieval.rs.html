@@ -1344,6 +1344,10 @@
 <a href="#1344" id="1344">1344</a>
 <a href="#1345" id="1345">1345</a>
 <a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1497,12 +1501,16 @@
                                 <span class="comment">// A valid message prefix followed by trailing bytes must not
                                 // tear down this long-lived shared retrieval thread (doing so
                                 // would let a single peer deny block handling for everyone).
-                                // Skip the malformed message and keep serving other peers.
+                                // A compliant peer never sends trailing bytes, so ban the
+                                // sender and keep serving other peers.
                                 </span><span class="macro">warn!</span>(
-                                    <span class="string">"peer {} sent a block message with {} unexpected trailing byte(s); ignoring it"</span>,
+                                    <span class="string">"peer {} sent a block message with {} unexpected trailing byte(s); banning it"</span>,
                                     peer_id,
                                     rest.len()
                                 );
+                                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[peer_id]) {
+                                    <span class="macro">warn!</span>(<span class="string">"Error while banning peer {} err: {:?}"</span>, peer_id, err);
+                                }
                                 <span class="kw">continue</span>;
                             }
                             <span class="kw">match </span>message {
