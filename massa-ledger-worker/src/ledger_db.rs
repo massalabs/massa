@@ -82,6 +82,7 @@ impl LedgerDB {
         thread_count: u8,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
+        max_bytecode_size: u64,
     ) -> Self {
         LedgerDB {
             db,
@@ -94,7 +95,7 @@ impl LedgerDB {
                 Bound::Included(Amount::MIN),
                 Bound::Included(Amount::MAX),
             ),
-            bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
+            bytecode_deserializer: BytecodeDeserializer::new(max_bytecode_size),
             version_serializer: U64VarIntSerializer::new(),
             version_deserializer: U64VarIntDeserializer::new(
                 Bound::Included(0),
@@ -705,7 +706,7 @@ mod tests {
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
         ));
 
-        let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000);
+        let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000, 1000);
         let mut batch = DBBatch::new();
 
         ledger_db.put_entry(&addr, entry, &mut batch);

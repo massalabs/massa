@@ -1576,7 +1576,7 @@ fn check_input_operation(
 ) -> RpcResult<SecureShareOperation> {
     let operation_deserializer = SecureShareDeserializer::new(
         OperationDeserializer::new(
-            api_cfg.max_datastore_value_length,
+            api_cfg.max_bytecode_size,
             api_cfg.max_function_name_length,
             api_cfg.max_parameter_size,
             api_cfg.max_op_datastore_entry_count,

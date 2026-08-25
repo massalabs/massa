@@ -19,7 +19,7 @@ use massa_models::{
     bytecode::Bytecode,
     config::{
         MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-        MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, THREAD_COUNT,
+        MAX_BYTECODE_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, THREAD_COUNT,
     },
     datastore::Datastore,
     prehash::PreHashSet,
@@ -135,6 +135,7 @@ impl Default for BootstrapServerTestUniverseBuilder {
                 initial_ledger_path: file.path().to_path_buf(),
                 max_key_length: MAX_DATASTORE_KEY_LENGTH,
                 max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+                max_bytecode_size: MAX_BYTECODE_LENGTH,
             },
             controllers.database.clone(),
         );

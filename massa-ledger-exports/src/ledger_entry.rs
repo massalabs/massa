@@ -100,13 +100,14 @@ impl LedgerEntryDeserializer {
         max_datastore_entry_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
+        max_bytecode_size: u64,
     ) -> Self {
         Self {
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
                 Included(Amount::MAX),
             ),
-            bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
+            bytecode_deserializer: BytecodeDeserializer::new(max_bytecode_size),
             datastore_deserializer: DatastoreDeserializer::new(
                 max_datastore_entry_count,
                 max_datastore_key_length,
@@ -137,7 +138,7 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntrySerializer::new();
-    /// let deserializer = LedgerEntryDeserializer::new(10000, 255, 10000);
+    /// let deserializer = LedgerEntryDeserializer::new(10000, 255, 10000, 10000);
     /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
     /// let (rest, ledger_entry_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());

@@ -182,6 +182,7 @@ async fn launch(
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
@@ -761,7 +762,7 @@ async fn launch(
         max_size_channel_network_to_endorsement_handler:
             MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER,
         max_size_channel_network_to_peer_handler: MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER,
-        max_size_value_datastore: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
@@ -964,7 +965,7 @@ async fn launch(
         ping_interval: SETTINGS.api.ping_interval,
         enable_http: SETTINGS.api.enable_http,
         enable_ws: SETTINGS.api.enable_ws,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
@@ -1255,7 +1256,7 @@ fn configure_grpc(
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         endorsement_count: ENDORSEMENT_COUNT,
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_datastore_entries_per_request: settings.max_datastore_entries_per_request,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,

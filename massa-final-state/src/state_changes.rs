@@ -124,6 +124,7 @@ impl StateChangesDeserializer {
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
+        max_bytecode_size: u64,
         max_rolls_length: u64,
         max_production_stats_length: u64,
         max_credits_length: u64,
@@ -138,6 +139,7 @@ impl StateChangesDeserializer {
                 max_datastore_key_length,
                 max_datastore_value_length,
                 max_datastore_entry_count,
+                max_bytecode_size,
             ),
             async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(
                 thread_count,
@@ -244,11 +246,11 @@ mod test {
     use massa_serialization::DeserializeError;
 
     use massa_models::config::{
-        ENDORSEMENT_COUNT, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_DATASTORE_ENTRY_COUNT,
-        MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-        MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-        MAX_LEDGER_CHANGES_COUNT, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-        MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
+        ENDORSEMENT_COUNT, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BYTECODE_LENGTH,
+        MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+        MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATION_CHANGES_LENGTH,
+        MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT,
+        MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
     };
 
     use super::*;
@@ -319,6 +321,7 @@ mod test {
             MAX_DATASTORE_KEY_LENGTH,
             MAX_DATASTORE_VALUE_LENGTH,
             MAX_DATASTORE_ENTRY_COUNT,
+            MAX_BYTECODE_LENGTH,
             MAX_ROLLS_COUNT_LENGTH,
             MAX_PRODUCTION_STATS_LENGTH,
             MAX_DEFERRED_CREDITS_LENGTH,
