@@ -250,14 +250,41 @@ impl PoSFinalState {
         self.cycle_history_cache = self.get_cycle_history_cycles().into();
 
         if let Some((cycle, _)) = self.cycle_history_cache.back() {
-            self.rng_seed_cache = Some((
-                *cycle,
-                self.get_cycle_history_rng_seed(*cycle)
-                    .expect("cycle RNG seed not found"),
-            ));
+            self.rng_seed_cache = self
+                .get_cycle_history_rng_seed(*cycle)
+                .map(|rng_seed| (*cycle, rng_seed));
         } else {
             self.rng_seed_cache = None;
         }
+    }
+
+    /// Ensures every complete cycle has the persisted fields required for selector feeding.
+    ///
+    /// A cycle marked complete must have an RNG seed and a non-empty
+    /// `final_state_hash_snapshot`. Used after load/bootstrap and during DB validation so
+    /// malformed history fails fast instead of panicking later in `feed_selector`.
+    pub fn validate_selector_history(&self) -> PosResult<()> {
+        for (cycle, complete) in self.get_cycle_history_cycles() {
+            if !complete {
+                continue;
+            }
+            if self.get_cycle_history_rng_seed(cycle).is_none() {
+                return Err(PosError::ContainerInconsistency(format!(
+                    "complete cycle {} is missing RNG seed required for selector feeding",
+                    cycle
+                )));
+            }
+            if self
+                .get_cycle_history_final_state_hash_snapshot(cycle)
+                .is_none()
+            {
+                return Err(PosError::ContainerInconsistency(format!(
+                    "complete cycle {} is missing final state hash snapshot required for selector feeding",
+                    cycle
+                )));
+            }
+        }
+        Ok(())
     }
 
     /// Reset the state of the PoS final state
@@ -371,6 +398,9 @@ impl PoSFinalState {
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {
+        // Reject incomplete selector inputs before recomputing draws from history.
+        self.validate_selector_history()?;
+
         // if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
         let history_starts_late = self
             .cycle_history_cache
@@ -452,6 +482,18 @@ impl PoSFinalState {
                 // extend the last incomplete cycle
             } else if info.0.checked_add(1) == Some(cycle) && info.1 {
                 // the previous cycle is complete, push a new incomplete/empty one to extend
+                // By now `_finalize` should already have written its final_state_hash_snapshot.
+                // Catch a missing snapshot here (first slot of the new cycle) instead of waiting
+                // until feed_selector needs it as a lookback (~1 cycle later).
+                if self
+                    .get_cycle_history_final_state_hash_snapshot(info.0)
+                    .is_none()
+                {
+                    return Err(PosError::ContainerInconsistency(format!(
+                        "complete cycle {} is missing final state hash snapshot before starting cycle {}",
+                        info.0, cycle
+                    )));
+                }
 
                 let roll_counts = self.get_all_roll_counts(info.0);
                 self.put_new_cycle_info(
@@ -484,6 +526,8 @@ impl PoSFinalState {
             slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
 
         // OPTIM: we could avoid reading the previous seed bits with a cache or with an update function
+        // Validate selector inputs before marking the cycle complete so a malformed seed cannot
+        // leave `complete=true` in the in-memory cache when we return an error.
         let mut rng_seed = self.get_cycle_history_rng_seed(cycle).ok_or_else(|| {
             PosError::ContainerInconsistency(format!("missing RNG seed for cycle {}", cycle))
         })?;
@@ -573,13 +617,15 @@ impl PoSFinalState {
                 // take the final_state_hash_snapshot at cycle - 3
                 // it will later be combined with rng_seed from cycle - 2 to determine the selection seed
                 // do this here to avoid a potential attacker manipulating the selections
-                let state_hash = self.get_cycle_history_final_state_hash_snapshot(cycle_info.0);
-                (
-                    self.get_all_roll_counts(cycle_info.0),
-                    Some(state_hash.expect(
-                        "critical: a complete cycle must contain a final state hash snapshot",
-                    )),
-                )
+                let state_hash = self
+                    .get_cycle_history_final_state_hash_snapshot(cycle_info.0)
+                    .ok_or_else(|| {
+                        PosError::ContainerInconsistency(format!(
+                            "complete cycle {} is missing final state hash snapshot required for selector feeding",
+                            c
+                        ))
+                    })?;
+                (self.get_all_roll_counts(cycle_info.0), Some(state_hash))
             }
             // looking back to negative cycles
             None => (self.initial_rolls.clone(), None),
@@ -599,11 +645,15 @@ impl PoSFinalState {
                 let u64_ser = U64VarIntSerializer::new();
                 let mut seed = Vec::new();
                 u64_ser.serialize(&c, &mut seed).unwrap();
-                seed.extend(
-                    self.get_cycle_history_rng_seed(cycle_info.0)
-                        .expect("missing RNG seed")
-                        .into_vec(),
-                );
+                let rng_seed = self
+                    .get_cycle_history_rng_seed(cycle_info.0)
+                    .ok_or_else(|| {
+                        PosError::ContainerInconsistency(format!(
+                            "complete cycle {} is missing RNG seed required for selector feeding",
+                            c
+                        ))
+                    })?;
+                seed.extend(rng_seed.into_vec());
                 if let Some(lookback_state_hash) = lookback_state_hash {
                     seed.extend(lookback_state_hash.to_bytes());
                 }
@@ -942,7 +992,7 @@ impl PoSFinalState {
 
     /// Getter for the final_state_hash_snapshot of a given cycle.
     ///
-    /// Panics if the cycle is not in the history.
+    /// Returns `None` if the RocksDB key is absent or if the stored value is `None`.
     fn get_cycle_history_final_state_hash_snapshot(
         &self,
         cycle: u64,
@@ -954,8 +1004,7 @@ impl PoSFinalState {
                 STATE_CF,
                 final_state_hash_snapshot_key!(self.cycle_history_cycle_prefix(cycle)),
             )
-            .expect(CYCLE_HISTORY_DESER_ERROR)
-            .expect(CYCLE_HISTORY_DESER_ERROR);
+            .expect(CYCLE_HISTORY_DESER_ERROR)?;
         let (_, state_hash) = self
             .cycle_info_deserializer
             .cycle_info_deserializer
@@ -2245,7 +2294,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_feed_selector() {
         let initial_deferred_credits_file =
             tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
@@ -2347,8 +2395,15 @@ mod tests {
             Err(PosError::CycleUnfinished(4))
         );
 
-        // Will panic (no final state hash snapshot)
-        let _ = pos_state_0.feed_selector(4);
+        // F100: complete cycles without a final state hash snapshot must error, not panic
+        assert_matches!(
+            pos_state_0.feed_selector(4),
+            Err(PosError::ContainerInconsistency(_))
+        );
+        assert_matches!(
+            pos_state_0.validate_selector_history(),
+            Err(PosError::ContainerInconsistency(_))
+        );
     }
 
     #[test]

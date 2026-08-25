@@ -708,6 +708,15 @@ impl FinalState {
             }
         }
 
+        // Cross-key PoS invariant: complete cycles must carry selector-feeding fields.
+        if let Err(err) = self.pos_state.validate_selector_history() {
+            warn!("Invalid PoS cycle history for selector feeding: {}", err);
+            return Err(anyhow!(
+                "Invalid PoS cycle history for selector feeding: {}",
+                err
+            ));
+        }
+
         Ok(())
     }
 
