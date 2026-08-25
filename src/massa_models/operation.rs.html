@@ -1942,6 +1942,9 @@
 <a href="#1942" id="1942">1942</a>
 <a href="#1943" id="1943">1943</a>
 <a href="#1944" id="1944">1944</a>
+<a href="#1945" id="1945">1945</a>
+<a href="#1946" id="1946">1946</a>
+<a href="#1947" id="1947">1947</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -2439,7 +2442,7 @@
 <span class="kw">impl </span>OperationDeserializer {
     <span class="doccomment">/// Creates a `OperationDeserializer`
     </span><span class="kw">pub fn </span>new(
-        max_bytecode_size: u64,
+        max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
@@ -2453,7 +2456,7 @@
                 Included(Amount::MAX),
             ),
             op_type_deserializer: OperationTypeDeserializer::new(
-                max_bytecode_size,
+                max_datastore_value_length,
                 max_function_name_length,
                 max_parameters_size,
                 max_op_datastore_entry_count,
@@ -2746,7 +2749,7 @@
 <span class="kw">impl </span>OperationTypeDeserializer {
     <span class="doccomment">/// Creates a new `OperationTypeDeserializer`
     </span><span class="kw">pub fn </span>new(
-        max_bytecode_size: u64,
+        max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
@@ -2758,7 +2761,10 @@
             rolls_number_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
             max_gas_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::new(),
-            data_deserializer: VecU8Deserializer::new(Included(<span class="number">0</span>), Included(max_bytecode_size)),
+            data_deserializer: VecU8Deserializer::new(
+                Included(<span class="number">0</span>),
+                Included(max_datastore_value_length),
+            ),
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
                 Included(Amount::MAX),
@@ -3363,7 +3369,7 @@
     </span><span class="doccomment">/// Creates a new `OperationsDeserializer`
     </span><span class="kw">pub fn </span>new(
         max_operations_per_message: u32,
-        max_bytecode_size: u64,
+        max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
@@ -3378,7 +3384,7 @@
             ),
             signed_op_deserializer: SecureShareDeserializer::new(
                 OperationDeserializer::new(
-                    max_bytecode_size,
+                    max_datastore_value_length,
                     max_function_name_length,
                     max_parameters_size,
                     max_op_datastore_entry_count,
@@ -3467,7 +3473,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::config::{
-        CHAINID, MAX_BYTECODE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        CHAINID, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
         MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
         MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     };
@@ -3546,7 +3552,7 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3569,7 +3575,7 @@
             .serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>ser_content)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_content) = OperationDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3591,7 +3597,7 @@
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = SecureShareDeserializer::new(
             OperationDeserializer::new(
-                MAX_BYTECODE_LENGTH,
+                MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3626,7 +3632,7 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3648,7 +3654,7 @@
             .serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>ser_content)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_content) = OperationDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3669,7 +3675,7 @@
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = SecureShareDeserializer::new(
             OperationDeserializer::new(
-                MAX_BYTECODE_LENGTH,
+                MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3705,7 +3711,7 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3727,7 +3733,7 @@
             .serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>ser_content)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_content) = OperationDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3748,7 +3754,7 @@
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = SecureShareDeserializer::new(
             OperationDeserializer::new(
-                MAX_BYTECODE_LENGTH,
+                MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3778,7 +3784,7 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3820,7 +3826,7 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -3862,7 +3868,7 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
