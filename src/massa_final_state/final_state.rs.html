@@ -1346,6 +1346,13 @@
 <a href="#1346" id="1346">1346</a>
 <a href="#1347" id="1347">1347</a>
 <a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -2045,6 +2052,15 @@
             }
         }
 
+        <span class="comment">// Cross-key PoS invariant: complete cycles must carry selector-feeding fields.
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.pos_state.validate_selector_history() {
+            <span class="macro">warn!</span>(<span class="string">"Invalid PoS cycle history for selector feeding: {}"</span>, err);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">"Invalid PoS cycle history for selector feeding: {}"</span>,
+                err
+            ));
+        }
+
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -2307,12 +2323,11 @@
         bytecode::Bytecode,
         config::{
             DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-            MAX_ASYNC_POOL_LENGTH, MAX_BYTECODE_LENGTH, MAX_DATASTORE_KEY_LENGTH,
-            MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-            MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
-            MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-            MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, PERIODS_PER_CYCLE,
-            POS_SAVED_CYCLES, T0, THREAD_COUNT,
+            MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+            MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            MAX_DENUNCIATION_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
+            MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
+            PERIODS_PER_CYCLE, POS_SAVED_CYCLES, T0, THREAD_COUNT,
         },
         types::SetUpdateOrDelete,
     };
@@ -2332,7 +2347,6 @@
             initial_ledger_path: massa_node_base.join(<span class="string">"base_config/initial_ledger.json"</span>),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-            max_bytecode_size: MAX_BYTECODE_LENGTH,
         };
         <span class="kw">let </span>async_pool_config = AsyncPoolConfig {
             max_length: MAX_ASYNC_POOL_LENGTH,

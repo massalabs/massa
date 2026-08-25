@@ -936,7 +936,7 @@
             OperationMessageDeserializer::new(OperationMessageDeserializerArgs {
                 max_operations_prefix_ids: <span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>u32,
                 max_operations: <span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>u32,
-                max_bytecode_size: <span class="self">self</span>.config.max_bytecode_size,
+                max_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
                 max_function_name_length: <span class="self">self</span>.config.max_size_function_name,
                 max_parameters_size: <span class="self">self</span>.config.max_size_call_sc_parameter,
                 max_op_datastore_entry_count: <span class="self">self</span>.config.max_op_datastore_entry_count,
