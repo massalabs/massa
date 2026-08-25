@@ -147,6 +147,27 @@ pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 pub const THREAD_COUNT: u8 = 32;
 /// Number of endorsement
 pub const ENDORSEMENT_COUNT: u32 = 16;
+/// Maximum number of endorsements kept for a given `(slot, index)` draw, whatever the endorsed
+/// block is. Enforced both by the endorsement pool and by the protocol propagation path, which
+/// share this bound so that neither becomes the tighter of the two.
+///
+/// An honest endorser signs exactly one endorsement per `(slot, index)`: the factory walks slots
+/// strictly monotonically and never re-endorses after a reorg. So several entries under the same
+/// key mean the drawn endorser equivocated. The endorsed block is not constrained at ingress and
+/// the endorsement id is derived from the whole signed content, so without a bound such an endorser
+/// could mint arbitrarily many valid endorsements differing only by their endorsed block, growing
+/// the pool without limit and having every node relay each variant.
+///
+/// The bound is kept above 1 for two reasons. The denunciation pool needs two conflicting
+/// endorsements to build a denunciation, so a bound of 1 would silently disable endorsement
+/// equivocation denunciation. And `EndorsementPool::get_block_endorsements` only returns the
+/// endorsement matching the parent the block factory settled on, so keeping a single variant makes
+/// insertion first-write-wins, letting an equivocating endorser deliberately send the variant that
+/// does not match our parent and permanently deny us that endorsement slot, which costs block
+/// fitness and rewards. A few variants cover the competing blockclique tips of a real fork while
+/// keeping the worst-case pool size within a small multiple of
+/// `max_endorsements_pool_size_per_thread`.
+pub const MAX_ENDORSEMENTS_PER_SLOT_INDEX: usize = 4;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block

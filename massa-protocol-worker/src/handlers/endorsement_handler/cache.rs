@@ -3,22 +3,13 @@ use std::{
     sync::Arc,
 };
 
-use massa_models::{endorsement::EndorsementId, prehash::PreHashSet, slot::Slot};
+use massa_models::{
+    config::MAX_ENDORSEMENTS_PER_SLOT_INDEX, endorsement::EndorsementId, prehash::PreHashSet,
+    slot::Slot,
+};
 use massa_protocol_exports::PeerId;
 use parking_lot::RwLock;
 use schnellru::{ByLength, LruMap};
-
-/// Maximum number of distinct endorsements we accept and propagate for a given `(slot, index)`
-/// endorsement draw. An honest drawn endorser signs exactly one endorsement per draw, so several
-/// distinct ones mean it equivocated.
-///
-/// The bound is kept above 1 for two reasons: the denunciation pool needs to see two conflicting
-/// endorsements to build a denunciation, and dropping everything after the first variant would let
-/// an equivocating endorser pick which variant we keep, denying us the endorsement slot when it
-/// endorses a block that is not the parent our block factory settles on. It matches the pool-side
-/// bound (`MAX_ENDORSEMENTS_PER_SLOT_INDEX`) so that the propagation path never becomes the tighter
-/// of the two limits.
-pub const MAX_ENDORSEMENTS_PER_DRAW: usize = 4;
 
 /// Cache of endorsements
 pub struct EndorsementCache {
@@ -38,11 +29,11 @@ impl EndorsementCache {
     pub fn new(max_known_endorsements: u32, max_known_endorsements_by_peer: u32) -> Self {
         Self {
             checked_endorsements: LruMap::new(ByLength::new(max_known_endorsements)),
-            // one entry per draw holds up to `MAX_ENDORSEMENTS_PER_DRAW` ids, so scaling the
+            // one entry per draw holds up to `MAX_ENDORSEMENTS_PER_SLOT_INDEX` ids, so scaling the
             // capacity down keeps this index's memory in line with `checked_endorsements` while
             // covering the same horizon of endorsements
             endorsements_by_draw: LruMap::new(ByLength::new(std::cmp::max(
-                max_known_endorsements / MAX_ENDORSEMENTS_PER_DRAW as u32,
+                max_known_endorsements / MAX_ENDORSEMENTS_PER_SLOT_INDEX as u32,
                 1,
             ))),
             endorsements_known_by_peer: HashMap::new(),
@@ -75,7 +66,7 @@ impl EndorsementCache {
     /// The endorsement id is derived from the whole signed content, so an equivocating endorser can
     /// mint unlimited distinct-but-valid endorsements for the draw it won just by varying the
     /// endorsed block: deduplicating on `checked_endorsements` alone does not stop them from being
-    /// noted and gossiped further. Returns `false` once `MAX_ENDORSEMENTS_PER_DRAW` distinct
+    /// noted and gossiped further. Returns `false` once `MAX_ENDORSEMENTS_PER_SLOT_INDEX` distinct
     /// endorsements have already been registered for that draw.
     ///
     /// Registering the id rather than only counting keeps this idempotent, so an endorsement that
@@ -96,7 +87,7 @@ impl EndorsementCache {
         if draw_endorsements.contains(&endorsement_id) {
             return true;
         }
-        if draw_endorsements.len() >= MAX_ENDORSEMENTS_PER_DRAW {
+        if draw_endorsements.len() >= MAX_ENDORSEMENTS_PER_SLOT_INDEX {
             return false;
         }
         draw_endorsements.insert(endorsement_id);

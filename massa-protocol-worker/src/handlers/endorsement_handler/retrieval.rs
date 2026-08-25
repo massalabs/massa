@@ -204,8 +204,8 @@ fn is_endorsement_fresh(
 /// Checks performed:
 /// - Valid signature.
 /// - The creator is the endorser drawn for the endorsement's `(slot, index)` pair.
-/// - At most `MAX_ENDORSEMENTS_PER_DRAW` distinct endorsements are noted for a given draw, so that
-///   an equivocating endorser cannot have us relay unlimited variants of its endorsement.
+/// - At most `MAX_ENDORSEMENTS_PER_SLOT_INDEX` distinct endorsements are noted for a given draw,
+///   so that an equivocating endorser cannot have us relay unlimited variants of its endorsement.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn note_endorsements_from_peer(
     endorsements: Vec<SecureShareEndorsement>,

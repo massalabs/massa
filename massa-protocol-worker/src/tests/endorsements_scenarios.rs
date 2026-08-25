@@ -1,5 +1,6 @@
 use massa_hash::Hash;
 use massa_models::block_id::BlockId;
+use massa_models::config::MAX_ENDORSEMENTS_PER_SLOT_INDEX;
 use massa_models::endorsement::{Endorsement, EndorsementSerializer};
 use massa_models::secure_share::SecureShareContent;
 use massa_models::slot::Slot;
@@ -13,10 +14,7 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 
 use crate::{
-    handlers::{
-        block_handler::BlockMessage,
-        endorsement_handler::{cache::MAX_ENDORSEMENTS_PER_DRAW, EndorsementMessage},
-    },
+    handlers::{block_handler::BlockMessage, endorsement_handler::EndorsementMessage},
     messages::Message,
     wrap_network::MockActiveConnectionsTraitWrapper,
 };
@@ -406,7 +404,7 @@ fn test_protocol_bounds_conflicting_endorsements_for_the_same_draw() {
     let endorsement_creator = KeyPair::generate(0).unwrap();
 
     // the drawn endorser equivocates: same (slot, index), one endorsement per endorsed block
-    let endorsements: Vec<_> = (0..(MAX_ENDORSEMENTS_PER_DRAW + 2))
+    let endorsements: Vec<_> = (0..(MAX_ENDORSEMENTS_PER_SLOT_INDEX + 2))
         .map(|i| {
             let mut endorsement =
                 ProtocolTestUniverse::create_endorsement(&endorsement_creator, Slot::new(1, 1));
@@ -446,7 +444,7 @@ fn test_protocol_bounds_conflicting_endorsements_for_the_same_draw() {
                     // only the per-draw bound worth of variants make it through
                     assert_eq!(
                         endorsements_storage.get_endorsement_refs().len(),
-                        MAX_ENDORSEMENTS_PER_DRAW
+                        MAX_ENDORSEMENTS_PER_SLOT_INDEX
                     );
                     waitpoint_trigger_handle.trigger();
                 });
