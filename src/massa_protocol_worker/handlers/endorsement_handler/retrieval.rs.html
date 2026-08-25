@@ -354,6 +354,30 @@
 <a href="#354" id="354">354</a>
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -559,6 +583,9 @@
 ///
 /// Checks performed:
 /// - Valid signature.
+/// - The creator is the endorser drawn for the endorsement's `(slot, index)` pair.
+/// - At most `MAX_ENDORSEMENTS_PER_SLOT_INDEX` distinct endorsements are noted for a given draw,
+///   so that an equivocating endorser cannot have us relay unlimited variants of its endorsement.
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_peer(
     endorsements: Vec&lt;SecureShareEndorsement&gt;,
@@ -624,6 +651,12 @@
         }
     }
 
+    <span class="comment">// From there we note new endorsements and propagate them
+
+    // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
+    </span><span class="kw">let </span>now = MassaTime::now();
+    new_endorsements.retain(|_id, endorsement| is_endorsement_fresh(endorsement, config, now));
+
     {
         <span class="kw">let </span><span class="kw-2">mut </span>cache_write = cache.write();
 
@@ -637,13 +670,28 @@
             from_peer_id,
             <span class="kw-2">&amp;</span>all_endorsement_ids.iter().copied().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
+
+        <span class="comment">// Drop conflicting endorsements beyond the per-draw bound. Nothing here constrains the
+        // endorsed block, so the drawn endorser of a `(slot, index)` pair can sign arbitrarily many
+        // valid endorsements differing only by that field, each with its own id: without this bound
+        // they would all be treated as new data, noted and gossiped further. We keep a few variants
+        // so the denunciation pool still gets to see the equivocation, and silently ignore the
+        // rest: equivocating is denounceable, not a reason to ban the peer that relayed it to us.
+        </span>new_endorsements.retain(|id, endorsement| {
+            <span class="kw">let </span>accepted = cache_write.register_draw_endorsement(
+                endorsement.content.slot,
+                endorsement.content.index,
+                <span class="kw-2">*</span>id,
+            );
+            <span class="kw">if </span>!accepted {
+                <span class="macro">debug!</span>(
+                    <span class="string">"ignoring endorsement {} from peer {}: too many conflicting endorsements for the draw at slot {} index {}"</span>,
+                    id, from_peer_id, endorsement.content.slot, endorsement.content.index
+                );
+            }
+            accepted
+        });
     }
-
-    <span class="comment">// From there we note new endorsements and propagate them
-
-    // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
-    </span><span class="kw">let </span>now = MassaTime::now();
-    new_endorsements.retain(|_id, endorsement| is_endorsement_fresh(endorsement, config, now));
 
     <span class="kw">if </span>new_endorsements.is_empty() {
         <span class="comment">// no endorsements to note or propagate

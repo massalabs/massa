@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["MAX_ENDORSEMENTS_PER_SLOT_INDEX"],"struct":["EndorsementPool"]};
+window.SIDEBAR_ITEMS = {"struct":["EndorsementPool"]};

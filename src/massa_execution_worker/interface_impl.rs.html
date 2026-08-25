@@ -2547,69 +2547,6 @@
 <a href="#2547" id="2547">2547</a>
 <a href="#2548" id="2548">2548</a>
 <a href="#2549" id="2549">2549</a>
-<a href="#2550" id="2550">2550</a>
-<a href="#2551" id="2551">2551</a>
-<a href="#2552" id="2552">2552</a>
-<a href="#2553" id="2553">2553</a>
-<a href="#2554" id="2554">2554</a>
-<a href="#2555" id="2555">2555</a>
-<a href="#2556" id="2556">2556</a>
-<a href="#2557" id="2557">2557</a>
-<a href="#2558" id="2558">2558</a>
-<a href="#2559" id="2559">2559</a>
-<a href="#2560" id="2560">2560</a>
-<a href="#2561" id="2561">2561</a>
-<a href="#2562" id="2562">2562</a>
-<a href="#2563" id="2563">2563</a>
-<a href="#2564" id="2564">2564</a>
-<a href="#2565" id="2565">2565</a>
-<a href="#2566" id="2566">2566</a>
-<a href="#2567" id="2567">2567</a>
-<a href="#2568" id="2568">2568</a>
-<a href="#2569" id="2569">2569</a>
-<a href="#2570" id="2570">2570</a>
-<a href="#2571" id="2571">2571</a>
-<a href="#2572" id="2572">2572</a>
-<a href="#2573" id="2573">2573</a>
-<a href="#2574" id="2574">2574</a>
-<a href="#2575" id="2575">2575</a>
-<a href="#2576" id="2576">2576</a>
-<a href="#2577" id="2577">2577</a>
-<a href="#2578" id="2578">2578</a>
-<a href="#2579" id="2579">2579</a>
-<a href="#2580" id="2580">2580</a>
-<a href="#2581" id="2581">2581</a>
-<a href="#2582" id="2582">2582</a>
-<a href="#2583" id="2583">2583</a>
-<a href="#2584" id="2584">2584</a>
-<a href="#2585" id="2585">2585</a>
-<a href="#2586" id="2586">2586</a>
-<a href="#2587" id="2587">2587</a>
-<a href="#2588" id="2588">2588</a>
-<a href="#2589" id="2589">2589</a>
-<a href="#2590" id="2590">2590</a>
-<a href="#2591" id="2591">2591</a>
-<a href="#2592" id="2592">2592</a>
-<a href="#2593" id="2593">2593</a>
-<a href="#2594" id="2594">2594</a>
-<a href="#2595" id="2595">2595</a>
-<a href="#2596" id="2596">2596</a>
-<a href="#2597" id="2597">2597</a>
-<a href="#2598" id="2598">2598</a>
-<a href="#2599" id="2599">2599</a>
-<a href="#2600" id="2600">2600</a>
-<a href="#2601" id="2601">2601</a>
-<a href="#2602" id="2602">2602</a>
-<a href="#2603" id="2603">2603</a>
-<a href="#2604" id="2604">2604</a>
-<a href="#2605" id="2605">2605</a>
-<a href="#2606" id="2606">2606</a>
-<a href="#2607" id="2607">2607</a>
-<a href="#2608" id="2608">2608</a>
-<a href="#2609" id="2609">2609</a>
-<a href="#2610" id="2610">2610</a>
-<a href="#2611" id="2611">2611</a>
-<a href="#2612" id="2612">2612</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2666,11 +2603,6 @@
     test
 ))]
 </span><span class="kw">use </span>massa_models::datastore::Datastore;
-
-<span class="doccomment">/// Execution component version at which `send_message` starts rejecting messages whose
-/// `max_gas` is too large to ever be scheduled (see [`InterfaceImpl::send_message`]).
-/// Bundled into the same MIP as the WMAS patch (`MIP-0002-BugFix`).
-</span><span class="kw">const </span>ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION: u32 = <span class="number">2</span>;
 
 <span class="doccomment">/// helper for locking the context mutex
 </span><span class="macro">macro_rules!</span> context_guard {
@@ -4043,15 +3975,7 @@
     /// * `target_function`: Name of the message handling function
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
-    /// * `max_gas`: Maximum gas for the message execution.
-    ///   Bounded below by `max_instance_cost`, and — from execution component version
-    ///   [`ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION`] on — above by the largest budget any slot
-    ///   can ever offer. `take_batch_to_execute` only schedules a message when
-    ///   `max_gas + async_msg_cst_gas_cost` fits the slot's async gas budget, which never
-    ///   exceeds `max_async_gas + max_gas_per_block` (see `execute_slot`). Before that
-    ///   version, a message above the ceiling was accepted but permanently unschedulable:
-    ///   it occupied async pool capacity until its validity end, and on expiry
-    ///   `cancel_async_message` refunded `raw_coins` but not `raw_fee`.
+    /// * `max_gas`: Maximum gas for the message execution
     /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
@@ -4094,23 +4018,6 @@
 
         <span class="kw">if </span>max_gas &lt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
             <span class="macro">bail!</span>(<span class="string">"max gas is lower than the minimum instance cost"</span>)
-        }
-        <span class="comment">// Reject messages that no slot could ever schedule. Gated: rejecting here changes
-        // execution results, so it only applies once the MIP has activated.
-        </span><span class="kw">if </span>execution_context
-            .is_execution_component_version_at_least(ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION)
-        {
-            <span class="kw">let </span>max_schedulable_gas = <span class="self">self
-                </span>.config
-                .max_async_gas
-                .saturating_add(<span class="self">self</span>.config.max_gas_per_block)
-                .saturating_sub(<span class="self">self</span>.config.async_msg_cst_gas_cost);
-            <span class="kw">if </span>max_gas &gt; max_schedulable_gas {
-                <span class="macro">bail!</span>(
-                    <span class="string">"max gas is higher than the maximum schedulable async gas ({})"</span>,
-                    max_schedulable_gas
-                )
-            }
         }
         <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>)
         {
@@ -4811,39 +4718,6 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>massa_models::address::Address;
     <span class="kw">use </span>massa_signature::KeyPair;
-
-    <span class="comment">// An async message asking for more gas than any slot can ever schedule is admitted
-    // before the MIP activates, and rejected from ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION on.
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_send_message_max_gas_ceiling() {
-        <span class="kw">let </span>sender_addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
-        <span class="kw">let </span>interface = InterfaceImpl::new_default(sender_addr, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-        <span class="kw">let </span>target = <span class="string">"AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy"</span>;
-
-        <span class="kw">let </span>config = ExecutionConfig::default();
-        <span class="kw">let </span>ceiling = config
-            .max_async_gas
-            .saturating_add(config.max_gas_per_block)
-            .saturating_sub(config.async_msg_cst_gas_cost);
-
-        <span class="kw">let </span>send = |max_gas: u64| {
-            interface.send_message(target, <span class="string">"receive"</span>, (<span class="number">0</span>, <span class="number">0</span>), (<span class="number">10</span>, <span class="number">0</span>), max_gas, <span class="number">0</span>, <span class="number">0</span>, <span class="kw-2">&amp;</span>[], <span class="prelude-val">None</span>)
-        };
-
-        <span class="comment">// pre-activation: the oversized message is accepted, which is the bug being fixed
-        </span>interface.context.lock().execution_component_version =
-            ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION - <span class="number">1</span>;
-        send(ceiling + <span class="number">1</span>).expect(<span class="string">"oversized message should be admitted before activation"</span>);
-
-        <span class="comment">// post-activation: rejected, while a message exactly at the ceiling still passes
-        </span>interface.context.lock().execution_component_version =
-            ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION;
-        <span class="macro">assert!</span>(
-            send(ceiling + <span class="number">1</span>).is_err(),
-            <span class="string">"oversized message should be rejected after activation"
-        </span>);
-        send(ceiling).expect(<span class="string">"a message exactly at the ceiling is still schedulable"</span>);
-    }
 
     <span class="comment">// Tests the get_keys_wasmv1 interface method used by the updated get_keys abi.
     </span><span class="attr">#[test]
