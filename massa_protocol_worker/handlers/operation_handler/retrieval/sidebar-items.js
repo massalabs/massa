@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["OPERATIONS_LENGTH_PREFIX_MAX_LEN","THREAD_NAME"],"enum":["PeerAskState"],"fn":["note_operations_from_peer","split_operations_in_batches","start_retrieval_thread"],"struct":["AskedOperation","OperationBatchItem","RetrievalThread"]};
+window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"enum":["PeerAskState"],"fn":["is_block_intrinsic_operation_failure","note_operations_from_peer","start_retrieval_thread"],"struct":["AskedOperation","OperationBatchItem","RetrievalThread"]};
