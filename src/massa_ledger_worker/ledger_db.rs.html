@@ -953,6 +953,7 @@
 <a href="#953" id="953">953</a>
 <a href="#954" id="954">954</a>
 <a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1037,6 +1038,7 @@
         thread_count: u8,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
+        max_bytecode_size: u64,
     ) -&gt; <span class="self">Self </span>{
         LedgerDB {
             db,
@@ -1049,7 +1051,7 @@
                 Bound::Included(Amount::MIN),
                 Bound::Included(Amount::MAX),
             ),
-            bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
+            bytecode_deserializer: BytecodeDeserializer::new(max_bytecode_size),
             version_serializer: U64VarIntSerializer::new(),
             version_deserializer: U64VarIntDeserializer::new(
                 Bound::Included(<span class="number">0</span>),
@@ -1660,7 +1662,7 @@
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
-        <span class="kw">let </span>ledger_db = LedgerDB::new(db.clone(), <span class="number">32</span>, <span class="number">255</span>, <span class="number">1000</span>);
+        <span class="kw">let </span>ledger_db = LedgerDB::new(db.clone(), <span class="number">32</span>, <span class="number">255</span>, <span class="number">1000</span>, <span class="number">1000</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
         ledger_db.put_entry(<span class="kw-2">&amp;</span>addr, entry, <span class="kw-2">&amp;mut </span>batch);

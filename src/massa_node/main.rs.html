@@ -1637,6 +1637,7 @@
 <a href="#1637" id="1637">1637</a>
 <a href="#1638" id="1638">1638</a>
 <a href="#1639" id="1639">1639</a>
+<a href="#1640" id="1640">1640</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -1821,6 +1822,7 @@
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
     };
     <span class="kw">let </span>async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
@@ -2400,7 +2402,7 @@
         max_size_channel_network_to_endorsement_handler:
             MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER,
         max_size_channel_network_to_peer_handler: MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER,
-        max_size_value_datastore: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
@@ -2603,7 +2605,7 @@
         ping_interval: SETTINGS.api.ping_interval,
         enable_http: SETTINGS.api.enable_http,
         enable_ws: SETTINGS.api.enable_ws,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
@@ -2894,7 +2896,7 @@
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         endorsement_count: ENDORSEMENT_COUNT,
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_datastore_entries_per_request: settings.max_datastore_entries_per_request,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
