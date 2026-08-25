@@ -267,11 +267,24 @@
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
     block_id::BlockId,
-    config::MAX_ENDORSEMENTS_PER_SLOT_INDEX,
     endorsement::EndorsementId,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
@@ -285,6 +298,21 @@
     sync::Arc,
 };
 <span class="kw">use </span>tracing::{trace, warn};
+
+<span class="doccomment">/// Maximum number of endorsements kept for a given `(slot, index)` pair, whatever the endorsed
+/// block is. An honest endorser signs exactly one endorsement per `(slot, index)`: the factory
+/// walks slots strictly monotonically and never re-endorses after a reorg. So several entries
+/// under the same key mean the drawn endorser equivocated, and the endorsed block is not
+/// constrained at ingress: without a bound such an endorser could mint arbitrarily many valid
+/// endorsements differing only by their endorsed block and grow the pool without limit.
+///
+/// The bound is kept above 1 because [`EndorsementPool::get_block_endorsements`] only returns the
+/// endorsement matching the parent the block factory settled on. Keeping a single variant makes
+/// insertion first-write-wins, letting an equivocating endorser deliberately send the variant that
+/// does not match our parent and permanently deny us that endorsement slot, which costs block
+/// fitness and rewards. A few variants cover the competing blockclique tips of a real fork while
+/// keeping the worst-case pool size within a small multiple of `max_endorsements_pool_size_per_thread`.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MAX_ENDORSEMENTS_PER_SLOT_INDEX: usize = <span class="number">4</span>;
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>EndorsementPool {
