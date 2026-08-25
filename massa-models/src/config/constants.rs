@@ -214,7 +214,7 @@ pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 pub const MAX_OPERATION_DATASTORE_KEY_LENGTH: u8 = MAX_DATASTORE_KEY_LENGTH;
 /// Maximum length of a datastore value
 pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
-/// Maximum length of a datastore value
+/// Maximum length of a smart contract bytecode
 pub const MAX_BYTECODE_LENGTH: u64 = 10_000_000;
 /// Maximum length of an operation datastore value
 pub const MAX_OPERATION_DATASTORE_VALUE_LENGTH: u64 = 500_000;

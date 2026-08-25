@@ -95,8 +95,8 @@ pub struct OperationMessageDeserializerArgs {
     /// Maximum of full operations sent in one message
     pub max_operations: u32,
     //TODO: All of this arguments should be in a `OperationDeserializer` struct that would be used here
-    /// Maximum size of an `ExecuteSC` bytecode (ledger datastore value bound)
-    pub max_datastore_value_length: u64,
+    /// Maximum size of a smart contract bytecode in an `ExecuteSC` operation
+    pub max_bytecode_size: u64,
     /// Maximum size of a function name
     pub max_function_name_length: u16,
     /// Maximum size of parameters
@@ -120,7 +120,7 @@ impl OperationMessageDeserializer {
             ),
             operations_deserializer: OperationsDeserializer::new(
                 args.max_operations,
-                args.max_datastore_value_length,
+                args.max_bytecode_size,
                 args.max_function_name_length,
                 args.max_parameters_size,
                 args.max_op_datastore_entry_count,
