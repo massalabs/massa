@@ -799,6 +799,10 @@
 <a href="#799" id="799">799</a>
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -943,12 +947,16 @@
                                 <span class="comment">// A valid message prefix followed by trailing bytes must not
                                 // tear down this long-lived shared retrieval thread (doing so
                                 // would let a single peer deny operation handling for everyone).
-                                // Skip the malformed message and keep serving other peers.
+                                // A compliant peer never sends trailing bytes, so ban the
+                                // sender and keep serving other peers.
                                 </span><span class="macro">warn!</span>(
-                                    <span class="string">"peer {} sent an operation message with {} unexpected trailing byte(s); ignoring it"</span>,
+                                    <span class="string">"peer {} sent an operation message with {} unexpected trailing byte(s); banning it"</span>,
                                     peer_id,
                                     rest.len()
                                 );
+                                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>peer_id) {
+                                    <span class="macro">warn!</span>(<span class="string">"Error when banning node: {}"</span>, e);
+                                }
                                 <span class="kw">continue</span>;
                             }
                             <span class="kw">match </span>message {
