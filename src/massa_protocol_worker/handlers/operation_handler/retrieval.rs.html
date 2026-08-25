@@ -799,6 +799,23 @@
 <a href="#799" id="799">799</a>
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -1266,6 +1283,23 @@
         <span class="self">self</span>.peer_cmd_sender
             .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[<span class="kw-2">*</span>peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
+    }
+}
+
+<span class="doccomment">/// Tells whether a `note_operations_from_peer` failure is caused by the operation contents
+/// themselves, rather than by the way the sender delivered them.
+///
+/// An operation ID commits to the operation contents, but not to its signature. A failure that
+/// depends only on those contents can therefore never be fixed by asking another peer: any
+/// operation carrying the same ID fails the same check. When such an operation is committed by a
+/// block's operation ID list, that block is permanently invalid and must not be retried.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_block_intrinsic_operation_failure(err: <span class="kw-2">&amp;</span>ProtocolError) -&gt; bool {
+    <span class="kw">match </span>err {
+        <span class="comment">// the operation is bigger than a whole block is allowed to be: fully determined by its contents
+        </span>ProtocolError::InvalidOperationError(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+        <span class="comment">// e.g. `WrongSignature`: the signature is not covered by the operation ID,
+        // so another peer may still deliver the same operation properly signed
+        </span><span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
     }
 }
 
