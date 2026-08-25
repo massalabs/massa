@@ -124,8 +124,16 @@ impl SharedWhiteBlackList<'_> {
     /// Creates a new list, and replaces the old one in a write-lock
     pub(crate) fn update(&mut self) -> Result<(), BootstrapError> {
         let read_lock = self.inner.read();
-        let (new_white_file, new_black_file) =
-            WhiteBlackListInner::update_list(&self.white_path, &self.black_path)?;
+        let new_white_file = WhiteBlackListInner::refresh_list(
+            &self.white_path,
+            &read_lock.white_list,
+            "whitelist",
+        )?;
+        let new_black_file = WhiteBlackListInner::refresh_list(
+            &self.black_path,
+            &read_lock.black_list,
+            "blacklist",
+        )?;
         let white_delta = new_white_file != read_lock.white_list;
         let black_delta = new_black_file != read_lock.black_list;
         if white_delta || black_delta {
@@ -170,58 +178,72 @@ impl SharedWhiteBlackList<'_> {
 
 impl WhiteBlackListInner {
     #[allow(clippy::type_complexity)]
-    fn update_list(
-        whitelist_path: &Path,
-        blacklist_path: &Path,
-    ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
-        Ok((
-            Self::load_list(whitelist_path, false)?,
-            Self::load_list(blacklist_path, false)?,
-        ))
-    }
-
-    #[allow(clippy::type_complexity)]
     fn init_list(
         whitelist_path: &Path,
         blacklist_path: &Path,
     ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
         Ok((
-            Self::load_list(whitelist_path, true)?,
-            Self::load_list(blacklist_path, true)?,
+            Self::load_list(whitelist_path)?,
+            Self::load_list(blacklist_path)?,
         ))
     }
 
-    fn load_list(
+    /// Load a list at startup. A missing or unreadable file means the list is
+    /// not configured: the feature is disabled with a warning.
+    fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, BootstrapError> {
+        match std::fs::read_to_string(list_path) {
+            Err(e) => {
+                warn!(
+                    "error on load whitelist/blacklist file : {} | {}",
+                    list_path.to_str().unwrap_or(" "),
+                    e
+                );
+                Ok(None)
+            }
+            Ok(list) => Ok(Some(Self::parse_list(&list)?)),
+        }
+    }
+
+    /// Load a list for a periodic refresh.
+    ///
+    /// A file that cannot be read must not disable a configured list: bootstrap
+    /// access control would silently fail open if the whitelist file disappeared
+    /// or became unreadable at runtime. Keep the previously loaded list instead
+    /// (restarting the node is the way to disable a list). A node with no list
+    /// configured stays silent, as a missing file is its normal state.
+    fn refresh_list(
         list_path: &Path,
-        is_init: bool,
+        current: &Option<HashSet<IpAddr>>,
+        list_kind: &str,
     ) -> Result<Option<HashSet<IpAddr>>, BootstrapError> {
         match std::fs::read_to_string(list_path) {
             Err(e) => {
-                if is_init {
+                if current.is_some() {
                     warn!(
-                        "error on load whitelist/blacklist file : {} | {}",
+                        "failed to read bootstrap {} file {}: {} | keeping the previously loaded list (restart the node to disable it)",
+                        list_kind,
                         list_path.to_str().unwrap_or(" "),
                         e
                     );
                 }
-                Ok(None)
+                Ok(current.clone())
             }
-            Ok(list) => {
-                let res = Some(
-                    serde_json::from_str::<HashSet<IpAddr>>(list.as_str())
-                        .map_err(|e| {
-                            BootstrapError::InitListError(format!(
-                                "Failed to parse bootstrap whitelist : {}",
-                                e
-                            ))
-                        })?
-                        .into_iter()
-                        .map(to_canonical)
-                        .collect(),
-                );
-                Ok(res)
-            }
+            Ok(list) => Ok(Some(Self::parse_list(&list)?)),
         }
+    }
+
+    /// Parse the JSON content of a list file into a canonicalized IP set.
+    fn parse_list(list: &str) -> Result<HashSet<IpAddr>, BootstrapError> {
+        Ok(serde_json::from_str::<HashSet<IpAddr>>(list)
+            .map_err(|e| {
+                BootstrapError::InitListError(format!(
+                    "Failed to parse bootstrap whitelist : {}",
+                    e
+                ))
+            })?
+            .into_iter()
+            .map(to_canonical)
+            .collect())
     }
 }
 
@@ -255,6 +277,95 @@ mod tests {
         assert!(matches!(
             list.is_ip_allowed(&peer),
             Err(BootstrapError::BlackListed(_))
+        ));
+    }
+
+    #[test]
+    fn whitelist_file_disappearance_does_not_open_access() {
+        let dir = TempDir::new().unwrap();
+        let white = dir.path().join("whitelist.json");
+        let black = dir.path().join("blacklist.json");
+        std::fs::write(&white, r#"["127.0.0.1"]"#).unwrap();
+        let mut list = SharedWhiteBlackList::new(white.clone(), black).unwrap();
+
+        let allowed = SocketAddr::new("127.0.0.1".parse().unwrap(), 12345);
+        let refused = SocketAddr::new("127.0.0.2".parse().unwrap(), 12345);
+        assert!(list.is_ip_allowed(&allowed).is_ok());
+        assert!(matches!(
+            list.is_ip_allowed(&refused),
+            Err(BootstrapError::WhiteListed(_))
+        ));
+
+        // The whitelist file disappears at runtime: the refresh must keep the
+        // previously loaded list instead of failing open.
+        std::fs::remove_file(&white).unwrap();
+        list.update().unwrap();
+
+        assert!(list.is_ip_allowed(&allowed).is_ok());
+        assert!(matches!(
+            list.is_ip_allowed(&refused),
+            Err(BootstrapError::WhiteListed(_))
+        ));
+    }
+
+    #[test]
+    fn blacklist_file_disappearance_keeps_blocking() {
+        let dir = TempDir::new().unwrap();
+        let white = dir.path().join("whitelist.json");
+        let black = dir.path().join("blacklist.json");
+        std::fs::write(&black, r#"["127.0.0.2"]"#).unwrap();
+        let mut list = SharedWhiteBlackList::new(white, black.clone()).unwrap();
+
+        let blocked = SocketAddr::new("127.0.0.2".parse().unwrap(), 12345);
+        assert!(matches!(
+            list.is_ip_allowed(&blocked),
+            Err(BootstrapError::BlackListed(_))
+        ));
+
+        std::fs::remove_file(&black).unwrap();
+        list.update().unwrap();
+
+        assert!(matches!(
+            list.is_ip_allowed(&blocked),
+            Err(BootstrapError::BlackListed(_))
+        ));
+    }
+
+    #[test]
+    fn refresh_without_any_configured_list_keeps_access_open() {
+        let dir = TempDir::new().unwrap();
+        let white = dir.path().join("whitelist.json");
+        let black = dir.path().join("blacklist.json");
+        // no file at all: the common case of a node without access lists
+        let mut list = SharedWhiteBlackList::new(white, black).unwrap();
+
+        list.update().unwrap();
+
+        let peer = SocketAddr::new("127.0.0.1".parse().unwrap(), 12345);
+        assert!(list.is_ip_allowed(&peer).is_ok());
+    }
+
+    #[test]
+    fn recreated_whitelist_file_is_reloaded_on_refresh() {
+        let dir = TempDir::new().unwrap();
+        let white = dir.path().join("whitelist.json");
+        let black = dir.path().join("blacklist.json");
+        std::fs::write(&white, r#"["127.0.0.1"]"#).unwrap();
+        let mut list = SharedWhiteBlackList::new(white.clone(), black).unwrap();
+
+        // the file disappears, then comes back with a different content:
+        // the refresh must pick up the new list
+        std::fs::remove_file(&white).unwrap();
+        list.update().unwrap();
+        std::fs::write(&white, r#"["127.0.0.3"]"#).unwrap();
+        list.update().unwrap();
+
+        let newly_allowed = SocketAddr::new("127.0.0.3".parse().unwrap(), 12345);
+        let formerly_allowed = SocketAddr::new("127.0.0.1".parse().unwrap(), 12345);
+        assert!(list.is_ip_allowed(&newly_allowed).is_ok());
+        assert!(matches!(
+            list.is_ip_allowed(&formerly_allowed),
+            Err(BootstrapError::WhiteListed(_))
         ));
     }
 }
