@@ -258,117 +258,6 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     borrow::Cow,
     collections::HashSet,
@@ -495,16 +384,8 @@
     /// Creates a new list, and replaces the old one in a write-lock
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="kw">let </span>read_lock = <span class="self">self</span>.inner.read();
-        <span class="kw">let </span>new_white_file = WhiteBlackListInner::refresh_list(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.white_path,
-            <span class="kw-2">&amp;</span>read_lock.white_list,
-            <span class="string">"whitelist"</span>,
-        )<span class="question-mark">?</span>;
-        <span class="kw">let </span>new_black_file = WhiteBlackListInner::refresh_list(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.black_path,
-            <span class="kw-2">&amp;</span>read_lock.black_list,
-            <span class="string">"blacklist"</span>,
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>(new_white_file, new_black_file) =
+            WhiteBlackListInner::update_list(<span class="kw-2">&amp;</span><span class="self">self</span>.white_path, <span class="kw-2">&amp;</span><span class="self">self</span>.black_path)<span class="question-mark">?</span>;
         <span class="kw">let </span>white_delta = new_white_file != read_lock.white_list;
         <span class="kw">let </span>black_delta = new_black_file != read_lock.black_list;
         <span class="kw">if </span>white_delta || black_delta {
@@ -549,72 +430,58 @@
 
 <span class="kw">impl </span>WhiteBlackListInner {
     <span class="attr">#[allow(clippy::type_complexity)]
+    </span><span class="kw">fn </span>update_list(
+        whitelist_path: <span class="kw-2">&amp;</span>Path,
+        blacklist_path: <span class="kw-2">&amp;</span>Path,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), BootstrapError&gt; {
+        <span class="prelude-val">Ok</span>((
+            <span class="self">Self</span>::load_list(whitelist_path, <span class="bool-val">false</span>)<span class="question-mark">?</span>,
+            <span class="self">Self</span>::load_list(blacklist_path, <span class="bool-val">false</span>)<span class="question-mark">?</span>,
+        ))
+    }
+
+    <span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">fn </span>init_list(
         whitelist_path: <span class="kw-2">&amp;</span>Path,
         blacklist_path: <span class="kw-2">&amp;</span>Path,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;), BootstrapError&gt; {
         <span class="prelude-val">Ok</span>((
-            <span class="self">Self</span>::load_list(whitelist_path)<span class="question-mark">?</span>,
-            <span class="self">Self</span>::load_list(blacklist_path)<span class="question-mark">?</span>,
+            <span class="self">Self</span>::load_list(whitelist_path, <span class="bool-val">true</span>)<span class="question-mark">?</span>,
+            <span class="self">Self</span>::load_list(blacklist_path, <span class="bool-val">true</span>)<span class="question-mark">?</span>,
         ))
     }
 
-    <span class="doccomment">/// Load a list at startup. A missing or unreadable file means the list is
-    /// not configured: the feature is disabled with a warning.
-    </span><span class="kw">fn </span>load_list(list_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, BootstrapError&gt; {
-        <span class="kw">match </span>std::fs::read_to_string(list_path) {
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(
-                    <span class="string">"error on load whitelist/blacklist file : {} | {}"</span>,
-                    list_path.to_str().unwrap_or(<span class="string">" "</span>),
-                    e
-                );
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
-            }
-            <span class="prelude-val">Ok</span>(list) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="self">Self</span>::parse_list(<span class="kw-2">&amp;</span>list)<span class="question-mark">?</span>)),
-        }
-    }
-
-    <span class="doccomment">/// Load a list for a periodic refresh.
-    ///
-    /// A file that cannot be read must not disable a configured list: bootstrap
-    /// access control would silently fail open if the whitelist file disappeared
-    /// or became unreadable at runtime. Keep the previously loaded list instead
-    /// (restarting the node is the way to disable a list). A node with no list
-    /// configured stays silent, as a missing file is its normal state.
-    </span><span class="kw">fn </span>refresh_list(
+    <span class="kw">fn </span>load_list(
         list_path: <span class="kw-2">&amp;</span>Path,
-        current: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
-        list_kind: <span class="kw-2">&amp;</span>str,
+        is_init: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;, BootstrapError&gt; {
         <span class="kw">match </span>std::fs::read_to_string(list_path) {
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="kw">if </span>current.is_some() {
+                <span class="kw">if </span>is_init {
                     <span class="macro">warn!</span>(
-                        <span class="string">"failed to read bootstrap {} file {}: {} | keeping the previously loaded list (restart the node to disable it)"</span>,
-                        list_kind,
+                        <span class="string">"error on load whitelist/blacklist file : {} | {}"</span>,
                         list_path.to_str().unwrap_or(<span class="string">" "</span>),
                         e
                     );
                 }
-                <span class="prelude-val">Ok</span>(current.clone())
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
-            <span class="prelude-val">Ok</span>(list) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="self">Self</span>::parse_list(<span class="kw-2">&amp;</span>list)<span class="question-mark">?</span>)),
+            <span class="prelude-val">Ok</span>(list) =&gt; {
+                <span class="kw">let </span>res = <span class="prelude-val">Some</span>(
+                    serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(list.as_str())
+                        .map_err(|e| {
+                            BootstrapError::InitListError(<span class="macro">format!</span>(
+                                <span class="string">"Failed to parse bootstrap whitelist : {}"</span>,
+                                e
+                            ))
+                        })<span class="question-mark">?
+                        </span>.into_iter()
+                        .map(to_canonical)
+                        .collect(),
+                );
+                <span class="prelude-val">Ok</span>(res)
+            }
         }
-    }
-
-    <span class="doccomment">/// Parse the JSON content of a list file into a canonicalized IP set.
-    </span><span class="kw">fn </span>parse_list(list: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;HashSet&lt;IpAddr&gt;, BootstrapError&gt; {
-        <span class="prelude-val">Ok</span>(serde_json::from_str::&lt;HashSet&lt;IpAddr&gt;&gt;(list)
-            .map_err(|e| {
-                BootstrapError::InitListError(<span class="macro">format!</span>(
-                    <span class="string">"Failed to parse bootstrap whitelist : {}"</span>,
-                    e
-                ))
-            })<span class="question-mark">?
-            </span>.into_iter()
-            .map(to_canonical)
-            .collect())
     }
 }
 
@@ -648,95 +515,6 @@
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(
             list.is_ip_allowed(<span class="kw-2">&amp;</span>peer),
             <span class="prelude-val">Err</span>(BootstrapError::BlackListed(<span class="kw">_</span>))
-        ));
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>whitelist_file_disappearance_does_not_open_access() {
-        <span class="kw">let </span>dir = TempDir::new().unwrap();
-        <span class="kw">let </span>white = dir.path().join(<span class="string">"whitelist.json"</span>);
-        <span class="kw">let </span>black = dir.path().join(<span class="string">"blacklist.json"</span>);
-        std::fs::write(<span class="kw-2">&amp;</span>white, <span class="string">r#"["127.0.0.1"]"#</span>).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>list = SharedWhiteBlackList::new(white.clone(), black).unwrap();
-
-        <span class="kw">let </span>allowed = SocketAddr::new(<span class="string">"127.0.0.1"</span>.parse().unwrap(), <span class="number">12345</span>);
-        <span class="kw">let </span>refused = SocketAddr::new(<span class="string">"127.0.0.2"</span>.parse().unwrap(), <span class="number">12345</span>);
-        <span class="macro">assert!</span>(list.is_ip_allowed(<span class="kw-2">&amp;</span>allowed).is_ok());
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            list.is_ip_allowed(<span class="kw-2">&amp;</span>refused),
-            <span class="prelude-val">Err</span>(BootstrapError::WhiteListed(<span class="kw">_</span>))
-        ));
-
-        <span class="comment">// The whitelist file disappears at runtime: the refresh must keep the
-        // previously loaded list instead of failing open.
-        </span>std::fs::remove_file(<span class="kw-2">&amp;</span>white).unwrap();
-        list.update().unwrap();
-
-        <span class="macro">assert!</span>(list.is_ip_allowed(<span class="kw-2">&amp;</span>allowed).is_ok());
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            list.is_ip_allowed(<span class="kw-2">&amp;</span>refused),
-            <span class="prelude-val">Err</span>(BootstrapError::WhiteListed(<span class="kw">_</span>))
-        ));
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>blacklist_file_disappearance_keeps_blocking() {
-        <span class="kw">let </span>dir = TempDir::new().unwrap();
-        <span class="kw">let </span>white = dir.path().join(<span class="string">"whitelist.json"</span>);
-        <span class="kw">let </span>black = dir.path().join(<span class="string">"blacklist.json"</span>);
-        std::fs::write(<span class="kw-2">&amp;</span>black, <span class="string">r#"["127.0.0.2"]"#</span>).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>list = SharedWhiteBlackList::new(white, black.clone()).unwrap();
-
-        <span class="kw">let </span>blocked = SocketAddr::new(<span class="string">"127.0.0.2"</span>.parse().unwrap(), <span class="number">12345</span>);
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            list.is_ip_allowed(<span class="kw-2">&amp;</span>blocked),
-            <span class="prelude-val">Err</span>(BootstrapError::BlackListed(<span class="kw">_</span>))
-        ));
-
-        std::fs::remove_file(<span class="kw-2">&amp;</span>black).unwrap();
-        list.update().unwrap();
-
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            list.is_ip_allowed(<span class="kw-2">&amp;</span>blocked),
-            <span class="prelude-val">Err</span>(BootstrapError::BlackListed(<span class="kw">_</span>))
-        ));
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>refresh_without_any_configured_list_keeps_access_open() {
-        <span class="kw">let </span>dir = TempDir::new().unwrap();
-        <span class="kw">let </span>white = dir.path().join(<span class="string">"whitelist.json"</span>);
-        <span class="kw">let </span>black = dir.path().join(<span class="string">"blacklist.json"</span>);
-        <span class="comment">// no file at all: the common case of a node without access lists
-        </span><span class="kw">let </span><span class="kw-2">mut </span>list = SharedWhiteBlackList::new(white, black).unwrap();
-
-        list.update().unwrap();
-
-        <span class="kw">let </span>peer = SocketAddr::new(<span class="string">"127.0.0.1"</span>.parse().unwrap(), <span class="number">12345</span>);
-        <span class="macro">assert!</span>(list.is_ip_allowed(<span class="kw-2">&amp;</span>peer).is_ok());
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>recreated_whitelist_file_is_reloaded_on_refresh() {
-        <span class="kw">let </span>dir = TempDir::new().unwrap();
-        <span class="kw">let </span>white = dir.path().join(<span class="string">"whitelist.json"</span>);
-        <span class="kw">let </span>black = dir.path().join(<span class="string">"blacklist.json"</span>);
-        std::fs::write(<span class="kw-2">&amp;</span>white, <span class="string">r#"["127.0.0.1"]"#</span>).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>list = SharedWhiteBlackList::new(white.clone(), black).unwrap();
-
-        <span class="comment">// the file disappears, then comes back with a different content:
-        // the refresh must pick up the new list
-        </span>std::fs::remove_file(<span class="kw-2">&amp;</span>white).unwrap();
-        list.update().unwrap();
-        std::fs::write(<span class="kw-2">&amp;</span>white, <span class="string">r#"["127.0.0.3"]"#</span>).unwrap();
-        list.update().unwrap();
-
-        <span class="kw">let </span>newly_allowed = SocketAddr::new(<span class="string">"127.0.0.3"</span>.parse().unwrap(), <span class="number">12345</span>);
-        <span class="kw">let </span>formerly_allowed = SocketAddr::new(<span class="string">"127.0.0.1"</span>.parse().unwrap(), <span class="number">12345</span>);
-        <span class="macro">assert!</span>(list.is_ip_allowed(<span class="kw-2">&amp;</span>newly_allowed).is_ok());
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            list.is_ip_allowed(<span class="kw-2">&amp;</span>formerly_allowed),
-            <span class="prelude-val">Err</span>(BootstrapError::WhiteListed(<span class="kw">_</span>))
         ));
     }
 }

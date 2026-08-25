@@ -1336,6 +1336,9 @@
 <a href="#1336" id="1336">1336</a>
 <a href="#1337" id="1337">1337</a>
 <a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1459,6 +1462,9 @@
                 thread_count: <span class="self">self</span>.config.thread_count,
                 endorsement_count: <span class="self">self</span>.config.endorsement_count,
                 max_operations_per_block: <span class="self">self</span>.config.max_operations_per_block,
+                max_serialized_operations_size_per_block: <span class="self">self
+                    </span>.config
+                    .max_serialized_operations_size_per_block,
                 max_datastore_value_length: <span class="self">self</span>.config.max_size_value_datastore,
                 max_function_name_length: <span class="self">self</span>.config.max_size_function_name,
                 max_parameters_size: <span class="self">self</span>.config.max_size_call_sc_parameter,
