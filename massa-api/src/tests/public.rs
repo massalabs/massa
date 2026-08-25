@@ -1303,6 +1303,94 @@ async fn get_openrpc_spec() {
     api_public_handle.stop().await;
 }
 
+#[cfg(feature = "execution-trace")]
+#[tokio::test]
+async fn get_slots_transfers_keeps_positional_alignment() {
+    use massa_execution_exports::Transfer as ExecTransfer;
+
+    let addr: SocketAddr = "[::]:5051".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr);
+
+    // Query three slots where the middle one has no blockclique block. It must still occupy
+    // its position in the (positional) `Vec<Vec<Transfer>>`, otherwise later slots would be
+    // misattributed to the wrong slot.
+    let present_a = Slot::new(1, 0);
+    let missing = Slot::new(2, 0);
+    let present_b = Slot::new(3, 0);
+
+    let block_id = create_block(&KeyPair::generate(0).unwrap()).id;
+
+    let mut consensus_ctrl = MockConsensusController::new();
+    consensus_ctrl
+        .expect_get_blockclique_block_at_slot()
+        .returning(move |slot| {
+            if slot == missing {
+                None
+            } else {
+                Some(block_id)
+            }
+        });
+
+    let sample_addr =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    let op_id =
+        OperationId::from_str("O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC").unwrap();
+
+    let mut exec_ctrl = MockExecutionController::new();
+    // Encode the slot period into the transfer amount so we can assert res[i] maps to slots[i].
+    exec_ctrl
+        .expect_get_slot_abi_call_stack_and_transfers()
+        .returning(move |slot| {
+            (
+                None,
+                Some(vec![ExecTransfer {
+                    from: sample_addr,
+                    to: sample_addr,
+                    amount: Amount::from_raw(slot.period),
+                    effective_received_amount: Amount::from_raw(slot.period),
+                    op_id,
+                    succeed: true,
+                    fee: Amount::zero(),
+                }]),
+            )
+        });
+
+    api_public.0.consensus_controller = Box::new(consensus_ctrl);
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').last().unwrap()
+        ))
+        .unwrap();
+
+    let response: Vec<Vec<massa_api_exports::execution::Transfer>> = client
+        .request(
+            "get_slots_transfers",
+            rpc_params![vec![present_a, missing, present_b]],
+        )
+        .await
+        .unwrap();
+
+    // One entry per input slot, in order.
+    assert_eq!(response.len(), 3);
+    // Present slots carry their transfer; the missing slot is empty but still positioned.
+    assert_eq!(response[0].len(), 1);
+    assert!(response[1].is_empty());
+    assert_eq!(response[2].len(), 1);
+    // res[i] maps to slots[i]: the amount was set to the slot period.
+    assert_eq!(response[0][0].amount, Amount::from_raw(present_a.period));
+    assert_eq!(response[2][0].amount, Amount::from_raw(present_b.period));
+
+    api_public_handle.stop().await;
+}
+
 #[tokio::test]
 async fn get_stakers() {
     let addr: SocketAddr = "[::]:5015".parse().unwrap();
