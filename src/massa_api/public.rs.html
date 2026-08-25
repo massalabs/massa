@@ -1663,6 +1663,12 @@
 <a href="#1663" id="1663">1663</a>
 <a href="#1664" id="1664">1664</a>
 <a href="#1665" id="1665">1665</a>
+<a href="#1666" id="1666">1666</a>
+<a href="#1667" id="1667">1667</a>
+<a href="#1668" id="1668">1668</a>
+<a href="#1669" id="1669">1669</a>
+<a href="#1670" id="1670">1670</a>
+<a href="#1671" id="1671">1671</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1801,6 +1807,12 @@
                 </span>.consensus_controller
                 .get_blockclique_block_at_slot(slot)
             <span class="kw">else </span>{
+                <span class="comment">// Every `Transfer` returned here carries the block ID of the slot, so a slot
+                // with no block (`get_blockclique_block_at_slot` also covers final blocks) has
+                // nothing to report. Keep `res` positionally aligned with the input `slots`
+                // anyway: it must still occupy its position, otherwise every later entry would
+                // be misattributed to the wrong slot.
+                </span>res.push(Vec::new());
                 <span class="kw">continue</span>;
             };
             <span class="kw">let </span><span class="kw-2">mut </span>transfers = Vec::new();
