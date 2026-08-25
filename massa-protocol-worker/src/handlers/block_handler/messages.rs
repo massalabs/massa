@@ -1,6 +1,7 @@
 use massa_models::{
     block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
     block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer},
+    config::operations_payload_size,
     operation::{
         OperationId, OperationIdSerializer, OperationIdsDeserializer, OperationsDeserializer,
         SecureShareOperation,
@@ -15,10 +16,6 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
-
-/// Maximum size in bytes of the varint prefix encoding the number of operations
-/// of a `BlockInfoReply::Operations` payload (a `u32` varint).
-const OPERATION_COUNT_PREFIX_MAX_SIZE: usize = 5;
 
 /// Request block data
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -251,14 +248,6 @@ impl BlockMessageDeserializer {
             max_serialized_operations_size_per_block: args.max_serialized_operations_size_per_block,
         }
     }
-
-    /// Maximum size of a serialized `BlockInfoReply::Operations` payload:
-    /// the block-level aggregate operations size, plus the varint prefix
-    /// holding the number of operations.
-    fn max_operations_payload_size(&self) -> usize {
-        self.max_serialized_operations_size_per_block
-            .saturating_add(OPERATION_COUNT_PREFIX_MAX_SIZE)
-    }
 }
 
 impl Deserializer<BlockMessage> for BlockMessageDeserializer {
@@ -352,7 +341,11 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                                     // block: the generic message size limit is orders of magnitude
                                     // larger than a block, so parsing first would let a peer make
                                     // us allocate far more than any valid block can hold.
-                                    if rest.len() > self.max_operations_payload_size() {
+                                    if rest.len()
+                                        > operations_payload_size(
+                                            self.max_serialized_operations_size_per_block,
+                                        )
+                                    {
                                         return Err(nom::Err::Error(ParseError::from_error_kind(
                                             rest,
                                             nom::error::ErrorKind::TooLarge,

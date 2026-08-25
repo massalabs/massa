@@ -174,6 +174,19 @@ pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
 pub const MAX_BLOCK_SIZE: u32 = 300_000;
+/// Maximum size in bytes of the varint prefix holding the number of operations of a serialized
+/// operation list. That count is a `u32` varint, and a varint carries 7 bits of payload per byte,
+/// hence `ceil(32 / 7) = 5` bytes at most.
+pub const MAX_OPERATIONS_COUNT_PREFIX_SIZE: usize = (u32::BITS as usize).div_ceil(7);
+
+/// Size of the serialized operation list holding operations of aggregate size `operations_size`:
+/// the operations themselves, plus the varint prefix holding their count.
+/// Use it to turn an operations size budget (such as `max_serialized_operations_size_per_block`)
+/// into the payload size a peer is allowed to send us.
+pub const fn operations_payload_size(operations_size: usize) -> usize {
+    operations_size.saturating_add(MAX_OPERATIONS_COUNT_PREFIX_SIZE)
+}
+
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 500;
 /// Maximum operation validity period count
