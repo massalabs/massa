@@ -1320,34 +1320,6 @@
 <a href="#1320" id="1320">1320</a>
 <a href="#1321" id="1321">1321</a>
 <a href="#1322" id="1322">1322</a>
-<a href="#1323" id="1323">1323</a>
-<a href="#1324" id="1324">1324</a>
-<a href="#1325" id="1325">1325</a>
-<a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1402,8 +1374,8 @@
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use super</span>::{
-    <span class="kw">super</span>::operation_handler::{is_block_intrinsic_operation_failure, note_operations_from_peer},
-    cache::{BlockDataKind, SharedBlockCache},
+    <span class="kw">super</span>::operation_handler::note_operations_from_peer,
+    cache::SharedBlockCache,
     commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand,
     messages::{
@@ -1501,16 +1473,12 @@
                                 <span class="comment">// A valid message prefix followed by trailing bytes must not
                                 // tear down this long-lived shared retrieval thread (doing so
                                 // would let a single peer deny block handling for everyone).
-                                // A compliant peer never sends trailing bytes, so ban the
-                                // sender and keep serving other peers.
+                                // Skip the malformed message and keep serving other peers.
                                 </span><span class="macro">warn!</span>(
-                                    <span class="string">"peer {} sent a block message with {} unexpected trailing byte(s); banning it"</span>,
+                                    <span class="string">"peer {} sent a block message with {} unexpected trailing byte(s); ignoring it"</span>,
                                     peer_id,
                                     rest.len()
                                 );
-                                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[peer_id]) {
-                                    <span class="macro">warn!</span>(<span class="string">"Error while banning peer {} err: {:?}"</span>, peer_id, err);
-                                }
                                 <span class="kw">continue</span>;
                             }
                             <span class="kw">match </span>message {
@@ -1789,12 +1757,6 @@
 
         <span class="kw">let </span>block_id = header.id;
 
-        <span class="comment">// durably record that this peer sent us the header of that block, so that a later
-        // attack detection can be attributed to it even if it disconnects in the meantime
-        </span><span class="self">self</span>.cache
-            .write()
-            .insert_block_sender(<span class="kw-2">&amp;</span>block_id, <span class="kw-2">&amp;</span>from_peer_id, BlockDataKind::Header);
-
         <span class="comment">// Check header and update knowledge info
         </span><span class="kw">let </span>is_new = <span class="kw">match </span><span class="self">self</span>.note_header_from_peer(<span class="kw-2">&amp;</span>header, <span class="kw-2">&amp;</span>from_peer_id) {
             <span class="prelude-val">Ok</span>(is_new) =&gt; is_new,
@@ -2053,23 +2015,23 @@
             }
         }
 
-        <span class="comment">// ban the peers that actually sent us the contents of this block.
-        // this is a contents-level defect, so peers that only relayed the header are spared:
-        // they had no way of checking the contents before propagating.
-        // `blocks_known_by_peer` must not be used here: it is mutable propagation state that
-        // also marks peers we announced the block to (and even peers marked as *not* knowing it),
-        // and it is pruned on disconnection and by LRU eviction.
-        </span><span class="kw">let </span>peers_to_ban = <span class="self">self</span>.cache.read().get_block_contents_senders(block_id);
-        <span class="kw">if </span>peers_to_ban.is_empty() {
-            <span class="macro">warn!</span>(
-                <span class="string">"block {} marked as invalid but no peer could be attributed as a sender of its contents: not banning anyone"</span>,
-                block_id
-            );
-        } <span class="kw">else if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>peers_to_ban) {
-            <span class="macro">warn!</span>(
-                <span class="string">"Error while banning peers {:?} err: {:?}"</span>,
-                peers_to_ban, err
-            );
+        <span class="comment">// ban all peers that know about this block
+        </span><span class="kw">let </span><span class="kw-2">mut </span>peers_to_ban = Vec::new();
+        {
+            <span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
+            <span class="kw">for </span>(peer_id, peer_known_blocks) <span class="kw">in </span>cache_read.blocks_known_by_peer.iter() {
+                <span class="kw">if </span>peer_known_blocks.peek(block_id).is_some() {
+                    peers_to_ban.push(<span class="kw-2">*</span>peer_id);
+                }
+            }
+        }
+        <span class="kw">if </span>!peers_to_ban.is_empty() {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>peers_to_ban) {
+                <span class="macro">warn!</span>(
+                    <span class="string">"Error while banning peers {:?} err: {:?}"</span>,
+                    peers_to_ban, err
+                );
+            }
         }
 
         <span class="comment">// clear retrieval cache
@@ -2094,12 +2056,7 @@
         );
         <span class="comment">// Note that the length of the operation list was checked at deserialization to not overflow the max per block.
 
-        // durably record that this peer sent us contents for that block (see `insert_block_sender`)
-        </span><span class="self">self</span>.cache
-            .write()
-            .insert_block_sender(<span class="kw-2">&amp;</span>block_id, <span class="kw-2">&amp;</span>from_peer_id, BlockDataKind::Contents);
-
-        <span class="comment">// All operation ids sent into a set to deduplicate and search quickly for presence
+        // All operation ids sent into a set to deduplicate and search quickly for presence
         </span><span class="kw">let </span>operation_ids_set: PreHashSet&lt;OperationId&gt; = operation_ids.iter().cloned().collect();
 
         <span class="comment">// mark the sender node as knowing those ops
@@ -2180,11 +2137,6 @@
             block_id, <span class="kw-2">&amp;</span>from_peer_id
         );
 
-        <span class="comment">// durably record that this peer sent us contents for that block (see `insert_block_sender`)
-        </span><span class="self">self</span>.cache
-            .write()
-            .insert_block_sender(<span class="kw-2">&amp;</span>block_id, <span class="kw-2">&amp;</span>from_peer_id, BlockDataKind::Contents);
-
         <span class="comment">// Ensure that we were looking for that data.
         </span><span class="kw">let </span>wishlist_info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self
             </span>.block_wishlist
@@ -2254,6 +2206,9 @@
         <span class="comment">// Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
 
         // Check the validity of the received operations.
+        // TODO: in the future if the validiy check fails for something non-malleable (eg. not sig verif),
+        //       we should stop retrieving the block and ban everyone who knows it
+        //       because we know for sure that this op's ID belongs to the block.
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = note_operations_from_peer(
             <span class="kw-2">&amp;</span><span class="self">self</span>.storage,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.operation_cache,
@@ -2263,17 +2218,6 @@
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.sender_propagation_ops,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller,
         ) {
-            <span class="kw">if </span>is_block_intrinsic_operation_failure(<span class="kw-2">&amp;</span>err) {
-                <span class="comment">// The failure is fully determined by operation contents that the block's operation IDs
-                // already commit to: no peer can ever deliver a valid version of this block.
-                // Stop retrieving it instead of asking around forever.
-                </span><span class="macro">warn!</span>(
-                    <span class="string">"block id {} is invalid: one of the operations it commits to failed a content-level check: {}"</span>,
-                    block_id, err
-                );
-                <span class="self">self</span>.mark_block_as_invalid(<span class="kw-2">&amp;</span>block_id);
-                <span class="kw">return</span>;
-            }
             <span class="macro">warn!</span>(
                 <span class="string">"Peer id {} sent us operations for block id {} but they failed validity checks: {}"</span>,
                 from_peer_id, block_id, err
