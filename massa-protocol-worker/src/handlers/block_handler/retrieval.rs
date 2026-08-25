@@ -52,7 +52,7 @@ use rand::{seq::SliceRandom, Rng};
 use tracing::{debug, info, warn};
 
 use super::{
-    super::operation_handler::note_operations_from_peer,
+    super::operation_handler::{is_block_intrinsic_operation_failure, note_operations_from_peer},
     cache::{BlockDataKind, SharedBlockCache},
     commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand,
@@ -151,12 +151,16 @@ impl RetrievalThread {
                                 // A valid message prefix followed by trailing bytes must not
                                 // tear down this long-lived shared retrieval thread (doing so
                                 // would let a single peer deny block handling for everyone).
-                                // Skip the malformed message and keep serving other peers.
+                                // A compliant peer never sends trailing bytes, so ban the
+                                // sender and keep serving other peers.
                                 warn!(
-                                    "peer {} sent a block message with {} unexpected trailing byte(s); ignoring it",
+                                    "peer {} sent a block message with {} unexpected trailing byte(s); banning it",
                                     peer_id,
                                     rest.len()
                                 );
+                                if let Err(err) = self.ban_peers(&[peer_id]) {
+                                    warn!("Error while banning peer {} err: {:?}", peer_id, err);
+                                }
                                 continue;
                             }
                             match message {
@@ -900,9 +904,6 @@ impl RetrievalThread {
         // Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
 
         // Check the validity of the received operations.
-        // TODO: in the future if the validiy check fails for something non-malleable (eg. not sig verif),
-        //       we should stop retrieving the block and ban everyone who knows it
-        //       because we know for sure that this op's ID belongs to the block.
         if let Err(err) = note_operations_from_peer(
             &self.storage,
             &mut self.operation_cache,
@@ -912,6 +913,17 @@ impl RetrievalThread {
             &mut self.sender_propagation_ops,
             &mut self.pool_controller,
         ) {
+            if is_block_intrinsic_operation_failure(&err) {
+                // The failure is fully determined by operation contents that the block's operation IDs
+                // already commit to: no peer can ever deliver a valid version of this block.
+                // Stop retrieving it instead of asking around forever.
+                warn!(
+                    "block id {} is invalid: one of the operations it commits to failed a content-level check: {}",
+                    block_id, err
+                );
+                self.mark_block_as_invalid(&block_id);
+                return;
+            }
             warn!(
                 "Peer id {} sent us operations for block id {} but they failed validity checks: {}",
                 from_peer_id, block_id, err

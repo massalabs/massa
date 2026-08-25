@@ -65,6 +65,10 @@ pub struct BootstrapConfig {
     pub rate_limit: u64,
     /// thread count
     pub thread_count: u8,
+    /// time between two periods in the same thread (t0)
+    pub t0: MassaTime,
+    /// timestamp of the network genesis
+    pub genesis_timestamp: MassaTime,
     /// period per cycle
     pub periods_per_cycle: u64,
     /// max datastore key length

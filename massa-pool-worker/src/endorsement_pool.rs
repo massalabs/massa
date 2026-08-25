@@ -2,6 +2,7 @@
 
 use massa_models::{
     block_id::BlockId,
+    config::MAX_ENDORSEMENTS_PER_SLOT_INDEX,
     endorsement::EndorsementId,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
@@ -15,21 +16,6 @@ use std::{
     sync::Arc,
 };
 use tracing::{trace, warn};
-
-/// Maximum number of endorsements kept for a given `(slot, index)` pair, whatever the endorsed
-/// block is. An honest endorser signs exactly one endorsement per `(slot, index)`: the factory
-/// walks slots strictly monotonically and never re-endorses after a reorg. So several entries
-/// under the same key mean the drawn endorser equivocated, and the endorsed block is not
-/// constrained at ingress: without a bound such an endorser could mint arbitrarily many valid
-/// endorsements differing only by their endorsed block and grow the pool without limit.
-///
-/// The bound is kept above 1 because [`EndorsementPool::get_block_endorsements`] only returns the
-/// endorsement matching the parent the block factory settled on. Keeping a single variant makes
-/// insertion first-write-wins, letting an equivocating endorser deliberately send the variant that
-/// does not match our parent and permanently deny us that endorsement slot, which costs block
-/// fitness and rewards. A few variants cover the competing blockclique tips of a real fork while
-/// keeping the worst-case pool size within a small multiple of `max_endorsements_pool_size_per_thread`.
-pub(crate) const MAX_ENDORSEMENTS_PER_SLOT_INDEX: usize = 4;
 
 #[derive(Clone)]
 pub struct EndorsementPool {

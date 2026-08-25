@@ -10,7 +10,7 @@ use crate::{
 use crate::{BootstrapConfig, BootstrapError, GlobalBootstrapState};
 use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_consensus_exports::MockConsensusController;
-use massa_db_exports::{MassaDBConfig, MassaDBController};
+use massa_db_exports::{MassaDBConfig, MassaDBController, StreamBatch};
 use massa_db_worker::MassaDB;
 use massa_final_state::{FinalStateConfig, MockFinalStateController};
 use massa_hash::Hash;
@@ -1011,6 +1011,93 @@ fn test_server_rejects_oversized_consensus_cursor() {
         server.next_timeout(Some(timeout)).is_err(),
         "Server accepted a consensus cursor above MAX_CONSENSUS_BLOCKS_IDS"
     );
+}
+
+/// A bootstrap part carrying network restart metadata that no coherent downtime can produce must
+/// be rejected before it is stored: startup derives slots and timestamps from those two fields
+/// and would otherwise fail long after the bootstrap reported success.
+#[test]
+#[serial]
+fn test_client_rejects_inconsistent_restart_metadata() {
+    let timeout = Duration::from_secs(30);
+    let (bootstrap_config, _): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+
+    // period 0 has no previous slot, so the downtime range cannot end before the restart
+    let inconsistent = (Some(0), Some(Some(Slot::new(0, 0))));
+    // the last slot before the downtime is after the restart period
+    let reversed = (Some(1), Some(Some(Slot::new(5, 0))));
+    // a restart period whose timestamp does not fit in a `MassaTime`
+    let overflowing = (Some(u64::MAX), Some(None));
+    // the server always sends both fields together
+    let half = (Some(2), None);
+
+    for (last_start_period, last_slot_before_downtime) in
+        [inconsistent, reversed, overflowing, half]
+    {
+        let (mut server, mut client) = init_server_client_pair();
+
+        // any use of the final state would mean the metadata was accepted: the mock has no
+        // expectation set, so it panics if the client touches it
+        let mut global_bootstrap_state = GlobalBootstrapState {
+            final_state: Arc::new(RwLock::new(MockFinalStateController::new())),
+            graph: None,
+            peers: None,
+        };
+        let mut next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
+            last_slot: None,
+            last_state_step: StreamingStep::Started,
+            last_versioning_step: StreamingStep::Started,
+            last_consensus_step: StreamingStep::Started,
+            send_last_start_period: true,
+        };
+
+        let server_thread = std::thread::Builder::new()
+            .name("test_inconsistent_restart_metadata::server_thread".to_string())
+            .spawn(move || {
+                server.next_timeout(Some(timeout)).unwrap();
+                server
+                    .send_timeout(
+                        BootstrapServerMessage::BootstrapPart {
+                            slot: Slot::new(1, 0),
+                            state_part: StreamBatch {
+                                new_elements: Default::default(),
+                                updates_on_previous_elements: Default::default(),
+                                change_id: Slot::new(1, 0),
+                            },
+                            versioning_part: StreamBatch {
+                                new_elements: Default::default(),
+                                updates_on_previous_elements: Default::default(),
+                                change_id: Slot::new(1, 0),
+                            },
+                            consensus_part: BootstrapableGraph {
+                                final_blocks: vec![],
+                            },
+                            consensus_outdated_ids: PreHashSet::default(),
+                            last_start_period,
+                            last_slot_before_downtime,
+                        },
+                        Some(timeout),
+                    )
+                    .unwrap();
+            })
+            .unwrap();
+
+        let res = stream_final_state_and_consensus(
+            bootstrap_config,
+            &mut client,
+            &mut next_bootstrap_message,
+            &mut global_bootstrap_state,
+        );
+        server_thread.join().unwrap();
+
+        assert!(
+            matches!(res, Err(BootstrapError::GeneralError(_))),
+            "restart metadata {:?} / {:?} was accepted, got {:?}",
+            last_start_period,
+            last_slot_before_downtime,
+            res
+        );
+    }
 }
 
 /// After `SlotTooOld` the client restarts the consensus stream from `Started`, a step for which the
