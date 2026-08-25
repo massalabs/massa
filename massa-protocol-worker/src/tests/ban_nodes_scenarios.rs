@@ -742,6 +742,132 @@ fn test_protocol_does_not_ban_header_only_sender_of_an_invalid_block() {
     ban_waitpoint.wait();
 }
 
+/// A block whose operation contents fail a check that is fully determined by those contents
+/// (here: an operation bigger than a whole block may be) is unrecoverable: the block's operation
+/// ids commit to that content, so no peer can ever deliver a valid version of it. We must mark it
+/// invalid and stop retrieving it, not merely ban the sender and keep asking around.
+#[test]
+fn test_protocol_marks_block_invalid_on_intrinsically_invalid_full_operations() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        // any single operation is enough to overflow the block, making its contents invalid
+        max_serialized_operations_size_per_block: 1,
+        ..Default::default()
+    };
+
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+
+    let block_creator = KeyPair::generate(0).unwrap();
+    let op = tools::create_operation_with_expire_period(&block_creator, 5);
+    let op_thread = op
+        .content_creator_address
+        .get_thread(protocol_config.thread_count);
+    let block = ProtocolTestUniverse::create_block(
+        &block_creator,
+        Slot::new(1, op_thread),
+        vec![op.clone()],
+        vec![],
+        vec![],
+    );
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+
+    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .returning(move |_| {});
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers()
+        .return_const(HashMap::default());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers_mut()
+        .times(0..1)
+        .returning(HashMap::default);
+    // the block must be reported as invalid to consensus: this is what stops the retrieval loop
+    let block_clone = block.clone();
+    foreign_controllers
+        .consensus_controller
+        .expect_mark_invalid_block()
+        .times(1)
+        .return_once(move |block_id, header| {
+            assert_eq!(block_id, block_clone.id);
+            assert_eq!(header.id, block_clone.content.header.id);
+            waitpoint_trigger_handle.trigger();
+        });
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    shared_active_connections.set_expectations(
+        |active_connections: &mut MockActiveConnectionsTrait| {
+            active_connections
+                .expect_get_peer_ids_connected()
+                .returning(move || {
+                    let mut peers = HashSet::new();
+                    peers.insert(node_a_peer_id);
+                    peers
+                });
+            active_connections
+                .expect_send_to_peer()
+                .returning(move |_, _, _, _| Ok(()));
+            active_connections
+                .expect_shutdown_connection()
+                .returning(move |_| {});
+        },
+    );
+    foreign_controllers
+        .network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(shared_active_connections.clone()));
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    // start retrieving the block, which makes us ask node A for its operation ids
+    universe
+        .module_controller
+        .send_wishlist_delta(
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .unwrap();
+
+    // TODO: Find a way to wait for the previous messages to be processed
+    std::thread::sleep(Duration::from_millis(1000));
+
+    // we do not know that operation locally, so the op id list alone cannot tell us the block is
+    // oversized: we go on and ask node A for the operation itself
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::OperationIds(vec![op.id]),
+        })),
+    );
+
+    // TODO: Find a way to wait for the previous messages to be processed
+    std::thread::sleep(Duration::from_millis(1000));
+
+    // node A delivers the operation: it is over the max block size, which the block's operation
+    // ids already commit to, so the block is permanently invalid
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::Operations(vec![op.clone()]),
+        })),
+    );
+
+    waitpoint.wait();
+}
+
 #[test]
 fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     let protocol_config = ProtocolConfig {
