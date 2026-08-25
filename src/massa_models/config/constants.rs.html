@@ -451,6 +451,14 @@
 <a href="#451" id="451">451</a>
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -600,25 +608,33 @@
 </span><span class="kw">pub const </span>THREAD_COUNT: u8 = <span class="number">32</span>;
 <span class="doccomment">/// Number of endorsement
 </span><span class="kw">pub const </span>ENDORSEMENT_COUNT: u32 = <span class="number">16</span>;
+<span class="doccomment">/// Maximum number of endorsements kept for a given `(slot, index)` draw, whatever the endorsed
+/// block is. Enforced both by the endorsement pool and by the protocol propagation path, which
+/// share this bound so that neither becomes the tighter of the two.
+///
+/// An honest endorser signs exactly one endorsement per `(slot, index)`: the factory walks slots
+/// strictly monotonically and never re-endorses after a reorg. So several entries under the same
+/// key mean the drawn endorser equivocated. The endorsed block is not constrained at ingress and
+/// the endorsement id is derived from the whole signed content, so without a bound such an endorser
+/// could mint arbitrarily many valid endorsements differing only by their endorsed block, growing
+/// the pool without limit and having every node relay each variant.
+///
+/// The bound is kept above 1 for two reasons. The denunciation pool needs two conflicting
+/// endorsements to build a denunciation, so a bound of 1 would silently disable endorsement
+/// equivocation denunciation. And `EndorsementPool::get_block_endorsements` only returns the
+/// endorsement matching the parent the block factory settled on, so keeping a single variant makes
+/// insertion first-write-wins, letting an equivocating endorser deliberately send the variant that
+/// does not match our parent and permanently deny us that endorsement slot, which costs block
+/// fitness and rewards. A few variants cover the competing blockclique tips of a real fork while
+/// keeping the worst-case pool size within a small multiple of
+/// `max_endorsements_pool_size_per_thread`.
+</span><span class="kw">pub const </span>MAX_ENDORSEMENTS_PER_SLOT_INDEX: usize = <span class="number">4</span>;
 <span class="doccomment">/// Threshold for fitness.
 </span><span class="kw">pub const </span>DELTA_F0: u64 = <span class="number">64 </span>* (ENDORSEMENT_COUNT <span class="kw">as </span>u64 + <span class="number">1</span>);
 <span class="doccomment">/// Maximum number of operations per block
 </span><span class="kw">pub const </span>MAX_OPERATIONS_PER_BLOCK: u32 = <span class="number">5000</span>;
 <span class="doccomment">/// Maximum block size in bytes
 </span><span class="kw">pub const </span>MAX_BLOCK_SIZE: u32 = <span class="number">300_000</span>;
-<span class="doccomment">/// Maximum size in bytes of the varint prefix holding the number of operations of a serialized
-/// operation list. That count is a `u32` varint, and a varint carries 7 bits of payload per byte,
-/// hence `ceil(32 / 7) = 5` bytes at most.
-</span><span class="kw">pub const </span>MAX_OPERATIONS_COUNT_PREFIX_SIZE: usize = (u32::BITS <span class="kw">as </span>usize).div_ceil(<span class="number">7</span>);
-
-<span class="doccomment">/// Size of the serialized operation list holding operations of aggregate size `operations_size`:
-/// the operations themselves, plus the varint prefix holding their count.
-/// Use it to turn an operations size budget (such as `max_serialized_operations_size_per_block`)
-/// into the payload size a peer is allowed to send us.
-</span><span class="kw">pub const fn </span>operations_payload_size(operations_size: usize) -&gt; usize {
-    operations_size.saturating_add(MAX_OPERATIONS_COUNT_PREFIX_SIZE)
-}
-
 <span class="doccomment">/// Maximum capacity of the asynchronous messages pool
 </span><span class="kw">pub const </span>MAX_ASYNC_POOL_LENGTH: u64 = <span class="number">500</span>;
 <span class="doccomment">/// Maximum operation validity period count
