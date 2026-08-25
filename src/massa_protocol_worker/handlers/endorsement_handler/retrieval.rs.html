@@ -346,6 +346,14 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -464,7 +472,15 @@
             }
         };
         <span class="kw">if </span>!rest.is_empty() {
-            <span class="macro">debug!</span>(<span class="string">"Message not fully consumed"</span>);
+            <span class="comment">// A compliant peer never sends trailing bytes, so ban the sender.
+            </span><span class="macro">warn!</span>(
+                <span class="string">"peer {} sent an endorsement message with {} unexpected trailing byte(s); banning it"</span>,
+                peer_id,
+                rest.len()
+            );
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peer(<span class="kw-2">&amp;</span>peer_id) {
+                <span class="macro">warn!</span>(<span class="string">"Error while banning peer {} err: {:?}"</span>, peer_id, err);
+            }
             <span class="kw">return</span>;
         }
         <span class="kw">match </span>message {
