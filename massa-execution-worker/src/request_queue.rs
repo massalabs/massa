@@ -82,8 +82,14 @@ impl<T, R> RequestQueue<T, R> {
         // compute the number of available item slots
         let free_slots = self.max_items.saturating_sub(self.queue.len());
 
-        // if there are no available slots remaining, do nothing
+        // If there are no available slots remaining, cancel the whole incoming queue.
+        // `RequestQueue` does not cancel on drop, so returning without cancelling would
+        // drop the response senders silently: already-accepted requests would fail with
+        // a generic channel error instead of this clean capacity error.
         if free_slots == 0 {
+            other.cancel(ExecutionError::ChannelError(
+                "maximal request queue capacity reached".into(),
+            ));
             return;
         }
 
@@ -160,5 +166,76 @@ impl<T, R> RequestQueue<T, R> {
     /// true if the queue is empty, false otherwise
     pub fn is_empty(&self) -> bool {
         self.queue.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use massa_channel::receiver::MassaReceiver;
+    use massa_channel::MassaChannel;
+
+    fn make_request(
+        request: u32,
+    ) -> (
+        RequestWithResponseSender<u32, u32>,
+        MassaReceiver<Result<u32, ExecutionError>>,
+    ) {
+        let (response_tx, response_rx) = MassaChannel::new("test_request_queue".to_string(), None);
+        (
+            RequestWithResponseSender::new(request, response_tx),
+            response_rx,
+        )
+    }
+
+    /// Assert that the request behind `response_rx` was cancelled with a clean
+    /// capacity error, not silently dropped.
+    fn assert_cancelled_for_capacity(response_rx: MassaReceiver<Result<u32, ExecutionError>>) {
+        match response_rx.recv() {
+            Ok(Err(ExecutionError::ChannelError(msg))) => {
+                assert!(msg.contains("maximal request queue capacity reached"))
+            }
+            other => panic!("expected a capacity cancellation error, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_extend_cancels_incoming_when_destination_is_full() {
+        let mut destination = RequestQueue::<u32, u32>::new(1);
+        let (req, _rx_kept) = make_request(0);
+        destination.push(req);
+
+        let mut incoming = RequestQueue::<u32, u32>::new(2);
+        let (req1, rx1) = make_request(1);
+        let (req2, rx2) = make_request(2);
+        incoming.push(req1);
+        incoming.push(req2);
+
+        destination.extend(incoming);
+
+        assert_cancelled_for_capacity(rx1);
+        assert_cancelled_for_capacity(rx2);
+        assert!(destination.is_full());
+    }
+
+    #[test]
+    fn test_extend_cancels_only_the_excess_when_partially_full() {
+        let mut destination = RequestQueue::<u32, u32>::new(2);
+        let (req, _rx_kept) = make_request(0);
+        destination.push(req);
+
+        let mut incoming = RequestQueue::<u32, u32>::new(2);
+        let (req1, rx1) = make_request(1);
+        let (req2, rx2) = make_request(2);
+        incoming.push(req1);
+        incoming.push(req2);
+
+        destination.extend(incoming);
+
+        // the first incoming request fits and must not have received anything
+        assert!(rx1.try_recv().is_err());
+        // the second one is in excess and must be cancelled with a clean error
+        assert_cancelled_for_capacity(rx2);
+        assert!(destination.is_full());
     }
 }
