@@ -1626,6 +1626,17 @@
 <a href="#1626" id="1626">1626</a>
 <a href="#1627" id="1627">1627</a>
 <a href="#1628" id="1628">1628</a>
+<a href="#1629" id="1629">1629</a>
+<a href="#1630" id="1630">1630</a>
+<a href="#1631" id="1631">1631</a>
+<a href="#1632" id="1632">1632</a>
+<a href="#1633" id="1633">1633</a>
+<a href="#1634" id="1634">1634</a>
+<a href="#1635" id="1635">1635</a>
+<a href="#1636" id="1636">1636</a>
+<a href="#1637" id="1637">1637</a>
+<a href="#1638" id="1638">1638</a>
+<a href="#1639" id="1639">1639</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2006,6 +2017,8 @@
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         periods_per_cycle: PERIODS_PER_CYCLE,
         endorsement_count: ENDORSEMENT_COUNT,
         max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -2070,27 +2083,10 @@
             .expect(<span class="string">"could not compute initial draws"</span>); <span class="comment">// TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     </span>}
 
-    <span class="kw">let </span>last_slot_before_downtime_ = <span class="kw-2">*</span>final_state.read().get_last_slot_before_downtime();
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(last_slot_before_downtime) = last_slot_before_downtime_ {
-        <span class="kw">let </span>last_shutdown_start = last_slot_before_downtime
-            .get_next_slot(THREAD_COUNT)
-            .unwrap();
-        <span class="kw">let </span>last_shutdown_end = Slot::new(final_state.read().get_last_start_period(), <span class="number">0</span>)
-            .get_prev_slot(THREAD_COUNT)
-            .unwrap();
-
-        final_state
-            .read()
-            .get_mip_store()
-            .is_consistent_with_shutdown_period(
-                last_shutdown_start,
-                last_shutdown_end,
-                THREAD_COUNT,
-                T0,
-                <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-            )
-            .expect(<span class="string">"Mip store is not consistent with shutdown period"</span>);
-
+    <span class="comment">// Note: the consistency of the network restart metadata with the MIP store has already been
+    // checked, either by the bootstrap client before storing what the server sent, or by
+    // `FinalState::new_derived_from_snapshot` when restarting from a local snapshot.
+    </span><span class="kw">if </span>final_state.read().get_last_slot_before_downtime().is_some() {
         <span class="comment">// If we are before a network restart, print the hash to make it easier to debug bootstrapping issues
         </span><span class="kw">let </span>now = MassaTime::now();
         <span class="kw">let </span>last_start_slot = Slot::new(
@@ -2369,6 +2365,9 @@
         endorsement_count: ENDORSEMENT_COUNT,
         max_message_size: MAX_MESSAGE_SIZE <span class="kw">as </span>usize,
         max_ops_kept_for_propagation: SETTINGS.protocol.max_ops_kept_for_propagation,
+        max_endorsements_per_propagation_round: SETTINGS
+            .protocol
+            .max_endorsements_per_propagation_round,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().get_last_start_period(),
@@ -2467,6 +2466,24 @@
             .force_keep_final_periods_without_ops,
         chain_id: <span class="kw-2">*</span>CHAINID,
     };
+
+    <span class="comment">// Blocks are kept in the shared storage by consensus until they are older than
+    // `force_keep_final_periods` (past that point `strip_to_block` drops the storage
+    // reference, so the block is no longer servable to peers). That retention is what
+    // covers the tail of the propagation window when the propagation cache has to evict
+    // an entry early because of its `max_blocks_kept_for_propagation` size cap.
+    </span><span class="kw">let </span>consensus_block_retention = consensus_config
+        .t0
+        .saturating_mul(consensus_config.force_keep_final_periods);
+    <span class="kw">if </span>consensus_block_retention &lt; protocol_config.max_block_propagation_time {
+        <span class="macro">warn!</span>(
+            <span class="string">"consensus only keeps blocks for {:?} (force_keep_final_periods={} * t0={:?}) which is shorter than max_block_propagation_time={:?}: a block evicted early by the max_blocks_kept_for_propagation cap will not be retrievable by peers anymore, consider raising force_keep_final_periods or lowering max_block_propagation_time"</span>,
+            consensus_block_retention.to_duration(),
+            consensus_config.force_keep_final_periods,
+            consensus_config.t0.to_duration(),
+            protocol_config.max_block_propagation_time.to_duration()
+        );
+    }
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
         MassaChannel::new(<span class="string">"consensus_event"</span>.to_string(), <span class="prelude-val">Some</span>(CHANNEL_SIZE));
@@ -2642,6 +2659,7 @@
             keypair.clone(),
             <span class="kw-2">&amp;</span>final_state,
             SETTINGS.pool.minimal_fees,
+            gas_costs.sp_compilation_cost,
         );
 
         <span class="kw">let </span>grpc_public_api = MassaPublicGrpc {
@@ -2683,6 +2701,7 @@
             keypair.clone(),
             <span class="kw-2">&amp;</span>final_state,
             SETTINGS.pool.minimal_fees,
+            gas_costs.sp_compilation_cost,
         );
 
         <span class="kw">let </span>bs_white_black_list = bootstrap_manager
@@ -2841,6 +2860,7 @@
     keypair: KeyPair,
     final_state: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     minimal_fees: Amount,
+    sp_compilation_cost: u64,
 ) -&gt; GrpcConfig {
     GrpcConfig {
         name,
@@ -2883,6 +2903,8 @@
         max_parameter_size: MAX_PARAMETERS_SIZE,
         max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        sp_compilation_cost,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
