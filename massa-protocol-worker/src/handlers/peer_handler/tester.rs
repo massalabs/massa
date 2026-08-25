@@ -189,6 +189,15 @@ impl Tester {
                                 Some(String::from("Invalid signature")),
                             ));
                         }
+                        // the announcement timestamp is the freshness signal used to decide
+                        // which peers we keep sharing, so refuse one that is dated too far
+                        // ahead of us
+                        if announcement.is_future_dated(MassaTime::now().as_millis()) {
+                            return Err(PeerNetError::HandshakeError.error(
+                                "Tester Handshake",
+                                Some(String::from("Announcement timestamp too far in the future")),
+                            ));
+                        }
                         //TODO: Check ip we are connected match one of the announced ips
                         {
                             let mut peer_db_write = peer_db.write();

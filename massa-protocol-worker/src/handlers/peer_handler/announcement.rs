@@ -24,6 +24,12 @@ use massa_serialization::{
     U64VarIntSerializer,
 };
 
+/// Maximum tolerated clock skew between our local clock and the timestamp carried by a
+/// remote peer's announcement. The timestamp is attacker-controlled and is used as the peer
+/// freshness signal, so an announcement dated arbitrarily far in the future would otherwise
+/// stay "fresh" (and thus eligible for peer sharing and bootstrap responses) forever.
+pub const MAX_ANNOUNCEMENT_CLOCK_SKEW_MS: u64 = 5 * 60 * 1_000;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Announcement {
     /// Listeners
@@ -170,6 +176,12 @@ impl Deserializer<Announcement> for AnnouncementDeserializer {
 }
 
 impl Announcement {
+    /// Check the announcement timestamp against the local clock: a peer cannot legitimately
+    /// announce more than `MAX_ANNOUNCEMENT_CLOCK_SKEW_MS` ahead of us.
+    pub fn is_future_dated(&self, now_millis: u64) -> bool {
+        self.timestamp > now_millis.saturating_add(MAX_ANNOUNCEMENT_CLOCK_SKEW_MS)
+    }
+
     pub fn new(
         listeners: HashMap<SocketAddr, TransportType>,
         routable_ip: Option<IpAddr>,
