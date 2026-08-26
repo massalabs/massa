@@ -72,105 +72,6 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -182,23 +83,6 @@
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
 
-<span class="doccomment">/// Maximum number of peers recorded as direct senders of a given block.
-/// Bounds the memory used by the attribution record in case many peers send us the same block.
-</span><span class="kw">const </span>MAX_SENDERS_PER_BLOCK: usize = <span class="number">32</span>;
-
-<span class="doccomment">/// The kind of block data a peer sent us.
-///
-/// Used to decide what a peer can be held responsible for: a peer that only relayed a header
-/// could not have checked the block's contents, so it must not be punished for a defect that
-/// is only visible in those contents.
-</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-</span><span class="kw">pub enum </span>BlockDataKind {
-    <span class="doccomment">/// the peer sent us the block header
-    </span>Header,
-    <span class="doccomment">/// the peer sent us the block contents (operation ids or full operations)
-    </span>Contents,
-}
-
 <span class="doccomment">/// Cache on block knowledge by our node and its peers
 </span><span class="kw">pub struct </span>BlockCache {
     <span class="doccomment">/// cache of previously checked headers
@@ -207,14 +91,6 @@
     </span><span class="kw">pub </span>blocks_known_by_peer: HashMap&lt;PeerId, LruMap&lt;BlockId, (bool, Instant)&gt;&gt;,
     <span class="doccomment">/// max number of blocks known in peer knowledge cache
     </span><span class="kw">pub </span>max_known_blocks_by_peer: u32,
-    <span class="doccomment">/// For each recently seen block, the peers that directly sent us data for it, along with
-    /// the strongest kind of data they sent (`Contents` supersedes `Header`).
-    ///
-    /// This is attribution data, not propagation state: unlike `blocks_known_by_peer` it only
-    /// records peers from which we actually received the block's header or contents, it never
-    /// records peers that merely learned about the block from us, and it is not pruned when a
-    /// peer disconnects. It is therefore the only sound basis for punitive actions.
-    </span><span class="kw">pub </span>block_senders: LruMap&lt;BlockId, HashMap&lt;PeerId, BlockDataKind&gt;&gt;,
 }
 
 <span class="kw">impl </span>BlockCache {
@@ -241,79 +117,6 @@
             known_blocks.insert(<span class="kw-2">*</span>block_id, (known, now));
         }
     }
-
-    <span class="doccomment">/// Record that a peer directly sent us data for a given block.
-    ///
-    /// # Arguments
-    ///
-    /// * `block_id` - The block the data belongs to
-    /// * `from_peer_id` - The peer that sent us the data
-    /// * `kind` - The kind of data the peer sent us
-    </span><span class="kw">pub fn </span>insert_block_sender(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        block_id: <span class="kw-2">&amp;</span>BlockId,
-        from_peer_id: <span class="kw-2">&amp;</span>PeerId,
-        kind: BlockDataKind,
-    ) {
-        <span class="kw">let </span>senders = <span class="self">self
-            </span>.block_senders
-            .get_or_insert(<span class="kw-2">*</span>block_id, HashMap::new)
-            .expect(<span class="string">"failed to insert block senders entry"</span>);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(recorded_kind) = senders.get(from_peer_id).copied() {
-            <span class="comment">// a peer that already sent us the contents stays accountable for them
-            // even if it later sends us the header again
-            </span><span class="kw">if </span>recorded_kind == BlockDataKind::Header &amp;&amp; kind == BlockDataKind::Contents {
-                senders.insert(<span class="kw-2">*</span>from_peer_id, kind);
-            }
-            <span class="kw">return</span>;
-        }
-        <span class="comment">// bound the number of recorded senders per block
-        </span><span class="kw">if </span>senders.len() &gt;= MAX_SENDERS_PER_BLOCK {
-            <span class="comment">// the record is full: drop a header-only sender to make room for a contents
-            // sender, so that flooding us with headers cannot shield the peers that
-            // actually sent us the block contents from being held accountable
-            </span><span class="kw">if </span>kind == BlockDataKind::Header {
-                <span class="kw">return</span>;
-            }
-            <span class="kw">let </span>header_only_sender = senders
-                .iter()
-                .find(|(<span class="kw">_</span>, recorded_kind)| <span class="kw-2">**</span>recorded_kind == BlockDataKind::Header)
-                .map(|(peer_id, <span class="kw">_</span>)| <span class="kw-2">*</span>peer_id);
-            <span class="kw">match </span>header_only_sender {
-                <span class="prelude-val">Some</span>(peer_id) =&gt; {
-                    senders.remove(<span class="kw-2">&amp;</span>peer_id);
-                }
-                <span class="comment">// all the recorded senders sent us contents: keep them
-                </span><span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
-            }
-        }
-        senders.insert(<span class="kw-2">*</span>from_peer_id, kind);
-    }
-
-    <span class="doccomment">/// Get the peers that directly sent us any data for a given block.
-    </span><span class="kw">pub fn </span>get_block_senders(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; Vec&lt;PeerId&gt; {
-        <span class="self">self</span>.block_senders
-            .peek(block_id)
-            .map(|senders| senders.keys().copied().collect())
-            .unwrap_or_default()
-    }
-
-    <span class="doccomment">/// Get the peers that directly sent us the contents of a given block.
-    ///
-    /// Peers that only relayed the block header are excluded: they had no way of checking
-    /// the contents, so they must not be punished for a defect found in them.
-    </span><span class="kw">pub fn </span>get_block_contents_senders(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; Vec&lt;PeerId&gt; {
-        <span class="self">self</span>.block_senders
-            .peek(block_id)
-            .map(|senders| {
-                senders
-                    .iter()
-                    .filter(|(<span class="kw">_</span>, kind)| <span class="kw-2">**</span>kind == BlockDataKind::Contents)
-                    .map(|(peer_id, <span class="kw">_</span>)| <span class="kw-2">*</span>peer_id)
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
 }
 
 <span class="kw">impl </span>BlockCache {
@@ -322,7 +125,6 @@
             checked_headers: LruMap::new(ByLength::new(max_known_blocks)),
             blocks_known_by_peer: HashMap::new(),
             max_known_blocks_by_peer,
-            block_senders: LruMap::new(ByLength::new(max_known_blocks)),
         }
     }
 
