@@ -750,17 +750,21 @@ fn test_protocol_does_not_ban_header_only_sender_of_an_invalid_block() {
 /// invalid and stop retrieving it, not merely ban the sender and keep asking around.
 #[test]
 fn test_protocol_marks_block_invalid_on_intrinsically_invalid_full_operations() {
+    let thread_count = 2;
+    let block_creator = KeyPair::generate(0).unwrap();
+    let op = tools::create_operation_with_expire_period(&block_creator, 5);
     let protocol_config = ProtocolConfig {
-        thread_count: 2,
-        // any single operation is enough to overflow the block, making its contents invalid
-        max_serialized_operations_size_per_block: 1,
+        thread_count,
+        // the operation alone overflows the block, making its contents invalid. Keep it just over
+        // the limit so that the response still fits in the payload bound the block message
+        // deserializer enforces: that bound is what rejects grossly oversized responses, and this
+        // test is about what happens to the ones that squeeze past it.
+        max_serialized_operations_size_per_block: op.serialized_size() - 1,
         ..Default::default()
     };
 
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
 
-    let block_creator = KeyPair::generate(0).unwrap();
-    let op = tools::create_operation_with_expire_period(&block_creator, 5);
     let op_thread = op
         .content_creator_address
         .get_thread(protocol_config.thread_count);
