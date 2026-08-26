@@ -27,6 +27,8 @@
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>displaydoc::Display;
@@ -55,5 +57,7 @@
     </span>MassaCipherError(<span class="attr">#[from] </span>massa_cipher::CipherError),
     <span class="doccomment">/// Version error: {0}
     </span>VersionError(String),
+    <span class="doccomment">/// Inconsistent wallet file: {0}
+    </span>InconsistentWalletFile(String),
 }
 </code></pre></div></section></main></body></html>

@@ -2773,29 +2773,6 @@
 <a href="#2773" id="2773">2773</a>
 <a href="#2774" id="2774">2774</a>
 <a href="#2775" id="2775">2775</a>
-<a href="#2776" id="2776">2776</a>
-<a href="#2777" id="2777">2777</a>
-<a href="#2778" id="2778">2778</a>
-<a href="#2779" id="2779">2779</a>
-<a href="#2780" id="2780">2780</a>
-<a href="#2781" id="2781">2781</a>
-<a href="#2782" id="2782">2782</a>
-<a href="#2783" id="2783">2783</a>
-<a href="#2784" id="2784">2784</a>
-<a href="#2785" id="2785">2785</a>
-<a href="#2786" id="2786">2786</a>
-<a href="#2787" id="2787">2787</a>
-<a href="#2788" id="2788">2788</a>
-<a href="#2789" id="2789">2789</a>
-<a href="#2790" id="2790">2790</a>
-<a href="#2791" id="2791">2791</a>
-<a href="#2792" id="2792">2792</a>
-<a href="#2793" id="2793">2793</a>
-<a href="#2794" id="2794">2794</a>
-<a href="#2795" id="2795">2795</a>
-<a href="#2796" id="2796">2796</a>
-<a href="#2797" id="2797">2797</a>
-<a href="#2798" id="2798">2798</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -2819,7 +2796,6 @@
 </span><span class="kw">use </span>massa_models::config::VERSIONING_ACTIVATION_DELAY_MIN;
 <span class="kw">use </span>massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 <span class="kw">use </span>massa_models::error::ModelsError;
-<span class="kw">use </span>massa_models::operation::SecureShareOperation;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
@@ -3440,28 +3416,6 @@
     </span><span class="kw">pub fn </span>get_latest_component_version_at(<span class="kw-2">&amp;</span><span class="self">self</span>, component: <span class="kw-2">&amp;</span>MipComponent, ts: MassaTime) -&gt; u32 {
         <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.read();
         guard.get_latest_component_version_at(component, ts)
-    }
-
-    <span class="doccomment">/// F89 / MIP-0002 admission helper: whether `operation` is allowed under canonical
-    /// ExecuteSC datastore rules for the Execution component version active at the
-    /// op's validity-start timestamp.
-    ///
-    /// Returns `Ok(true)` if the op passes (or the check does not apply), `Ok(false)`
-    /// if it must be rejected, and `Err` if the validity-start timestamp cannot be
-    /// computed.
-    </span><span class="kw">pub fn </span>is_operation_datastore_encoding_allowed(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        operation: <span class="kw-2">&amp;</span>SecureShareOperation,
-        operation_validity_periods: u64,
-        thread_count: u8,
-        t0: MassaTime,
-        genesis_timestamp: MassaTime,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ModelsError&gt; {
-        <span class="kw">let </span>validity_start =
-            operation.validity_start_slot(operation_validity_periods, thread_count);
-        <span class="kw">let </span>ts = get_block_slot_timestamp(thread_count, t0, genesis_timestamp, validity_start)<span class="question-mark">?</span>;
-        <span class="kw">let </span>version = <span class="self">self</span>.get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, ts);
-        <span class="prelude-val">Ok</span>(operation.satisfies_canonical_datastore_keys_if_required(version))
     }
 
     <span class="doccomment">/// Get all versions in 'Active state' for the given MipComponent

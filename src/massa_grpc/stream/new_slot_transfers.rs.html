@@ -181,8 +181,6 @@
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::pin::Pin;
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
@@ -226,7 +224,6 @@
         .subscribe();
 
     tokio::spawn({
-        <span class="kw">let </span>execution_controller = grpc.execution_controller.clone();
         <span class="kw">async move </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>finality = FinalityLevel::Unspecified;
             <span class="kw">loop </span>{
@@ -234,7 +231,7 @@
                     <span class="comment">// Receive a new slot execution traces from the subscriber
                     </span>event = subscriber.recv() =&gt; {
                         <span class="kw">match </span>event {
-                            <span class="prelude-val">Ok</span>((massa_slot_execution_trace, is_final)) =&gt; {
+                            <span class="prelude-val">Ok</span>((massa_slot_execution_trace, slot_transfers, is_final)) =&gt; {
                                 <span class="kw">if </span>(finality == FinalityLevel::Final &amp;&amp; !is_final) ||
                                     (finality == FinalityLevel::Candidate &amp;&amp; is_final) ||
                                     (finality == FinalityLevel::Unspecified &amp;&amp; !is_final) {
@@ -301,22 +298,21 @@
                                         }
                                     }
                                 }
-                                <span class="kw">let </span>transfers =
-                                    execution_controller
-                                    .get_transfers_for_slot(massa_slot_execution_trace.slot);
-                                <span class="kw">if let </span><span class="prelude-val">Some</span>(transfers) = transfers {
-                                    <span class="kw">for </span>transfer <span class="kw">in </span>transfers {
-                                        ret_transfers.push(TransferInfo {
-                                            from: transfer.from.to_string(),
-                                            to: transfer.to.to_string(),
-                                            amount: transfer.amount.to_raw(),
-                                            operation_id_or_asc_index: <span class="prelude-val">Some</span>(
-                                                grpc_api::transfer_info::OperationIdOrAscIndex::OperationId(
-                                                    transfer.op_id.to_string(),
-                                                ),
+                                <span class="comment">// Transfers are carried in the event itself, bound to the same
+                                // execution instance as the abi call stacks above. This avoids a
+                                // separate slot-keyed lookup, which could return transfers from a
+                                // re-execution of the same slot and yield a hybrid response.
+                                </span><span class="kw">for </span>transfer <span class="kw">in </span>slot_transfers {
+                                    ret_transfers.push(TransferInfo {
+                                        from: transfer.from.to_string(),
+                                        to: transfer.to.to_string(),
+                                        amount: transfer.amount.to_raw(),
+                                        operation_id_or_asc_index: <span class="prelude-val">Some</span>(
+                                            grpc_api::transfer_info::OperationIdOrAscIndex::OperationId(
+                                                transfer.op_id.to_string(),
                                             ),
-                                        });
-                                    }
+                                        ),
+                                    });
                                 }
                                 <span class="kw">let </span>ret = grpc_api::NewSlotTransfersResponse {
                                     slot: <span class="prelude-val">Some</span>(massa_slot_execution_trace.slot.into()),

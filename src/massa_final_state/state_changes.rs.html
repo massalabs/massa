@@ -380,6 +380,9 @@
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -506,6 +509,7 @@
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
+        max_bytecode_size: u64,
         max_rolls_length: u64,
         max_production_stats_length: u64,
         max_credits_length: u64,
@@ -520,6 +524,7 @@
                 max_datastore_key_length,
                 max_datastore_value_length,
                 max_datastore_entry_count,
+                max_bytecode_size,
             ),
             async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(
                 thread_count,
@@ -626,11 +631,11 @@
     <span class="kw">use </span>massa_serialization::DeserializeError;
 
     <span class="kw">use </span>massa_models::config::{
-        ENDORSEMENT_COUNT, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_DATASTORE_ENTRY_COUNT,
-        MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-        MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-        MAX_LEDGER_CHANGES_COUNT, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-        MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
+        ENDORSEMENT_COUNT, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BYTECODE_LENGTH,
+        MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+        MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATION_CHANGES_LENGTH,
+        MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT,
+        MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
     };
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -701,6 +706,7 @@
             MAX_DATASTORE_KEY_LENGTH,
             MAX_DATASTORE_VALUE_LENGTH,
             MAX_DATASTORE_ENTRY_COUNT,
+            MAX_BYTECODE_LENGTH,
             MAX_ROLLS_COUNT_LENGTH,
             MAX_PRODUCTION_STATS_LENGTH,
             MAX_DEFERRED_CREDITS_LENGTH,
