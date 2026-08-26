@@ -198,6 +198,9 @@
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the structure representing an entry in the `FinalLedger`
@@ -311,6 +314,9 @@
                 max_datastore_entry_count,
                 max_datastore_key_length,
                 max_datastore_value_length,
+                <span class="comment">// Ledger entries are produced by DatastoreSerializer (already sorted).
+                // ExecuteSC op canonicity is gated separately via MIP-0002.
+                </span><span class="bool-val">false</span>,
             ),
         }
     }

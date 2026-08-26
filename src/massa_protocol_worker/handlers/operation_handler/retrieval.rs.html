@@ -519,6 +519,41 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -526,6 +561,7 @@
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{
+    config::OPERATION_VALIDITY_PERIODS,
     operation::{OperationPrefixId, OperationPrefixIds, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::Id,
@@ -538,6 +574,7 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::{MassaTime, TimeError};
+<span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipStore};
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
 
 <span class="kw">use crate</span>::{
@@ -585,23 +622,31 @@
     receiver_ext: MassaReceiver&lt;OperationHandlerRetrievalCommand&gt;,
     operation_message_serializer: MessagesSerializer,
     peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    mip_store: MipStore,
     _massa_metrics: MassaMetrics,
 }
 
 <span class="kw">impl </span>RetrievalThread {
+    <span class="kw">fn </span>operation_message_deserializer_args(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; OperationMessageDeserializerArgs {
+        OperationMessageDeserializerArgs {
+            max_operations_prefix_ids: <span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>u32,
+            max_operations: <span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>u32,
+            max_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
+            max_function_name_length: <span class="self">self</span>.config.max_size_function_name,
+            max_parameters_size: <span class="self">self</span>.config.max_size_call_sc_parameter,
+            max_op_datastore_entry_count: <span class="self">self</span>.config.max_op_datastore_entry_count,
+            max_op_datastore_key_length: <span class="self">self</span>.config.max_op_datastore_key_length,
+            max_op_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
+            chain_id: <span class="self">self</span>.config.chain_id,
+            <span class="comment">// F89: parse without enforcing; note_operations_from_peer gates on the
+            // Execution component version at each op's validity-start timestamp.
+            </span>enforce_canonical_datastore_keys: <span class="bool-val">false</span>,
+        }
+    }
+
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span>operation_message_deserializer =
-            OperationMessageDeserializer::new(OperationMessageDeserializerArgs {
-                max_operations_prefix_ids: <span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>u32,
-                max_operations: <span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>u32,
-                max_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
-                max_function_name_length: <span class="self">self</span>.config.max_size_function_name,
-                max_parameters_size: <span class="self">self</span>.config.max_size_call_sc_parameter,
-                max_op_datastore_entry_count: <span class="self">self</span>.config.max_op_datastore_entry_count,
-                max_op_datastore_key_length: <span class="self">self</span>.config.max_op_datastore_key_length,
-                max_op_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
-                chain_id: <span class="self">self</span>.config.chain_id,
-            });
+            OperationMessageDeserializer::new(<span class="self">self</span>.operation_message_deserializer_args());
         <span class="kw">let </span>tick_ask_operations = tick(<span class="self">self</span>.config.operation_batch_proc_period.to_duration());
 
         <span class="kw">loop </span>{
@@ -640,7 +685,8 @@
                                         ops,
                                         <span class="kw-2">&amp;</span>peer_id,
                                         <span class="kw-2">&amp;mut </span><span class="self">self</span>.internal_sender,
-                                        <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller
+                                        <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller,
+                                        <span class="kw-2">&amp;</span><span class="self">self</span>.mip_store,
                                     ) {
                                         <span class="macro">warn!</span>(<span class="string">"peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}"</span>, peer_id, err);
 
@@ -893,7 +939,8 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_operations_from_peer(
+<span class="attr">#[allow(clippy::too_many_arguments)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_operations_from_peer(
     base_storage: <span class="kw-2">&amp;</span>Storage,
     operations_cache: <span class="kw-2">&amp;mut </span>SharedOperationCache,
     config: <span class="kw-2">&amp;</span>ProtocolConfig,
@@ -901,6 +948,7 @@
     source_peer_id: <span class="kw-2">&amp;</span>PeerId,
     ops_propagation_sender: <span class="kw-2">&amp;mut </span>MassaSender&lt;OperationHandlerPropagationCommand&gt;,
     pool_controller: <span class="kw-2">&amp;mut </span>Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+    mip_store: <span class="kw-2">&amp;</span>MipStore,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">"protocol.protocol_worker.note_operations_from_peer"</span>, { <span class="string">"peer"</span>: source_peer_id, <span class="string">"operations"</span>: operations });
     <span class="kw">let </span>now = MassaTime::now();
@@ -937,6 +985,26 @@
                 config.max_serialized_operations_size_per_block
             )));
         };
+
+        <span class="comment">// F89 / MIP-0002: enforce canonical ExecuteSC datastore encoding when the
+        // Execution component is active at the op's validity-start timestamp.
+        </span><span class="kw">let </span>validity_start =
+            operation.validity_start_slot(OPERATION_VALIDITY_PERIODS, config.thread_count);
+        <span class="kw">let </span>version_at_validity_start = <span class="kw">match </span>get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            validity_start,
+        ) {
+            <span class="prelude-val">Ok</span>(ts) =&gt; mip_store.get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, ts),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">continue</span>,
+        };
+        <span class="kw">if </span>!operation.satisfies_canonical_datastore_keys_if_required(version_at_validity_start) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidOperationError(<span class="macro">format!</span>(
+                <span class="string">"Operation {} ExecuteSC datastore keys must be strictly increasing and unique"</span>,
+                operation.id
+            )));
+        }
 
         <span class="comment">// add to new operations
         </span>new_operations.insert(operation.id, operation);
@@ -1010,6 +1078,7 @@
     receiver_ext: MassaReceiver&lt;OperationHandlerRetrievalCommand&gt;,
     internal_sender: MassaSender&lt;OperationHandlerPropagationCommand&gt;,
     peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    mip_store: MipStore,
     massa_metrics: MassaMetrics,
 ) -&gt; JoinHandle&lt;()&gt; {
     std::thread::Builder::new()
@@ -1034,6 +1103,7 @@
                     .with_operation_message_serializer(OperationMessageSerializer::new()),
                 op_batch_buffer: VecDeque::new(),
                 peer_cmd_sender,
+                mip_store,
                 _massa_metrics: massa_metrics,
             };
             retrieval_thread.run();

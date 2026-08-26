@@ -1320,6 +1320,14 @@
 <a href="#1320" id="1320">1320</a>
 <a href="#1321" id="1321">1321</a>
 <a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1437,22 +1445,29 @@
 }
 
 <span class="kw">impl </span>RetrievalThread {
+    <span class="kw">fn </span>block_message_deserializer_args(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BlockMessageDeserializerArgs {
+        BlockMessageDeserializerArgs {
+            thread_count: <span class="self">self</span>.config.thread_count,
+            endorsement_count: <span class="self">self</span>.config.endorsement_count,
+            max_operations_per_block: <span class="self">self</span>.config.max_operations_per_block,
+            max_datastore_value_length: <span class="self">self</span>.config.max_size_value_datastore,
+            max_function_name_length: <span class="self">self</span>.config.max_size_function_name,
+            max_parameters_size: <span class="self">self</span>.config.max_size_call_sc_parameter,
+            max_op_datastore_entry_count: <span class="self">self</span>.config.max_op_datastore_entry_count,
+            max_op_datastore_key_length: <span class="self">self</span>.config.max_op_datastore_key_length,
+            max_op_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
+            max_denunciations_in_block_header: <span class="self">self</span>.config.max_denunciations_in_block_header,
+            last_start_period: <span class="prelude-val">Some</span>(<span class="self">self</span>.config.last_start_period),
+            chain_id: <span class="self">self</span>.config.chain_id,
+            <span class="comment">// F89: parse without enforcing; note_operations_from_peer gates on the
+            // Execution component version at each op's validity-start timestamp.
+            </span>enforce_canonical_datastore_keys: <span class="bool-val">false</span>,
+        }
+    }
+
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span>block_message_deserializer =
-            BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
-                thread_count: <span class="self">self</span>.config.thread_count,
-                endorsement_count: <span class="self">self</span>.config.endorsement_count,
-                max_operations_per_block: <span class="self">self</span>.config.max_operations_per_block,
-                max_datastore_value_length: <span class="self">self</span>.config.max_size_value_datastore,
-                max_function_name_length: <span class="self">self</span>.config.max_size_function_name,
-                max_parameters_size: <span class="self">self</span>.config.max_size_call_sc_parameter,
-                max_op_datastore_entry_count: <span class="self">self</span>.config.max_op_datastore_entry_count,
-                max_op_datastore_key_length: <span class="self">self</span>.config.max_op_datastore_key_length,
-                max_op_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
-                max_denunciations_in_block_header: <span class="self">self</span>.config.max_denunciations_in_block_header,
-                last_start_period: <span class="prelude-val">Some</span>(<span class="self">self</span>.config.last_start_period),
-                chain_id: <span class="self">self</span>.config.chain_id,
-            });
+            BlockMessageDeserializer::new(<span class="self">self</span>.block_message_deserializer_args());
 
         <span class="kw">let </span>tick_update_metrics = tick(<span class="self">self</span>.massa_metrics.tick_delay);
         <span class="kw">loop </span>{
@@ -2217,6 +2232,7 @@
             <span class="kw-2">&amp;</span>from_peer_id,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.sender_propagation_ops,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.mip_store,
         ) {
             <span class="macro">warn!</span>(
                 <span class="string">"Peer id {} sent us operations for block id {} but they failed validity checks: {}"</span>,

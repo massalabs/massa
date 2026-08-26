@@ -434,6 +434,9 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -830,10 +833,13 @@
 <span class="doccomment">/// Minimum value allowed for activation delay (in MIP info)
 </span><span class="kw">pub const </span>VERSIONING_ACTIVATION_DELAY_MIN: MassaTime = T0.saturating_mul(PERIODS_PER_CYCLE);
 
+<span class="doccomment">/// Network version (MIP-0002) from which `ExecuteSC` datastore encodings must use
+/// strictly increasing, unique keys. See [`crate::datastore::DatastoreDeserializer`].
+</span><span class="kw">pub const </span>DATASTORE_CANONICAL_KEYS_NETWORK_VERSION: u32 = <span class="number">2</span>;
+
 <span class="comment">//
 // Constants for denunciation factory
 //
-
 </span><span class="doccomment">/// denunciation expiration delta
 </span><span class="kw">pub const </span>DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
 <span class="doccomment">/// Max number of denunciations that can be included in a block header
