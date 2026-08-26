@@ -91,6 +91,9 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -98,6 +101,7 @@
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
 
@@ -115,7 +119,7 @@
 <span class="kw">mod </span>retrieval;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>messages::{OperationMessage, OperationMessageSerializer};
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>retrieval::{is_block_intrinsic_operation_failure, note_operations_from_peer};
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>retrieval::note_operations_from_peer;
 
 <span class="kw">use </span><span class="kw">super</span>::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
@@ -144,6 +148,7 @@
         local_sender: MassaSender&lt;OperationHandlerPropagationCommand&gt;,
         local_receiver: MassaReceiver&lt;OperationHandlerPropagationCommand&gt;,
         peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+        mip_store: MipStore,
         massa_metrics: MassaMetrics,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>operation_retrieval_thread = start_retrieval_thread(
@@ -156,6 +161,7 @@
             receiver_retrieval_ext,
             local_sender.clone(),
             peer_cmd_sender,
+            mip_store,
             massa_metrics.clone(),
         );
 

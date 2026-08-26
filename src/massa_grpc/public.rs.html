@@ -1561,6 +1561,9 @@
 <a href="#1561" id="1561">1561</a>
 <a href="#1562" id="1562">1562</a>
 <a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1579,7 +1582,7 @@
 <span class="kw">use </span>massa_models::block::{Block, BlockGraphStatus};
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::config::CompactConfig;
-<span class="kw">use </span>massa_models::datastore::DatastoreDeserializer;
+<span class="kw">use </span>massa_models::datastore::{enforce_datastore_canonical_keys, DatastoreDeserializer};
 <span class="kw">use </span>massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 <span class="kw">use </span>massa_models::operation::{OperationId, SecureShareOperation};
 <span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
@@ -1636,6 +1639,9 @@
                         grpc.grpc_config.max_op_datastore_entry_count,
                         grpc.grpc_config.max_op_datastore_key_length,
                         grpc.grpc_config.max_op_datastore_value_length,
+                        enforce_datastore_canonical_keys(
+                            grpc.keypair_factory.mip_store.get_network_version_current(),
+                        ),
                     );
                     <span class="kw">match </span>deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>value.operation_datastore) {
                         <span class="prelude-val">Ok</span>((<span class="kw">_</span>, deserialized)) =&gt; <span class="prelude-val">Some</span>(deserialized),
@@ -2112,12 +2118,9 @@
             slot: slot.clone().into(),
             transfers: <span class="macro">vec!</span>[],
         };
-        <span class="comment">// Read the ABI call stack and the direct transfers for this slot from a single
-        // consistent snapshot, so the combined response cannot mix data from two different
-        // executions of the same slot (a re-execution between two separate reads).
-        </span><span class="kw">let </span>(abi_calls, direct_transfers) = grpc
+        <span class="kw">let </span>abi_calls = grpc
             .execution_controller
-            .get_slot_abi_call_stack_and_transfers(slot.clone().into());
+            .get_slot_abi_call_stack(slot.clone().into());
         <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
             <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
 
@@ -2164,7 +2167,10 @@
             }
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(transfers) = direct_transfers {
+        <span class="kw">let </span>transfers = grpc
+            .execution_controller
+            .get_transfers_for_slot(slot.into());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(transfers) = transfers {
             <span class="kw">for </span>transfer <span class="kw">in </span>transfers {
                 slot_transfers.transfers.push(TransferInfo {
                     from: transfer.from.to_string(),

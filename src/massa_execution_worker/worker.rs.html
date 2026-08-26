@@ -314,12 +314,6 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -553,12 +547,6 @@
         </span><span class="kw">let </span>cancel_err = ExecutionError::ChannelError(
             <span class="string">"readonly execution cancelled because the execution worker is closing"</span>.into(),
         );
-        <span class="comment">// Requests already handed off from the shared input into the worker-local queue
-        // (e.g. during the final loop iteration before `stop`) must be cancelled too:
-        // `RequestQueue` does not cancel on drop, so otherwise their `resp_tx` is dropped
-        // silently and callers see a generic channel-readout error instead of this clean
-        // worker-closing cancellation.
-        </span><span class="self">self</span>.readonly_requests.cancel(cancel_err.clone());
         <span class="self">self</span>.input_data
             .<span class="number">1
             </span>.lock()

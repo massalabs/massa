@@ -1930,18 +1930,6 @@
 <a href="#1930" id="1930">1930</a>
 <a href="#1931" id="1931">1931</a>
 <a href="#1932" id="1932">1932</a>
-<a href="#1933" id="1933">1933</a>
-<a href="#1934" id="1934">1934</a>
-<a href="#1935" id="1935">1935</a>
-<a href="#1936" id="1936">1936</a>
-<a href="#1937" id="1937">1937</a>
-<a href="#1938" id="1938">1938</a>
-<a href="#1939" id="1939">1939</a>
-<a href="#1940" id="1940">1940</a>
-<a href="#1941" id="1941">1941</a>
-<a href="#1942" id="1942">1942</a>
-<a href="#1943" id="1943">1943</a>
-<a href="#1944" id="1944">1944</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -2438,13 +2426,15 @@
 
 <span class="kw">impl </span>OperationDeserializer {
     <span class="doccomment">/// Creates a `OperationDeserializer`
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(
-        max_bytecode_size: u64,
+        max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        enforce_canonical_datastore_keys: bool,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             expire_period_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
@@ -2453,12 +2443,13 @@
                 Included(Amount::MAX),
             ),
             op_type_deserializer: OperationTypeDeserializer::new(
-                max_bytecode_size,
+                max_datastore_value_length,
                 max_function_name_length,
                 max_parameters_size,
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
+                enforce_canonical_datastore_keys,
             ),
         }
     }
@@ -2484,7 +2475,7 @@
     /// };
     /// let mut buffer = Vec::new();
     /// OperationSerializer::new().serialize(&amp;operation, &amp;mut buffer).unwrap();
-    /// let (rest, deserialized_operation) = OperationDeserializer::new(10000, 10000, 10000, 100, 255, 10_000).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// let (rest, deserialized_operation) = OperationDeserializer::new(10000, 10000, 10000, 100, 255, 10_000, false).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized_operation.fee, operation.fee);
     /// assert_eq!(deserialized_operation.expire_period, operation.expire_period);
@@ -2745,20 +2736,25 @@
 
 <span class="kw">impl </span>OperationTypeDeserializer {
     <span class="doccomment">/// Creates a new `OperationTypeDeserializer`
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(
-        max_bytecode_size: u64,
+        max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        enforce_canonical_datastore_keys: bool,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             id_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
             rolls_number_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
             max_gas_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::new(),
-            data_deserializer: VecU8Deserializer::new(Included(<span class="number">0</span>), Included(max_bytecode_size)),
+            data_deserializer: VecU8Deserializer::new(
+                Included(<span class="number">0</span>),
+                Included(max_datastore_value_length),
+            ),
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
                 Included(Amount::MAX),
@@ -2775,6 +2771,7 @@
                 max_op_datastore_entry_count,
                 max_op_datastore_key_length,
                 max_op_datastore_value_length,
+                enforce_canonical_datastore_keys,
             ),
         }
     }
@@ -2798,7 +2795,7 @@
     /// };
     /// let mut buffer = Vec::new();
     /// OperationTypeSerializer::new().serialize(&amp;op, &amp;mut buffer).unwrap();
-    /// let (rest, op_deserialized) = OperationTypeDeserializer::new(10000, 10000, 10000, 10, 255, 10_000).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// let (rest, op_deserialized) = OperationTypeDeserializer::new(10000, 10000, 10000, 10, 255, 10_000, false).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// match op_deserialized {
     ///    OperationType::ExecuteSC {
@@ -2940,41 +2937,6 @@
             OperationType::Transaction { .. } =&gt; <span class="number">0</span>,
         }
         .saturating_add(base_operation_gas_cost)
-    }
-
-    <span class="doccomment">/// Check that the operation can ever fit in a block, gas-wise.
-    ///
-    /// Compares the full gas usage (see `get_gas_usage`, mandatory overheads included)
-    /// against the block gas limit, so that every submission interface applies the same
-    /// includability criterion as the block filling logic.
-    ///
-    /// On failure returns the client-facing error message, stating the highest `max_gas`
-    /// the operation could have declared.
-    </span><span class="kw">pub fn </span>check_gas_usage(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        max_gas_per_block: u64,
-        base_operation_gas_cost: u64,
-        sp_compilation_cost: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
-        <span class="comment">// gas that the operation is charged on top of its declared max_gas
-        </span><span class="kw">let </span>(op_name, gas_overhead) = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.content.op {
-            OperationType::CallSC { .. } =&gt; (<span class="string">"CallSC"</span>, base_operation_gas_cost),
-            OperationType::ExecuteSC { .. } =&gt; (
-                <span class="string">"ExecuteSC"</span>,
-                base_operation_gas_cost.saturating_add(sp_compilation_cost),
-            ),
-            OperationType::RollBuy { .. }
-            | OperationType::RollSell { .. }
-            | OperationType::Transaction { .. } =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
-        };
-        <span class="kw">if </span><span class="self">self</span>.get_gas_usage(base_operation_gas_cost, sp_compilation_cost) &gt; max_gas_per_block {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(
-                <span class="string">"Upper gas limit for {} operation is {}. Your operation will never be included in a block."</span>,
-                op_name,
-                max_gas_per_block.saturating_sub(gas_overhead)
-            ));
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// get the addresses that are involved in this operation from a ledger point of view
@@ -3363,13 +3325,14 @@
     </span><span class="doccomment">/// Creates a new `OperationsDeserializer`
     </span><span class="kw">pub fn </span>new(
         max_operations_per_message: u32,
-        max_bytecode_size: u64,
+        max_datastore_value_length: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
         chain_id: u64,
+        enforce_canonical_datastore_keys: bool,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             length_deserializer: U32VarIntDeserializer::new(
@@ -3378,12 +3341,13 @@
             ),
             signed_op_deserializer: SecureShareDeserializer::new(
                 OperationDeserializer::new(
-                    max_bytecode_size,
+                    max_datastore_value_length,
                     max_function_name_length,
                     max_parameters_size,
                     max_op_datastore_entry_count,
                     max_op_datastore_key_length,
                     max_op_datastore_value_length,
+                    enforce_canonical_datastore_keys,
                 ),
                 chain_id,
             ),
@@ -3414,7 +3378,7 @@
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
-    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000, *CHAINID).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000, *CHAINID, false).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
     ///     assert_eq!(operation1.id, operation2.id);
     ///     assert_eq!(operation1.signature, operation2.signature);
@@ -3467,7 +3431,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::config::{
-        CHAINID, MAX_BYTECODE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        CHAINID, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
         MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
         MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     };
@@ -3546,12 +3510,13 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="bool-val">false</span>,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_type)
         .unwrap();
@@ -3569,12 +3534,13 @@
             .serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>ser_content)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_content) = OperationDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="bool-val">false</span>,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_content)
         .unwrap();
@@ -3591,12 +3557,13 @@
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = SecureShareDeserializer::new(
             OperationDeserializer::new(
-                MAX_BYTECODE_LENGTH,
+                MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                <span class="bool-val">false</span>,
             ),
             <span class="kw-2">*</span>CHAINID,
         )
@@ -3626,12 +3593,13 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="bool-val">false</span>,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_type)
         .unwrap();
@@ -3648,12 +3616,13 @@
             .serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>ser_content)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_content) = OperationDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="bool-val">false</span>,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_content)
         .unwrap();
@@ -3669,12 +3638,13 @@
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = SecureShareDeserializer::new(
             OperationDeserializer::new(
-                MAX_BYTECODE_LENGTH,
+                MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                <span class="bool-val">false</span>,
             ),
             <span class="kw-2">*</span>CHAINID,
         )
@@ -3705,12 +3675,13 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="bool-val">false</span>,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_type)
         .unwrap();
@@ -3727,12 +3698,13 @@
             .serialize(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;mut </span>ser_content)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_content) = OperationDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="bool-val">false</span>,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_content)
         .unwrap();
@@ -3748,12 +3720,13 @@
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = SecureShareDeserializer::new(
             OperationDeserializer::new(
-                MAX_BYTECODE_LENGTH,
+                MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+                <span class="bool-val">false</span>,
             ),
             <span class="kw-2">*</span>CHAINID,
         )
@@ -3778,12 +3751,13 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="bool-val">false</span>,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_type)
         .unwrap();
@@ -3820,12 +3794,13 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="bool-val">false</span>,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_type)
         .unwrap();
@@ -3862,12 +3837,13 @@
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_BYTECODE_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
             MAX_OPERATION_DATASTORE_KEY_LENGTH,
             MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            <span class="bool-val">false</span>,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_type)
         .unwrap();

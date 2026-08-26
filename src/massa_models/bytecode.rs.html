@@ -119,13 +119,13 @@
 }
 
 <span class="kw">impl </span>BytecodeDeserializer {
-    <span class="doccomment">/// Creates a new `BytecodeDeserializer`
-    </span><span class="kw">pub fn </span>new(max_bytecode_size: u64) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Creates a new `LedgerEntryDeserializer`
+    </span><span class="kw">pub fn </span>new(max_datastore_value_length: u64) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             version_byte_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
             vec_u8_deserializer: VecU8Deserializer::new(
                 Included(u64::MIN),
-                Included(max_bytecode_size),
+                Included(max_datastore_value_length),
             ),
         }
     }
