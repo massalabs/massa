@@ -18,6 +18,7 @@ clap = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 tokio = { workspace = true, "features" = ["full"] }
+tracing-subscriber = { workspace = true }
 massa_api_exports = { workspace = true }
 massa_models = { workspace = true }
 massa_signature = { workspace = true }

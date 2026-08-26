@@ -2841,6 +2841,7 @@ dependencies = [
  "strum_macros",
  "tokio",
  "toml_edit 0.21.1",
+ "tracing-subscriber",
 ]
 
 [[package]]

@@ -57,6 +57,22 @@ pub struct GrpcTlsConfig {
     pub client_private_key_path: Option<PathBuf>,
 }
 
+/// Reject an mTLS configuration that does not also enable TLS.
+///
+/// mTLS is a strict extension of TLS: without this check, `enable_mtls` alone would
+/// silently serve/connect in plaintext instead of authenticating with client
+/// certificates. Shared between the gRPC server (massa-grpc) and the gRPC client
+/// (massa-client), which each enforce this on their own TLS settings.
+pub fn check_mtls_requires_tls(enable_tls: bool, enable_mtls: bool) -> Result<(), String> {
+    if enable_mtls && !enable_tls {
+        return Err(
+            "`enable_mtls` requires `enable_tls` to be enabled, refusing to run in plaintext"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
 /// WebSocket client settings.
 /// the WebSocket client settings
 #[derive(Debug, Clone)]
@@ -69,4 +85,30 @@ pub struct WsConfig {
     pub max_notifs_per_subscription: usize,
     /// Max number of redirections.
     pub max_redirections: usize,
+}
+
+#[cfg(test)]
+mod check_mtls_requires_tls_tests {
+    use super::check_mtls_requires_tls;
+
+    #[test]
+    fn plaintext_is_accepted() {
+        assert!(check_mtls_requires_tls(false, false).is_ok());
+    }
+
+    #[test]
+    fn tls_without_mtls_is_accepted() {
+        assert!(check_mtls_requires_tls(true, false).is_ok());
+    }
+
+    #[test]
+    fn mtls_on_top_of_tls_is_accepted() {
+        assert!(check_mtls_requires_tls(true, true).is_ok());
+    }
+
+    #[test]
+    fn mtls_without_tls_is_rejected() {
+        let err = check_mtls_requires_tls(false, true).unwrap_err();
+        assert!(err.contains("`enable_mtls` requires `enable_tls`"));
+    }
 }

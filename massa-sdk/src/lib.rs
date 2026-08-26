@@ -61,6 +61,7 @@ use tonic_health as _;
 
 pub mod cert_manager;
 mod config;
+pub use config::check_mtls_requires_tls;
 pub use config::ClientConfig;
 pub use config::GrpcTlsConfig;
 pub use config::HttpConfig;
