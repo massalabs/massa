@@ -139,6 +139,10 @@ impl Deserializer<Datastore> for DatastoreDeserializer {
                 )),
             ),
         )
+        // Note: Unsorted key/value pairs on the wire still deserialize to the same BTreeMap.
+        // That can yield different raw bytes / OperationIds for the same logical action.
+        // This is intentional malleability that Massa tolerates by construction and is not exploitable.
+        // As updating this behavior would be a breaking change, we do not reject it.
         .map(|elements| elements.into_iter().collect())
         .parse(buffer)
     }
