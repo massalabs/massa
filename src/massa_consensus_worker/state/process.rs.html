@@ -802,6 +802,8 @@
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
 <a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -1560,12 +1562,13 @@
         </span><span class="kw">let </span>new_wishlist = <span class="self">self</span>.get_block_wishlist()<span class="question-mark">?</span>;
         <span class="kw">let </span>new_blocks: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt; = new_wishlist
             .iter()
-            .filter_map(|(id, header)| {
-                <span class="kw">if </span>!<span class="self">self</span>.wishlist.contains_key(id) {
-                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, header.clone()))
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
+            .filter_map(|(id, header)| <span class="kw">match </span><span class="self">self</span>.wishlist.get(id) {
+                <span class="comment">// the block was not wished for yet
+                </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, header.clone())),
+                <span class="comment">// the block was already wished for without a header, and we now checked its
+                // header: tell protocol so that it can start retrieving the block contents
+                </span><span class="prelude-val">Some</span>(<span class="prelude-val">None</span>) <span class="kw">if </span>header.is_some() =&gt; <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, header.clone())),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             })
             .collect();
         <span class="kw">let </span>remove_blocks: PreHashSet&lt;BlockId&gt; = <span class="self">self
@@ -1584,8 +1587,9 @@
             <span class="self">self</span>.channels
                 .protocol_controller
                 .send_wishlist_delta(new_blocks, remove_blocks)<span class="question-mark">?</span>;
-            <span class="self">self</span>.wishlist = new_wishlist;
         }
+        <span class="comment">// always refresh the reference, as the headers it holds are part of the delta computation
+        </span><span class="self">self</span>.wishlist = new_wishlist;
 
         <span class="comment">// note new latest final periods
         </span><span class="kw">let </span>latest_final_periods: Vec&lt;u64&gt; = <span class="self">self
