@@ -433,9 +433,6 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -466,7 +463,6 @@
 </span><span class="kw">pub struct </span>ExecutionSettings {
     <span class="kw">pub </span>max_final_events: usize,
     <span class="kw">pub </span>readonly_queue_length: usize,
-    <span class="kw">pub </span>readonly_starvation_timeout: MassaTime,
     <span class="kw">pub </span>cursor_delay: MassaTime,
     <span class="kw">pub </span>stats_time_window_duration: MassaTime,
     <span class="kw">pub </span>max_read_only_gas: u64,
@@ -707,8 +703,6 @@
     </span><span class="kw">pub </span>max_operations_per_message: u64,
     <span class="doccomment">/// MAx number of operations kept for propagation
     </span><span class="kw">pub </span>max_ops_kept_for_propagation: usize,
-    <span class="doccomment">/// Max number of endorsements merged into a single propagation round
-    </span><span class="kw">pub </span>max_endorsements_per_propagation_round: usize,
     <span class="doccomment">/// Time threshold after which operation are not propagated
     </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
     <span class="doccomment">/// Time threshold after which operation are not propagated

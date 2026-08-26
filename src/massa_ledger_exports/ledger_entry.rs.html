@@ -199,6 +199,8 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the structure representing an entry in the `FinalLedger`
@@ -301,18 +303,20 @@
         max_datastore_entry_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
-        max_bytecode_size: u64,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
                 Included(Amount::MAX),
             ),
-            bytecode_deserializer: BytecodeDeserializer::new(max_bytecode_size),
+            bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
             datastore_deserializer: DatastoreDeserializer::new(
                 max_datastore_entry_count,
                 max_datastore_key_length,
                 max_datastore_value_length,
+                <span class="comment">// Ledger entries are produced by DatastoreSerializer (already sorted).
+                // ExecuteSC op canonicity is gated separately via MIP-0002.
+                </span><span class="bool-val">false</span>,
             ),
         }
     }
@@ -339,7 +343,7 @@
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntrySerializer::new();
-    /// let deserializer = LedgerEntryDeserializer::new(10000, 255, 10000, 10000);
+    /// let deserializer = LedgerEntryDeserializer::new(10000, 255, 10000);
     /// serializer.serialize(&amp;ledger_entry, &amp;mut serialized).unwrap();
     /// let (rest, ledger_entry_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());

@@ -252,12 +252,36 @@
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_models::operation::{OperationDeserializer, SecureShareOperation};
+<span class="kw">use </span>massa_models::config::OPERATION_VALIDITY_PERIODS;
+<span class="kw">use </span>massa_models::operation::{OperationDeserializer, OperationType, SecureShareOperation};
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
 <span class="kw">use </span>massa_models::timeslots::get_latest_block_slot_at_timestamp;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
@@ -289,6 +313,7 @@
     <span class="kw">let </span>protocol_controller = grpc.protocol_controller.clone();
     <span class="kw">let </span>config = grpc.grpc_config.clone();
     <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
+    <span class="kw">let </span>mip_store = grpc.keypair_factory.mip_store.clone();
 
     <span class="comment">// Create a channel for sending responses to the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
@@ -336,12 +361,15 @@
                             <span class="comment">// Deserialize and verify each operation in the incoming message
                             </span><span class="kw">let </span>operation_deserializer = SecureShareDeserializer::new(
                                 OperationDeserializer::new(
-                                    config.max_bytecode_size,
+                                    config.max_datastore_value_length,
                                     config.max_function_name_length,
                                     config.max_parameter_size,
                                     config.max_op_datastore_entry_count,
                                     config.max_op_datastore_key_length,
                                     config.max_op_datastore_value_length,
+                                    <span class="comment">// F89: parse without enforcing; gate on Execution
+                                    // version at each op's validity-start timestamp.
+                                    </span><span class="bool-val">false</span>,
                                 ),
                                 config.chain_id,
                             );
@@ -352,19 +380,37 @@
                                     </span><span class="kw">let </span>verified_op_res = <span class="kw">match </span>operation_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>proto_operation) {
                                         <span class="prelude-val">Ok</span>(tuple) =&gt; {
                                             <span class="kw">let </span>(rest, res_operation): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = tuple;
-                                            <span class="kw">if let </span><span class="prelude-val">Err</span>(err_msg) = res_operation.check_gas_usage(
-                                                config.max_gas_per_block,
-                                                config.base_operation_gas_cost,
-                                                config.sp_compilation_cost,
-                                            ) {
-                                                <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(err_msg));
-                                            }
+                                            <span class="kw">match </span>res_operation.content.op {
+                                                OperationType::CallSC { max_gas, .. } | OperationType::ExecuteSC { max_gas, .. } =&gt; {
+                                                    <span class="kw">if </span>max_gas &gt; config.max_gas_per_block {
+                                                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="string">"Gas limit of the operation is higher than the block gas limit. Your operation will never be included in a block."</span>.into()));
+                                                    }
+                                                },
+                                                <span class="kw">_ </span>=&gt; {}
+                                            };
                                             <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot {
                                                 <span class="kw">if </span>res_operation.content.expire_period &lt; slot.period {
                                                     <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="string">"Operation expire_period is lower than the current period of this node. Your operation will never be included in a block."</span>.into()));
                                                 }
                                             }
 
+                                            <span class="comment">// F89 / MIP-0002: canonical ExecuteSC datastore at validity-start.
+                                            </span><span class="kw">if </span>!mip_store
+                                                .is_operation_datastore_encoding_allowed(
+                                                    <span class="kw-2">&amp;</span>res_operation,
+                                                    OPERATION_VALIDITY_PERIODS,
+                                                    config.thread_count,
+                                                    config.t0,
+                                                    config.genesis_timestamp,
+                                                )
+                                                .map_err(|e| {
+                                                    GrpcError::InternalServerError(e.to_string())
+                                                })<span class="question-mark">?
+                                            </span>{
+                                                <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
+                                                    <span class="string">"ExecuteSC datastore keys must be strictly increasing and unique"</span>.into(),
+                                                ));
+                                            }
 
                                             <span class="kw">if </span>res_operation.content.fee.checked_sub(config.minimal_fees).is_none() {
                                                 <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="string">"Operation fee is lower than the minimal fee. Your operation will never be included in a block."</span>.into()));

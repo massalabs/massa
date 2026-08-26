@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["COMMAND_SEND_TIMEOUT"],"struct":["ConsensusControllerImpl"]};
+window.SIDEBAR_ITEMS = {"struct":["ConsensusControllerImpl"]};

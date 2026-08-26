@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"fn":["is_endorsement_fresh","note_endorsements_from_peer","start_retrieval_thread"],"struct":["RetrievalThread"]};
+window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"fn":["note_endorsements_from_peer","start_retrieval_thread"],"struct":["RetrievalThread"]};

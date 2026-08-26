@@ -226,7 +226,7 @@
         <span class="attr">#[cfg(not(feature = <span class="string">"execution-trace"</span>))]
         </span><span class="kw">let </span>(<span class="kw-2">mut </span>subscriber, _receiver) = {
             <span class="kw">let </span>(subscriber_, receiver) =
-                tokio::sync::broadcast::channel::&lt;(SlotAbiCallStack, (), bool)&gt;(<span class="number">0</span>);
+                tokio::sync::broadcast::channel::&lt;(SlotAbiCallStack, bool)&gt;(<span class="number">0</span>);
             (subscriber_.subscribe(), receiver)
         };
 
@@ -235,7 +235,7 @@
                 <span class="comment">// Receive a new slot execution traces from the subscriber
                 </span>event = subscriber.recv() =&gt; {
                     <span class="kw">match </span>event {
-                        <span class="prelude-val">Ok</span>((massa_slot_execution_trace, _slot_transfers, received_finality)) =&gt; {
+                        <span class="prelude-val">Ok</span>((massa_slot_execution_trace, received_finality)) =&gt; {
                             <span class="kw">if </span>(finality == FinalityLevel::Final &amp;&amp; !received_finality) ||
                                 (finality == FinalityLevel::Candidate &amp;&amp; received_finality) {
                                 <span class="kw">continue</span>;

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["KNOWN_PREFIX_FROM_CLIENT_LEN","MAX_CONCURRENT_ERROR_SENDS"],"static":["ONGOING_ERROR_SENDS"],"struct":["BootstrapServerBinder","ClientMessageLeader","ErrorSendSlot"]};
+window.SIDEBAR_ITEMS = {"constant":["KNOWN_PREFIX_FROM_CLIENT_LEN"],"struct":["BootstrapServerBinder","ClientMessageLeader"]};

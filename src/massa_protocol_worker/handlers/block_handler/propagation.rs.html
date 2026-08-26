@@ -258,41 +258,6 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file deals with the announcement of block headers to other nodes
@@ -305,9 +270,6 @@
 //!
 //! Here we need to announce block headers to other nodes that haven't sene them,
 //! and keep the blocks alive long enough for our peers to be able to retrieve them from us.
-//! That retention is best-effort: blocks are kept for `max_block_propagation_time` unless
-//! the `max_blocks_kept_for_propagation` size cap forces an earlier eviction. Blocks that
-//! are still active in the graph remain retrievable through consensus storage anyway.
 
 </span><span class="kw">use super</span>::{
     cache::SharedBlockCache, commands_propagation::BlockHandlerPropagationCommand,
@@ -351,8 +313,7 @@
     </span>config: ProtocolConfig,
     <span class="doccomment">/// Shared access to the block cache
     </span>cache: SharedBlockCache,
-    <span class="doccomment">/// Blocks stored for propagation, bounded both by `max_block_propagation_time`
-    /// and by `max_blocks_kept_for_propagation` entries
+    <span class="doccomment">/// Blocks stored for propagation
     </span>stored_for_propagation: LruMap&lt;BlockId, BlockPropagationData&gt;,
     <span class="doccomment">/// Shared access to the list of peers connected to us
     </span>active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
@@ -403,34 +364,11 @@
                                 .insert(block_id, header.clone());
 
                             <span class="comment">// Add the block and its dependencies to the propagation LRU
-                            // to keep them stored for the duration of the propagation.
-                            // Retention is best-effort: entries normally leave the map once
-                            // `max_block_propagation_time` has elapsed, but the map is also
-                            // capped at `max_blocks_kept_for_propagation` entries to bound
-                            // memory. Drop expired entries first so that the size cap only
-                            // ever cuts the propagation window short when the node really
-                            // integrates more blocks than the cap allows.
-                            </span><span class="kw">let </span>now = Instant::now();
-                            <span class="self">self</span>.prune_expired_propagations(now);
-                            <span class="kw">if </span><span class="self">self</span>.stored_for_propagation.len()
-                                &gt;= <span class="self">self</span>.config.max_blocks_kept_for_propagation
-                            {
-                                <span class="kw">if let </span><span class="prelude-val">Some</span>((evicted_id, evicted)) =
-                                    <span class="self">self</span>.stored_for_propagation.peek_oldest()
-                                {
-                                    <span class="macro">warn!</span>(
-                                        <span class="string">"block propagation cache full ({} entries): dropping block {} after only {:?} of propagation instead of {:?}, consider raising max_blocks_kept_for_propagation"</span>,
-                                        <span class="self">self</span>.config.max_blocks_kept_for_propagation,
-                                        evicted_id,
-                                        now.saturating_duration_since(evicted.time_added),
-                                        <span class="self">self</span>.config.max_block_propagation_time.to_duration()
-                                    );
-                                }
-                            }
-                            <span class="self">self</span>.stored_for_propagation.insert(
+                            // to ensure they are stored for the time of the propagation.
+                            </span><span class="self">self</span>.stored_for_propagation.insert(
                                 block_id,
                                 BlockPropagationData {
-                                    time_added: now,
+                                    time_added: Instant::now(),
                                     _storage: storage,
                                     header,
                                 },
@@ -446,20 +384,19 @@
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) =&gt; {
                             <span class="macro">debug!</span>(<span class="string">"received AttackBlockDetected({})"</span>, block_id);
-                            <span class="comment">// Only ban peers that actually sent us data for that block.
-                            // `blocks_known_by_peer` must not be used here: it is mutable
-                            // propagation state that also marks peers we announced the block to,
-                            // and it is pruned on disconnection and by LRU eviction.
-                            </span><span class="kw">let </span>peers_to_ban: Vec&lt;PeerId&gt; =
-                                <span class="self">self</span>.cache.read().get_block_senders(<span class="kw-2">&amp;</span>block_id);
-                            <span class="kw">if </span>peers_to_ban.is_empty() {
-                                <span class="macro">warn!</span>(
-                                    <span class="string">"attack block {} detected but no peer could be attributed as its sender: not banning anyone"</span>,
-                                    block_id
-                                );
-                            } <span class="kw">else </span>{
-                                <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>peers_to_ban);
-                            }
+                            <span class="kw">let </span>peers_to_ban: Vec&lt;PeerId&gt; = <span class="self">self
+                                </span>.cache
+                                .read()
+                                .blocks_known_by_peer
+                                .iter()
+                                .filter_map(|(peer_id, knowledge)| {
+                                    <span class="kw">match </span>knowledge.peek(<span class="kw-2">&amp;</span>block_id) {
+                                        <span class="prelude-val">Some</span>((<span class="bool-val">true</span>, <span class="kw">_</span>)) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>peer_id),
+                                        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                                    }
+                                })
+                                .collect();
+                            <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>peers_to_ban);
                         }
                         BlockHandlerPropagationCommand::Stop =&gt; {
                             <span class="macro">info!</span>(<span class="string">"Stop block propagation thread"</span>);
@@ -483,11 +420,12 @@
         }
     }
 
-    <span class="doccomment">/// Drop the blocks that have been propagating for longer than `max_block_propagation_time`.
-    /// Entries are inserted in chronological order and never promoted, so the LRU order
-    /// matches the insertion order and stopping at the first non-expired entry is enough.
-    </span><span class="kw">fn </span>prune_expired_propagations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, now: Instant) {
-        <span class="kw">while let </span><span class="prelude-val">Some</span>(time_added) = <span class="self">self
+    <span class="doccomment">/// Propagate blocks to peers that need them
+    </span><span class="kw">fn </span>perform_propagations(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>now = Instant::now();
+
+        <span class="comment">// stop propagating blocks that have been propagating for too long
+        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(time_added) = <span class="self">self
             </span>.stored_for_propagation
             .peek_oldest()
             .map(|(<span class="kw">_</span>, BlockPropagationData { time_added, .. })| <span class="kw-2">*</span>time_added)
@@ -500,14 +438,6 @@
                 <span class="kw">break</span>;
             }
         }
-    }
-
-    <span class="doccomment">/// Propagate blocks to peers that need them
-    </span><span class="kw">fn </span>perform_propagations(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>now = Instant::now();
-
-        <span class="comment">// stop propagating blocks that have been propagating for too long
-        </span><span class="self">self</span>.prune_expired_propagations(now);
 
         <span class="comment">// update caches based on currently connected peers
         </span><span class="kw">let </span>peers_connected = <span class="self">self</span>.active_connections.get_peer_ids_connected();
