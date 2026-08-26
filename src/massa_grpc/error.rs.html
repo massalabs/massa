@@ -91,9 +91,6 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::error::Error;
@@ -139,8 +136,6 @@
     </span>InternalServerError(String),
     <span class="doccomment">/// Invalid argument error: {0}
     </span>InvalidArgument(String),
-    <span class="doccomment">/// Invalid configuration error: {0}
-    </span>ConfigError(String),
     <span class="doccomment">/// Not implemented error: {0}
     </span>Unimplemented(String),
 }
@@ -161,7 +156,6 @@
             GrpcError::InternalServerError(e) =&gt; tonic::Status::internal(e),
             GrpcError::ReflectionError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::InvalidArgument(e) =&gt; tonic::Status::invalid_argument(e),
-            GrpcError::ConfigError(e) =&gt; tonic::Status::internal(e),
             GrpcError::Unimplemented(e) =&gt; tonic::Status::unimplemented(e),
         }
     }

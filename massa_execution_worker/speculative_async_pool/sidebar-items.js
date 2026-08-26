@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["is_triggered"],"struct":["SpeculativeAsyncPool"]};
+window.SIDEBAR_ITEMS = {"constant":["TRIGGER_VALIDITY_CHECK_EXEC_VERSION"],"fn":["is_triggered"],"struct":["SpeculativeAsyncPool"]};
