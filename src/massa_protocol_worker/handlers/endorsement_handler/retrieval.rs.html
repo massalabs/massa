@@ -359,25 +359,6 @@
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -387,7 +368,6 @@
 <span class="kw">use </span>massa_models::{
     endorsement::SecureShareEndorsement,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
-    timeslots::get_block_slot_timestamp,
 };
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
@@ -400,7 +380,7 @@
 
 <span class="kw">use crate</span>::{
     handlers::{
-        endorsement_handler::messages::EndorsementMessage,
+        endorsement_handler::{is_endorsement_fresh, messages::EndorsementMessage},
         peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     },
     sig_verifier::verify_sigs_batch,
@@ -553,24 +533,6 @@
         <span class="self">self</span>.peer_cmd_sender
             .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[<span class="kw-2">*</span>peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
-    }
-}
-
-<span class="doccomment">/// Returns true if the inclusion slot of the endorsement is recent enough for the
-/// endorsement to still be worth processing (see `max_endorsements_propagation_time`).
-</span><span class="kw">fn </span>is_endorsement_fresh(
-    endorsement: <span class="kw-2">&amp;</span>SecureShareEndorsement,
-    config: <span class="kw-2">&amp;</span>ProtocolConfig,
-    now: MassaTime,
-) -&gt; bool {
-    <span class="kw">match </span>get_block_slot_timestamp(
-        config.thread_count,
-        config.t0,
-        config.genesis_timestamp,
-        endorsement.content.slot,
-    ) {
-        <span class="prelude-val">Ok</span>(t) =&gt; t.saturating_add(config.max_endorsements_propagation_time) &gt;= now,
-        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
     }
 }
 
