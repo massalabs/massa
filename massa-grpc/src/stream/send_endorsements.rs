@@ -5,6 +5,7 @@ use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::endorsement::{EndorsementDeserializer, SecureShareEndorsement};
 use massa_models::secure_share::SecureShareDeserializer;
+use massa_pos_exports::SelectorController;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_serialization::{DeserializeError, Deserializer};
@@ -31,6 +32,7 @@ pub(crate) async fn send_endorsements(
 ) -> Result<SendEndorsementsStreamType, GrpcError> {
     let mut pool_command_sender = grpc.pool_controller.clone();
     let protocol_command_sender = grpc.protocol_controller.clone();
+    let selector_controller = grpc.selector_controller.clone();
     let config = grpc.grpc_config.clone();
     let storage = grpc.storage.clone_without_refs();
 
@@ -100,6 +102,21 @@ pub(crate) async fn send_endorsements(
                             match verified_eds_res {
                                 // If all endorsements in the incoming message are valid, store and propagate them
                                 Ok(verified_eds) => {
+                                    // Check the PoS draws before letting those endorsements in: the
+                                    // propagation flow trusts its caller and does not check them again.
+                                    if let Err(error) = check_endorsement_draws(
+                                        &verified_eds,
+                                        selector_controller.as_ref(),
+                                    ) {
+                                        report_error(
+                                            tx.clone(),
+                                            tonic::Code::InvalidArgument,
+                                            error,
+                                        )
+                                        .await;
+                                        continue;
+                                    }
+
                                     let mut endorsement_storage = storage.clone_without_refs();
                                     endorsement_storage.store_endorsements(
                                         verified_eds.values().cloned().collect(),
@@ -180,6 +197,44 @@ pub(crate) async fn send_endorsements(
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
     Ok(Box::pin(out_stream) as SendEndorsementsStreamType)
+}
+
+/// Checks that each endorsement was created by the endorser drawn for its `(slot, index)` pair.
+///
+/// This mirrors the check done on endorsements received from peers (`note_endorsements_from_peer`)
+/// and in the endorsement pool: endorsements accepted here are handed over to the protocol
+/// propagation flow, which trusts its caller and rebroadcasts them without further validation.
+fn check_endorsement_draws(
+    endorsements: &HashMap<String, SecureShareEndorsement>,
+    selector_controller: &dyn SelectorController,
+) -> Result<(), String> {
+    for endorsement in endorsements.values() {
+        let selection = selector_controller
+            .get_selection(endorsement.content.slot)
+            .map_err(|e| {
+                format!(
+                    "failed to get the PoS draw at slot {}: {}",
+                    endorsement.content.slot, e
+                )
+            })?
+            .endorsements;
+        let Some(address) = selection.get(endorsement.content.index as usize) else {
+            return Err(format!(
+                "no selection at slot {} for index {}",
+                endorsement.content.slot, endorsement.content.index
+            ));
+        };
+        if address != &endorsement.content_creator_address {
+            return Err(format!(
+                "invalid endorsement producer selection at slot {} index {}: expected address {}, got {}",
+                endorsement.content.slot,
+                endorsement.content.index,
+                address,
+                endorsement.content_creator_address
+            ));
+        }
+    }
+    Ok(())
 }
 
 // This function reports an error to the sender by sending a gRPC response message to the client

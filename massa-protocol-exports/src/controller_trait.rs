@@ -55,6 +55,10 @@ pub trait ProtocolController: Send + Sync {
 
     /// Propagate a batch of endorsement (from pool).
     ///
+    /// The endorsements are propagated as-is: callers must have fully validated them beforehand
+    /// (valid signature and creator matching the PoS draw of their `(slot, index)` pair), as is
+    /// done for endorsements coming from peers in `note_endorsements_from_peer`.
+    ///
     /// # Arguments:
     /// * `endorsements`: endorsements to propagate
     fn propagate_endorsements(&self, endorsements: Storage) -> Result<(), ProtocolError>;

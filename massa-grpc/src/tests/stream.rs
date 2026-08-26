@@ -15,6 +15,7 @@ use massa_models::{
     types::{SetOrKeep, SetUpdateOrDelete},
 };
 use massa_pool_exports::MockPoolController;
+use massa_pos_exports::{MockSelectorController, Selection};
 use massa_proto_rs::massa::{
     api::v1::{
         public_service_client::PublicServiceClient, NewBlocksRequest, NewFilledBlocksRequest,
@@ -1743,8 +1744,27 @@ async fn send_endorsements() {
         ctrl
     });
 
+    let endorsement = create_endorsement();
+
+    // the endorsement is only propagated if its creator is the one drawn for its (slot, index)
+    let drawn_address = endorsement.content_creator_address;
+    let mut selector_ctrl = Box::new(MockSelectorController::new());
+    selector_ctrl.expect_clone_box().returning(move || {
+        let mut ctrl = Box::new(MockSelectorController::new());
+
+        ctrl.expect_get_selection().returning(move |_slot| {
+            Ok(Selection {
+                endorsements: vec![drawn_address],
+                producer: drawn_address,
+            })
+        });
+
+        ctrl
+    });
+
     public_server.pool_controller = pool_ctrl;
     public_server.protocol_controller = protocol_ctrl;
+    public_server.selector_controller = selector_ctrl;
 
     let (tx, rx) = tokio::sync::mpsc::channel(10);
     let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
@@ -1764,7 +1784,6 @@ async fn send_endorsements() {
         .unwrap()
         .into_inner();
 
-    let endorsement = create_endorsement();
     // serialize endorsement
     let mut buffer: Vec<u8> = Vec::new();
     SecureShareSerializer::new()
@@ -1801,6 +1820,34 @@ async fn send_endorsements() {
     match result.result.unwrap() {
         massa_proto_rs::massa::api::v1::send_endorsements_response::Result::Error(err) => {
             assert!(err.message.contains("failed to deserialize endorsement"))
+        }
+        _ => panic!("should be error"),
+    }
+
+    // an endorsement whose creator is not the drawn endorser must be rejected
+    let not_drawn_endorsement = create_endorsement();
+    let mut buffer: Vec<u8> = Vec::new();
+    SecureShareSerializer::new()
+        .serialize(&not_drawn_endorsement, &mut buffer)
+        .unwrap();
+
+    tx.send(SendEndorsementsRequest {
+        endorsements: vec![buffer],
+    })
+    .await
+    .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    match result.result.unwrap() {
+        massa_proto_rs::massa::api::v1::send_endorsements_response::Result::Error(err) => {
+            assert!(err
+                .message
+                .contains("invalid endorsement producer selection"))
         }
         _ => panic!("should be error"),
     }
