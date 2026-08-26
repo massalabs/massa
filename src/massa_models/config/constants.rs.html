@@ -459,6 +459,19 @@
 <a href="#459" id="459">459</a>
 <a href="#460" id="460">460</a>
 <a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -635,6 +648,19 @@
 </span><span class="kw">pub const </span>MAX_OPERATIONS_PER_BLOCK: u32 = <span class="number">5000</span>;
 <span class="doccomment">/// Maximum block size in bytes
 </span><span class="kw">pub const </span>MAX_BLOCK_SIZE: u32 = <span class="number">300_000</span>;
+<span class="doccomment">/// Maximum size in bytes of the varint prefix holding the number of operations of a serialized
+/// operation list. That count is a `u32` varint, and a varint carries 7 bits of payload per byte,
+/// hence `ceil(32 / 7) = 5` bytes at most.
+</span><span class="kw">pub const </span>MAX_OPERATIONS_COUNT_PREFIX_SIZE: usize = (u32::BITS <span class="kw">as </span>usize).div_ceil(<span class="number">7</span>);
+
+<span class="doccomment">/// Size of the serialized operation list holding operations of aggregate size `operations_size`:
+/// the operations themselves, plus the varint prefix holding their count.
+/// Use it to turn an operations size budget (such as `max_serialized_operations_size_per_block`)
+/// into the payload size a peer is allowed to send us.
+</span><span class="kw">pub const fn </span>operations_payload_size(operations_size: usize) -&gt; usize {
+    operations_size.saturating_add(MAX_OPERATIONS_COUNT_PREFIX_SIZE)
+}
+
 <span class="doccomment">/// Maximum capacity of the asynchronous messages pool
 </span><span class="kw">pub const </span>MAX_ASYNC_POOL_LENGTH: u64 = <span class="number">500</span>;
 <span class="doccomment">/// Maximum operation validity period count
