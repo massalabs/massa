@@ -692,6 +692,19 @@ impl RetrievalThread {
         }
     }
 
+    /// Whether we currently have an outstanding request for that block's data towards that peer.
+    ///
+    /// Used to correlate an incoming `BlockInfoReply` with a request we actually made:
+    /// an unsolicited reply proves nothing about what the sender holds, so it must not be
+    /// used to mark the sender as knowing the block. Otherwise any peer could claim knowledge
+    /// of arbitrary block ids and get prioritized by `update_block_retrieval`, wasting an
+    /// ask timeout window before honest peers are tried.
+    fn has_pending_block_ask(&self, peer_id: &PeerId, block_id: &BlockId) -> bool {
+        self.asked_blocks
+            .get(peer_id)
+            .is_some_and(|asked| asked.contains_key(block_id))
+    }
+
     /// Mark a block as invalid
     fn mark_block_as_invalid(&mut self, block_id: &BlockId) {
         // stop retrieving the block
@@ -769,11 +782,16 @@ impl RetrievalThread {
         {
             info
         } else {
-            // we were not actively looking for that data, but mark the remote node as knowing the block
+            // we were not actively looking for that data
             debug!("peer {} sent us a list of operation IDs for block id {} but we were not looking for it", from_peer_id, block_id);
-            self.cache
-                .write()
-                .insert_peer_known_block(&from_peer_id, &[block_id], true);
+            // only mark the remote node as knowing the block if this reply answers a request we
+            // made to it: an unsolicited list is unverifiable here (we have no header to check
+            // its hash against) and must not be allowed to poison peer block knowledge
+            if self.has_pending_block_ask(&from_peer_id, &block_id) {
+                self.cache
+                    .write()
+                    .insert_peer_known_block(&from_peer_id, &[block_id], true);
+            }
             return;
         };
 
@@ -848,10 +866,17 @@ impl RetrievalThread {
                 "Peer id {} sent us full operations for block id {} but we were not looking for it",
                 from_peer_id, block_id
             );
-            // still mark the sender as knowing the block and operations
-            self.cache
-                .write()
-                .insert_peer_known_block(&from_peer_id, &[block_id], true);
+            // only mark the sender as knowing the block if this reply answers a request we made
+            // to it: an unsolicited reply carries no proof that the sender holds the block
+            // (its payload can be empty or unrelated, and we have nothing to check it against
+            // here) and must not be allowed to poison peer block knowledge
+            if self.has_pending_block_ask(&from_peer_id, &block_id) {
+                self.cache
+                    .write()
+                    .insert_peer_known_block(&from_peer_id, &[block_id], true);
+            }
+            // the operation ids are self-certifying (computed from the operation contents at
+            // deserialization), so the sender can safely be marked as knowing them
             self.operation_cache.write().insert_peer_known_ops(
                 &from_peer_id,
                 &operations
