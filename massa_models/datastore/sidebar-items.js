@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["cleanup_datastore_key_range_query","enforce_datastore_canonical_keys","get_prefix_bounds","range_intersection"],"struct":["DatastoreDeserializer","DatastoreSerializer"],"type":["Datastore"]};
+window.SIDEBAR_ITEMS = {"fn":["cleanup_datastore_key_range_query","get_prefix_bounds","range_intersection"],"struct":["DatastoreDeserializer","DatastoreSerializer"],"type":["Datastore"]};

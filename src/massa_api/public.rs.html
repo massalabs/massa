@@ -1669,48 +1669,6 @@
 <a href="#1669" id="1669">1669</a>
 <a href="#1670" id="1670">1670</a>
 <a href="#1671" id="1671">1671</a>
-<a href="#1672" id="1672">1672</a>
-<a href="#1673" id="1673">1673</a>
-<a href="#1674" id="1674">1674</a>
-<a href="#1675" id="1675">1675</a>
-<a href="#1676" id="1676">1676</a>
-<a href="#1677" id="1677">1677</a>
-<a href="#1678" id="1678">1678</a>
-<a href="#1679" id="1679">1679</a>
-<a href="#1680" id="1680">1680</a>
-<a href="#1681" id="1681">1681</a>
-<a href="#1682" id="1682">1682</a>
-<a href="#1683" id="1683">1683</a>
-<a href="#1684" id="1684">1684</a>
-<a href="#1685" id="1685">1685</a>
-<a href="#1686" id="1686">1686</a>
-<a href="#1687" id="1687">1687</a>
-<a href="#1688" id="1688">1688</a>
-<a href="#1689" id="1689">1689</a>
-<a href="#1690" id="1690">1690</a>
-<a href="#1691" id="1691">1691</a>
-<a href="#1692" id="1692">1692</a>
-<a href="#1693" id="1693">1693</a>
-<a href="#1694" id="1694">1694</a>
-<a href="#1695" id="1695">1695</a>
-<a href="#1696" id="1696">1696</a>
-<a href="#1697" id="1697">1697</a>
-<a href="#1698" id="1698">1698</a>
-<a href="#1699" id="1699">1699</a>
-<a href="#1700" id="1700">1700</a>
-<a href="#1701" id="1701">1701</a>
-<a href="#1702" id="1702">1702</a>
-<a href="#1703" id="1703">1703</a>
-<a href="#1704" id="1704">1704</a>
-<a href="#1705" id="1705">1705</a>
-<a href="#1706" id="1706">1706</a>
-<a href="#1707" id="1707">1707</a>
-<a href="#1708" id="1708">1708</a>
-<a href="#1709" id="1709">1709</a>
-<a href="#1710" id="1710">1710</a>
-<a href="#1711" id="1711">1711</a>
-<a href="#1712" id="1712">1712</a>
-<a href="#1713" id="1713">1713</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1752,22 +1710,19 @@
     block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
-    config::{CompactConfig, OPERATION_VALIDITY_PERIODS},
+    config::CompactConfig,
     datastore::{cleanup_datastore_key_range_query, DatastoreDeserializer},
     deferred_calls::DeferredCallId,
     endorsement::{EndorsementId, SecureShareEndorsement},
     error::ModelsError,
     execution::EventFilter,
     node::NodeId,
-    operation::{OperationDeserializer, OperationId, OperationType, SecureShareOperation},
+    operation::{OperationDeserializer, OperationId, SecureShareOperation},
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShareDeserializer,
     slot::{IndexedSlot, Slot},
-    timeslots::{
-        <span class="self">self</span>, get_block_slot_timestamp, get_latest_block_slot_at_timestamp,
-        time_range_to_slot_range,
-    },
+    timeslots::{<span class="self">self</span>, get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
 };
 <span class="kw">use </span>massa_pool_exports::PoolController;
@@ -1778,9 +1733,7 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::versioning_factory::FactoryStrategy;
 <span class="kw">use </span>massa_versioning::{
-    keypair_factory::KeyPairFactory,
-    versioning::{MipComponent, MipStore},
-    versioning_factory::VersioningFactory,
+    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
 };
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 <span class="kw">use </span>std::{collections::BTreeMap, str::FromStr};
@@ -1854,13 +1807,22 @@
                 </span>.consensus_controller
                 .get_blockclique_block_at_slot(slot)
             <span class="kw">else </span>{
+                <span class="comment">// Every `Transfer` returned here carries the block ID of the slot, so a slot
+                // with no block (`get_blockclique_block_at_slot` also covers final blocks) has
+                // nothing to report. Keep `res` positionally aligned with the input `slots`
+                // anyway: it must still occupy its position, otherwise every later entry would
+                // be misattributed to the wrong slot.
+                </span>res.push(Vec::new());
                 <span class="kw">continue</span>;
             };
             <span class="kw">let </span><span class="kw-2">mut </span>transfers = Vec::new();
-            <span class="kw">let </span>abi_calls = <span class="self">self
+            <span class="comment">// Read the ABI call stack and the direct transfers for this slot from a single
+            // consistent snapshot, so the combined response cannot mix data from two
+            // different executions of the same slot (a re-execution between two reads).
+            </span><span class="kw">let </span>(abi_calls, slot_transfers) = <span class="self">self
                 </span>.<span class="number">0
                 </span>.execution_controller
-                .get_slot_abi_call_stack(slot.clone().into());
+                .get_slot_abi_call_stack_and_transfers(slot);
             <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
                 <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
 
@@ -1939,10 +1901,7 @@
                     }
                 }
             }
-            <span class="kw">let </span>transfers_op: Vec&lt;Transfer&gt; = <span class="self">self
-                </span>.<span class="number">0
-                </span>.execution_controller
-                .get_transfers_for_slot(slot)
+            <span class="kw">let </span>transfers_op: Vec&lt;Transfer&gt; = slot_transfers
                 .unwrap_or_default()
                 .iter()
                 .map(|t| Transfer {
@@ -1998,12 +1957,10 @@
 
             <span class="kw">let </span>op_datastore = <span class="kw">match </span>operation_datastore {
                 <span class="prelude-val">Some</span>(v) =&gt; {
-                    <span class="comment">// In read-only mode, we don't need to version the datastore keys changes
-                    </span><span class="kw">let </span>deserializer = DatastoreDeserializer::new(
+                    <span class="kw">let </span>deserializer = DatastoreDeserializer::new(
                         <span class="self">self</span>.<span class="number">0</span>.api_settings.max_op_datastore_entry_count,
                         <span class="self">self</span>.<span class="number">0</span>.api_settings.max_op_datastore_key_length,
                         <span class="self">self</span>.<span class="number">0</span>.api_settings.max_op_datastore_value_length,
-                        <span class="bool-val">true</span>,
                     );
                     <span class="kw">match </span>deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>v) {
                         <span class="prelude-val">Ok</span>((<span class="kw">_</span>, deserialized)) =&gt; <span class="prelude-val">Some</span>(deserialized),
@@ -2382,6 +2339,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operations_ids: Vec&lt;OperationId&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt; {
+        <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
+        <span class="comment">// bound the request size on the ids provided by the caller, before any storage lookup
+        </span><span class="kw">if </span>operations_ids.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
+        }
+
         <span class="comment">// get the operations and the list of blocks that contain them from storage
         </span><span class="kw">let </span>secure_share_operations: Vec&lt;SecureShareOperation&gt; = {
             <span class="kw">let </span>read_ops = <span class="self">self</span>.<span class="number">0</span>.storage.read_operations();
@@ -2410,11 +2373,6 @@
 
         <span class="comment">// keep only the ops id (found in storage)
         </span><span class="kw">let </span>ops: Vec&lt;OperationId&gt; = storage_info.iter().map(|(op, <span class="kw">_</span>)| op.id).collect();
-
-        <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-        <span class="kw">if </span>ops.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
-        }
 
         <span class="comment">// ask pool whether it carries the operations
         </span><span class="kw">let </span>in_pool = <span class="self">self
@@ -3135,14 +3093,7 @@
 
         <span class="kw">let </span>verified_ops = ops
             .into_iter()
-            .map(|op_input| {
-                check_input_operation(
-                    op_input,
-                    api_cfg,
-                    last_slot,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.keypair_factory.mip_store,
-                )
-            })
+            .map(|op_input| check_input_operation(op_input, api_cfg, last_slot))
             .map(|op| <span class="kw">match </span>op {
                 <span class="prelude-val">Ok</span>(operation) =&gt; {
                     <span class="kw">if </span>operation
@@ -3293,18 +3244,15 @@
     op_input: OperationInput,
     api_cfg: <span class="kw-2">&amp;</span>APIConfig,
     last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-    mip_store: <span class="kw-2">&amp;</span>MipStore,
 ) -&gt; RpcResult&lt;SecureShareOperation&gt; {
     <span class="kw">let </span>operation_deserializer = SecureShareDeserializer::new(
         OperationDeserializer::new(
-            api_cfg.max_datastore_value_length,
+            api_cfg.max_bytecode_size,
             api_cfg.max_function_name_length,
             api_cfg.max_parameter_size,
             api_cfg.max_op_datastore_entry_count,
             api_cfg.max_op_datastore_key_length,
             api_cfg.max_op_datastore_value_length,
-            <span class="comment">// F89: parse without enforcing; gate on Execution version at validity start.
-            </span><span class="bool-val">false</span>,
         ),
         api_cfg.chain_id,
     );
@@ -3316,27 +3264,13 @@
     <span class="kw">let </span>(rest, op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = operation_deserializer
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>op_serialized)
         .map_err(|err| ApiError::ModelsError(ModelsError::DeserializeError(err.to_string())))<span class="question-mark">?</span>;
-    <span class="kw">match </span>op.content.op {
-        OperationType::CallSC { .. } =&gt; {
-            <span class="kw">let </span>gas_usage =
-                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
-            <span class="kw">if </span>gas_usage &gt; api_cfg.max_gas_per_block {
-                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">"Upper gas limit for CallSC operation is {}. Your operation will never be included in a block."</span>,
-                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost));
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_msg).into());
-            }
-        }
-        OperationType::ExecuteSC { .. } =&gt; {
-            <span class="kw">let </span>gas_usage =
-                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
-            <span class="kw">if </span>gas_usage &gt; api_cfg.max_gas_per_block {
-                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">"Upper gas limit for ExecuteSC operation is {}. Your operation will never be included in a block."</span>,
-                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost).saturating_sub(api_cfg.sp_compilation_cost));
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_msg).into());
-            }
-        }
-        <span class="kw">_ </span>=&gt; {}
-    };
+    <span class="kw">if let </span><span class="prelude-val">Err</span>(err_msg) = op.check_gas_usage(
+        api_cfg.max_gas_per_block,
+        api_cfg.base_operation_gas_cost,
+        api_cfg.sp_compilation_cost,
+    ) {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_msg).into());
+    }
     <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot {
         <span class="kw">if </span>op.content.expire_period &lt; slot.period {
             <span class="kw">return </span><span class="prelude-val">Err</span>(
@@ -3346,24 +3280,6 @@
             );
         }
     }
-
-    <span class="comment">// F89 / MIP-0002: canonical ExecuteSC datastore when Execution is active at validity start.
-    </span><span class="kw">let </span>validity_start = op.validity_start_slot(OPERATION_VALIDITY_PERIODS, api_cfg.thread_count);
-    <span class="kw">let </span>version_at_validity_start = get_block_slot_timestamp(
-        api_cfg.thread_count,
-        api_cfg.t0,
-        api_cfg.genesis_timestamp,
-        validity_start,
-    )
-    .map(|ts| mip_store.get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, ts))
-    .map_err(ApiError::ModelsError)<span class="question-mark">?</span>;
-    <span class="kw">if </span>!op.satisfies_canonical_datastore_keys_if_required(version_at_validity_start) {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(
-            <span class="string">"ExecuteSC datastore keys must be strictly increasing and unique"</span>.into(),
-        )
-        .into());
-    }
-
     <span class="kw">if </span>rest.is_empty() {
         <span class="prelude-val">Ok</span>(op)
     } <span class="kw">else </span>{

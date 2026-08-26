@@ -720,9 +720,6 @@
 <a href="#720" id="720">720</a>
 <a href="#721" id="721">721</a>
 <a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -807,6 +804,11 @@
 
 <span class="kw">impl </span>Client {
     <span class="doccomment">/// creates a new client
+    ///
+    /// Note: this constructor always uses plaintext transports (`http` for the JSON-RPC
+    /// APIs, `grpc` for the gRPC APIs) and cannot connect to a node whose gRPC server has
+    /// `enable_tls` set. For a TLS-enabled JSON-RPC endpoint, build the client with
+    /// [`RpcClient::from_url`] and an `https` url instead.
     </span><span class="kw">pub async fn </span>new(
         ip: IpAddr,
         public_port: u16,
@@ -866,6 +868,9 @@
 
 <span class="kw">impl </span>RpcClient {
     <span class="doccomment">/// Default constructor
+    ///
+    /// The transport is selected by the scheme of `url`: an `https` url yields a TLS
+    /// client validating the server against the platform trust store.
     </span><span class="kw">pub async fn </span>from_url(url: <span class="kw-2">&amp;</span>str, http_config: <span class="kw-2">&amp;</span>HttpConfig) -&gt; RpcClient {
         RpcClient {
             http_client: http_client_from_url(url, http_config),
@@ -1201,6 +1206,9 @@
 
 <span class="kw">impl </span>ClientV2 {
     <span class="doccomment">/// creates a new client
+    ///
+    /// Note: this constructor always uses plaintext transports (`http` and `ws`), see
+    /// [`Client::new`].
     </span><span class="kw">pub async fn </span>new(
         ip: IpAddr,
         api_port: u16,
@@ -1375,15 +1383,8 @@
         .id_format(get_id_kind(http_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(<span class="kw-2">&amp;</span>http_config.client_config.headers));
 
-    <span class="comment">// Note: use_*_rustls() are not available anymore
-    //       keep the config for compatibility reason but this will be unused
-    /*
-    match http_config.client_config.certificate_store.as_str() {
-        "Native" =&gt; builder = builder.use_native_rustls(),
-        "WebPki" =&gt; builder = builder.use_webpki_rustls(),
-        _ =&gt; {}
-    }
-    */
+    <span class="comment">// Note: `client_config.certificate_store` is ignored here, see its documentation.
+    //       TLS is selected by the `https` scheme of `url`, using the platform trust store.
 
     </span>builder
         .build(url)
@@ -1403,15 +1404,8 @@
         .max_buffer_capacity_per_subscription(ws_config.max_notifs_per_subscription)
         .max_redirections(ws_config.max_redirections);
 
-    <span class="comment">// Note: use_*_rustls() are not available anymore
-    //       keep the config for compatibility reason but this will be unused
-    /*
-    match ws_config.client_config.certificate_store.as_str() {
-        "Native" =&gt; builder = builder.use_native_rustls(),
-        "WebPki" =&gt; builder = builder.use_webpki_rustls(),
-        _ =&gt; {}
-    }
-    */
+    <span class="comment">// Note: `client_config.certificate_store` is ignored here, see its documentation.
+    //       TLS is selected by the `wss` scheme of `url`, using the platform trust store.
 
     </span>builder
         .build(url)

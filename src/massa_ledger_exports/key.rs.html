@@ -263,6 +263,77 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::LEDGER_PREFIX;
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
@@ -519,13 +590,84 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
     ) -&gt; nom::IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Key, E&gt; {
-        <span class="kw">let </span>(rest, _version) = <span class="self">self
-            </span>.version_byte_deserializer
-            .deserialize(<span class="kw-2">&amp;</span>buffer[LEDGER_PREFIX.as_bytes().len()..])<span class="question-mark">?</span>;
+        <span class="comment">// Skip the ledger prefix without slicing past the end of the buffer:
+        // an undersized input must yield a clean parse error rather than an
+        // out-of-bounds panic.
+        </span><span class="kw">let </span>prefix_len = LEDGER_PREFIX.as_bytes().len();
+        <span class="kw">let </span>after_prefix = buffer.get(prefix_len..).ok_or_else(|| {
+            nom::Err::Error(E::from_error_kind(buffer, nom::error::ErrorKind::Eof))
+        })<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>(rest, version) = <span class="self">self</span>.version_byte_deserializer.deserialize(after_prefix)<span class="question-mark">?</span>;
+        <span class="comment">// Enforce the canonical key version. `KeySerializer` always writes
+        // `KEY_VERSION`, so any other value is a non-canonical / malformed key.
+        // Rejecting it prevents version malleability where distinct encodings
+        // deserialize into the same logical `Key`.
+        </span><span class="kw">if </span>version != KEY_VERSION {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(
+                after_prefix,
+                nom::error::ErrorKind::Verify,
+            )));
+        }
         <span class="kw">let </span>(rest, address) = <span class="self">self</span>.address_deserializer.deserialize(rest)<span class="question-mark">?</span>;
         <span class="kw">let </span>(rest, key_type) = <span class="self">self</span>.key_type_deserializer.deserialize(rest)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((rest, Key { address, key_type }))
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::{Key, KeyDeserializer, KeySerializer, KeyType};
+    <span class="kw">use </span>massa_db_exports::LEDGER_PREFIX;
+    <span class="kw">use </span>massa_models::address::Address;
+    <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
+    <span class="kw">use </span>std::str::FromStr;
+
+    <span class="kw">fn </span>sample_address() -&gt; Address {
+        Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>).unwrap()
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>canonical_key_still_round_trips() {
+        <span class="kw">let </span>key = Key::new(<span class="kw-2">&amp;</span>sample_address(), KeyType::BALANCE);
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
+        KeySerializer::new(<span class="bool-val">true</span>)
+            .serialize(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;mut </span>serialized)
+            .unwrap();
+        <span class="kw">let </span>(rest, deser) = KeyDeserializer::new(<span class="number">255</span>, <span class="bool-val">true</span>)
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
+            .unwrap();
+        <span class="macro">assert!</span>(rest.is_empty());
+        <span class="macro">assert_eq!</span>(deser, key);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>undersized_buffer_errors_instead_of_panicking() {
+        <span class="comment">// A buffer shorter than the ledger prefix must not trigger an
+        // out-of-bounds slice panic.
+        </span><span class="kw">let </span>short = <span class="macro">vec!</span>[<span class="number">0u8</span>; LEDGER_PREFIX.as_bytes().len().saturating_sub(<span class="number">1</span>)];
+        <span class="kw">let </span>res = KeyDeserializer::new(<span class="number">255</span>, <span class="bool-val">true</span>).deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>short);
+        <span class="macro">assert!</span>(res.is_err(), <span class="string">"undersized buffer must produce a parse error"</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>non_canonical_version_is_rejected() {
+        <span class="kw">let </span>key = Key::new(<span class="kw-2">&amp;</span>sample_address(), KeyType::BALANCE);
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
+        KeySerializer::new(<span class="bool-val">true</span>)
+            .serialize(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;mut </span>serialized)
+            .unwrap();
+
+        <span class="comment">// The version is a u64 varint written immediately after the prefix;
+        // `KEY_VERSION == 0` encodes as a single `0x00` byte. Flip it to a
+        // non-canonical value.
+        </span><span class="kw">let </span>version_idx = LEDGER_PREFIX.as_bytes().len();
+        <span class="macro">assert_eq!</span>(serialized[version_idx], <span class="number">0u8</span>);
+        serialized[version_idx] = <span class="number">1u8</span>;
+
+        <span class="kw">let </span>res = KeyDeserializer::new(<span class="number">255</span>, <span class="bool-val">true</span>).deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized);
+        <span class="macro">assert!</span>(res.is_err(), <span class="string">"a non-canonical key version must be rejected"</span>);
     }
 }
 </code></pre></div></section></main></body></html>
