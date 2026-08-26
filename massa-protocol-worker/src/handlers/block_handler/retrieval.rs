@@ -595,6 +595,15 @@ impl RetrievalThread {
             return Ok(false);
         }
 
+        // Authenticate the header before processing embedded endorsements so an
+        // invalid block signature cannot trigger endorsement verification or side effects.
+        if let Err(err) = header.verify_signature() {
+            return Err(ProtocolError::InvalidBlock(format!(
+                "invalid header signature: {}",
+                err
+            )));
+        };
+
         // check endorsements
         if let Err(err) = note_endorsements_from_peer(
             header.content.endorsements.clone(),
@@ -608,14 +617,6 @@ impl RetrievalThread {
         ) {
             return Err(ProtocolError::InvalidBlock(format!(
                 "invalid endorsements: {}",
-                err
-            )));
-        };
-
-        // check header signature
-        if let Err(err) = header.verify_signature() {
-            return Err(ProtocolError::InvalidBlock(format!(
-                "invalid header signature: {}",
                 err
             )));
         };
