@@ -1348,6 +1348,31 @@
 <a href="#1348" id="1348">1348</a>
 <a href="#1349" id="1349">1349</a>
 <a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -2042,6 +2067,19 @@
         }
     }
 
+    <span class="doccomment">/// Whether we currently have an outstanding request for that block's data towards that peer.
+    ///
+    /// Used to correlate an incoming `BlockInfoReply` with a request we actually made:
+    /// an unsolicited reply proves nothing about what the sender holds, so it must not be
+    /// used to mark the sender as knowing the block. Otherwise any peer could claim knowledge
+    /// of arbitrary block ids and get prioritized by `update_block_retrieval`, wasting an
+    /// ask timeout window before honest peers are tried.
+    </span><span class="kw">fn </span>has_pending_block_ask(<span class="kw-2">&amp;</span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; bool {
+        <span class="self">self</span>.asked_blocks
+            .get(peer_id)
+            .is_some_and(|asked| asked.contains_key(block_id))
+    }
+
     <span class="doccomment">/// Mark a block as invalid
     </span><span class="kw">fn </span>mark_block_as_invalid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) {
         <span class="comment">// stop retrieving the block
@@ -2119,11 +2157,16 @@
         {
             info
         } <span class="kw">else </span>{
-            <span class="comment">// we were not actively looking for that data, but mark the remote node as knowing the block
+            <span class="comment">// we were not actively looking for that data
             </span><span class="macro">debug!</span>(<span class="string">"peer {} sent us a list of operation IDs for block id {} but we were not looking for it"</span>, from_peer_id, block_id);
-            <span class="self">self</span>.cache
-                .write()
-                .insert_peer_known_block(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">true</span>);
+            <span class="comment">// only mark the remote node as knowing the block if this reply answers a request we
+            // made to it: an unsolicited list is unverifiable here (we have no header to check
+            // its hash against) and must not be allowed to poison peer block knowledge
+            </span><span class="kw">if </span><span class="self">self</span>.has_pending_block_ask(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>block_id) {
+                <span class="self">self</span>.cache
+                    .write()
+                    .insert_peer_known_block(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">true</span>);
+            }
             <span class="kw">return</span>;
         };
 
@@ -2198,11 +2241,18 @@
                 <span class="string">"Peer id {} sent us full operations for block id {} but we were not looking for it"</span>,
                 from_peer_id, block_id
             );
-            <span class="comment">// still mark the sender as knowing the block and operations
-            </span><span class="self">self</span>.cache
-                .write()
-                .insert_peer_known_block(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">true</span>);
-            <span class="self">self</span>.operation_cache.write().insert_peer_known_ops(
+            <span class="comment">// only mark the sender as knowing the block if this reply answers a request we made
+            // to it: an unsolicited reply carries no proof that the sender holds the block
+            // (its payload can be empty or unrelated, and we have nothing to check it against
+            // here) and must not be allowed to poison peer block knowledge
+            </span><span class="kw">if </span><span class="self">self</span>.has_pending_block_ask(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>block_id) {
+                <span class="self">self</span>.cache
+                    .write()
+                    .insert_peer_known_block(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">true</span>);
+            }
+            <span class="comment">// the operation ids are self-certifying (computed from the operation contents at
+            // deserialization), so the sender can safely be marked as knowing them
+            </span><span class="self">self</span>.operation_cache.write().insert_peer_known_ops(
                 <span class="kw-2">&amp;</span>from_peer_id,
                 <span class="kw-2">&amp;</span>operations
                     .into_iter()
