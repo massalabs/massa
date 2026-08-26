@@ -172,9 +172,6 @@
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::operation::{
     OperationPrefixIds, OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer,
     OperationsDeserializer, OperationsSerializer, SecureShareOperation,
@@ -272,8 +269,8 @@
     <span class="doccomment">/// Maximum of full operations sent in one message
     </span><span class="kw">pub </span>max_operations: u32,
     <span class="comment">//TODO: All of this arguments should be in a `OperationDeserializer` struct that would be used here
-    </span><span class="doccomment">/// Maximum size of a user datastore value
-    </span><span class="kw">pub </span>max_datastore_value_length: u64,
+    </span><span class="doccomment">/// Maximum size of a smart contract bytecode in an `ExecuteSC` operation
+    </span><span class="kw">pub </span>max_bytecode_size: u64,
     <span class="doccomment">/// Maximum size of a function name
     </span><span class="kw">pub </span>max_function_name_length: u16,
     <span class="doccomment">/// Maximum size of parameters
@@ -286,8 +283,6 @@
     </span><span class="kw">pub </span>max_op_datastore_value_length: u64,
     <span class="doccomment">/// Chain id
     </span><span class="kw">pub </span>chain_id: u64,
-    <span class="doccomment">/// MIP-0002: enforce strictly increasing ExecuteSC datastore keys
-    </span><span class="kw">pub </span>enforce_canonical_datastore_keys: bool,
 }
 
 <span class="kw">impl </span>OperationMessageDeserializer {
@@ -299,14 +294,13 @@
             ),
             operations_deserializer: OperationsDeserializer::new(
                 args.max_operations,
-                args.max_datastore_value_length,
+                args.max_bytecode_size,
                 args.max_function_name_length,
                 args.max_parameters_size,
                 args.max_op_datastore_entry_count,
                 args.max_op_datastore_key_length,
                 args.max_op_datastore_value_length,
                 args.chain_id,
-                args.enforce_canonical_datastore_keys,
             ),
         }
     }

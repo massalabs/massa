@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BlockCache"],"type":["SharedBlockCache"]};
+window.SIDEBAR_ITEMS = {"constant":["MAX_SENDERS_PER_BLOCK"],"enum":["BlockDataKind"],"struct":["BlockCache"],"type":["SharedBlockCache"]};

@@ -2739,6 +2739,7 @@
 <a href="#2739" id="2739">2739</a>
 <a href="#2740" id="2740">2740</a>
 <a href="#2741" id="2741">2741</a>
+<a href="#2742" id="2742">2742</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2756,7 +2757,6 @@
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::storage_backend::StorageBackend;
-<span class="kw">use </span><span class="kw">crate</span>::wmas_patch;
 <span class="kw">use </span>massa_deferred_calls::DeferredCall;
 <span class="kw">use </span>massa_event_cache::controller::EventCacheController;
 <span class="kw">use </span>massa_execution_exports::{
@@ -3098,11 +3098,11 @@
         <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
         </span>{
             <span class="kw">if </span><span class="self">self</span>.config.broadcast_traces_enabled {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((slot_trace, <span class="kw">_</span>)) = exec_out.slot_trace.clone() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>((slot_trace, transfers)) = exec_out.slot_trace.clone() {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
                         </span>.channels
                         .slot_execution_traces_sender
-                        .send((slot_trace, <span class="bool-val">true</span>))
+                        .send((slot_trace, transfers, <span class="bool-val">true</span>))
                     {
                         <span class="macro">trace!</span>(
                             <span class="string">"error, failed to broadcast abi trace for slot {} due to: {}"</span>,
@@ -3688,6 +3688,12 @@
 
     <span class="doccomment">/// Execute an operation of type `Transaction`
     /// Will panic if called with another operation type
+    ///
+    /// The recipient can be any address, including a deployed smart contract:
+    /// a transaction only moves coins and never executes the destination's bytecode.
+    /// Contracts must therefore not treat a balance increase as a handled deposit.
+    /// Note that transfers to a *non-existing* SC address are rejected by the ledger,
+    /// since only user addresses can be created from transferred coins.
     ///
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be a `Transaction`
@@ -4305,42 +4311,6 @@
 
         <span class="kw">let </span>deferred_calls_slot_gas = calls.effective_slot_gas;
 
-        <span class="comment">// One-time, versioning-gated WMAS bytecode patch (see `wmas_patch`).
-        // Applied here so it is part of the slot's ledger changes and shared by
-        // both candidate and final execution (this function is called by both).
-        </span><span class="kw">if </span>execution_context
-            .is_execution_component_version_activation(wmas_patch::WMAS_PATCH_EXEC_VERSION)
-        {
-            <span class="kw">match </span>wmas_patch::wmas_address(<span class="self">self</span>.config.chain_id) {
-                <span class="prelude-val">Some</span>(addr) =&gt; {
-                    <span class="comment">// Existence guard: only overwrite an already-deployed WMAS
-                    // contract, never create a new entry. Keeps the patch a
-                    // no-op on networks that share a known chain_id but do not
-                    // actually have WMAS deployed (e.g. a private fork or a
-                    // sandbox misconfigured with a mainnet/buildnet chain_id).
-                    </span><span class="kw">if </span>execution_context.get_bytecode(<span class="kw-2">&amp;</span>addr).is_some() {
-                        execution_context
-                            .override_bytecode(<span class="kw-2">&amp;</span>addr, wmas_patch::patched_wmas_bytecode());
-                        <span class="macro">info!</span>(<span class="string">"applied WMAS bytecode patch at slot {}"</span>, slot);
-                    } <span class="kw">else </span>{
-                        <span class="macro">warn!</span>(
-                            <span class="string">"WMAS bytecode patch activation slot {} reached but no contract exists at {}; skipping"</span>,
-                            slot, addr
-                        );
-                    }
-                }
-                <span class="prelude-val">None </span>=&gt; {
-                    <span class="comment">// Fail-safe: the patch is not applicable on this network
-                    // (unknown chain_id). Leave WMAS untouched rather than abort
-                    // consensus.
-                    </span><span class="macro">warn!</span>(
-                        <span class="string">"WMAS bytecode patch activation slot {} reached but no address for chain_id {}; skipping"</span>,
-                        slot, <span class="self">self</span>.config.chain_id
-                    );
-                }
-            }
-        }
-
         <span class="comment">// Apply the created execution context for slot execution
         </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
@@ -4377,7 +4347,7 @@
         <span class="comment">// Block execution
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>block_info: <span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt; = <span class="prelude-val">None</span>;
-        <span class="comment">// Set block gas (max_gas_per_block - gas used by deferred calls)
+        <span class="comment">// Set block gas (deferred calls have their own budget, see async gas below)
         </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_block_gas = <span class="self">self</span>.config.max_gas_per_block;
 
         <span class="comment">// Check if there is a block at this slot
@@ -4665,6 +4635,9 @@
 
         // Get asynchronous messages to execute
         // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
+        // Reusing the gas the block left unused is intentional (activated by MIP-0001, MipComponent::Execution v1):
+        // it keeps the whole-slot budget bounded by max_gas_per_block + max_async_gas while letting
+        // underfilled slots do more async work. Changing this formula is a consensus change.
         </span><span class="kw">let </span>async_msg_gas_available = <span class="self">self
             </span>.config
             .max_async_gas
@@ -4818,11 +4791,11 @@
         <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
         </span>{
             <span class="kw">if </span><span class="self">self</span>.config.broadcast_traces_enabled {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((slot_trace, <span class="kw">_</span>)) = exec_out.slot_trace.clone() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>((slot_trace, transfers)) = exec_out.slot_trace.clone() {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
                         </span>.channels
                         .slot_execution_traces_sender
-                        .send((slot_trace, <span class="bool-val">false</span>))
+                        .send((slot_trace, transfers, <span class="bool-val">false</span>))
                     {
                         <span class="macro">trace!</span>(
                             <span class="string">"error, failed to broadcast abi trace for slot {} due to: {}"</span>,
@@ -4918,10 +4891,39 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         req: ReadOnlyExecutionRequest,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadOnlyExecutionOutput, ExecutionError&gt; {
-        <span class="comment">// TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
-        // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
+        <span class="comment">// Run the read-only execution request.
+        </span><span class="kw">let </span>result = <span class="self">self</span>.execute_readonly_request_inner(req);
 
-        // check if read only request max gas is above the threshold
+        <span class="comment">// Always reset the shared execution context to a clean read-only context,
+        // regardless of whether the execution succeeded or failed.
+        // Otherwise, a failed read-only execution could leave stale, caller-controlled
+        // speculative changes in the shared context, which would then be exposed
+        // to subsequent RPC queries.
+        </span><span class="kw">let </span>slot = <span class="self">self
+            </span>.active_cursor
+            .get_next_slot(<span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">"slot overflow in readonly execution context reset from active slot"</span>);
+        <span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = ExecutionContext::readonly(
+            <span class="self">self</span>.config.clone(),
+            slot,
+            Vec::new(),
+            <span class="self">self</span>.final_state.clone(),
+            <span class="self">self</span>.active_history.clone(),
+            <span class="self">self</span>.module_cache.clone(),
+            <span class="self">self</span>.mip_store.clone(),
+        );
+
+        result
+    }
+
+    <span class="doccomment">/// Inner implementation of `execute_readonly_request`.
+    /// The caller is responsible for resetting the shared execution context
+    /// after this function returns, on both success and error paths.
+    </span><span class="kw">fn </span>execute_readonly_request_inner(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        req: ReadOnlyExecutionRequest,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadOnlyExecutionOutput, ExecutionError&gt; {
+        <span class="comment">// check if read only request max gas is above the threshold
         </span><span class="kw">if </span>req.max_gas &gt; <span class="self">self</span>.config.max_read_only_gas {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::TooMuchGas(<span class="macro">format!</span>(
                 <span class="string">"execution gas for read-only call is {} which is above the maximum allowed {}"</span>,
