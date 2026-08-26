@@ -532,6 +532,7 @@ async fn launch(
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
+        readonly_starvation_timeout: SETTINGS.execution.readonly_starvation_timeout,
         cursor_delay: SETTINGS.execution.cursor_delay,
         max_async_gas: MAX_ASYNC_GAS,
         async_msg_cst_gas_cost: ASYNC_MSG_CST_GAS_COST,
