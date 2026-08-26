@@ -155,6 +155,9 @@ impl DeferredCreditsSerializer {
 }
 
 impl Serializer<DeferredCredits> for DeferredCreditsSerializer {
+    /// Serializes deferred credits with slots in ascending `BTreeMap` order.
+    ///
+    /// The matching deserializer requires that same strictly increasing slot order.
     fn serialize(
         &self,
         value: &DeferredCredits,
@@ -163,7 +166,7 @@ impl Serializer<DeferredCredits> for DeferredCreditsSerializer {
         // deferred credits length
         self.u64_ser
             .serialize(&(value.credits.len() as u64), buffer)?;
-        // deferred credits
+        // deferred credits (BTreeMap iteration is sorted by Slot)
         for (slot, credits) in &value.credits {
             // slot
             self.slot_ser.serialize(slot, buffer)?;
@@ -201,13 +204,17 @@ impl DeferredCreditsDeserializer {
 }
 
 impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
+    /// Deserializes deferred credits.
+    ///
+    /// Slot entries must appear in strictly increasing order (the order produced by
+    /// [`DeferredCreditsSerializer`]). Out-of-order or duplicate slots are rejected so
+    /// each valid byte sequence maps to exactly one `DeferredCredits` value.
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], DeferredCredits, E> {
-        context(
-            "Failed DeferredCredits deserialization",
-            length_count(
+        context("Failed DeferredCredits deserialization", |input| {
+            let (rest, elements) = length_count(
                 context("Failed length deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
                 }),
@@ -219,10 +226,25 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
                         self.credit_deserializer.deserialize(input)
                     }),
                 )),
-            ),
-        )
-        .map(|elements| DeferredCredits {
-            credits: elements.into_iter().collect(),
+            )
+            .parse(input)?;
+
+            let mut credits = BTreeMap::new();
+            let mut last_slot: Option<Slot> = None;
+            for (slot, slot_credits) in elements {
+                if let Some(prev) = last_slot {
+                    if slot <= prev {
+                        return Err(nom::Err::Error(E::from_error_kind(
+                            input,
+                            nom::error::ErrorKind::Verify,
+                        )));
+                    }
+                }
+                last_slot = Some(slot);
+                credits.insert(slot, slot_credits);
+            }
+
+            Ok((rest, DeferredCredits { credits }))
         })
         .parse(buffer)
     }
@@ -359,5 +381,45 @@ mod test {
         let res = deserializer2.deserialize::<DeserializeError>(&buf);
 
         assert!(res.is_err());
+    }
+
+    /// F98: non-canonical slot order must be rejected rather than silently normalized.
+    #[test]
+    fn test_deferred_credits_rejects_non_canonical_slot_order() {
+        let addr1 =
+            Address::from_str("AU1jUbxeXW49QRT6Le5aPuNdcGWQV2kpnDyQkKoka4MmEUW3m8Xm").unwrap();
+        let addr2 =
+            Address::from_str("AU12nfJdBNotWffSEDDCS9mMXAxDbHbAVM9GW7pvVJoLxdCeeroX8").unwrap();
+
+        let deserializer =
+            DeferredCreditsDeserializer::new(THREAD_COUNT, MAX_DEFERRED_CREDITS_LENGTH);
+        let u64_ser = U64VarIntSerializer::new();
+        let slot_ser = SlotSerializer::new();
+        let credits_ser = CreditsSerializer::new();
+
+        let mut credits_high = PreHashMap::default();
+        credits_high.insert(addr2, Amount::from_raw(u64::MAX));
+        let mut credits_low = PreHashMap::default();
+        credits_low.insert(addr1, Amount::from_str("0.0").unwrap());
+
+        // length=2, then Slot(2,0) before Slot(1,0) — valid entries, wrong order
+        let mut buf = Vec::new();
+        u64_ser.serialize(&2u64, &mut buf).unwrap();
+        slot_ser.serialize(&Slot::new(2, 0), &mut buf).unwrap();
+        credits_ser.serialize(&credits_high, &mut buf).unwrap();
+        slot_ser.serialize(&Slot::new(1, 0), &mut buf).unwrap();
+        credits_ser.serialize(&credits_low, &mut buf).unwrap();
+
+        assert!(deserializer.deserialize::<DeserializeError>(&buf).is_err());
+
+        // Duplicate slots are also non-canonical
+        let mut dup = Vec::new();
+        u64_ser.serialize(&2u64, &mut dup).unwrap();
+        slot_ser.serialize(&Slot::new(1, 0), &mut dup).unwrap();
+        credits_ser.serialize(&credits_low, &mut dup).unwrap();
+        slot_ser.serialize(&Slot::new(1, 0), &mut dup).unwrap();
+        credits_ser.serialize(&credits_high, &mut dup).unwrap();
+
+        assert!(deserializer.deserialize::<DeserializeError>(&dup).is_err());
     }
 }
