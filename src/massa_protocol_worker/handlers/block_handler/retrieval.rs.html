@@ -1348,8 +1348,44 @@
 <a href="#1348" id="1348">1348</a>
 <a href="#1349" id="1349">1349</a>
 <a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map, HashMap, HashSet},
     thread::JoinHandle,
     time::Instant,
 };
@@ -1422,6 +1458,12 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BlockInfo {
     <span class="doccomment">/// The header of the block.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) header: <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;,
+    <span class="doccomment">/// Whether consensus accepted the header of that block.
+    /// Consensus is the only one performing the header-level checks (producer draw, staleness,
+    /// parent compatibility, dependency topology), so we must not download any of the block
+    /// contents before it told us that the header is worth it: otherwise a peer could make us
+    /// spend bandwidth and CPU on blocks that consensus is going to reject anyways.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) header_checked_by_consensus: bool,
     <span class="doccomment">/// Operations ids. None if not received yet
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) operation_ids: <span class="prelude-ty">Option</span>&lt;Vec&lt;OperationId&gt;&gt;,
     <span class="doccomment">/// Operations and endorsements contained in the block,
@@ -1432,6 +1474,8 @@
 <span class="kw">impl </span>BlockInfo {
     <span class="kw">fn </span>new(header: <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;, storage: Storage) -&gt; <span class="self">Self </span>{
         BlockInfo {
+            <span class="comment">// a header handed to us by consensus has by definition already passed its checks
+            </span>header_checked_by_consensus: header.is_some(),
             header,
             operation_ids: <span class="prelude-val">None</span>,
             storage,
@@ -1541,10 +1585,25 @@
                                 BlockHandlerRetrievalCommand::WishlistDelta { new, remove } =&gt; {
                                     <span class="macro">massa_trace!</span>(<span class="string">"protocol.protocol_worker.process_command.wishlist_delta.begin"</span>, { <span class="string">"new"</span>: new, <span class="string">"remove"</span>: remove });
                                     <span class="kw">for </span>(block_id, header) <span class="kw">in </span>new.into_iter() {
-                                        <span class="self">self</span>.block_wishlist.insert(
-                                            block_id,
-                                            BlockInfo::new(header, <span class="self">self</span>.storage.clone_without_refs()),
-                                        );
+                                        <span class="kw">match </span><span class="self">self</span>.block_wishlist.entry(block_id) {
+                                            hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; {
+                                                <span class="comment">// We were already retrieving that block and consensus is now
+                                                // telling us that it checked its header: unlock the retrieval
+                                                // of its contents. Note that the rest of the retrieval progress
+                                                // must be preserved here.
+                                                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(header) = header {
+                                                    <span class="kw">let </span>info = occ.get_mut();
+                                                    info.header_checked_by_consensus = <span class="bool-val">true</span>;
+                                                    info.header.get_or_insert(header);
+                                                }
+                                            }
+                                            hash_map::Entry::Vacant(vac) =&gt; {
+                                                vac.insert(BlockInfo::new(
+                                                    header,
+                                                    <span class="self">self</span>.storage.clone_without_refs(),
+                                                ));
+                                            }
+                                        }
                                     }
                                     <span class="comment">// Cleanup the knowledge that we asked this list of blocks to nodes.
                                     </span><span class="self">self</span>.remove_asked_blocks(<span class="kw-2">&amp;</span>remove);
@@ -1817,13 +1876,21 @@
                 <span class="comment">// we were looking for the missing header
 
                 // save the header
-                </span>info.header = <span class="prelude-val">Some</span>(header);
+                </span>info.header = <span class="prelude-val">Some</span>(header.clone());
 
                 <span class="comment">// Clear the list of peers we asked that header for.
                 // This is done so that update_block_retrieval can prioritize asking the rest of the block data
                 // to that same peer that just gave us the header, and not exclude the peer
                 // because we still believe we are actively asking it for stuff.
-                </span><span class="self">self</span>.remove_asked_blocks(<span class="kw-2">&amp;</span>[block_id].into_iter().collect())
+                </span><span class="self">self</span>.remove_asked_blocks(<span class="kw-2">&amp;</span>[block_id].into_iter().collect());
+
+                <span class="comment">// Hand the header over to consensus right away so that it runs its header-level
+                // checks now instead of only when the whole block has been gathered.
+                // Retrieval of the block contents stays gated on `header_checked_by_consensus`,
+                // which consensus sets by re-announcing the block in the wishlist once it accepted
+                // its header (and drops the block from the wishlist if it rejected it).
+                </span><span class="self">self</span>.consensus_controller
+                    .register_block_header(block_id, header);
             }
         } <span class="kw">else if </span>is_new {
             <span class="comment">// if not in wishlist, and if the header is new, we send it to consensus
@@ -2112,11 +2179,9 @@
         );
 
         <span class="comment">// check if we were looking to retrieve the list of ops for that block
-        </span><span class="kw">let </span>wishlist_info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self
-            </span>.block_wishlist
-            .get_mut(<span class="kw-2">&amp;</span>block_id)
-            .filter(|i| i.header.is_some() &amp;&amp; i.operation_ids.is_none())
-        {
+        </span><span class="kw">let </span>wishlist_info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id).filter(|i| {
+            i.header.is_some() &amp;&amp; i.header_checked_by_consensus &amp;&amp; i.operation_ids.is_none()
+        }) {
             info
         } <span class="kw">else </span>{
             <span class="comment">// we were not actively looking for that data, but mark the remote node as knowing the block
@@ -2344,8 +2409,15 @@
             !asked_blocks.is_empty()
         });
 
-        <span class="comment">// list of blocks that need to be asked
-        </span><span class="kw">let </span><span class="kw-2">mut </span>to_ask: PreHashSet&lt;BlockId&gt; = <span class="self">self</span>.block_wishlist.keys().copied().collect();
+        <span class="comment">// List of blocks that need to be asked.
+        // Blocks whose header we already have but that consensus has not checked yet are left out:
+        // we wait for consensus to accept the header before asking for any of the block contents.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>to_ask: PreHashSet&lt;BlockId&gt; = <span class="self">self
+            </span>.block_wishlist
+            .iter()
+            .filter(|(<span class="kw">_</span>, info)| info.header.is_none() || info.header_checked_by_consensus)
+            .map(|(block_id, <span class="kw">_</span>)| <span class="kw-2">*</span>block_id)
+            .collect();
         <span class="comment">// the number of things already being asked to those peers
         </span><span class="kw">let </span><span class="kw-2">mut </span>peer_loads: HashMap&lt;PeerId, usize&gt; = Default::default();
         <span class="kw">for </span>(peer_id, asked_blocks) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.asked_blocks {
