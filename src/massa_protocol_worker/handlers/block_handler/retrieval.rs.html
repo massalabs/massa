@@ -1348,7 +1348,6 @@
 <a href="#1348" id="1348">1348</a>
 <a href="#1349" id="1349">1349</a>
 <a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1946,15 +1945,6 @@
             </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
         }
 
-        <span class="comment">// Authenticate the header before processing embedded endorsements so an
-        // invalid block signature cannot trigger endorsement verification or side effects.
-        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = header.verify_signature() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
-                <span class="string">"invalid header signature: {}"</span>,
-                err
-            )));
-        };
-
         <span class="comment">// check endorsements
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = note_endorsements_from_peer(
             header.content.endorsements.clone(),
@@ -1968,6 +1958,14 @@
         ) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
                 <span class="string">"invalid endorsements: {}"</span>,
+                err
+            )));
+        };
+
+        <span class="comment">// check header signature
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = header.verify_signature() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
+                <span class="string">"invalid header signature: {}"</span>,
                 err
             )));
         };
