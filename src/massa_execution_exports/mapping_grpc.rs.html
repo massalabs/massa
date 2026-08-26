@@ -683,7 +683,7 @@
                     (<span class="prelude-val">Some</span>(k), <span class="bool-val">false</span>) =&gt; std::ops::Bound::Excluded(k),
                 };
 
-                <span class="kw">let </span>(prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+                <span class="kw">let </span>(prefix, start_key, end_key, count) = cleanup_datastore_key_range_query(
                     <span class="kw-2">&amp;</span>value.prefix,
                     start_key,
                     end_key,
@@ -697,7 +697,7 @@
                     prefix,
                     start_key,
                     end_key,
-                    count: value.limit,
+                    count,
                 })
             }
             exec::RequestItem::AddressDatastoreKeysFinal(value) =&gt; {
@@ -714,7 +714,7 @@
                     (<span class="prelude-val">Some</span>(k), <span class="bool-val">false</span>) =&gt; std::ops::Bound::Excluded(k),
                 };
 
-                <span class="kw">let </span>(prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+                <span class="kw">let </span>(prefix, start_key, end_key, count) = cleanup_datastore_key_range_query(
                     <span class="kw-2">&amp;</span>value.prefix,
                     start_key,
                     end_key,
@@ -728,7 +728,7 @@
                     prefix,
                     start_key,
                     end_key,
-                    count: value.limit,
+                    count,
                 })
             }
             exec::RequestItem::AddressDatastoreValueCandidate(value) =&gt; {

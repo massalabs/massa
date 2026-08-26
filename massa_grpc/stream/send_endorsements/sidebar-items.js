@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["check_endorsement_draws","report_error","send_endorsements"],"type":["SendEndorsementsStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["report_error","send_endorsements"],"type":["SendEndorsementsStreamType"]};
