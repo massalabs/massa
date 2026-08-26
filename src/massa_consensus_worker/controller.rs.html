@@ -349,7 +349,11 @@
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::SendTimeoutError;
+<span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_consensus_exports::ConsensusBroadcasts;
 <span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
@@ -368,7 +372,6 @@
     stats::ConsensusStats,
     streaming_step::StreamingStep,
 };
-<span class="kw">use </span>crossbeam::channel::SendTimeoutError;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::sync::Arc;
@@ -444,7 +447,10 @@
             }
             <span class="prelude-val">Err</span>(SendTimeoutError::Disconnected(<span class="kw">_</span>)) =&gt; {
                 <span class="comment">// Happens on shutdown, once the consensus worker stopped consuming commands.
-                </span><span class="macro">debug!</span>(<span class="string">"consensus command channel closed, dropping {}"</span>, command_name);
+                </span><span class="macro">debug!</span>(
+                    <span class="string">"consensus command channel closed, dropping {}"</span>,
+                    command_name
+                );
             }
         }
     }
