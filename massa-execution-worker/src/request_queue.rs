@@ -232,8 +232,8 @@ mod tests {
 
         destination.extend(incoming);
 
-        // the first incoming request fits and must not have received anything
-        assert!(rx1.try_recv().is_err());
+        // the first incoming request fits: nothing received, sender still alive
+        assert!(rx1.try_recv().unwrap_err().is_empty());
         // the second one is in excess and must be cancelled with a clean error
         assert_cancelled_for_capacity(rx2);
         assert!(destination.is_full());
