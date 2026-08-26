@@ -10,7 +10,6 @@ use massa_models::prehash::CapacityAllocator;
 use massa_models::prehash::PreHashSet;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
-use massa_protocol_exports::ProtocolError;
 use massa_storage::Storage;
 use tracing::{debug, info, log::warn};
 
@@ -200,6 +199,9 @@ impl PropagationThread {
         massa_trace!("protocol.protocol_worker.announce_ops.begin", {
             "operation_ids": operation_ids
         });
+        // Operations whose announcement could not be delivered to at least one peer.
+        // They are put back into the next batch so that a later round retries them.
+        let mut to_retry: PreHashSet<OperationId> = PreHashSet::default();
         {
             let mut cache_write = self.cache.write();
             let peers_connected = self.active_connections.get_peer_ids_connected();
@@ -207,7 +209,8 @@ impl PropagationThread {
 
             // Propagate to peers
             let all_keys: Vec<PeerId> = cache_write.ops_known_by_peer.keys().cloned().collect();
-            for peer_id in all_keys {
+            let chunk_size = self.config.max_operations_per_message as usize;
+            'peer_loop: for peer_id in all_keys {
                 let ops = cache_write.ops_known_by_peer.get_mut(&peer_id).unwrap();
                 let new_ops: Vec<OperationId> = operation_ids
                     .iter()
@@ -215,16 +218,12 @@ impl PropagationThread {
                     .copied()
                     .collect();
                 if !new_ops.is_empty() {
-                    for id in &new_ops {
-                        ops.insert(id.prefix(), ());
-                    }
                     debug!(
                         "Send operations announcement of len {} to {}",
                         new_ops.len(),
                         peer_id
                     );
-                    for sub_list in new_ops.chunks(self.config.max_operations_per_message as usize)
-                    {
+                    for (chunk_index, sub_list) in new_ops.chunks(chunk_size).enumerate() {
                         if let Err(err) = self.active_connections.send_to_peer(
                             &peer_id,
                             &self.operation_message_serializer,
@@ -238,15 +237,42 @@ impl PropagationThread {
                                 "Failed to send OperationsAnnouncement message to peer: {}",
                                 err
                             );
-
-                            if let ProtocolError::PeerDisconnected(_) = err {
-                                // cache of this peer is removed in next call of cache_write.update_cache
-                                break;
-                            }
+                            // Nothing was delivered from this chunk on: the peer's cache is left
+                            // untouched for those operations, and they are retried later.
+                            to_retry.extend(
+                                new_ops[chunk_index.saturating_mul(chunk_size)..]
+                                    .iter()
+                                    .copied(),
+                            );
+                            // this peer is disconnected or congested, try with the next one
+                            // (a disconnected peer's cache is removed by the next
+                            // cache_write.update_cache call)
+                            continue 'peer_loop;
+                        }
+                        // sent successfully: only now mark the peer as knowing those operations
+                        for id in sub_list {
+                            ops.insert(id.prefix(), ());
                         }
                     }
                 }
             }
+        }
+
+        // Requeue the operations that still need to be announced. Only the ones we still
+        // hold for propagation are worth retrying, and the batch is kept bounded so that a
+        // permanently congested peer cannot make it grow without limit.
+        if !to_retry.is_empty() {
+            let stored_ops = self.op_storage.get_op_refs();
+            let retry: Vec<OperationId> = to_retry
+                .into_iter()
+                .filter(|op_id| stored_ops.contains(op_id))
+                .take(
+                    self.config
+                        .operation_announcement_buffer_capacity
+                        .saturating_sub(self.next_batch.len()),
+                )
+                .collect();
+            self.next_batch.extend(retry);
         }
     }
 }
@@ -289,9 +315,22 @@ pub fn start_propagation_thread(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::wrap_network::MockActiveConnectionsTrait;
+    use massa_channel::MassaChannel;
     use massa_hash::Hash;
+    use massa_models::address::Address;
+    use massa_models::amount::Amount;
+    use massa_models::operation::{Operation, OperationSerializer, OperationType};
     use massa_models::secure_share::Id;
+    use massa_models::secure_share::SecureShareContent;
+    use massa_protocol_exports::ProtocolError;
+    use massa_signature::KeyPair;
+    use parking_lot::RwLock;
+    use std::collections::HashSet;
+    use std::sync::Arc;
     use std::time::{Duration, Instant};
+
+    use super::super::cache::OperationCache;
 
     fn op_id(i: u64) -> OperationId {
         OperationId::new(Hash::compute_from(&i.to_be_bytes()))
@@ -489,5 +528,110 @@ mod tests {
         assert_eq!(queue.len(), 2);
         assert_eq!(stored_ops.len(), 2);
         assert!(stored_ops.contains(&op_id(0)));
+    }
+
+    /// Build a propagation thread wired to `active_connections`, holding `ops` for
+    /// propagation and with them queued in the next announcement batch.
+    fn propagation_thread_with_batch(
+        active_connections: MockActiveConnectionsTrait,
+        ops: &[massa_models::operation::SecureShareOperation],
+    ) -> PropagationThread {
+        let (_sender, receiver) =
+            MassaChannel::new::<OperationHandlerPropagationCommand>("test".to_string(), None);
+        let (metrics, _stopper) = MassaMetrics::new(
+            false,
+            "0.0.0.0:31248".parse().unwrap(),
+            2,
+            Duration::from_secs(5),
+        );
+        let mut op_storage = Storage::create_root();
+        op_storage.store_operations(ops.to_vec());
+        PropagationThread {
+            internal_receiver: receiver,
+            active_connections: Box::new(active_connections),
+            stored_for_propagation: VecDeque::new(),
+            stored_ops: PreHashSet::default(),
+            op_storage,
+            next_batch: ops.iter().map(|op| op.id).collect(),
+            config: ProtocolConfig::default(),
+            cache: Arc::new(RwLock::new(OperationCache::new(1000, 1000))),
+            operation_message_serializer: MessagesSerializer::new()
+                .with_operation_message_serializer(OperationMessageSerializer::new()),
+            _massa_metrics: metrics,
+        }
+    }
+
+    fn test_operation(index: u64) -> massa_models::operation::SecureShareOperation {
+        let keypair = KeyPair::generate(0).unwrap();
+        let content = Operation {
+            fee: Amount::default(),
+            op: OperationType::Transaction {
+                recipient_address: Address::from_public_key(&keypair.get_public_key()),
+                amount: Amount::default(),
+            },
+            expire_period: index,
+        };
+        Operation::new_verifiable(content, OperationSerializer::new(), &keypair, 0).unwrap()
+    }
+
+    /// A failed announcement must not mark the peer as knowing the operations, and the
+    /// unsent operations must be requeued so a later round retries them. Otherwise the
+    /// filtering done on the next round would suppress them forever for that peer.
+    #[test]
+    fn failed_announcement_is_not_cached_and_is_requeued() {
+        let peer_id = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+        let ops: Vec<_> = (0..3).map(test_operation).collect();
+        let op_ids: PreHashSet<OperationId> = ops.iter().map(|op| op.id).collect();
+
+        let mut active_connections = MockActiveConnectionsTrait::new();
+        active_connections
+            .expect_get_peer_ids_connected()
+            .returning(move || HashSet::from_iter([peer_id]));
+        active_connections
+            .expect_send_to_peer()
+            .returning(|_, _, _, _| Err(ProtocolError::SendError("congested".to_string())));
+
+        let mut propagation_thread = propagation_thread_with_batch(active_connections, &ops);
+        propagation_thread.announce_ops();
+
+        // the peer knows none of the operations, so they will be announced again
+        let cache_read = propagation_thread.cache.read();
+        let known_by_peer = cache_read.ops_known_by_peer.get(&peer_id).unwrap();
+        for op_id in &op_ids {
+            assert!(known_by_peer.peek(&op_id.prefix()).is_none());
+        }
+        drop(cache_read);
+
+        // the operations are queued again for the next announcement round
+        assert_eq!(propagation_thread.next_batch, op_ids);
+    }
+
+    /// On a successful announcement the peer is marked as knowing the operations and
+    /// nothing is requeued.
+    #[test]
+    fn successful_announcement_is_cached_and_not_requeued() {
+        let peer_id = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+        let ops: Vec<_> = (0..3).map(test_operation).collect();
+        let op_ids: PreHashSet<OperationId> = ops.iter().map(|op| op.id).collect();
+
+        let mut active_connections = MockActiveConnectionsTrait::new();
+        active_connections
+            .expect_get_peer_ids_connected()
+            .returning(move || HashSet::from_iter([peer_id]));
+        active_connections
+            .expect_send_to_peer()
+            .returning(|_, _, _, _| Ok(()));
+
+        let mut propagation_thread = propagation_thread_with_batch(active_connections, &ops);
+        propagation_thread.announce_ops();
+
+        let cache_read = propagation_thread.cache.read();
+        let known_by_peer = cache_read.ops_known_by_peer.get(&peer_id).unwrap();
+        for op_id in &op_ids {
+            assert!(known_by_peer.peek(&op_id.prefix()).is_some());
+        }
+        drop(cache_read);
+
+        assert!(propagation_thread.next_batch.is_empty());
     }
 }

@@ -15,4 +15,6 @@ pub struct LedgerConfig {
     pub max_key_length: u8,
     /// max datastore value length
     pub max_datastore_value_length: u64,
+    /// max length of a smart contract bytecode
+    pub max_bytecode_size: u64,
 }

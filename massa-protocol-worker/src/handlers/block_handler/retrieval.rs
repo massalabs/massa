@@ -121,7 +121,7 @@ impl RetrievalThread {
                 thread_count: self.config.thread_count,
                 endorsement_count: self.config.endorsement_count,
                 max_operations_per_block: self.config.max_operations_per_block,
-                max_datastore_value_length: self.config.max_size_value_datastore,
+                max_bytecode_size: self.config.max_bytecode_size,
                 max_function_name_length: self.config.max_size_function_name,
                 max_parameters_size: self.config.max_size_call_sc_parameter,
                 max_op_datastore_entry_count: self.config.max_op_datastore_entry_count,
