@@ -2,10 +2,12 @@ use std::thread::JoinHandle;
 
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_metrics::MassaMetrics;
+use massa_models::{endorsement::SecureShareEndorsement, timeslots::get_block_slot_timestamp};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
+use massa_time::MassaTime;
 
 use crate::wrap_network::ActiveConnectionsTrait;
 
@@ -26,6 +28,30 @@ pub(crate) use messages::{EndorsementMessage, EndorsementMessageSerializer};
 pub(crate) use retrieval::note_endorsements_from_peer;
 
 use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
+
+/// Returns true if the inclusion slot of the endorsement is recent enough for the
+/// endorsement to still be worth processing and relaying
+/// (see `max_endorsements_propagation_time`).
+///
+/// This is the single freshness policy for endorsements: it is applied both when receiving
+/// them from a peer and right before propagating them, so that callers reaching propagation
+/// directly (the factory, the gRPC `send_endorsements` endpoint) cannot make us rebroadcast
+/// obsolete endorsements.
+pub(crate) fn is_endorsement_fresh(
+    endorsement: &SecureShareEndorsement,
+    config: &ProtocolConfig,
+    now: MassaTime,
+) -> bool {
+    match get_block_slot_timestamp(
+        config.thread_count,
+        config.t0,
+        config.genesis_timestamp,
+        endorsement.content.slot,
+    ) {
+        Ok(t) => t.saturating_add(config.max_endorsements_propagation_time) >= now,
+        Err(_) => false,
+    }
+}
 
 pub struct EndorsementHandler {
     pub endorsement_retrieval_thread: Option<(
