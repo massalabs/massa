@@ -328,8 +328,6 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
 <span class="kw">use </span>massa_consensus_exports::{
     block_status::{BlockStatus, StorageOrBlock},
@@ -389,7 +387,6 @@
         BlockHeaderSerializer::new(),
         keypair,
         cfg.chain_id,
-        <span class="prelude-val">None</span>,
     )<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(Block::new_verifiable(
@@ -400,7 +397,6 @@
         BlockSerializer::new(),
         keypair,
         cfg.chain_id,
-        <span class="prelude-val">None</span>,
     )<span class="question-mark">?</span>)
 }
 
