@@ -116,12 +116,33 @@ impl RetrievalThread {
             }
         };
         if !rest.is_empty() {
-            debug!("Message not fully consumed");
+            // A compliant peer never sends trailing bytes, so ban the sender.
+            warn!(
+                "peer {} sent an endorsement message with {} unexpected trailing byte(s); banning it",
+                peer_id,
+                rest.len()
+            );
+            if let Err(err) = self.ban_peer(&peer_id) {
+                warn!("Error while banning peer {} err: {:?}", peer_id, err);
+            }
             return;
         }
         match message {
             EndorsementMessage::Endorsements(endorsements) => {
                 debug!("Received endorsement message: Endorsement from {}", peer_id);
+                // Discard endorsements that are already too old to be useful before doing
+                // any expensive work on them (signature verification, PoS draw lookup):
+                // otherwise a peer could replay arbitrary amounts of old endorsements
+                // to make us burn CPU, cycling through IDs faster than the
+                // `checked_endorsements` cache can remember them.
+                let now = MassaTime::now();
+                let endorsements: Vec<_> = endorsements
+                    .into_iter()
+                    .filter(|endorsement| is_endorsement_fresh(endorsement, &self.config, now))
+                    .collect();
+                if endorsements.is_empty() {
+                    return;
+                }
                 if let Err(err) = note_endorsements_from_peer(
                     endorsements,
                     &peer_id,
@@ -155,15 +176,38 @@ impl RetrievalThread {
     }
 }
 
+/// Returns true if the inclusion slot of the endorsement is recent enough for the
+/// endorsement to still be worth processing (see `max_endorsements_propagation_time`).
+fn is_endorsement_fresh(
+    endorsement: &SecureShareEndorsement,
+    config: &ProtocolConfig,
+    now: MassaTime,
+) -> bool {
+    match get_block_slot_timestamp(
+        config.thread_count,
+        config.t0,
+        config.genesis_timestamp,
+        endorsement.content.slot,
+    ) {
+        Ok(t) => t.saturating_add(config.max_endorsements_propagation_time) >= now,
+        Err(_) => false,
+    }
+}
+
 /// Note endorsements coming from a given node,
 /// and propagate them when they were received outside of a header.
 ///
 /// Caches knowledge of valid ones.
 ///
-/// Does not ban if the endorsement is invalid
+/// Returns an error if the peer must be banned.
 ///
 /// Checks performed:
 /// - Valid signature.
+/// - Endorsement slot not too far in the future (peer offense if it is).
+/// - The creator is the endorser drawn for the endorsement's `(slot, index)` pair, when the draws
+///   of that slot are locally available.
+/// - At most `MAX_ENDORSEMENTS_PER_SLOT_INDEX` distinct endorsements are noted for a given draw,
+///   so that an equivocating endorser cannot have us relay unlimited variants of its endorsement.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn note_endorsements_from_peer(
     endorsements: Vec<SecureShareEndorsement>,
@@ -210,15 +254,68 @@ pub(crate) fn note_endorsements_from_peer(
             .collect::<Vec<_>>(),
     )?;
 
-    // Check PoS draws
-    for endorsement in new_endorsements.values() {
-        let selection = selector_controller
-            .get_selection(endorsement.content.slot)?
-            .endorsements;
+    let now = MassaTime::now();
+
+    // Check the endorsement slots and the PoS draws.
+    //
+    // An endorsement is created at its own slot, so its slot can only be as far ahead of our clock
+    // as the propagation window, plus one period of tolerance for clock drift. Beyond that the
+    // endorsement is invalid whatever our local state is, and propagating it would amplify it, so we
+    // fail the whole batch and the caller bans the peer.
+    //
+    // Endorsements that are too old, and endorsements whose cycle draws are not available locally,
+    // are only dropped: both cases happen to honest peers (respectively a slow propagation and a
+    // selector of ours that has not caught up yet). They are not marked as checked either, so that
+    // they get validated again if we see them later.
+    let slot_acceptance_margin = config
+        .max_endorsements_propagation_time
+        .saturating_add(config.t0);
+    let mut unchecked_endorsements = PreHashSet::with_capacity(new_endorsements.len());
+    for (endorsement_id, endorsement) in new_endorsements.iter() {
+        let slot = endorsement.content.slot;
+        let slot_timestamp = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            slot,
+        )
+        .map_err(|err| {
+            ProtocolError::GeneralProtocolError(format!(
+                "Endorsement slot {} does not have a valid timestamp: {}",
+                slot, err
+            ))
+        })?;
+        if slot_timestamp > now.saturating_add(slot_acceptance_margin) {
+            return Err(ProtocolError::GeneralProtocolError(format!(
+                "Endorsement slot {} is too far in the future",
+                slot
+            )));
+        }
+        if slot_timestamp.saturating_add(slot_acceptance_margin) < now {
+            debug!(
+                "Ignoring endorsement {} from peer {}: its slot {} is too old",
+                endorsement_id, from_peer_id, slot
+            );
+            unchecked_endorsements.insert(*endorsement_id);
+            continue;
+        }
+
+        let selection = match selector_controller.get_selection(slot) {
+            Ok(selection) => selection.endorsements,
+            Err(err) => {
+                debug!(
+                    "Could not check the PoS draws of endorsement {} at slot {} because our local \
+                    selector is not ready: {}. Ignoring it without banning peer {}.",
+                    endorsement_id, slot, err, from_peer_id
+                );
+                unchecked_endorsements.insert(*endorsement_id);
+                continue;
+            }
+        };
         let Some(address) = selection.get(endorsement.content.index as usize) else {
             return Err(ProtocolError::GeneralProtocolError(format!(
                 "No selection on slot {} for index {}",
-                endorsement.content.slot, endorsement.content.index
+                slot, endorsement.content.index
             )));
         };
         if address != &endorsement.content_creator_address {
@@ -228,12 +325,21 @@ pub(crate) fn note_endorsements_from_peer(
             )));
         }
     }
+    new_endorsements.retain(|endorsement_id, _| !unchecked_endorsements.contains(endorsement_id));
+
+    // From there we note new endorsements and propagate them
+
+    // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
+    new_endorsements.retain(|_id, endorsement| is_endorsement_fresh(endorsement, config, now));
 
     {
         let mut cache_write = cache.write();
 
         // add to the cache of endorsements we have checked
-        for endorsement_id in all_endorsement_ids.iter() {
+        for endorsement_id in all_endorsement_ids
+            .iter()
+            .filter(|endorsement_id| !unchecked_endorsements.contains(endorsement_id))
+        {
             cache_write.insert_checked_endorsement(*endorsement_id);
         }
 
@@ -242,23 +348,28 @@ pub(crate) fn note_endorsements_from_peer(
             from_peer_id,
             &all_endorsement_ids.iter().copied().collect::<Vec<_>>(),
         );
+
+        // Drop conflicting endorsements beyond the per-draw bound. Nothing here constrains the
+        // endorsed block, so the drawn endorser of a `(slot, index)` pair can sign arbitrarily many
+        // valid endorsements differing only by that field, each with its own id: without this bound
+        // they would all be treated as new data, noted and gossiped further. We keep a few variants
+        // so the denunciation pool still gets to see the equivocation, and silently ignore the
+        // rest: equivocating is denounceable, not a reason to ban the peer that relayed it to us.
+        new_endorsements.retain(|id, endorsement| {
+            let accepted = cache_write.register_draw_endorsement(
+                endorsement.content.slot,
+                endorsement.content.index,
+                *id,
+            );
+            if !accepted {
+                debug!(
+                    "ignoring endorsement {} from peer {}: too many conflicting endorsements for the draw at slot {} index {}",
+                    id, from_peer_id, endorsement.content.slot, endorsement.content.index
+                );
+            }
+            accepted
+        });
     }
-
-    // From there we note new endorsements and propagate them
-
-    // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
-    let now = MassaTime::now();
-    new_endorsements.retain(|_id, endorsement| {
-        match get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            endorsement.content.slot,
-        ) {
-            Ok(t) => t.saturating_add(config.max_endorsements_propagation_time) >= now,
-            Err(_) => false,
-        }
-    });
 
     if new_endorsements.is_empty() {
         // no endorsements to note or propagate

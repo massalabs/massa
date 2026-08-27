@@ -124,8 +124,8 @@ pub struct ProtocolConfig {
     pub endorsement_count: u32,
     /// running threads count
     pub thread_count: u8,
-    /// Maximum size of an value user datastore
-    pub max_size_value_datastore: u64,
+    /// Maximum size of a smart contract bytecode in an `ExecuteSC` operation
+    pub max_bytecode_size: u64,
     /// Maximum size of a function name
     pub max_size_function_name: u16,
     /// Maximum size of a parameter of a call in ops
