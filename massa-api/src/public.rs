@@ -1037,7 +1037,10 @@ impl MassaRpcServer for API<Public> {
         let response = self
             .0
             .execution_controller
-            .query_state(ExecutionQueryRequest { requests });
+            .query_state(ExecutionQueryRequest {
+                requests,
+                max_response_size: self.0.api_settings.max_response_body_size as usize,
+            });
 
         for response_item in response.responses {
             match response_item {
@@ -1256,7 +1259,10 @@ impl MassaRpcServer for API<Public> {
         let responses = self
             .0
             .execution_controller
-            .query_state(ExecutionQueryRequest { requests: queries })
+            .query_state(ExecutionQueryRequest {
+                requests: queries,
+                max_response_size: self.0.api_settings.max_response_body_size as usize,
+            })
             .responses;
 
         let res: Result<Vec<Vec<u8>>, ApiError> = responses
@@ -1295,7 +1301,10 @@ impl MassaRpcServer for API<Public> {
         let result = self
             .0
             .execution_controller
-            .query_state(ExecutionQueryRequest { requests: queries })
+            .query_state(ExecutionQueryRequest {
+                requests: queries,
+                max_response_size: self.0.api_settings.max_response_body_size as usize,
+            })
             .responses
             .into_iter()
             .map(|response| match response {
@@ -1340,7 +1349,10 @@ impl MassaRpcServer for API<Public> {
         let result: Vec<DeferredCallResponse> = self
             .0
             .execution_controller
-            .query_state(ExecutionQueryRequest { requests })
+            .query_state(ExecutionQueryRequest {
+                requests,
+                max_response_size: self.0.api_settings.max_response_body_size as usize,
+            })
             .responses
             .into_iter()
             .map(|exec| match exec {
@@ -1378,7 +1390,10 @@ impl MassaRpcServer for API<Public> {
         for exec in self
             .0
             .execution_controller
-            .query_state(ExecutionQueryRequest { requests })
+            .query_state(ExecutionQueryRequest {
+                requests,
+                max_response_size: self.0.api_settings.max_response_body_size as usize,
+            })
             .responses
             .into_iter()
         {

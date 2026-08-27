@@ -42,6 +42,11 @@ pub struct ExecutionBlockMetadata {
 pub struct ExecutionQueryRequest {
     /// List of requests
     pub requests: Vec<ExecutionQueryRequestItem>,
+    /// Maximum aggregate size (bytes) of large payload items (`Bytecode`, `DatastoreValue`)
+    /// allowed in the response. Callers should pass their transport limit
+    /// (e.g. JSON-RPC `max_response_body_size` or gRPC `max_encoding_message_size`).
+    /// Other response variants are treated as zero-cost for this budget.
+    pub max_response_size: usize,
 }
 
 /// Response to a list of execution queries
