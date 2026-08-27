@@ -1346,6 +1346,13 @@
 <a href="#1346" id="1346">1346</a>
 <a href="#1347" id="1347">1347</a>
 <a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1590,6 +1597,13 @@
             .db
             .write()
             .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(end_slot));
+
+        <span class="kw">if </span>end_slot.is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count) {
+            <span class="comment">// Feed final_state_hash to the completed cycle
+            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(
+                end_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle),
+            )<span class="question-mark">?</span>;
+        }
 
         <span class="prelude-val">Ok</span>(())
     }
