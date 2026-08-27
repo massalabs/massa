@@ -576,10 +576,6 @@
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -721,11 +717,7 @@
                 )),
             ),
         )
-        <span class="comment">// Note: Unsorted key/value pairs on the wire still deserialize to the same BTreeMap.
-        // That can yield different raw bytes / OperationIds for the same logical action.
-        // This is intentional malleability that Massa tolerates by construction and is not exploitable.
-        // As updating this behavior would be a breaking change, we do not reject it.
-        </span>.map(|elements| elements.into_iter().collect())
+        .map(|elements| elements.into_iter().collect())
         .parse(buffer)
     }
 }
