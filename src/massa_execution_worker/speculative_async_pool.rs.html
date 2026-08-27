@@ -474,14 +474,6 @@
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -635,9 +627,8 @@
             .collect();
 
         <span class="kw">if </span>rank_by_effective_gas {
-            candidates.sort_by_key(|(<span class="kw">_</span>, message)| {
-                message.compute_priority_id(async_msg_cst_gas_cost)
-            });
+            candidates
+                .sort_by_key(|(<span class="kw">_</span>, message)| message.compute_priority_id(async_msg_cst_gas_cost));
         }
         <span class="comment">// else: BTreeMap iteration already yields stored AsyncMessageId order
 
@@ -927,9 +918,7 @@
         pool_mip
             .message_cache
             .insert(cheap_looking.compute_id(), cheap_looking);
-        pool_mip
-            .message_cache
-            .insert(honest.compute_id(), honest);
+        pool_mip.message_cache.insert(honest.compute_id(), honest);
         <span class="kw">let </span>taken_mip = pool_mip.take_batch_to_execute(slot, budget, cst, <span class="bool-val">true</span>);
         <span class="macro">assert_eq!</span>(taken_mip.len(), <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(
@@ -951,12 +940,7 @@
         pool.message_cache
             .insert(honest.compute_id(), honest.clone());
 
-        <span class="kw">let </span>eliminated = pool.settle_slot(
-            <span class="kw-2">&amp;</span>Slot::new(<span class="number">1</span>, <span class="number">0</span>),
-            <span class="kw-2">&amp;</span>LedgerChanges::default(),
-            cst,
-            <span class="bool-val">true</span>,
-        );
+        <span class="kw">let </span>eliminated = pool.settle_slot(<span class="kw-2">&amp;</span>Slot::new(<span class="number">1</span>, <span class="number">0</span>), <span class="kw-2">&amp;</span>LedgerChanges::default(), cst, <span class="bool-val">true</span>);
         <span class="macro">assert_eq!</span>(eliminated.len(), <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(
             eliminated[<span class="number">0</span>].<span class="number">1</span>.emission_index, <span class="number">0</span>,
