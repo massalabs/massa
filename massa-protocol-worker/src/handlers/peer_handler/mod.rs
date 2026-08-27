@@ -240,13 +240,23 @@ impl PeerManagementHandler {
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                                     debug!("Received peer message: NewPeerConnected from {}", peer_id);
-                                        if let Err(e) = test_sender.try_send((peer_id, listeners)) {
-                                            debug!("error when sending msg to peer connect : {}", e);
-                                        }
+                                    let listeners = filter_routable_listeners(
+                                        listeners,
+                                        config.allow_local_peers(),
+                                    );
+                                    if listeners.is_empty() {
+                                        continue;
+                                    }
+                                    if let Err(e) = test_sender.try_send((peer_id, listeners)) {
+                                        debug!("error when sending msg to peer connect : {}", e);
+                                    }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
                                     debug!("Received peer message: List peers from {}", peer_id);
-                                    for (peer_id, listeners) in peers.into_iter() {
+                                    for (peer_id, listeners) in filter_peers_listeners(
+                                        peers,
+                                        config.allow_local_peers(),
+                                    ) {
                                         if let Err(e) = test_sender.try_send((peer_id, listeners)) {
                                             debug!("error when sending msg to peer tester : {}", e);
                                         }
@@ -260,10 +270,22 @@ impl PeerManagementHandler {
         }).expect("OS failed to start peer management thread");
 
         for (peer_id, listeners) in &initial_peers {
+            // Operator-configured and bootstrap peers still go through the same
+            // routability policy: local endpoints are kept only when the node
+            // is configured for local peers.
+            let listeners =
+                filter_routable_listeners(listeners.clone(), config.allow_local_peers());
+            if listeners.is_empty() {
+                warn!(
+                    "skipping initial peer {}: no routable listener after address policy filter",
+                    peer_id
+                );
+                continue;
+            }
             let mut message = Vec::new();
             message_serializer
                 .serialize(
-                    &PeerManagementMessage::NewPeerConnected((*peer_id, listeners.clone())),
+                    &PeerManagementMessage::NewPeerConnected((*peer_id, listeners)),
                     &mut message,
                 )
                 .unwrap();
@@ -569,6 +591,13 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             match &res {
                 Ok((peer_id, Some(announcement))) => {
                     info!("Peer connected: {:?}", peer_id);
+                    // Store only endpoints we are allowed to dial later. Signature
+                    // was already checked; listeners remain peer-controlled content.
+                    let mut announcement = announcement.clone();
+                    announcement.listeners = filter_routable_listeners(
+                        announcement.listeners,
+                        self.config.allow_local_peers(),
+                    );
                     peer_db_write.set_try_connect_success_or_insert(&addr);
                     peer_db_write
                         .get_peers_mut()
@@ -578,7 +607,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                             info.state = PeerState::Trusted;
                         })
                         .or_insert(PeerInfo {
-                            last_announce: Some(announcement.clone()),
+                            last_announce: Some(announcement),
                             state: PeerState::Trusted,
                         });
                 }
@@ -612,7 +641,10 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         // Send 100 peers to the other peer
         let peers_to_send = {
             let peer_db_read = self.peer_db.read();
-            peer_db_read.get_rand_peers_to_send(100)
+            filter_peers_listeners(
+                peer_db_read.get_rand_peers_to_send(100),
+                self.config.allow_local_peers(),
+            )
         };
         let mut buf = Vec::new();
         let msg = PeerManagementMessage::ListPeers(peers_to_send).into();
@@ -637,8 +669,10 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         let version_serializer = self.version_serializer.clone();
         let peer_id_serializer = self.peer_id_serializer.clone();
         let version = self.config.version;
+        let allow_local_peers = self.config.allow_local_peers();
         std::thread::spawn(move || {
-            let peers_to_send = db.read().get_rand_peers_to_send(100);
+            let peers_to_send =
+                filter_peers_listeners(db.read().get_rand_peers_to_send(100), allow_local_peers);
             let mut buf = vec![];
             if let Err(err) = peer_id_serializer.serialize(&context.get_peer_id(), &mut buf) {
                 warn!("{}", err.to_string());

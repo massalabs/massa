@@ -1,6 +1,5 @@
 use crossbeam::channel::tick;
 use crossbeam::select;
-use ip_rfc::global;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
 use massa_metrics::MassaMetrics;
@@ -21,7 +20,7 @@ use tracing::{debug, warn};
 use crate::handlers::peer_handler::models::ConnectionMetadata;
 use crate::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
-    ip::to_canonical,
+    ip::{is_routable_peer_addr, to_canonical},
     worker::ProtocolChannels,
 };
 use crate::{handlers::peer_handler::PeerManagementHandler, messages::MessagesHandler};
@@ -80,7 +79,7 @@ pub(crate) fn start_connectivity_thread(
     protocol_channels: ProtocolChannels,
     messages_handler: MessagesHandler,
     peer_categories: HashMap<String, (Vec<IpAddr>, PeerCategoryInfo)>,
-    _default_category: PeerCategoryInfo,
+    default_category: PeerCategoryInfo,
     config: ProtocolConfig,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
@@ -292,7 +291,9 @@ pub(crate) fn start_connectivity_thread(
 
                                         if let Some((addr, _)) = last_announce.listeners.iter().next() {
                                             let canonical_ip = to_canonical(addr.ip());
-                                            let mut allowed_local_ips = false;
+                                            // Default category policy applies unless the peer IP
+                                            // matches an explicit peers_categories allowlist.
+                                            let mut allowed_local_ips = default_category.allow_local_peers;
                                             // Check if the peer is in a category and we didn't reached out target yet
                                             let mut category_found = None;
                                             for (name, (ips, cat)) in &peer_categories {
@@ -327,7 +328,10 @@ pub(crate) fn start_connectivity_thread(
                                                 continue;
                                             }
 
-                                            if !global(&canonical_ip) && !allowed_local_ips {
+                                            // Same non-global policy as try_connect: refuse
+                                            // loopback / private / reserved destinations unless
+                                            // this peer's category (or the default) allows local peers.
+                                            if !is_routable_peer_addr(addr, allowed_local_ips) {
                                                 continue;
                                             }
 
