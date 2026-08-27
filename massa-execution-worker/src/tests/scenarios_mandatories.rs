@@ -4729,6 +4729,7 @@ fn execution_trace_transfers_are_bound_to_event() {
         OperationSerializer::new(),
         &sender_keypair,
         *CHAINID,
+        Some(*CHAINID),
     )
     .unwrap();
     let op_id = operation.id;
