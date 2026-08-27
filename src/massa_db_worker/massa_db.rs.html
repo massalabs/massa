@@ -2790,8 +2790,8 @@
     ///
     /// This function is used in the FinalStateController::reset method which is used in the Bootstrap
     /// process when the bootstrap fails (Bootstrap slot too old). A bootstrap to another node will likely occur
-    /// after this reset.
-    </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
+    /// after this reset. Note that this does not clear the db's content, only the change_id and the history.
+    </span><span class="kw">fn </span>reset_slot_and_history(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
         <span class="comment">// For dev: please take care of correctly reset the db to avoid any issue when the bootstrap
         //          process is restarted
         </span><span class="self">self</span>.set_initial_change_id(slot); <span class="comment">// Note: this also reset the field: current_batch
