@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ClientConfig","HttpConfig","WsConfig"]};
+window.SIDEBAR_ITEMS = {"fn":["check_mtls_requires_tls"],"struct":["ClientConfig","GrpcTlsConfig","HttpConfig","WsConfig"]};
