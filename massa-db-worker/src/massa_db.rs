@@ -816,8 +816,8 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     ///
     /// This function is used in the FinalStateController::reset method which is used in the Bootstrap
     /// process when the bootstrap fails (Bootstrap slot too old). A bootstrap to another node will likely occur
-    /// after this reset.
-    fn reset(&mut self, slot: Slot) {
+    /// after this reset. Note that this does not clear the db's content, only the change_id and the history.
+    fn reset_slot_and_history(&mut self, slot: Slot) {
         // For dev: please take care of correctly reset the db to avoid any issue when the bootstrap
         //          process is restarted
         self.set_initial_change_id(slot); // Note: this also reset the field: current_batch

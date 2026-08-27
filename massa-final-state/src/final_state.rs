@@ -855,7 +855,7 @@ impl FinalStateController for FinalState {
 
     fn reset(&mut self) {
         let slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
-        self.db.write().reset(slot);
+        self.db.write().reset_slot_and_history(slot);
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();
