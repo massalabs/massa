@@ -122,43 +122,12 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
 };
 
 <span class="kw">use </span>ip_rfc::global;
-<span class="kw">use </span>massa_protocol_exports::ProtocolError;
 <span class="kw">use </span>peernet::transports::TransportType;
 
 <span class="comment">// TODO: Use std one when stable
@@ -210,23 +179,9 @@
         .collect()
 }
 
-<span class="doccomment">/// Rejects destinations that must never be dialed (SSRF / internal port-scan).
-/// Used as the last line of defense on the outbound connect path.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ensure_routable_peer_addr(
-    addr: <span class="kw-2">&amp;</span>SocketAddr,
-    allow_local_peers: bool,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-    <span class="kw">if </span>is_routable_peer_addr(addr, allow_local_peers) {
-        <span class="prelude-val">Ok</span>(())
-    } <span class="kw">else </span>{
-        <span class="prelude-val">Err</span>(ProtocolError::InvalidIpError(addr.ip()))
-    }
-}
-
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use super</span>::{ensure_routable_peer_addr, filter_routable_listeners, is_routable_peer_addr};
-    <span class="kw">use </span>massa_protocol_exports::ProtocolError;
+    <span class="kw">use super</span>::{filter_routable_listeners, is_routable_peer_addr};
     <span class="kw">use </span>peernet::transports::TransportType;
     <span class="kw">use </span>std::collections::HashMap;
     <span class="kw">use </span>std::net::SocketAddr;
@@ -289,21 +244,6 @@
         <span class="macro">assert!</span>(filtered.contains_key(<span class="kw-2">&amp;</span>addr(<span class="string">"1.2.3.4:31244"</span>)));
 
         <span class="macro">assert_eq!</span>(filter_routable_listeners(listeners, <span class="bool-val">true</span>).len(), <span class="number">3</span>);
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_ensure_routable_peer_addr_rejects_untrusted_private() {
-        <span class="comment">// untrusted private / loopback must be refused when local peers are disabled
-        </span><span class="kw">for </span>forbidden <span class="kw">in </span>[<span class="string">"127.0.0.1:31244"</span>, <span class="string">"10.0.0.1:31244"</span>, <span class="string">"192.168.1.2:0"</span>] {
-            <span class="kw">match </span>ensure_routable_peer_addr(<span class="kw-2">&amp;</span>addr(forbidden), <span class="bool-val">false</span>) {
-                <span class="prelude-val">Err</span>(ProtocolError::InvalidIpError(<span class="kw">_</span>)) =&gt; {}
-                other =&gt; <span class="macro">panic!</span>(<span class="string">"expected InvalidIpError for {}, got {:?}"</span>, forbidden, other),
-            }
-        }
-        <span class="macro">assert!</span>(ensure_routable_peer_addr(<span class="kw-2">&amp;</span>addr(<span class="string">"1.2.3.4:31244"</span>), <span class="bool-val">false</span>).is_ok());
-        <span class="comment">// configured local topologies still dial private endpoints
-        </span><span class="macro">assert!</span>(ensure_routable_peer_addr(<span class="kw-2">&amp;</span>addr(<span class="string">"127.0.0.1:31244"</span>), <span class="bool-val">true</span>).is_ok());
-        <span class="macro">assert!</span>(ensure_routable_peer_addr(<span class="kw-2">&amp;</span>addr(<span class="string">"10.0.0.1:31244"</span>), <span class="bool-val">true</span>).is_ok());
     }
 }
 </code></pre></div></section></main></body></html>

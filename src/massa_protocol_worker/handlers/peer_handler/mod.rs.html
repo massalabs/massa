@@ -837,40 +837,6 @@
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
 <a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -1113,23 +1079,13 @@
                             <span class="kw">match </span>message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) =&gt; {
                                     <span class="macro">debug!</span>(<span class="string">"Received peer message: NewPeerConnected from {}"</span>, peer_id);
-                                    <span class="kw">let </span>listeners = filter_routable_listeners(
-                                        listeners,
-                                        config.allow_local_peers(),
-                                    );
-                                    <span class="kw">if </span>listeners.is_empty() {
-                                        <span class="kw">continue</span>;
-                                    }
-                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
-                                        <span class="macro">debug!</span>(<span class="string">"error when sending msg to peer connect : {}"</span>, e);
-                                    }
+                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
+                                            <span class="macro">debug!</span>(<span class="string">"error when sending msg to peer connect : {}"</span>, e);
+                                        }
                                 }
                                 PeerManagementMessage::ListPeers(peers) =&gt; {
                                     <span class="macro">debug!</span>(<span class="string">"Received peer message: List peers from {}"</span>, peer_id);
-                                    <span class="kw">for </span>(peer_id, listeners) <span class="kw">in </span>filter_peers_listeners(
-                                        peers,
-                                        config.allow_local_peers(),
-                                    ) {
+                                    <span class="kw">for </span>(peer_id, listeners) <span class="kw">in </span>peers.into_iter() {
                                         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
                                             <span class="macro">debug!</span>(<span class="string">"error when sending msg to peer tester : {}"</span>, e);
                                         }
@@ -1143,22 +1099,10 @@
         }).expect(<span class="string">"OS failed to start peer management thread"</span>);
 
         <span class="kw">for </span>(peer_id, listeners) <span class="kw">in </span><span class="kw-2">&amp;</span>initial_peers {
-            <span class="comment">// Operator-configured and bootstrap peers still go through the same
-            // routability policy: local endpoints are kept only when the node
-            // is configured for local peers.
-            </span><span class="kw">let </span>listeners =
-                filter_routable_listeners(listeners.clone(), config.allow_local_peers());
-            <span class="kw">if </span>listeners.is_empty() {
-                <span class="macro">warn!</span>(
-                    <span class="string">"skipping initial peer {}: no routable listener after address policy filter"</span>,
-                    peer_id
-                );
-                <span class="kw">continue</span>;
-            }
             <span class="kw">let </span><span class="kw-2">mut </span>message = Vec::new();
             message_serializer
                 .serialize(
-                    <span class="kw-2">&amp;</span>PeerManagementMessage::NewPeerConnected((<span class="kw-2">*</span>peer_id, listeners)),
+                    <span class="kw-2">&amp;</span>PeerManagementMessage::NewPeerConnected((<span class="kw-2">*</span>peer_id, listeners.clone())),
                     <span class="kw-2">&amp;mut </span>message,
                 )
                 .unwrap();
@@ -1464,13 +1408,6 @@
             </span><span class="kw">match </span><span class="kw-2">&amp;</span>res {
                 <span class="prelude-val">Ok</span>((peer_id, <span class="prelude-val">Some</span>(announcement))) =&gt; {
                     <span class="macro">info!</span>(<span class="string">"Peer connected: {:?}"</span>, peer_id);
-                    <span class="comment">// Store only endpoints we are allowed to dial later. Signature
-                    // was already checked; listeners remain peer-controlled content.
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>announcement = announcement.clone();
-                    announcement.listeners = filter_routable_listeners(
-                        announcement.listeners,
-                        <span class="self">self</span>.config.allow_local_peers(),
-                    );
                     peer_db_write.set_try_connect_success_or_insert(<span class="kw-2">&amp;</span>addr);
                     peer_db_write
                         .get_peers_mut()
@@ -1480,7 +1417,7 @@
                             info.state = PeerState::Trusted;
                         })
                         .or_insert(PeerInfo {
-                            last_announce: <span class="prelude-val">Some</span>(announcement),
+                            last_announce: <span class="prelude-val">Some</span>(announcement.clone()),
                             state: PeerState::Trusted,
                         });
                 }
@@ -1514,10 +1451,7 @@
         <span class="comment">// Send 100 peers to the other peer
         </span><span class="kw">let </span>peers_to_send = {
             <span class="kw">let </span>peer_db_read = <span class="self">self</span>.peer_db.read();
-            filter_peers_listeners(
-                peer_db_read.get_rand_peers_to_send(<span class="number">100</span>),
-                <span class="self">self</span>.config.allow_local_peers(),
-            )
+            peer_db_read.get_rand_peers_to_send(<span class="number">100</span>)
         };
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
         <span class="kw">let </span>msg = PeerManagementMessage::ListPeers(peers_to_send).into();
@@ -1542,10 +1476,8 @@
         <span class="kw">let </span>version_serializer = <span class="self">self</span>.version_serializer.clone();
         <span class="kw">let </span>peer_id_serializer = <span class="self">self</span>.peer_id_serializer.clone();
         <span class="kw">let </span>version = <span class="self">self</span>.config.version;
-        <span class="kw">let </span>allow_local_peers = <span class="self">self</span>.config.allow_local_peers();
         std::thread::spawn(<span class="kw">move </span>|| {
-            <span class="kw">let </span>peers_to_send =
-                filter_peers_listeners(db.read().get_rand_peers_to_send(<span class="number">100</span>), allow_local_peers);
+            <span class="kw">let </span>peers_to_send = db.read().get_rand_peers_to_send(<span class="number">100</span>);
             <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[];
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = peer_id_serializer.serialize(<span class="kw-2">&amp;</span>context.get_peer_id(), <span class="kw-2">&amp;mut </span>buf) {
                 <span class="macro">warn!</span>(<span class="string">"{}"</span>, err.to_string());
