@@ -82,20 +82,13 @@ impl<T, R> RequestQueue<T, R> {
         // compute the number of available item slots
         let free_slots = self.max_items.saturating_sub(self.queue.len());
 
-        // If there are no available slots remaining, cancel the whole incoming queue.
-        // `RequestQueue` does not cancel on drop, so returning without cancelling would
-        // drop the response senders silently: already-accepted requests would fail with
-        // a generic channel error instead of this clean capacity error.
-        if free_slots == 0 {
-            other.cancel(ExecutionError::ChannelError(
-                "maximal request queue capacity reached".into(),
-            ));
-            return;
-        }
-
         // if there are not enough available slots to fit the entire incoming queue
         if free_slots < other.queue.len() {
-            // truncate the incoming queue to the size that fits, cancelling excess items
+            // Truncate the incoming queue to the size that fits, cancelling excess items.
+            // When the destination is already full this cancels the whole incoming queue:
+            // `RequestQueue` does not cancel on drop, so dropping it instead would close
+            // the response senders silently and already-accepted requests would fail with
+            // a generic channel error instead of this clean capacity error.
             other.queue.drain(free_slots..).for_each(|req| {
                 req.cancel(ExecutionError::ChannelError(
                     "maximal request queue capacity reached".into(),
