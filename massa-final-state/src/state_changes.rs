@@ -71,7 +71,9 @@ impl StateChangesSerializer {
         Self {
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
-            deferred_call_changes_serializer: DeferredRegistryChangesSerializer::new(),
+            deferred_call_changes_serializer: DeferredRegistryChangesSerializer::new(
+                DeferredCallsConfig::default(),
+            ),
             pos_changes_serializer: PoSChangesSerializer::new(),
             ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
             de_changes_serializer: ExecutedDenunciationsChangesSerializer::new(),

@@ -123,10 +123,10 @@ pub struct DeferredRegistryChangesSerializer {
 }
 
 impl DeferredRegistryChangesSerializer {
-    pub fn new() -> Self {
+    pub fn new(config: DeferredCallsConfig) -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
-            slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(),
+            slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(config),
             slot_serializer: SlotSerializer::new(),
             effective_total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
         }
@@ -135,7 +135,7 @@ impl DeferredRegistryChangesSerializer {
 
 impl Default for DeferredRegistryChangesSerializer {
     fn default() -> Self {
-        Self::new()
+        Self::new(DeferredCallsConfig::default())
     }
 }
 
@@ -350,7 +350,7 @@ mod tests {
         changes.set_effective_total_gas(100_000);
 
         let mut buffer = Vec::new();
-        let serializer = DeferredRegistryChangesSerializer::new();
+        let serializer = DeferredRegistryChangesSerializer::new(DeferredCallsConfig::default());
         serializer.serialize(&changes, &mut buffer).unwrap();
 
         let deserializer = DeferredRegistryChangesDeserializer::new(DeferredCallsConfig::default());
