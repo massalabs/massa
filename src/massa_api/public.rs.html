@@ -1669,21 +1669,6 @@
 <a href="#1669" id="1669">1669</a>
 <a href="#1670" id="1670">1670</a>
 <a href="#1671" id="1671">1671</a>
-<a href="#1672" id="1672">1672</a>
-<a href="#1673" id="1673">1673</a>
-<a href="#1674" id="1674">1674</a>
-<a href="#1675" id="1675">1675</a>
-<a href="#1676" id="1676">1676</a>
-<a href="#1677" id="1677">1677</a>
-<a href="#1678" id="1678">1678</a>
-<a href="#1679" id="1679">1679</a>
-<a href="#1680" id="1680">1680</a>
-<a href="#1681" id="1681">1681</a>
-<a href="#1682" id="1682">1682</a>
-<a href="#1683" id="1683">1683</a>
-<a href="#1684" id="1684">1684</a>
-<a href="#1685" id="1685">1685</a>
-<a href="#1686" id="1686">1686</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -2723,10 +2708,7 @@
         <span class="kw">let </span>response = <span class="self">self
             </span>.<span class="number">0
             </span>.execution_controller
-            .query_state(ExecutionQueryRequest {
-                requests,
-                max_response_size: <span class="self">self</span>.<span class="number">0</span>.api_settings.max_response_body_size <span class="kw">as </span>usize,
-            });
+            .query_state(ExecutionQueryRequest { requests });
 
         <span class="kw">for </span>response_item <span class="kw">in </span>response.responses {
             <span class="kw">match </span>response_item {
@@ -2945,10 +2927,7 @@
         <span class="kw">let </span>responses = <span class="self">self
             </span>.<span class="number">0
             </span>.execution_controller
-            .query_state(ExecutionQueryRequest {
-                requests: queries,
-                max_response_size: <span class="self">self</span>.<span class="number">0</span>.api_settings.max_response_body_size <span class="kw">as </span>usize,
-            })
+            .query_state(ExecutionQueryRequest { requests: queries })
             .responses;
 
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;, ApiError&gt; = responses
@@ -2987,10 +2966,7 @@
         <span class="kw">let </span>result = <span class="self">self
             </span>.<span class="number">0
             </span>.execution_controller
-            .query_state(ExecutionQueryRequest {
-                requests: queries,
-                max_response_size: <span class="self">self</span>.<span class="number">0</span>.api_settings.max_response_body_size <span class="kw">as </span>usize,
-            })
+            .query_state(ExecutionQueryRequest { requests: queries })
             .responses
             .into_iter()
             .map(|response| <span class="kw">match </span>response {
@@ -3035,10 +3011,7 @@
         <span class="kw">let </span>result: Vec&lt;DeferredCallResponse&gt; = <span class="self">self
             </span>.<span class="number">0
             </span>.execution_controller
-            .query_state(ExecutionQueryRequest {
-                requests,
-                max_response_size: <span class="self">self</span>.<span class="number">0</span>.api_settings.max_response_body_size <span class="kw">as </span>usize,
-            })
+            .query_state(ExecutionQueryRequest { requests })
             .responses
             .into_iter()
             .map(|exec| <span class="kw">match </span>exec {
@@ -3076,10 +3049,7 @@
         <span class="kw">for </span>exec <span class="kw">in </span><span class="self">self
             </span>.<span class="number">0
             </span>.execution_controller
-            .query_state(ExecutionQueryRequest {
-                requests,
-                max_response_size: <span class="self">self</span>.<span class="number">0</span>.api_settings.max_response_body_size <span class="kw">as </span>usize,
-            })
+            .query_state(ExecutionQueryRequest { requests })
             .responses
             .into_iter()
         {

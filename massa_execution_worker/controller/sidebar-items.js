@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["account_large_payload"],"struct":["ExecutionControllerImpl","ExecutionInputData","ExecutionManagerImpl"]};
+window.SIDEBAR_ITEMS = {"struct":["ExecutionControllerImpl","ExecutionInputData","ExecutionManagerImpl"]};
