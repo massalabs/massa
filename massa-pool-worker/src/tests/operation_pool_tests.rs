@@ -17,17 +17,32 @@
 //! latest period given his own thread. All operation which doesn't fit these
 //! requirements are "irrelevant"
 //!
+use crate::operation_pool::OperationPool;
 use crate::tests::tools::OpGenerator;
 
 use super::tools::{
     create_some_operations, default_mock_execution_controller, pool_test, PoolTestBoilerPlate,
 };
+use massa_execution_exports::MockExecutionController;
 use massa_models::{
-    address::Address, amount::Amount, config::ENDORSEMENT_COUNT, operation::OperationId, slot::Slot,
+    address::Address, amount::Amount, config::ENDORSEMENT_COUNT, operation::OperationId,
+    prehash::PreHashMap, slot::Slot,
 };
-use massa_pool_exports::PoolConfig;
+use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig};
 use massa_pos_exports::{MockSelectorController, Selection};
-use std::{collections::BTreeMap, time::Duration};
+use massa_signature::KeyPair;
+use massa_storage::Storage;
+use massa_wallet::test_exports::create_test_wallet;
+use parking_lot::RwLock;
+use std::{
+    collections::BTreeMap,
+    sync::{
+        atomic::{AtomicU8, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
+use tokio::sync::broadcast;
 
 // Helper to create a recursive selector mock for operation pool tests
 fn create_recursive_selector_for_ops(addr: Address) -> MockSelectorController {
@@ -61,6 +76,100 @@ fn create_recursive_selector_for_ops(addr: Address) -> MockSelectorController {
             Ok(all_slots)
         });
     story
+}
+
+/// Speculative/candidate-only execution must not permanently remove ops from the pool.
+/// They must also be skipped for block production while the mark is live (no gas waste),
+/// and become selectable again after a rollback clears the mark.
+#[test]
+fn test_refresh_keeps_speculative_only_executed_ops() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+    let creator_thread = addr.get_thread(PoolConfig::default().thread_count);
+
+    // 0 = not executed, 1 = speculative only, 2 = final
+    let exec_phase = Arc::new(AtomicU8::new(0));
+    let phase_for_status = exec_phase.clone();
+    let mut execution_controller = MockExecutionController::new();
+    execution_controller
+        .expect_get_ops_exec_status()
+        .returning(move |ops| match phase_for_status.load(Ordering::SeqCst) {
+            1 => vec![(Some(true), None); ops.len()],
+            2 => vec![(Some(true), Some(true)); ops.len()],
+            _ => vec![(None, None); ops.len()],
+        });
+    execution_controller
+        .expect_get_final_and_candidate_balance()
+        .returning(|addrs| {
+            vec![
+                (
+                    Some(Amount::const_init(1_000_000_000, 0)),
+                    Some(Amount::const_init(1_000_000_000, 0)),
+                );
+                addrs.len()
+            ]
+        });
+
+    let mut addresses = PreHashMap::default();
+    addresses.insert(addr, keypair.clone());
+    let wallet = Arc::new(RwLock::new(create_test_wallet(Some(addresses))));
+    let (endorsement_sender, _) = broadcast::channel(1);
+    let (operation_sender, _) = broadcast::channel(1);
+
+    let storage = Storage::create_root();
+    let mut operation_pool = OperationPool::init(
+        PoolConfig::default(),
+        &storage,
+        PoolChannels {
+            execution_controller: Box::new(execution_controller),
+            broadcasts: PoolBroadcasts {
+                endorsement_sender,
+                operation_sender,
+            },
+            selector: Box::new(create_recursive_selector_for_ops(addr)),
+        },
+        wallet,
+    );
+
+    let ops = create_some_operations(
+        3,
+        &OpGenerator::default()
+            .creator(keypair)
+            .expirery(10)
+            .fee(Amount::from_raw(1)),
+    );
+    let op_ids: Vec<OperationId> = ops.iter().map(|op| op.id).collect();
+    let mut ops_storage = storage.clone_without_refs();
+    ops_storage.store_operations(ops);
+    operation_pool.add_operations(ops_storage);
+    assert_eq!(operation_pool.len(), 3);
+
+    let target_slot = Slot::new(1, creator_thread);
+
+    // Candidate-history mark only: ops must remain after refresh, but not be block-selected.
+    exec_phase.store(1, Ordering::SeqCst);
+    operation_pool.refresh();
+    assert_eq!(operation_pool.len(), 3);
+    for id in &op_ids {
+        assert!(operation_pool.contains(id));
+    }
+    let (selected, _) = operation_pool.get_block_operations(&target_slot);
+    assert!(
+        selected.is_empty(),
+        "speculatively executed ops must not be selected for blocks"
+    );
+
+    // Simulate rollback clearing the speculative mark: still present and selectable again.
+    exec_phase.store(0, Ordering::SeqCst);
+    operation_pool.refresh();
+    assert_eq!(operation_pool.len(), 3);
+    let (selected, _) = operation_pool.get_block_operations(&target_slot);
+    assert_eq!(selected.len(), 3);
+
+    // Final execution: durable, so refresh may drop them.
+    exec_phase.store(2, Ordering::SeqCst);
+    operation_pool.refresh();
+    assert_eq!(operation_pool.len(), 0);
 }
 
 #[test]
