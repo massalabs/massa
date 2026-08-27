@@ -631,6 +631,22 @@
 <a href="#631" id="631">631</a>
 <a href="#632" id="632">632</a>
 <a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -1211,6 +1227,22 @@
             .trace_history
             .read()
             .fetch_transfers_for_slot(<span class="kw-2">&amp;</span>slot)
+    }
+
+    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+    </span><span class="kw">fn </span>get_slot_abi_call_stack_and_transfers(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        slot: Slot,
+    ) -&gt; (<span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;Transfer&gt;&gt;) {
+        <span class="comment">// Hold a single `execution_state` (and thus `trace_history`) read lock for both
+        // lookups. A slot re-execution takes the `execution_state` write lock, so it cannot
+        // run between the two reads; the returned ABI call stack and transfers are therefore
+        // guaranteed to come from the same slot execution.
+        </span><span class="self">self</span>.execution_state
+            .read()
+            .trace_history
+            .read()
+            .fetch_slot_traces_and_transfers(<span class="kw-2">&amp;</span>slot)
     }
 
     <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]

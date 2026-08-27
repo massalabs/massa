@@ -372,6 +372,65 @@
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -393,6 +452,7 @@
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::io;
+<span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::time::Instant;
 <span class="kw">use </span>std::{
     convert::TryInto,
@@ -402,9 +462,44 @@
     time::Duration,
 };
 <span class="kw">use </span>stream_limiter::{Limiter, LimiterOptions};
-<span class="kw">use </span>tracing::error;
+<span class="kw">use </span>tracing::{error, warn};
 
 <span class="kw">use </span><span class="kw">super</span>::BindingWriteExact;
+
+<span class="doccomment">/// Maximum number of refusal threads running concurrently.
+///
+/// Every refused connection is told why before being closed, and that send has
+/// to happen off the bootstrap main loop so a slow client cannot stall it. A
+/// connection flood produces refusals as fast as the listener can accept, so the
+/// helper threads are capped: past the cap the socket is simply closed, which is
+/// what the client would observe on a timed-out error send anyway.
+</span><span class="kw">const </span>MAX_CONCURRENT_ERROR_SENDS: usize = <span class="number">32</span>;
+
+<span class="doccomment">/// Number of refusal threads currently alive, compared against
+/// [`MAX_CONCURRENT_ERROR_SENDS`].
+</span><span class="kw">static </span>ONGOING_ERROR_SENDS: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
+
+<span class="doccomment">/// Releases a claimed [`ONGOING_ERROR_SENDS`] slot, panics included, so that a
+/// failing refusal can never leak the budget it took.
+</span><span class="kw">struct </span>ErrorSendSlot;
+
+<span class="kw">impl </span>ErrorSendSlot {
+    <span class="doccomment">/// Claims a slot, or returns `None` if the budget is exhausted.
+    </span><span class="kw">fn </span>claim() -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+        ONGOING_ERROR_SENDS
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |ongoing| {
+                (ongoing &lt; MAX_CONCURRENT_ERROR_SENDS).then_some(ongoing + <span class="number">1</span>)
+            })
+            .ok()
+            .map(|<span class="kw">_</span>| ErrorSendSlot)
+    }
+}
+
+<span class="kw">impl </span>Drop <span class="kw">for </span>ErrorSendSlot {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        ONGOING_ERROR_SENDS.fetch_sub(<span class="number">1</span>, Ordering::AcqRel);
+    }
+}
 
 <span class="kw">const </span>KNOWN_PREFIX_FROM_CLIENT_LEN: usize =
     HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES;
@@ -416,7 +511,8 @@
 
 <span class="doccomment">/// Bootstrap server binder
 </span><span class="kw">pub struct </span>BootstrapServerBinder {
-    max_consensus_block_ids: u64,
+    <span class="doccomment">/// max number of block ids accepted in the client's cumulative bootstrap cursor
+    </span>max_consensus_block_ids: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
@@ -447,7 +543,8 @@
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
-            consensus_bootstrap_part_size,
+            consensus_bootstrap_part_size: _part_size,
+            max_consensus_block_ids,
             write_error_timeout,
         } = cfg;
 
@@ -456,7 +553,7 @@
         });
         <span class="kw">let </span>duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapServerBinder {
-            max_consensus_block_ids: consensus_bootstrap_part_size,
+            max_consensus_block_ids,
             local_keypair,
             duplex,
             prev_message: <span class="prelude-val">None</span>,
@@ -520,20 +617,34 @@
         })
     }
 
-    <span class="doccomment">/// 1. Spawns a thread
+    <span class="doccomment">/// 1. Spawns a thread, unless [`MAX_CONCURRENT_ERROR_SENDS`] are already running
     /// 2. blocks on the passed in runtime
     /// 3. uses passed in handle to send a message to the client
     /// 4. logs an error if the send times out
     /// 5. runs the passed in closure (typically a custom logging msg)
     ///
-    /// consumes the binding in the process
+    /// consumes the binding in the process. When the refusal budget is exhausted
+    /// or the OS refuses the spawn, the binding is dropped instead, closing the
+    /// connection without the courtesy message.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>close_and_send_error&lt;F&gt;(<span class="kw-2">mut </span><span class="self">self</span>, msg: String, addr: SocketAddr, close_fn: F)
     <span class="kw">where
         </span>F: FnOnce() + Send + <span class="lifetime">'static</span>,
     {
-        thread::Builder::new()
+        <span class="comment">// Claim a refusal slot, or drop the connection outright rather than let
+        // a flood of refusals spawn an unbounded number of threads.
+        </span><span class="kw">let </span><span class="prelude-val">Some</span>(slot) = ErrorSendSlot::claim() <span class="kw">else </span>{
+            <span class="macro">warn!</span>(
+                <span class="string">"bootstrap server closing connection from {} without sending error '{}': too many refusals in flight"</span>,
+                addr, msg
+            );
+            <span class="kw">return</span>;
+        };
+
+        <span class="kw">let </span>spawned = thread::Builder::new()
             .name(<span class="string">"bootstrap-error-send"</span>.to_string())
             .spawn(<span class="kw">move </span>|| {
+                <span class="comment">// Held for the lifetime of the thread, released on the way out.
+                </span><span class="kw">let </span>_slot = slot;
                 <span class="kw">let </span>msg_cloned = msg.clone();
                 <span class="kw">let </span>err_send = <span class="self">self</span>.send_error_timeout(msg_cloned);
                 <span class="kw">match </span>err_send {
@@ -548,10 +659,17 @@
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
                 }
                 close_fn();
-            })
-            <span class="comment">// the non-builder spawn doesn't return a Result, and documentation states that
-            // it's an error at the OS level.
-            </span>.unwrap();
+            });
+
+        <span class="comment">// A failed spawn is an OS-level resource error: the slot is released with
+        // the dropped closure, and the connection closes on its own rather than
+        // taking the whole server down.
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = spawned {
+            <span class="macro">error!</span>(
+                <span class="string">"bootstrap server failed to spawn the error-send thread for addr {}: {}"</span>,
+                addr, e
+            );
+        }
     }
     <span class="kw">pub fn </span>send_error_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, error: String) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="self">self</span>.send_timeout(

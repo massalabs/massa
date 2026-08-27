@@ -422,6 +422,8 @@
 <a href="#422" id="422">422</a>
 <a href="#423" id="423">423</a>
 <a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>ip_rfc::global;
@@ -792,7 +794,9 @@
                                 <span class="comment">// Default category
                                 </span><span class="prelude-val">None </span><span class="kw">if </span>connection_slots[<span class="string">"default"</span>] &gt; <span class="number">0 </span>=&gt; {
                                     <span class="comment">// In case the connection succeeds, we take a place in a slot
-                                    </span><span class="kw">if </span>try_connect_peer(<span class="kw-2">*</span>addr, <span class="kw-2">&amp;mut </span>network_controller, <span class="kw-2">&amp;</span>peer_db, <span class="kw-2">&amp;</span>config).is_err() {
+                                    // (mirrors the special-category branch above: the slot is
+                                    // consumed and the address recorded on success, not failure).
+                                    </span><span class="kw">if </span>try_connect_peer(<span class="kw-2">*</span>addr, <span class="kw-2">&amp;mut </span>network_controller, <span class="kw-2">&amp;</span>peer_db, <span class="kw-2">&amp;</span>config).is_ok() {
                                         <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = connection_slots.get_mut(<span class="string">"default"</span>) {
                                             <span class="kw-2">*</span>v = v.saturating_sub(<span class="number">1</span>);
                                         }

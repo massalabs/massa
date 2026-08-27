@@ -102,6 +102,10 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::HashMap;
@@ -158,6 +162,10 @@
     </span><span class="kw">fn </span>propagate_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, operations: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt;;
 
     <span class="doccomment">/// Propagate a batch of endorsement (from pool).
+    ///
+    /// The endorsements are propagated as-is: callers must have fully validated them beforehand
+    /// (valid signature and creator matching the PoS draw of their `(slot, index)` pair), as is
+    /// done for endorsements coming from peers in `note_endorsements_from_peer`.
     ///
     /// # Arguments:
     /// * `endorsements`: endorsements to propagate
