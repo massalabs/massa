@@ -2730,7 +2730,7 @@
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
-        <span class="kw">let </span>mip_store = MipStore::try_from((get_mip_list(), mip_stats_config)).unwrap();
+        <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, selector_controller) = start_selector_worker(SelectorConfig::default())
             .expect(<span class="string">"could not start selector controller"</span>);
         <span class="kw">let </span>disk_ledger = TempDir::new().expect(<span class="string">"cannot create temp directory"</span>);
