@@ -127,6 +127,18 @@ impl ConsensusController for ConsensusControllerImpl {
         let read_shared_state = self.shared_state.read();
         let required_blocks: PreHashSet<BlockId> = match execution_cursor {
             StreamingStep::Ongoing(slot) | StreamingStep::Finished(Some(slot)) => {
+                // end_slot must be at least the last genesis slot so that every thread
+                // has a final block with block.slot <= end_slot (see list_required_active_blocks).
+                let last_genesis_slot = Slot::new(
+                    read_shared_state.config.last_start_period,
+                    read_shared_state.config.thread_count.saturating_sub(1),
+                );
+                if slot < last_genesis_slot {
+                    return Err(ConsensusError::ContainerInconsistency(format!(
+                        "bootstrap end_slot {} is before the last genesis slot {}; cannot list a latest final block in every thread",
+                        slot, last_genesis_slot
+                    )));
+                }
                 read_shared_state.list_required_active_blocks(Some(slot))?
             }
             _ => PreHashSet::default(),
