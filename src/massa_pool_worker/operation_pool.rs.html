@@ -532,6 +532,23 @@
 <a href="#532" id="532">532</a>
 <a href="#533" id="533">533</a>
 <a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -649,7 +666,14 @@
         pos_draws
     }
 
-    <span class="doccomment">/// Returns the list of executed ops with a boolean indicating whether they are executed as final.
+    <span class="doccomment">/// Returns execution markers for ops currently in the pool.
+    ///
+    /// Map value semantics:
+    /// - `true`: executed in final history (durable; safe to evict from the pool)
+    /// - `false`: executed only in speculative/candidate history (can disappear on rollback;
+    ///   must not drive pool eviction)
+    ///
+    /// Ops with no execution record are omitted.
     </span><span class="kw">fn </span>get_execution_statuses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PreHashMap&lt;OperationId, bool&gt; {
         <span class="kw">let </span>op_ids: Vec&lt;OperationId&gt; = <span class="self">self</span>.sorted_ops.iter().map(|op_info| op_info.id).collect();
         <span class="self">self</span>.channels
@@ -659,8 +683,10 @@
             .zip(op_ids)
             .filter_map(
                 |((spec_status, final_status), op_id)| <span class="kw">match </span>(spec_status, final_status) {
-                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Some</span>((op_id, <span class="bool-val">true</span>)),
-                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Some</span>((op_id, <span class="bool-val">false</span>)),
+                    <span class="comment">// Final execution is durable (execution layer also surfaces it as speculative).
+                    </span>(<span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Some</span>((op_id, <span class="bool-val">true</span>)),
+                    <span class="comment">// Candidate-history only: keep as non-final for optional scoring, never as eviction.
+                    </span>(<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Some</span>((op_id, <span class="bool-val">false</span>)),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                 },
             )
@@ -713,10 +739,11 @@
                 </span>retain = op_info.fee.checked_sub(<span class="self">self</span>.config.minimal_fees).is_some();
             }
 
-            <span class="comment">// filter out ops that have been executed in final or candidate slots
-            // TODO: in the re-execution followup, we should only filter out final-executed ops here (exec_status == Some(true))
+            <span class="comment">// Filter out ops whose execution is final/durable only.
+            // Speculative/candidate-only markers (exec_status == false) must not evict:
+            // they can vanish on rollback, and there is no reinsertion path after drop.
             </span><span class="kw">if </span>retain {
-                retain = !exec_statuses.contains_key(<span class="kw-2">&amp;</span>op_info.id);
+                retain = exec_statuses.get(<span class="kw-2">&amp;</span>op_info.id) != <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="bool-val">true</span>);
             }
 
             <span class="comment">// filter out ops that spend more than the sender's balance
@@ -787,7 +814,7 @@
     <span class="doccomment">/// Score the operations
     </span><span class="kw">fn </span>score_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        _exec_statuses: <span class="kw-2">&amp;</span>PreHashMap&lt;OperationId, bool&gt;,
+        exec_statuses: <span class="kw-2">&amp;</span>PreHashMap&lt;OperationId, bool&gt;,
         pos_draws: <span class="kw-2">&amp;</span>BTreeSet&lt;Slot&gt;,
     ) -&gt; PreHashMap&lt;OperationId, f32&gt; {
         <span class="kw">let </span>now = MassaTime::now();
@@ -849,25 +876,21 @@
                     </span><span class="number">0.0
                 </span>};
 
-            <span class="comment">/* TODO: re-execution followup
-            // If the op was executed previously, there is still an exponentially decaying chance of its block being cancelled
-            // so that it can be reincluded.
-            // We approximate it with a constant factor for simplicity since we don't have the inclusion slot for now.
-            let reexecution_penalty = 1.0 / 1000.0; // re-execution penalty factor
-            let reexecution_factor = if exec_statuses.contains_key(&amp;op_info.id) {
-                // executed previously
+            <span class="comment">// If the op was executed previously, there is still a chance of its block being
+            // cancelled so that it can be reincluded. Keep it in the pool (for rollback recovery)
+            // but score it far below non-executed ops. Block production also skips currently
+            // executed ops to avoid wasting gas while the mark is live.
+            </span><span class="kw">let </span>reexecution_penalty = <span class="number">1.0 </span>/ <span class="number">1000.0</span>;
+            <span class="kw">let </span>reexecution_factor = <span class="kw">if </span>exec_statuses.contains_key(<span class="kw-2">&amp;</span>op_info.id) {
                 reexecution_penalty
-            } else {
-                // not executed previously =&gt; score 1
-                1.0
-            };
-            */
+            } <span class="kw">else </span>{
+                <span class="number">1.0
+            </span>};
 
-            // compute the score as being the product of all the factors and the fee
-            </span><span class="kw">let </span>score = fee_factor * resource_factor * inclusion_factor;
-            <span class="comment">//  * reexecution_factor; // TODO: re-execution followup
+            <span class="comment">// compute the score as being the product of all the factors and the fee
+            </span><span class="kw">let </span>score = fee_factor * resource_factor * inclusion_factor * reexecution_factor;
 
-            // store the score
+            <span class="comment">// store the score
             </span>scores.insert(op_info.id, score);
         }
         scores
@@ -1004,7 +1027,13 @@
     /// Searches the available operations, and selects the sub-set of operations that:
     /// - fit inside the block
     /// - is the most profitable for block producer
+    /// - are not currently marked executed (speculative or final)
     </span><span class="kw">pub fn </span>get_block_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; (Vec&lt;OperationId&gt;, Storage) {
+        <span class="comment">// Live execution marks: skip while present so we do not waste block gas/space.
+        // Speculative marks can disappear on rollback; those ops stay in the pool and
+        // become selectable again once the mark is gone (without needing reinsertion).
+        </span><span class="kw">let </span>exec_statuses = <span class="self">self</span>.get_execution_statuses();
+
         <span class="comment">// init list of selected operation IDs
         </span><span class="kw">let </span><span class="kw-2">mut </span>op_ids = Vec::new();
 
@@ -1032,13 +1061,18 @@
                 <span class="kw">continue</span>;
             }
 
-            <span class="comment">// exclude ops that are too large
+            <span class="comment">// exclude ops that use too much resources for remaining capacity
             </span><span class="kw">if </span>op_info.size &gt; remaining_space {
                 <span class="kw">continue</span>;
             }
 
             <span class="comment">// exclude ops that require too much gas
             </span><span class="kw">if </span>op_info.max_gas_usage &gt; remaining_gas {
+                <span class="kw">continue</span>;
+            }
+
+            <span class="comment">// exclude ops currently executed (candidate or final)
+            </span><span class="kw">if </span>exec_statuses.contains_key(<span class="kw-2">&amp;</span>op_info.id) {
                 <span class="kw">continue</span>;
             }
 
