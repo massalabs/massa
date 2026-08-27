@@ -123,17 +123,15 @@ impl SharedWhiteBlackList<'_> {
     /// Checks if the white/black list is up to date with a read-lock
     /// Creates a new list, and replaces the old one in a write-lock
     pub(crate) fn update(&mut self) -> Result<(), BootstrapError> {
+        // Read the files before taking the lock, so a slow or hung filesystem
+        // read cannot stall `is_ip_allowed` callers.
+        let white_file = WhiteBlackListInner::read_list_file(&self.white_path);
+        let black_file = WhiteBlackListInner::read_list_file(&self.black_path);
         let read_lock = self.inner.read();
-        let new_white_file = WhiteBlackListInner::refresh_list(
-            &self.white_path,
-            &read_lock.white_list,
-            "whitelist",
-        )?;
-        let new_black_file = WhiteBlackListInner::refresh_list(
-            &self.black_path,
-            &read_lock.black_list,
-            "blacklist",
-        )?;
+        let new_white_file =
+            WhiteBlackListInner::refresh_list(white_file, &read_lock.white_list, "whitelist")?;
+        let new_black_file =
+            WhiteBlackListInner::refresh_list(black_file, &read_lock.black_list, "blacklist")?;
         let white_delta = new_white_file != read_lock.white_list;
         let black_delta = new_black_file != read_lock.black_list;
         if white_delta || black_delta {
@@ -176,6 +174,17 @@ impl SharedWhiteBlackList<'_> {
     }
 }
 
+/// Outcome of reading a list file, distinguishing an explicitly absent file
+/// from one that exists but cannot be read.
+enum ListFileRead {
+    /// The file does not exist: the list is deliberately not configured.
+    Missing,
+    /// The file exists but could not be read.
+    Unreadable(std::io::Error),
+    /// The file content, still to be parsed.
+    Content(String),
+}
+
 impl WhiteBlackListInner {
     #[allow(clippy::type_complexity)]
     fn init_list(
@@ -183,14 +192,17 @@ impl WhiteBlackListInner {
         blacklist_path: &Path,
     ) -> Result<(Option<HashSet<IpAddr>>, Option<HashSet<IpAddr>>), BootstrapError> {
         Ok((
-            Self::load_list(whitelist_path)?,
-            Self::load_list(blacklist_path)?,
+            Self::load_list(whitelist_path, "whitelist")?,
+            Self::load_list(blacklist_path, "blacklist")?,
         ))
     }
 
     /// Load a list at startup. A missing or unreadable file means the list is
     /// not configured: the feature is disabled with a warning.
-    fn load_list(list_path: &Path) -> Result<Option<HashSet<IpAddr>>, BootstrapError> {
+    fn load_list(
+        list_path: &Path,
+        list_kind: &str,
+    ) -> Result<Option<HashSet<IpAddr>>, BootstrapError> {
         match std::fs::read_to_string(list_path) {
             Err(e) => {
                 warn!(
@@ -200,45 +212,59 @@ impl WhiteBlackListInner {
                 );
                 Ok(None)
             }
-            Ok(list) => Ok(Some(Self::parse_list(&list)?)),
+            Ok(list) => Ok(Some(Self::parse_list(&list, list_kind)?)),
         }
     }
 
-    /// Load a list for a periodic refresh.
+    /// Read a list file, keeping the distinction between "the file does not
+    /// exist" and "the file exists but cannot be read".
+    fn read_list_file(list_path: &Path) -> ListFileRead {
+        match std::fs::read_to_string(list_path) {
+            Ok(content) => ListFileRead::Content(content),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => ListFileRead::Missing,
+            Err(e) => ListFileRead::Unreadable(e),
+        }
+    }
+
+    /// Compute the new value of a list for a periodic refresh.
     ///
-    /// A file that cannot be read must not disable a configured list: bootstrap
-    /// access control would silently fail open if the whitelist file disappeared
-    /// or became unreadable at runtime. Keep the previously loaded list instead
-    /// (restarting the node is the way to disable a list). A node with no list
-    /// configured stays silent, as a missing file is its normal state.
+    /// A missing file is an explicit operator choice: the list is disabled. A
+    /// file that exists but cannot be read must NOT disable a configured list:
+    /// bootstrap access control would silently fail open if the whitelist file
+    /// became unreadable at runtime, so the previously loaded list is kept.
     fn refresh_list(
-        list_path: &Path,
+        file: ListFileRead,
         current: &Option<HashSet<IpAddr>>,
         list_kind: &str,
     ) -> Result<Option<HashSet<IpAddr>>, BootstrapError> {
-        match std::fs::read_to_string(list_path) {
-            Err(e) => {
+        match file {
+            ListFileRead::Content(list) => Ok(Some(Self::parse_list(&list, list_kind)?)),
+            ListFileRead::Missing => {
                 if current.is_some() {
                     warn!(
-                        "failed to read bootstrap {} file {}: {} | keeping the previously loaded list (restart the node to disable it)",
-                        list_kind,
-                        list_path.to_str().unwrap_or(" "),
-                        e
+                        "bootstrap {} file no longer exists: disabling the list",
+                        list_kind
                     );
                 }
+                Ok(None)
+            }
+            ListFileRead::Unreadable(e) => {
+                warn!(
+                    "failed to read bootstrap {} file: {} | keeping the previously loaded list",
+                    list_kind, e
+                );
                 Ok(current.clone())
             }
-            Ok(list) => Ok(Some(Self::parse_list(&list)?)),
         }
     }
 
     /// Parse the JSON content of a list file into a canonicalized IP set.
-    fn parse_list(list: &str) -> Result<HashSet<IpAddr>, BootstrapError> {
+    fn parse_list(list: &str, list_kind: &str) -> Result<HashSet<IpAddr>, BootstrapError> {
         Ok(serde_json::from_str::<HashSet<IpAddr>>(list)
             .map_err(|e| {
                 BootstrapError::InitListError(format!(
-                    "Failed to parse bootstrap whitelist : {}",
-                    e
+                    "Failed to parse bootstrap {} : {}",
+                    list_kind, e
                 ))
             })?
             .into_iter()
@@ -281,7 +307,29 @@ mod tests {
     }
 
     #[test]
-    fn whitelist_file_disappearance_does_not_open_access() {
+    fn whitelist_file_removal_disables_the_list() {
+        let dir = TempDir::new().unwrap();
+        let white = dir.path().join("whitelist.json");
+        let black = dir.path().join("blacklist.json");
+        std::fs::write(&white, r#"["127.0.0.1"]"#).unwrap();
+        let mut list = SharedWhiteBlackList::new(white.clone(), black).unwrap();
+
+        let refused = SocketAddr::new("127.0.0.2".parse().unwrap(), 12345);
+        assert!(matches!(
+            list.is_ip_allowed(&refused),
+            Err(BootstrapError::WhiteListed(_))
+        ));
+
+        // Deleting the file is an explicit operator action: the refresh must
+        // disable the whitelist.
+        std::fs::remove_file(&white).unwrap();
+        list.update().unwrap();
+
+        assert!(list.is_ip_allowed(&refused).is_ok());
+    }
+
+    #[test]
+    fn unreadable_whitelist_file_keeps_the_loaded_list() {
         let dir = TempDir::new().unwrap();
         let white = dir.path().join("whitelist.json");
         let black = dir.path().join("blacklist.json");
@@ -296,9 +344,10 @@ mod tests {
             Err(BootstrapError::WhiteListed(_))
         ));
 
-        // The whitelist file disappears at runtime: the refresh must keep the
-        // previously loaded list instead of failing open.
+        // The path exists but reading it fails (it is now a directory): the
+        // refresh must keep the previously loaded list instead of failing open.
         std::fs::remove_file(&white).unwrap();
+        std::fs::create_dir(&white).unwrap();
         list.update().unwrap();
 
         assert!(list.is_ip_allowed(&allowed).is_ok());
@@ -309,7 +358,7 @@ mod tests {
     }
 
     #[test]
-    fn blacklist_file_disappearance_keeps_blocking() {
+    fn blacklist_file_removal_disables_the_list() {
         let dir = TempDir::new().unwrap();
         let white = dir.path().join("whitelist.json");
         let black = dir.path().join("blacklist.json");
@@ -325,10 +374,7 @@ mod tests {
         std::fs::remove_file(&black).unwrap();
         list.update().unwrap();
 
-        assert!(matches!(
-            list.is_ip_allowed(&blocked),
-            Err(BootstrapError::BlackListed(_))
-        ));
+        assert!(list.is_ip_allowed(&blocked).is_ok());
     }
 
     #[test]
