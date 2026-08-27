@@ -274,6 +274,7 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     cache::SharedEndorsementCache, commands_propagation::EndorsementHandlerPropagationCommand,
     messages::EndorsementMessageSerializer, EndorsementMessage,
@@ -480,7 +481,8 @@
             index,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">b"block"</span>)),
         };
-        Endorsement::new_verifiable(content, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="number">0</span>).unwrap()
+        Endorsement::new_verifiable(content, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="number">0</span>, <span class="prelude-val">None</span>)
+            .unwrap()
     }
 
     <span class="doccomment">/// Build a storage sharing `root`'s objects and holding `count` distinct endorsements

@@ -39,7 +39,7 @@ var srcIndex = new Map(JSON.parse('[\
 ["massa_storage",["",[],["block_indexes.rs","endorsement_indexes.rs","lib.rs","operation_indexes.rs"]]],\
 ["massa_test_framework",["",[],["lib.rs"]]],\
 ["massa_time",["",[],["error.rs","lib.rs","mapping_grpc.rs"]]],\
-["massa_versioning",["",[],["address_factory.rs","grpc_mapping.rs","keypair_factory.rs","lib.rs","mips.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]]],\
+["massa_versioning",["",[],["address_factory.rs","consensus_signature.rs","grpc_mapping.rs","keypair_factory.rs","lib.rs","mips.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]]],\
 ["massa_wallet",["",[],["error.rs","lib.rs"]]],\
 ["massa_xtask",["",[],["check_gas_cost_definitions.rs","main.rs","update_package_versions.rs"]]]\
 ]'));
