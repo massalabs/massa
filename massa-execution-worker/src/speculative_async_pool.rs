@@ -211,6 +211,20 @@ impl SpeculativeAsyncPool {
         }
 
         // Activate the messages that can be activated (triggered)
+        //
+        // Note: arming is intentionally not restricted to the message validity interval. A trigger
+        //       observed before `validity_start` arms the message for good, and it then executes at
+        //       the first slot of its validity interval that has gas available. This is wanted: a
+        //       message is armed by an event that happened, and consistently with the fact that an
+        //       armed message can never be disarmed, that event is not forgotten just because it
+        //       came early. The validity interval bounds execution, not observation of the trigger.
+        //
+        // Note: activation happens here, i.e. after `take_batch_to_execute` already selected the
+        //       messages to execute at this slot, so a message armed at slot S is executable from
+        //       S+1 on. A trigger first observed at `validity_end` therefore never executes: the
+        //       message is armed and then expires at the next slot, its coins being reimbursed by
+        //       `cancel_async_message`. This cannot be avoided, since the ledger writes that arm
+        //       the message are only known once the slot has been executed.
         for (id, msg) in self.message_cache.iter_mut() {
             if let Some(filter) = &msg.trigger {
                 if is_triggered(filter, ledger_changes) {
@@ -268,7 +282,6 @@ fn is_triggered(filter: &AsyncMessageTrigger, ledger_changes: &LedgerChanges) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-
     // Test if is_message_expired & is_message_ready_to_execute are consistent
     #[test]
     fn test_validity() {
