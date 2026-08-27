@@ -243,6 +243,13 @@ impl FinalState {
             .write()
             .write_batch(batch, Default::default(), Some(end_slot));
 
+        if end_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count) {
+            // Feed final_state_hash to the completed cycle
+            self.feed_cycle_hash_and_selector_for_interpolation(
+                end_slot.get_cycle(self.config.periods_per_cycle),
+            )?;
+        }
+
         Ok(())
     }
 
