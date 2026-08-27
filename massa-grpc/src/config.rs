@@ -72,8 +72,8 @@ pub struct GrpcConfig {
     pub endorsement_count: u32,
     /// max endorsements per message
     pub max_endorsements_per_message: u32,
-    /// max datastore value length
-    pub max_datastore_value_length: u64,
+    /// max size of a smart contract bytecode in an `ExecuteSC` operation
+    pub max_bytecode_size: u64,
     /// max op datastore entry
     pub max_op_datastore_entry_count: u64,
     /// max op datastore entries per request

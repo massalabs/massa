@@ -8,7 +8,7 @@ use massa_signature::KeyPair;
 use super::tools::{
     create_endorsement, create_endorsement_on_block, default_mock_execution_controller, pool_test,
 };
-use crate::endorsement_pool::MAX_ENDORSEMENTS_PER_SLOT_INDEX;
+use massa_models::config::MAX_ENDORSEMENTS_PER_SLOT_INDEX;
 
 fn create_selector_mock_with_address(address: Address) -> MockSelectorController {
     let mut res = MockSelectorController::new();

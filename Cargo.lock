@@ -3824,6 +3824,7 @@ version = "5.0.0"
 dependencies = [
  "massa-sc-runtime",
  "massa_models",
+ "serde_json",
  "toml_edit 0.21.1",
  "walkdir",
 ]

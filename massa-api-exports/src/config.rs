@@ -49,8 +49,8 @@ pub struct APIConfig {
     pub enable_http: bool,
     /// whether to enable WS.
     pub enable_ws: bool,
-    /// max datastore value length
-    pub max_datastore_value_length: u64,
+    /// max size of a smart contract bytecode in an `ExecuteSC` operation
+    pub max_bytecode_size: u64,
     /// max datastore key length
     pub max_datastore_key_length: u8,
     /// max op datastore entry

@@ -82,7 +82,7 @@ pub(crate) async fn send_operations(
                             // Deserialize and verify each operation in the incoming message
                             let operation_deserializer = SecureShareDeserializer::new(
                                 OperationDeserializer::new(
-                                    config.max_datastore_value_length,
+                                    config.max_bytecode_size,
                                     config.max_function_name_length,
                                     config.max_parameter_size,
                                     config.max_op_datastore_entry_count,

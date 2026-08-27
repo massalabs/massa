@@ -249,6 +249,7 @@ impl LedgerEntryUpdateDeserializer {
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
+        max_bytecode_size: u64,
     ) -> Self {
         Self {
             amount_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new(
@@ -256,7 +257,7 @@ impl LedgerEntryUpdateDeserializer {
                 Included(Amount::MAX),
             )),
             bytecode_deserializer: SetOrKeepDeserializer::new(BytecodeDeserializer::new(
-                max_datastore_value_length,
+                max_bytecode_size,
             )),
             datastore_deserializer: DatastoreUpdateDeserializer::new(
                 max_datastore_key_length,
@@ -289,7 +290,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntryUpdateSerializer::new();
-    /// let deserializer = LedgerEntryUpdateDeserializer::new(255, 10000, 10000);
+    /// let deserializer = LedgerEntryUpdateDeserializer::new(255, 10000, 10000, 10000);
     /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
     /// let (rest, ledger_entry_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -429,6 +430,7 @@ impl LedgerChangesDeserializer {
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
         max_datastore_entry_count: u64,
+        max_bytecode_size: u64,
     ) -> Self {
         Self {
             length_deserializer: U64VarIntDeserializer::new(
@@ -441,11 +443,13 @@ impl LedgerChangesDeserializer {
                     max_datastore_entry_count,
                     max_datastore_key_length,
                     max_datastore_value_length,
+                    max_bytecode_size,
                 ),
                 LedgerEntryUpdateDeserializer::new(
                     max_datastore_key_length,
                     max_datastore_value_length,
                     max_datastore_entry_count,
+                    max_bytecode_size,
                 ),
             ),
         }
@@ -479,7 +483,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();
-    /// let (rest, changes_deser) = LedgerChangesDeserializer::new(255, 255, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, changes_deser) = LedgerChangesDeserializer::new(255, 255, 10000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(changes, changes_deser);
     /// ```

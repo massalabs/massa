@@ -47,13 +47,13 @@ pub struct BytecodeDeserializer {
 }
 
 impl BytecodeDeserializer {
-    /// Creates a new `LedgerEntryDeserializer`
-    pub fn new(max_datastore_value_length: u64) -> Self {
+    /// Creates a new `BytecodeDeserializer`
+    pub fn new(max_bytecode_size: u64) -> Self {
         Self {
             version_byte_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             vec_u8_deserializer: VecU8Deserializer::new(
                 Included(u64::MIN),
-                Included(max_datastore_value_length),
+                Included(max_bytecode_size),
             ),
         }
     }

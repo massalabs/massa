@@ -20,7 +20,9 @@ use crate::wrap_peer_db::MockPeerDBTrait;
 use crate::{
     handlers::{
         block_handler::{BlockInfoReply, BlockMessage},
+        endorsement_handler::EndorsementMessage,
         operation_handler::OperationMessage,
+        peer_handler::PeerManagementMessage,
     },
     messages::Message,
 };
@@ -742,6 +744,136 @@ fn test_protocol_does_not_ban_header_only_sender_of_an_invalid_block() {
     ban_waitpoint.wait();
 }
 
+/// A block whose operation contents fail a check that is fully determined by those contents
+/// (here: an operation bigger than a whole block may be) is unrecoverable: the block's operation
+/// ids commit to that content, so no peer can ever deliver a valid version of it. We must mark it
+/// invalid and stop retrieving it, not merely ban the sender and keep asking around.
+#[test]
+fn test_protocol_marks_block_invalid_on_intrinsically_invalid_full_operations() {
+    let thread_count = 2;
+    let block_creator = KeyPair::generate(0).unwrap();
+    let op = tools::create_operation_with_expire_period(&block_creator, 5);
+    let protocol_config = ProtocolConfig {
+        thread_count,
+        // the operation alone overflows the block, making its contents invalid. Keep it just over
+        // the limit so that the response still fits in the payload bound the block message
+        // deserializer enforces: that bound is what rejects grossly oversized responses, and this
+        // test is about what happens to the ones that squeeze past it.
+        max_serialized_operations_size_per_block: op.serialized_size() - 1,
+        ..Default::default()
+    };
+
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+
+    let op_thread = op
+        .content_creator_address
+        .get_thread(protocol_config.thread_count);
+    let block = ProtocolTestUniverse::create_block(
+        &block_creator,
+        Slot::new(1, op_thread),
+        vec![op.clone()],
+        vec![],
+        vec![],
+    );
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+
+    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .returning(move |_| {});
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers()
+        .return_const(HashMap::default());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers_mut()
+        .times(0..1)
+        .returning(HashMap::default);
+    // the block must be reported as invalid to consensus: this is what stops the retrieval loop
+    let block_clone = block.clone();
+    foreign_controllers
+        .consensus_controller
+        .expect_mark_invalid_block()
+        .times(1)
+        .return_once(move |block_id, header| {
+            assert_eq!(block_id, block_clone.id);
+            assert_eq!(header.id, block_clone.content.header.id);
+            waitpoint_trigger_handle.trigger();
+        });
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    shared_active_connections.set_expectations(
+        |active_connections: &mut MockActiveConnectionsTrait| {
+            active_connections
+                .expect_get_peer_ids_connected()
+                .returning(move || {
+                    let mut peers = HashSet::new();
+                    peers.insert(node_a_peer_id);
+                    peers
+                });
+            active_connections
+                .expect_send_to_peer()
+                .returning(move |_, _, _, _| Ok(()));
+            active_connections
+                .expect_shutdown_connection()
+                .returning(move |_| {});
+        },
+    );
+    foreign_controllers
+        .network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(shared_active_connections.clone()));
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    // start retrieving the block, which makes us ask node A for its operation ids
+    universe
+        .module_controller
+        .send_wishlist_delta(
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .unwrap();
+
+    // TODO: Find a way to wait for the previous messages to be processed
+    std::thread::sleep(Duration::from_millis(1000));
+
+    // we do not know that operation locally, so the op id list alone cannot tell us the block is
+    // oversized: we go on and ask node A for the operation itself
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::OperationIds(vec![op.id]),
+        })),
+    );
+
+    // TODO: Find a way to wait for the previous messages to be processed
+    std::thread::sleep(Duration::from_millis(1000));
+
+    // node A delivers the operation: it is over the max block size, which the block's operation
+    // ids already commit to, so the block is permanently invalid
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::Operations(vec![op.clone()]),
+        })),
+    );
+
+    waitpoint.wait();
+}
+
 #[test]
 fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     let protocol_config = ProtocolConfig {
@@ -890,5 +1022,159 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
         .notify_block_attack(block.id)
         .unwrap();
 
+    ban_waitpoint.wait();
+}
+
+/// Common mock setup for the trailing-bytes ban tests: the peer must be
+/// disconnected and banned, and nothing else must happen.
+fn trailing_bytes_ban_setup(
+    foreign_controllers: &mut ProtocolForeignControllers,
+    node_a_peer_id: PeerId,
+    ban_waitpoint: &WaitPoint,
+) {
+    let ban_waitpoint_trigger_handle = ban_waitpoint.get_trigger_handle();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .returning(move |peer_id| {
+            assert_eq!(peer_id, &node_a_peer_id);
+            ban_waitpoint_trigger_handle.trigger();
+        });
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    ProtocolTestUniverse::active_connections_boilerplate(
+        &mut shared_active_connections,
+        [node_a_peer_id].into_iter().collect(),
+    );
+    shared_active_connections.set_expectations(|active_connections| {
+        active_connections
+            .expect_shutdown_connection()
+            .returning(move |peer_id| {
+                assert_eq!(peer_id, &node_a_peer_id);
+            });
+    });
+    foreign_controllers
+        .network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(shared_active_connections.clone()));
+}
+
+#[test]
+fn test_protocol_bans_node_sending_block_message_with_trailing_bytes() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let block_creator = KeyPair::generate(0).unwrap();
+    let block =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    let ban_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    trailing_bytes_ban_setup(&mut foreign_controllers, node_a_peer_id, &ban_waitpoint);
+    // the message must be dropped, not processed
+    foreign_controllers
+        .consensus_controller
+        .expect_register_block_header()
+        .never();
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive_with_trailing_bytes(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
+    );
+    ban_waitpoint.wait();
+}
+
+#[test]
+fn test_protocol_bans_node_sending_operation_message_with_trailing_bytes() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let op_creator = KeyPair::generate(0).unwrap();
+    let operation = tools::create_operation_with_expire_period(&op_creator, 1);
+
+    let ban_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    trailing_bytes_ban_setup(&mut foreign_controllers, node_a_peer_id, &ban_waitpoint);
+    // the message must be dropped, not processed
+    foreign_controllers
+        .pool_controller
+        .set_expectations(|pool_controller| {
+            pool_controller.expect_add_operations().never();
+        });
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive_with_trailing_bytes(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::Operations(vec![operation])),
+    );
+    ban_waitpoint.wait();
+}
+
+#[test]
+fn test_protocol_bans_node_sending_endorsement_message_with_trailing_bytes() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let endorsement_creator = KeyPair::generate(0).unwrap();
+    let endorsement =
+        ProtocolTestUniverse::create_endorsement(&endorsement_creator, Slot::new(1, 1));
+
+    let ban_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    trailing_bytes_ban_setup(&mut foreign_controllers, node_a_peer_id, &ban_waitpoint);
+    // the message must be dropped, not processed
+    foreign_controllers
+        .pool_controller
+        .set_expectations(|pool_controller| {
+            pool_controller.expect_add_endorsements().never();
+        });
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive_with_trailing_bytes(
+        &node_a_peer_id,
+        Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement])),
+    );
+    ban_waitpoint.wait();
+}
+
+#[test]
+fn test_protocol_bans_node_sending_peer_management_message_with_trailing_bytes() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+
+    let ban_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    trailing_bytes_ban_setup(&mut foreign_controllers, node_a_peer_id, &ban_waitpoint);
+    // banned-state lookup done by the peer handler before deserializing
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers()
+        .return_const(HashMap::new());
+
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive_with_trailing_bytes(
+        &node_a_peer_id,
+        Message::PeerManagement(Box::new(PeerManagementMessage::ListPeers(vec![]))),
+    );
     ban_waitpoint.wait();
 }

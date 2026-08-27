@@ -114,7 +114,7 @@ impl RetrievalThread {
             OperationMessageDeserializer::new(OperationMessageDeserializerArgs {
                 max_operations_prefix_ids: self.config.max_operations_per_message as u32,
                 max_operations: self.config.max_operations_per_message as u32,
-                max_datastore_value_length: self.config.max_op_datastore_value_length,
+                max_bytecode_size: self.config.max_bytecode_size,
                 max_function_name_length: self.config.max_size_function_name,
                 max_parameters_size: self.config.max_size_call_sc_parameter,
                 max_op_datastore_entry_count: self.config.max_op_datastore_entry_count,
@@ -142,12 +142,16 @@ impl RetrievalThread {
                                 // A valid message prefix followed by trailing bytes must not
                                 // tear down this long-lived shared retrieval thread (doing so
                                 // would let a single peer deny operation handling for everyone).
-                                // Skip the malformed message and keep serving other peers.
+                                // A compliant peer never sends trailing bytes, so ban the
+                                // sender and keep serving other peers.
                                 warn!(
-                                    "peer {} sent an operation message with {} unexpected trailing byte(s); ignoring it",
+                                    "peer {} sent an operation message with {} unexpected trailing byte(s); banning it",
                                     peer_id,
                                     rest.len()
                                 );
+                                if let Err(e) = self.ban_node(&peer_id) {
+                                    warn!("Error when banning node: {}", e);
+                                }
                                 continue;
                             }
                             match message {
@@ -465,6 +469,23 @@ impl RetrievalThread {
         self.peer_cmd_sender
             .try_send(PeerManagementCmd::Ban(vec![*peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
+    }
+}
+
+/// Tells whether a `note_operations_from_peer` failure is caused by the operation contents
+/// themselves, rather than by the way the sender delivered them.
+///
+/// An operation ID commits to the operation contents, but not to its signature. A failure that
+/// depends only on those contents can therefore never be fixed by asking another peer: any
+/// operation carrying the same ID fails the same check. When such an operation is committed by a
+/// block's operation ID list, that block is permanently invalid and must not be retried.
+pub(crate) fn is_block_intrinsic_operation_failure(err: &ProtocolError) -> bool {
+    match err {
+        // the operation is bigger than a whole block is allowed to be: fully determined by its contents
+        ProtocolError::InvalidOperationError(_) => true,
+        // e.g. `WrongSignature`: the signature is not covered by the operation ID,
+        // so another peer may still deliver the same operation properly signed
+        _ => false,
     }
 }
 
