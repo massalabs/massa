@@ -1342,6 +1342,8 @@
 <a href="#1342" id="1342">1342</a>
 <a href="#1343" id="1343">1343</a>
 <a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -2092,10 +2094,14 @@
                     e
                 ))
             })<span class="question-mark">?</span>;
-        <span class="comment">// Include the entire last_start_period as downtime: interpolation attaches at
-        // Slot(last_start_period, thread_count - 1) and block production resumes only
-        // at Slot(last_start_period + 1, 0).
-        </span><span class="kw">let </span>shutdown_end = Slot::new(last_start_period, config.thread_count.saturating_sub(<span class="number">1</span>));
+        <span class="kw">let </span>shutdown_end = Slot::new(last_start_period, <span class="number">0</span>)
+            .get_prev_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(<span class="macro">format!</span>(
+                    <span class="string">"Unable to compute prev slot from last start period: {:?}"</span>,
+                    e
+                ))
+            })<span class="question-mark">?</span>;
         <span class="macro">debug!</span>(
             <span class="string">"Checking if MIP store is consistent against shutdown period: {} - {}"</span>,
             shutdown_start, shutdown_end
@@ -2299,12 +2305,11 @@
         bytecode::Bytecode,
         config::{
             DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-            MAX_ASYNC_POOL_LENGTH, MAX_BYTECODE_LENGTH, MAX_DATASTORE_KEY_LENGTH,
-            MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-            MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
-            MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-            MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, PERIODS_PER_CYCLE,
-            POS_SAVED_CYCLES, T0, THREAD_COUNT,
+            MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+            MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            MAX_DENUNCIATION_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
+            MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
+            PERIODS_PER_CYCLE, POS_SAVED_CYCLES, T0, THREAD_COUNT,
         },
         types::SetUpdateOrDelete,
     };
@@ -2324,7 +2329,6 @@
             initial_ledger_path: massa_node_base.join(<span class="string">"base_config/initial_ledger.json"</span>),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-            max_bytecode_size: MAX_BYTECODE_LENGTH,
         };
         <span class="kw">let </span>async_pool_config = AsyncPoolConfig {
             max_length: MAX_ASYNC_POOL_LENGTH,

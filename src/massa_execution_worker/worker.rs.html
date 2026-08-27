@@ -314,36 +314,6 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -375,7 +345,6 @@
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::thread;
-<span class="kw">use </span>std::time::{Duration, Instant};
 <span class="kw">use </span>tracing::debug;
 
 <span class="doccomment">/// Structure gathering all elements needed by the execution thread
@@ -390,11 +359,6 @@
     </span>readonly_requests: RequestQueue&lt;ReadOnlyExecutionRequest, ReadOnlyExecutionOutput&gt;,
     <span class="doccomment">/// Selector controller
     </span>selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-    <span class="doccomment">/// maximum time a queued read-only request may wait behind slot execution
-    </span>readonly_starvation_timeout: Duration,
-    <span class="doccomment">/// time at which the latest read-only request was executed,
-    /// used to bound read-only starvation when slot work is continuously available
-    </span>last_readonly_served: Instant,
 }
 
 <span class="kw">impl </span>ExecutionThread {
@@ -426,8 +390,6 @@
         </span>ExecutionThread {
             input_data,
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
-            readonly_starvation_timeout: config.readonly_starvation_timeout.to_duration(),
-            last_readonly_served: Instant::now(),
             execution_state,
             slot_sequencer: SlotSequencer::new(config, final_cursor),
             selector,
@@ -461,8 +423,6 @@
             // Ignore errors because they just mean that the request emitter dropped the received
             // because it doesn't need the response anymore.
             </span><span class="kw">let _ </span>= resp_tx.send(outcome);
-
-            <span class="self">self</span>.last_readonly_served = Instant::now();
 
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
@@ -533,8 +493,6 @@
         // 1 - final executions
         // 2 - speculative executions
         // 3 - read-only executions
-        // Read-only executions are last, but bounded by `readonly_starvation_timeout`
-        // so that they still make progress when slot work is continuously available.
         </span><span class="kw">loop </span>{
             <span class="kw">let </span>(input_data, stop) = <span class="self">self</span>.wait_loop_event();
             <span class="macro">debug!</span>(<span class="string">"Execution loop triggered, input_data = {}"</span>, input_data);
@@ -553,18 +511,6 @@
                 input_data.new_blockclique,
                 input_data.block_metadata,
             );
-
-            <span class="comment">// Slot work always wins over read-only work, but the slot sequencer can keep
-            // handing out tasks for as long as the worker lags behind real time (e.g. while
-            // catching up after bootstrap). Without a bound, the low-priority read-only call
-            // below is never reached and queued requests block their callers for the whole
-            // catch-up. Serve a single pending request once it has waited long enough, so
-            // read-only execution keeps making progress without giving up slot priority.
-            </span><span class="kw">if </span>!<span class="self">self</span>.readonly_requests.is_empty()
-                &amp;&amp; <span class="self">self</span>.last_readonly_served.elapsed() &gt;= <span class="self">self</span>.readonly_starvation_timeout
-            {
-                <span class="self">self</span>.execute_one_readonly_request();
-            }
 
             <span class="comment">// ask the slot sequencer for a task to be executed in priority (final is higher priority than candidate)
             </span><span class="kw">let </span>run_result = <span class="self">self</span>.slot_sequencer.run_task_with(
@@ -601,12 +547,6 @@
         </span><span class="kw">let </span>cancel_err = ExecutionError::ChannelError(
             <span class="string">"readonly execution cancelled because the execution worker is closing"</span>.into(),
         );
-        <span class="comment">// Requests already handed off from the shared input into the worker-local queue
-        // (e.g. during the final loop iteration before `stop`) must be cancelled too:
-        // `RequestQueue` does not cancel on drop, so otherwise their `resp_tx` is dropped
-        // silently and callers see a generic channel-readout error instead of this clean
-        // worker-closing cancellation.
-        </span><span class="self">self</span>.readonly_requests.cancel(cancel_err.clone());
         <span class="self">self</span>.input_data
             .<span class="number">1
             </span>.lock()

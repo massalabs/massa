@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["filter_routable_listeners","is_routable_peer_addr","to_canonical"]};
+window.SIDEBAR_ITEMS = {"fn":["to_canonical"]};
