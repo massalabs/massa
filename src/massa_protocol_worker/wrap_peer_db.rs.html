@@ -42,6 +42,7 @@
 <a href="#42" id="42">42</a>
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::handlers::peer_handler::models::{ConnectionMetadata, PeerInfo};
 <span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
@@ -70,6 +71,7 @@
     <span class="kw">fn </span>get_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashMap&lt;PeerId, PeerInfo&gt;;
     <span class="kw">fn </span>get_peers_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashMap&lt;PeerId, PeerInfo&gt;;
     <span class="kw">fn </span>get_connection_metadata_or_default(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; ConnectionMetadata;
+    <span class="kw">fn </span>set_success_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr);
     <span class="kw">fn </span>set_try_connect_success_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr);
     <span class="kw">fn </span>set_try_connect_failure_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr);
     <span class="kw">fn </span>set_try_connect_test_success_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr);
