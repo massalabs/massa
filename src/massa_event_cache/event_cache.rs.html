@@ -1896,19 +1896,6 @@
 <a href="#1896" id="1896">1896</a>
 <a href="#1897" id="1897">1897</a>
 <a href="#1898" id="1898">1898</a>
-<a href="#1899" id="1899">1899</a>
-<a href="#1900" id="1900">1900</a>
-<a href="#1901" id="1901">1901</a>
-<a href="#1902" id="1902">1902</a>
-<a href="#1903" id="1903">1903</a>
-<a href="#1904" id="1904">1904</a>
-<a href="#1905" id="1905">1905</a>
-<a href="#1906" id="1906">1906</a>
-<a href="#1907" id="1907">1907</a>
-<a href="#1908" id="1908">1908</a>
-<a href="#1909" id="1909">1909</a>
-<a href="#1910" id="1910">1910</a>
-<a href="#1911" id="1911">1911</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::cmp::max;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
@@ -2379,31 +2366,18 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         filter: <span class="kw-2">&amp;</span>EventFilter,
     ) -&gt; (Vec&lt;u64&gt;, Vec&lt;SCOutputEvent&gt;) {
-        <span class="comment">// All events stored in this cache are final: a query for non-final
-        // events can never match anything here
-        </span><span class="kw">if </span>filter.is_final == <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) {
-            <span class="kw">return </span>(<span class="macro">vec!</span>[], <span class="macro">vec!</span>[]);
-        }
-
         <span class="comment">// Step 1
         // Build a (sorted) map with key: (counter value, indent), value: filter
         // Will be used to iterate from the lower count index to the highest count index
         // e.g. if index for emitter address is 10 (index count), and origin operation id is 20
         //      iter over emitter address index then origin operation id index
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>filter_items = from_event_filter(filter);
+        </span><span class="kw">let </span>filter_items = from_event_filter(filter);
 
         <span class="kw">if </span>filter_items.is_empty() {
-            <span class="kw">if </span>filter.is_final == <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) {
-                <span class="comment">// Explicit request for all finalized events with no other
-                // criteria: scan the whole event column (bounded below by
-                // max_events_per_query) instead of matching nothing
-                </span>filter_items.push((KeyIndent::Event, FilterItem::SlotStart(Slot::new(<span class="number">0</span>, <span class="number">0</span>))));
-            } <span class="kw">else </span>{
-                <span class="comment">// Note: will return too many event - user should restrict the filter
-                </span><span class="macro">warn!</span>(<span class="string">"No filter parameter provided, please add filter parameters"</span>);
-                <span class="kw">return </span>(<span class="macro">vec!</span>[], <span class="macro">vec!</span>[]);
-            }
+            <span class="comment">// Note: will return too many event - user should restrict the filter
+            </span><span class="macro">warn!</span>(<span class="string">"Filter item only on is final field, please add more filter parameters"</span>);
+            <span class="kw">return </span>(<span class="macro">vec!</span>[], <span class="macro">vec!</span>[]);
         }
 
         <span class="kw">let </span>it = filter_items.iter().map(|(key_indent, filter_item)| {
