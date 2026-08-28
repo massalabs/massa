@@ -315,7 +315,7 @@ impl PeerDBTrait for PeerDB {
         self.try_connect_history.entry(*addr).or_default().success();
     }
 
-    fn set_try_connect_success_or_insert(&mut self, addr: &SocketAddr) {
+    fn set_try_connect_or_insert(&mut self, addr: &SocketAddr) {
         self.try_connect_history
             .entry(*addr)
             .or_default()
@@ -371,8 +371,33 @@ mod tests {
     use std::net::SocketAddr;
 
     use super::super::announcement::{Announcement, MAX_ANNOUNCEMENT_CLOCK_SKEW_MS};
-    use super::{PeerDB, PeerInfo, PeerState, THREE_DAYS_MS};
+    use super::*;
     use crate::wrap_peer_db::PeerDBTrait;
+
+    #[test]
+    fn set_success_records_last_success_for_priority_comparator() {
+        let addr: SocketAddr = "127.0.0.1:1234".parse().unwrap();
+        let mut db = PeerDB::default();
+
+        // Recording only a connection *attempt* must not populate `last_success`:
+        // that field is what feeds the peer-priority comparator.
+        db.set_try_connect_or_insert(&addr);
+        let meta = db.get_connection_metadata_or_default(&addr);
+        assert!(
+            meta.last_success.is_none(),
+            "a mere connect attempt should not count as a success"
+        );
+        assert!(meta.last_try_connect.is_some());
+
+        // Recording an actual success (as the handshake-success path now does)
+        // must populate `last_success`.
+        db.set_success_or_insert(&addr);
+        let meta = db.get_connection_metadata_or_default(&addr);
+        assert!(
+            meta.last_success.is_some(),
+            "a successful connection must be recorded in last_success"
+        );
+    }
 
     /// Build a peer announcing one listener, with its announcement timestamp forced to `timestamp`.
     fn peer_announcing_at(timestamp: u64) -> (PeerId, PeerInfo) {
@@ -418,30 +443,5 @@ mod tests {
         assert!(!within_skew.last_announce.unwrap().is_future_dated(now));
         let (_, beyond_skew) = peer_announcing_at(now + MAX_ANNOUNCEMENT_CLOCK_SKEW_MS + 1);
         assert!(beyond_skew.last_announce.unwrap().is_future_dated(now));
-    }
-
-    #[test]
-    fn set_success_records_last_success_for_priority_comparator() {
-        let addr: SocketAddr = "127.0.0.1:1234".parse().unwrap();
-        let mut db = PeerDB::default();
-
-        // Recording only a connection *attempt* must not populate `last_success`:
-        // that field is what feeds the peer-priority comparator.
-        db.set_try_connect_success_or_insert(&addr);
-        let meta = db.get_connection_metadata_or_default(&addr);
-        assert!(
-            meta.last_success.is_none(),
-            "a mere connect attempt should not count as a success"
-        );
-        assert!(meta.last_try_connect.is_some());
-
-        // Recording an actual success (as the handshake-success path now does)
-        // must populate `last_success`.
-        db.set_success_or_insert(&addr);
-        let meta = db.get_connection_metadata_or_default(&addr);
-        assert!(
-            meta.last_success.is_some(),
-            "a successful connection must be recorded in last_success"
-        );
     }
 }

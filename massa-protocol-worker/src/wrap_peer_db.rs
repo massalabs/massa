@@ -27,7 +27,7 @@ pub trait PeerDBTrait: Send + Sync {
     fn get_peers_mut(&mut self) -> &mut HashMap<PeerId, PeerInfo>;
     fn get_connection_metadata_or_default(&self, addr: &SocketAddr) -> ConnectionMetadata;
     fn set_success_or_insert(&mut self, addr: &SocketAddr);
-    fn set_try_connect_success_or_insert(&mut self, addr: &SocketAddr);
+    fn set_try_connect_or_insert(&mut self, addr: &SocketAddr);
     fn set_try_connect_failure_or_insert(&mut self, addr: &SocketAddr);
     fn set_try_connect_test_success_or_insert(&mut self, addr: &SocketAddr);
     fn set_try_connect_test_failure_or_insert(&mut self, addr: &SocketAddr);
