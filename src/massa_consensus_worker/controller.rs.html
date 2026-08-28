@@ -319,6 +319,27 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_consensus_exports::ConsensusBroadcasts;
 <span class="kw">use </span>massa_consensus_exports::{
@@ -352,6 +373,24 @@
 /// - still be able to read the current state of the graph as processed so far (for this we need a shared state)
 ///
 /// Note that sending commands and reading the state is done from different, mutually-asynchronous tasks and they can have data that are not sync yet.
+///
+/// The command channel is bounded and the sends below use `try_send`: when it is full, the command
+/// is dropped rather than waited on. This is deliberate, and waiting instead would be worse:
+///
+/// - the consensus worker blocks on the protocol block-retrieval channel (`send_wishlist_delta`)
+///   while processing these very commands, and the block-retrieval thread is what both drains that
+///   channel and calls `register_block_header`, so waiting here without a deadline deadlocks the
+///   two threads against each other;
+/// - `register_block` is called by the block factory, which does not propagate the block we just
+///   produced until the command has gone through, so waiting would delay the announcement of our
+///   own block precisely when the node is already struggling.
+///
+/// Dropping is acceptable because consensus is already its own retry mechanism: a block whose
+/// dependencies are missing is held in `WaitingForDependencies` and re-requested from peers through
+/// the wishlist. A header that was merely announced to us is therefore fetched again if it turns
+/// out to matter, so layering another retry queue on top of the graph would duplicate that
+/// mechanism rather than add robustness. Channel saturation is visible through the
+/// `consensus_command_channel_actual_size` metric.
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ConsensusControllerImpl {
     command_sender: MassaSender&lt;ConsensusCommand&gt;,
@@ -605,7 +644,8 @@
             ))
         {
             <span class="macro">warn!</span>(<span class="string">"error trying to register a block: {}"</span>, err);
-        }
+            <span class="comment">// dropping on a full channel is intended, see the note on `ConsensusControllerImpl`
+        </span>}
     }
 
     <span class="kw">fn </span>register_block_header(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;) {
@@ -624,7 +664,8 @@
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))
         {
             <span class="macro">warn!</span>(<span class="string">"error trying to register a block header: {}"</span>, err);
-        }
+            <span class="comment">// dropping on a full channel is intended, see the note on `ConsensusControllerImpl`
+        </span>}
     }
 
     <span class="kw">fn </span>mark_invalid_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: BlockId, header: SecureShare&lt;BlockHeader, BlockId&gt;) {
@@ -633,7 +674,8 @@
             .try_send(ConsensusCommand::MarkInvalidBlock(block_id, header))
         {
             <span class="macro">warn!</span>(<span class="string">"error trying to mark block as invalid: {}"</span>, err);
-        }
+            <span class="comment">// dropping on a full channel is intended, see the note on `ConsensusControllerImpl`
+        </span>}
     }
 
     <span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ConsensusController&gt; {
