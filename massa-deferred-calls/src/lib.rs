@@ -48,6 +48,7 @@ pub struct DeferredCallRegistry {
     call_id_deserializer: DeferredCallIdDeserializer,
     registry_changes_deserializer: DeferredRegistryChangesDeserializer,
     registry_changes_serializer: DeferredRegistryChangesSerializer,
+    min_gas_cost: u64,
 }
 
 impl DeferredCallRegistry {
@@ -68,6 +69,7 @@ impl DeferredCallRegistry {
             call_id_deserializer: DeferredCallIdDeserializer::new(),
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(config),
             registry_changes_serializer: DeferredRegistryChangesSerializer::new(config),
+            min_gas_cost: config.min_gas_cost,
         }
     }
 
@@ -151,10 +153,12 @@ impl DeferredCallRegistry {
         }
     }
 
-    /// Returns the base fee for a slot
+    /// Returns the base fee for a slot.
+    /// Uninitialized slots (missing from storage or set to zero) fall back to
+    /// `min_gas_cost` so bookable slots are never priced at zero.
     pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
         let key = deferred_call_slot_base_fee_key!(slot.to_bytes_key());
-        match self.db.read().get_cf(STATE_CF, key) {
+        let base_fee = match self.db.read().get_cf(STATE_CF, key) {
             Ok(Some(v)) => {
                 self.call_deserializer
                     .amount_deserializer
@@ -163,6 +167,12 @@ impl DeferredCallRegistry {
                     .1
             }
             _ => Amount::zero(),
+        };
+
+        if base_fee.is_zero() {
+            Amount::from_raw(self.min_gas_cost)
+        } else {
+            base_fee
         }
     }
 

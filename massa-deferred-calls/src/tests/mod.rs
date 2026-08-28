@@ -139,3 +139,33 @@ fn call_registry_get_slot_calls() {
     assert_eq!(result.slot_base_fee, Amount::from_raw(10000000));
     assert_eq!(result.effective_slot_gas, 100_000);
 }
+
+#[test]
+fn uninitialized_slot_base_fee_uses_min_gas_cost() {
+    let temp_dir = tempdir().expect("Unable to create a temp folder");
+    let db_config = MassaDBConfig {
+        path: temp_dir.path().to_path_buf(),
+        max_history_length: 100,
+        max_final_state_elements_size: 100,
+        max_versioning_elements_size: 100,
+        thread_count: THREAD_COUNT,
+        max_ledger_backups: 100,
+        enable_metrics: false,
+    };
+    let db: ShareableMassaDBController = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
+
+    let config = DeferredCallsConfig::default();
+    let registry = DeferredCallRegistry::new(db, config);
+
+    let slot = Slot {
+        thread: 0,
+        period: 42,
+    };
+
+    assert_eq!(
+        registry.get_slot_base_fee(&slot),
+        Amount::from_raw(config.min_gas_cost)
+    );
+}
