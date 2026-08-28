@@ -47,6 +47,11 @@ impl SharedWhiteBlackList<'_> {
 
     /// Add IP address to the black list
     pub fn add_ips_to_blacklist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
+        // Canonicalize on insert so the in-memory list matches the canonical
+        // form used by `is_ip_allowed` (and by `load_list` on reload). Otherwise
+        // a non-canonical entry such as `::ffff:a.b.c.d` would fail to block the
+        // equivalent IPv4 peer until the next file reload.
+        let ips = ips.into_iter().map(to_canonical).collect::<Vec<_>>();
         let mut write_lock = self.inner.write();
         if let Some(black_list) = &mut write_lock.black_list {
             black_list.extend(ips);
@@ -59,6 +64,7 @@ impl SharedWhiteBlackList<'_> {
 
     /// Remove IPs address from the black list
     pub fn remove_ips_from_blacklist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
+        let ips = ips.into_iter().map(to_canonical).collect::<Vec<_>>();
         let mut write_lock = self.inner.write();
         if let Some(black_list) = &mut write_lock.black_list {
             for ip in ips {
@@ -71,6 +77,9 @@ impl SharedWhiteBlackList<'_> {
 
     /// Add IP address to the white list
     pub fn add_ips_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
+        // See `add_ips_to_blacklist`: canonicalize on insert for consistency
+        // with the canonicalized membership check in `is_ip_allowed`.
+        let ips = ips.into_iter().map(to_canonical).collect::<Vec<_>>();
         let mut write_lock = self.inner.write();
         if let Some(white_list) = &mut write_lock.white_list {
             white_list.extend(ips);
@@ -83,6 +92,7 @@ impl SharedWhiteBlackList<'_> {
 
     /// Remove IPs address from the white list
     pub fn remove_ips_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
+        let ips = ips.into_iter().map(to_canonical).collect::<Vec<_>>();
         let mut write_lock = self.inner.write();
         if let Some(white_list) = &mut write_lock.white_list {
             for ip in ips {
@@ -219,4 +229,32 @@ impl WhiteBlackListInner {
 pub(crate) struct WhiteBlackListInner {
     white_list: Option<HashSet<IpAddr>>,
     black_list: Option<HashSet<IpAddr>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SharedWhiteBlackList;
+    use crate::error::BootstrapError;
+    use std::net::{IpAddr, SocketAddr};
+    use tempfile::TempDir;
+
+    #[test]
+    fn blacklisting_mapped_ipv6_blocks_equivalent_ipv4_immediately() {
+        let dir = TempDir::new().unwrap();
+        let white = dir.path().join("whitelist.json");
+        let black = dir.path().join("blacklist.json");
+        let list = SharedWhiteBlackList::new(white, black).unwrap();
+
+        // Add the IPv4-mapped IPv6 form of 127.0.0.2 through the private API.
+        let mapped: IpAddr = "::ffff:127.0.0.2".parse().unwrap();
+        list.add_ips_to_blacklist(vec![mapped]).unwrap();
+
+        // The equivalent plain IPv4 peer must be blocked right away, without
+        // waiting for a file reload to canonicalize the stored entry.
+        let peer = SocketAddr::new("127.0.0.2".parse().unwrap(), 12345);
+        assert!(matches!(
+            list.is_ip_allowed(&peer),
+            Err(BootstrapError::BlackListed(_))
+        ));
+    }
 }

@@ -6,4 +6,6 @@ pub mod mock;
 #[cfg(test)]
 mod public;
 #[cfg(test)]
+mod server;
+#[cfg(test)]
 mod stream;

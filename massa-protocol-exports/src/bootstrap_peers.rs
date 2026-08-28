@@ -91,7 +91,13 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
             self.peer_id_serializer.serialize(peer_id, buffer)?;
             self.u32_serializer
                 .serialize(&(listeners.len() as u32), buffer)?;
-            for (addr, transport_type) in listeners.iter() {
+            // Emit listeners in a deterministic order: `HashMap` iteration order is not
+            // stable, so without sorting, logically identical peer sets could produce
+            // different byte encodings (a non-canonical format). Sorting by socket
+            // address (unique per map) yields a canonical, reproducible encoding.
+            let mut listeners: Vec<(&SocketAddr, &TransportType)> = listeners.iter().collect();
+            listeners.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+            for (addr, transport_type) in listeners {
                 self.ip_addr_serializer.serialize(&addr.ip(), buffer)?;
                 self.port_serializer.serialize(&addr.port(), buffer)?;
                 buffer.push(*transport_type as u8);
@@ -210,5 +216,69 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
         )
         .map(BootstrapPeers)
         .parse(buffer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use massa_serialization::DeserializeError;
+    use massa_signature::KeyPair;
+
+    fn peer_id() -> PeerId {
+        PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key())
+    }
+
+    /// Logically identical `BootstrapPeers` (same listeners, different insertion
+    /// order) must serialize to the exact same bytes: the format is canonical.
+    #[test]
+    fn serialization_is_canonical_regardless_of_insertion_order() {
+        let id = peer_id();
+
+        let mut listeners_a = HashMap::default();
+        listeners_a.insert("127.0.0.1:8080".parse().unwrap(), TransportType::Tcp);
+        listeners_a.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Quic);
+        listeners_a.insert("[::1]:8082".parse().unwrap(), TransportType::Tcp);
+
+        // same set, inserted in the opposite order
+        let mut listeners_b = HashMap::default();
+        listeners_b.insert("[::1]:8082".parse().unwrap(), TransportType::Tcp);
+        listeners_b.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Quic);
+        listeners_b.insert("127.0.0.1:8080".parse().unwrap(), TransportType::Tcp);
+
+        let peers_a = BootstrapPeers(vec![(id, listeners_a)]);
+        let peers_b = BootstrapPeers(vec![(id, listeners_b)]);
+
+        let serializer = BootstrapPeersSerializer::new();
+        let mut buf_a = Vec::new();
+        let mut buf_b = Vec::new();
+        serializer.serialize(&peers_a, &mut buf_a).unwrap();
+        serializer.serialize(&peers_b, &mut buf_b).unwrap();
+
+        assert_eq!(buf_a, buf_b);
+    }
+
+    /// A serialize -> deserialize -> serialize cycle is byte-stable.
+    #[test]
+    fn serialize_deserialize_serialize_is_stable() {
+        let id = peer_id();
+        let mut listeners = HashMap::default();
+        listeners.insert("127.0.0.1:8080".parse().unwrap(), TransportType::Tcp);
+        listeners.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Quic);
+        listeners.insert("[::1]:8082".parse().unwrap(), TransportType::Tcp);
+        let peers = BootstrapPeers(vec![(id, listeners)]);
+
+        let serializer = BootstrapPeersSerializer::new();
+        let deserializer = BootstrapPeersDeserializer::new(10, 10);
+
+        let mut buf1 = Vec::new();
+        serializer.serialize(&peers, &mut buf1).unwrap();
+        let (rest, deserialized) = deserializer.deserialize::<DeserializeError>(&buf1).unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(peers, deserialized);
+
+        let mut buf2 = Vec::new();
+        serializer.serialize(&deserialized, &mut buf2).unwrap();
+        assert_eq!(buf1, buf2);
     }
 }

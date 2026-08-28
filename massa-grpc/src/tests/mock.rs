@@ -8,7 +8,7 @@ use massa_execution_exports::{ExecutionChannels, MockExecutionController};
 use massa_models::amount::Amount;
 use massa_models::{
     config::{
-        ENDORSEMENT_COUNT, MAX_DATASTORE_VALUE_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        ENDORSEMENT_COUNT, MAX_BYTECODE_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH, MAX_OPERATIONS_PER_BLOCK,
         MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
         MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
@@ -64,6 +64,8 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         max_decoding_message_size: 4194304,
         max_encoding_message_size: 4194304,
         max_gas_per_block: u32::MAX as u64,
+        base_operation_gas_cost: 0,
+        sp_compilation_cost: 0,
         concurrency_limit_per_connection: 5,
         timeout: Default::default(),
         initial_stream_window_size: None,
@@ -80,7 +82,7 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         endorsement_count: ENDORSEMENT_COUNT,
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_datastore_entries_per_request: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,

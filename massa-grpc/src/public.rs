@@ -96,18 +96,6 @@ pub(crate) fn execute_read_only_call(
             }
             read_only_execution_call::Target::FunctionCall(call) => {
                 let target_address = Address::from_str(&call.target_address)?;
-                call_stack.push(ExecutionStackElement {
-                    address: caller_address,
-                    coins: Default::default(),
-                    owned_addresses: vec![caller_address],
-                    operation_datastore: None, // should always be None
-                });
-                call_stack.push(ExecutionStackElement {
-                    address: target_address,
-                    coins: Default::default(),
-                    owned_addresses: vec![target_address],
-                    operation_datastore: None, // should always be None
-                });
 
                 coins = call
                     .coins
@@ -116,6 +104,21 @@ pub(crate) fn execute_read_only_call(
                             .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
                     })
                     .transpose()?;
+
+                call_stack.push(ExecutionStackElement {
+                    address: caller_address,
+                    coins: Default::default(),
+                    owned_addresses: vec![caller_address],
+                    operation_datastore: None, // should always be None
+                });
+                // propagate the request-provided coins to the target stack element
+                // so that get_call_coins matches the JSON-RPC behavior
+                call_stack.push(ExecutionStackElement {
+                    address: target_address,
+                    coins: coins.unwrap_or_default(),
+                    owned_addresses: vec![target_address],
+                    operation_datastore: None, // should always be None
+                });
 
                 ReadOnlyExecutionTarget::FunctionCall {
                     target_addr: Address::from_str(&call.target_address)?,
@@ -187,7 +190,7 @@ pub(crate) fn get_blocks(
         ));
     }
 
-    if ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
+    if ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
         return Err(GrpcError::InvalidArgument(format!(
             "too many block ids received. Only a maximum of {} block ids are accepted per request",
             grpc.grpc_config.max_block_ids_per_request
@@ -196,7 +199,6 @@ pub(crate) fn get_blocks(
 
     let mut block_ids: Vec<BlockId> = ids
         .into_iter()
-        .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
         .map(|id| {
             BlockId::from_str(id.as_str())
                 .map_err(|_| GrpcError::InvalidArgument(format!("invalid block id: {}", id)))
@@ -254,18 +256,20 @@ pub(crate) fn get_datastore_entries(
     let filters: Vec<(Address, Vec<u8>)> = inner_req
         .filters
         .into_iter()
-        .filter_map(|filter| {
-            filter.filter.and_then(|filter| match filter {
+        .map(|filter| {
+            let filter = filter
+                .filter
+                .ok_or_else(|| GrpcError::InvalidArgument("no filter provided".to_string()))?;
+            match filter {
                 grpc_api::get_datastore_entry_filter::Filter::AddressKey(addrs) => {
-                    if let Ok(add) = &Address::from_str(&addrs.address) {
-                        Some((*add, addrs.key))
-                    } else {
-                        None
-                    }
+                    let add = Address::from_str(&addrs.address).map_err(|_| {
+                        GrpcError::InvalidArgument(format!("invalid address: {}", addrs.address))
+                    })?;
+                    Ok((add, addrs.key))
                 }
-            })
+            }
         })
-        .collect();
+        .collect::<Result<Vec<(Address, Vec<u8>)>, GrpcError>>()?;
 
     let entries = grpc
         .execution_controller
@@ -298,13 +302,12 @@ pub(crate) fn get_endorsements(
     if ids.len() as u32 > grpc.grpc_config.max_endorsement_ids_per_request {
         return Err(GrpcError::InvalidArgument(format!(
             "too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request",
-            grpc.grpc_config.max_endorsements_per_message
+            grpc.grpc_config.max_endorsement_ids_per_request
         )));
     }
 
     let mut endorsement_ids: Vec<EndorsementId> = ids
         .into_iter()
-        .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
         .map(|id| {
             EndorsementId::from_str(id.as_str())
                 .map_err(|_| GrpcError::InvalidArgument(format!("invalid endorsement id: {}", id)))
@@ -546,9 +549,12 @@ pub(crate) fn get_slot_transfers(
             slot: slot.clone().into(),
             transfers: vec![],
         };
-        let abi_calls = grpc
+        // Read the ABI call stack and the direct transfers for this slot from a single
+        // consistent snapshot, so the combined response cannot mix data from two different
+        // executions of the same slot (a re-execution between two separate reads).
+        let (abi_calls, direct_transfers) = grpc
             .execution_controller
-            .get_slot_abi_call_stack(slot.clone().into());
+            .get_slot_abi_call_stack_and_transfers(slot.clone().into());
         if let Some(abi_calls) = abi_calls {
             // flatten & filter transfer trace in asc_call_stacks
 
@@ -595,10 +601,7 @@ pub(crate) fn get_slot_transfers(
             }
         }
 
-        let transfers = grpc
-            .execution_controller
-            .get_transfers_for_slot(slot.into());
-        if let Some(transfers) = transfers {
+        if let Some(transfers) = direct_transfers {
             for transfer in transfers {
                 slot_transfers.transfers.push(TransferInfo {
                     from: transfer.from.to_string(),
@@ -746,7 +749,6 @@ pub(crate) fn get_operations(
 
     let operation_ids: Vec<OperationId> = operation_ids
         .into_iter()
-        .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
         .map(|id| {
             OperationId::from_str(id.as_str())
                 .map_err(|_| GrpcError::InvalidArgument(format!("invalid operation id: {}", id)))
@@ -848,7 +850,7 @@ pub(crate) fn get_selector_draws(
                 }
                 grpc_api::selector_draws_filter::Filter::SlotRange(s_range) => {
                     let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
-                    if slot_ranges.len() as u32 > grpc.grpc_config.max_slot_ranges_per_request {
+                    if slot_ranges.len() as u32 >= grpc.grpc_config.max_slot_ranges_per_request {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
                             grpc.grpc_config.max_slot_ranges_per_request
@@ -1103,7 +1105,7 @@ pub(crate) fn search_blocks(
                 }
                 grpc_api::search_blocks_filter::Filter::SlotRange(s_range) => {
                     let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
-                    if slot_ranges.len() as u32 > grpc.grpc_config.max_slot_ranges_per_request {
+                    if slot_ranges.len() as u32 >= grpc.grpc_config.max_slot_ranges_per_request {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
                             grpc.grpc_config.max_slot_ranges_per_request

@@ -84,6 +84,8 @@ pub struct ProtocolConfig {
     pub genesis_timestamp: MassaTime,
     /// max number of operations kept in memory for propagation
     pub max_ops_kept_for_propagation: usize,
+    /// max number of endorsements merged into a single propagation round
+    pub max_endorsements_per_propagation_round: usize,
     /// max time we propagate operations
     pub max_operations_propagation_time: MassaTime,
     /// max time we propagate endorsements
@@ -122,8 +124,8 @@ pub struct ProtocolConfig {
     pub endorsement_count: u32,
     /// running threads count
     pub thread_count: u8,
-    /// Maximum size of an value user datastore
-    pub max_size_value_datastore: u64,
+    /// Maximum size of a smart contract bytecode in an `ExecuteSC` operation
+    pub max_bytecode_size: u64,
     /// Maximum size of a function name
     pub max_size_function_name: u16,
     /// Maximum size of a parameter of a call in ops
@@ -176,4 +178,19 @@ pub struct ProtocolConfig {
     pub rate_limit: u64,
     /// Chain id
     pub chain_id: u64,
+}
+
+impl ProtocolConfig {
+    /// Whether the node is configured to deal with peers that do not have a
+    /// globally routable address, i.e. local networks. Mirrors the
+    /// `allow_local_peers` category setting: as soon as one category accepts
+    /// local peers, non global endpoints are kept in the peer management
+    /// pipeline, the per category check being done when connecting out.
+    pub fn allow_local_peers(&self) -> bool {
+        self.default_category_info.allow_local_peers
+            || self
+                .peers_categories
+                .values()
+                .any(|category| category.allow_local_peers)
+    }
 }

@@ -13,3 +13,4 @@ toml_edit = {workspace = true}   # BOM UPGRADE     Revert to "0.19.8" if problem
 walkdir = {workspace = true}
 # check_gas_costs dependencies
 massa-sc-runtime = {workspace = true}
+serde_json = {workspace = true}

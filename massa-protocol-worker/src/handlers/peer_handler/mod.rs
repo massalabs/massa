@@ -13,6 +13,7 @@ use massa_protocol_exports::{
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::Signature;
+use massa_time::MassaTime;
 use peernet::context::Context as _;
 use peernet::messages::MessagesSerializer as _;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -27,6 +28,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::context::Context;
 use crate::handlers::peer_handler::models::PeerState;
+use crate::ip::filter_routable_listeners;
 use crate::messages::{Message, MessagesHandler, MessagesSerializer};
 use crate::wrap_network::ActiveConnectionsTrait;
 
@@ -55,6 +57,26 @@ pub mod models;
 mod tester;
 
 pub(crate) use messages::{PeerManagementMessage, PeerManagementMessageSerializer};
+
+/// Drops the endpoints we must not re-advertise from a peer list, along with the
+/// peers left without any announced listener. Peer listeners come from signed
+/// but peer controlled announcements: we only pass around endpoints we would
+/// probe ourselves (see [`filter_routable_listeners`]).
+fn filter_peers_listeners(
+    peers: Vec<(PeerId, HashMap<SocketAddr, TransportType>)>,
+    allow_local_peers: bool,
+) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
+    peers
+        .into_iter()
+        .map(|(peer_id, listeners)| {
+            (
+                peer_id,
+                filter_routable_listeners(listeners, allow_local_peers),
+            )
+        })
+        .filter(|(_, listeners)| !listeners.is_empty())
+        .collect()
+}
 
 #[allow(dead_code)]
 pub struct PeerManagementHandler {
@@ -119,7 +141,10 @@ impl PeerManagementHandler {
                 loop {
                     select! {
                         recv(ticker) -> _ => {
-                            let peers_to_send = peer_db.read().get_rand_peers_to_send(100);
+                            let peers_to_send = filter_peers_listeners(
+                                peer_db.read().get_rand_peers_to_send(100),
+                                config.allow_local_peers(),
+                            );
                             if peers_to_send.is_empty() {
                                 continue;
                             }
@@ -152,7 +177,10 @@ impl PeerManagementHandler {
                                 }
                             },
                              Ok(PeerManagementCmd::GetBootstrapPeers { responder }) => {
-                                let mut peers = peer_db.read().get_rand_peers_to_send(100);
+                                let mut peers = filter_peers_listeners(
+                                    peer_db.read().get_rand_peers_to_send(100),
+                                    config.allow_local_peers(),
+                                );
                                 // Add myself
                                 if let Some(routable_ip) = config.routable_ip {
                                     let listeners = config.listeners.iter().map(|(addr, ty)| {
@@ -199,7 +227,14 @@ impl PeerManagementHandler {
                                 }
                             };
                             if !rest.is_empty() {
-                                warn!("message not fully deserialized");
+                                // A compliant peer never sends trailing bytes, so ban the sender.
+                                warn!(
+                                    "peer {} sent a peer management message with {} unexpected trailing byte(s); banning it",
+                                    peer_id,
+                                    rest.len()
+                                );
+                                active_connections.shutdown_connection(&peer_id);
+                                peer_db.write().ban_peer(&peer_id);
                                 continue;
                             }
                             match message {
@@ -232,7 +267,16 @@ impl PeerManagementHandler {
                     &mut message,
                 )
                 .unwrap();
-            sender_msg.try_send((*peer_id, message)).unwrap();
+            // The initial peer set is the union of the locally configured peers and the
+            // network-provided bootstrap peers, so it can exceed the channel capacity.
+            // Dropping an excess peer here must not panic (and abort) node startup: the
+            // peer can still be (re)discovered later through normal peer exchange.
+            if let Err(err) = sender_msg.try_send((*peer_id, message)) {
+                warn!(
+                    "could not enqueue initial peer {} for the peer-management thread: {}",
+                    peer_id, err
+                );
+            }
         }
 
         Self {
@@ -425,9 +469,22 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         return Err(PeerNetError::HandshakeError
                             .error("Massa Handshake", Some("Invalid signature".to_string())));
                     }
+                    // the announcement timestamp is the freshness signal used to decide which
+                    // peers we keep sharing, so refuse one that is dated too far ahead of us
+                    if announcement.is_future_dated(MassaTime::now().as_millis()) {
+                        return Err(PeerNetError::HandshakeError.error(
+                            "Massa Handshake",
+                            Some("Announcement timestamp too far in the future".to_string()),
+                        ));
+                    }
+                    // The announcement is signed but its listeners are peer controlled:
+                    // only spread endpoints that are acceptable to probe.
                     let message = PeerManagementMessage::NewPeerConnected((
                         peer_id,
-                        announcement.clone().listeners,
+                        filter_routable_listeners(
+                            announcement.listeners.clone(),
+                            self.config.allow_local_peers(),
+                        ),
                     ));
                     let mut bytes = Vec::new();
                     let peer_management_message_serializer = MessagesSerializer::new()

@@ -228,13 +228,6 @@ impl FinalState {
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
         self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
-
-        let mut batch = DBBatch::new();
-
-        self.pos_state
             .create_new_cycle_from_last(
                 &latest_snapshot_cycle_info,
                 current_slot
@@ -272,55 +265,50 @@ impl FinalState {
             .get_cycle_info(latest_snapshot_cycle.0)
             .ok_or_else(|| FinalStateError::SnapshotError(String::from("Missing cycle info")))?;
 
-        let mut batch = DBBatch::new();
+        // Firstly, complete the first cycle, only if it is not already completed
+        if !current_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count) {
+            let mut batch = DBBatch::new();
 
-        self.pos_state
-            .cycle_history_cache
-            .pop_back()
-            .ok_or(FinalStateError::SnapshotError(String::from(
-                "Impossible to interpolate the downtime: no cycle in the given snapshot",
-            )))?;
-        self.pos_state
-            .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
+            self.pos_state
+                .cycle_history_cache
+                .pop_back()
+                .ok_or(FinalStateError::SnapshotError(String::from(
+                    "Impossible to interpolate the downtime: no cycle in the given snapshot",
+                )))?;
+            self.pos_state
+                .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
-
-        // Firstly, complete the first cycle
-        let last_slot = Slot::new_last_of_cycle(
-            current_slot_cycle,
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-        )
-        .map_err(|err| {
-            FinalStateError::InvalidSlot(format!(
-                "Cannot create slot for interpolating downtime: {}",
-                err
-            ))
-        })?;
-
-        let mut batch = DBBatch::new();
-
-        self.pos_state
-            .create_new_cycle_from_last(
-                &latest_snapshot_cycle_info,
-                current_slot
-                    .get_next_slot(self.config.thread_count)
-                    .expect("Cannot get next slot"),
-                last_slot,
-                &mut batch,
+            let last_slot = Slot::new_last_of_cycle(
+                current_slot_cycle,
+                self.config.periods_per_cycle,
+                self.config.thread_count,
             )
-            .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+            .map_err(|err| {
+                FinalStateError::InvalidSlot(format!(
+                    "Cannot create slot for interpolating downtime: {}",
+                    err
+                ))
+            })?;
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+            self.pos_state
+                .create_new_cycle_from_last(
+                    &latest_snapshot_cycle_info,
+                    current_slot
+                        .get_next_slot(self.config.thread_count)
+                        .expect("Cannot get next slot"),
+                    last_slot,
+                    &mut batch,
+                )
+                .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        // Feed final_state_hash to the completed cycle
-        self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
+            self.pos_state
+                .db
+                .write()
+                .write_batch(batch, Default::default(), Some(last_slot));
+
+            // Feed final_state_hash to the completed cycle
+            self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
+        }
 
         // TODO: Bring back the following optimisation (it fails because of selector)
         // Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
@@ -363,7 +351,7 @@ impl FinalState {
             self.pos_state
                 .db
                 .write()
-                .write_batch(batch, Default::default(), Some(end_slot));
+                .write_batch(batch, Default::default(), Some(last_slot));
 
             // Feed final_state_hash to the completed cycle
             self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
@@ -971,11 +959,12 @@ mod test {
         bytecode::Bytecode,
         config::{
             DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-            MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-            MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-            MAX_DENUNCIATION_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
-            MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
-            PERIODS_PER_CYCLE, POS_SAVED_CYCLES, T0, THREAD_COUNT,
+            MAX_ASYNC_POOL_LENGTH, MAX_BYTECODE_LENGTH, MAX_DATASTORE_KEY_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+            MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
+            MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, PERIODS_PER_CYCLE,
+            POS_SAVED_CYCLES, T0, THREAD_COUNT,
         },
         types::SetUpdateOrDelete,
     };
@@ -995,6 +984,7 @@ mod test {
             initial_ledger_path: massa_node_base.join("base_config/initial_ledger.json"),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_bytecode_size: MAX_BYTECODE_LENGTH,
         };
         let async_pool_config = AsyncPoolConfig {
             max_length: MAX_ASYNC_POOL_LENGTH,

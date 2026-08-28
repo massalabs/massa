@@ -52,8 +52,8 @@ use rand::{seq::SliceRandom, Rng};
 use tracing::{debug, info, warn};
 
 use super::{
-    super::operation_handler::note_operations_from_peer,
-    cache::SharedBlockCache,
+    super::operation_handler::{is_block_intrinsic_operation_failure, note_operations_from_peer},
+    cache::{BlockDataKind, SharedBlockCache},
     commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand,
     messages::{
@@ -121,7 +121,10 @@ impl RetrievalThread {
                 thread_count: self.config.thread_count,
                 endorsement_count: self.config.endorsement_count,
                 max_operations_per_block: self.config.max_operations_per_block,
-                max_datastore_value_length: self.config.max_size_value_datastore,
+                max_bytecode_size: self.config.max_bytecode_size,
+                max_serialized_operations_size_per_block: self
+                    .config
+                    .max_serialized_operations_size_per_block,
                 max_function_name_length: self.config.max_size_function_name,
                 max_parameters_size: self.config.max_size_call_sc_parameter,
                 max_op_datastore_entry_count: self.config.max_op_datastore_entry_count,
@@ -148,8 +151,20 @@ impl RetrievalThread {
                                 }
                             };
                             if !rest.is_empty() {
-                                println!("Error: message not fully consumed");
-                                return;
+                                // A valid message prefix followed by trailing bytes must not
+                                // tear down this long-lived shared retrieval thread (doing so
+                                // would let a single peer deny block handling for everyone).
+                                // A compliant peer never sends trailing bytes, so ban the
+                                // sender and keep serving other peers.
+                                warn!(
+                                    "peer {} sent a block message with {} unexpected trailing byte(s); banning it",
+                                    peer_id,
+                                    rest.len()
+                                );
+                                if let Err(err) = self.ban_peers(&[peer_id]) {
+                                    warn!("Error while banning peer {} err: {:?}", peer_id, err);
+                                }
+                                continue;
                             }
                             match message {
                                 BlockMessage::DataRequest{block_id, block_info} => {
@@ -427,6 +442,12 @@ impl RetrievalThread {
 
         let block_id = header.id;
 
+        // durably record that this peer sent us the header of that block, so that a later
+        // attack detection can be attributed to it even if it disconnects in the meantime
+        self.cache
+            .write()
+            .insert_block_sender(&block_id, &from_peer_id, BlockDataKind::Header);
+
         // Check header and update knowledge info
         let is_new = match self.note_header_from_peer(&header, &from_peer_id) {
             Ok(is_new) => is_new,
@@ -674,6 +695,19 @@ impl RetrievalThread {
         }
     }
 
+    /// Whether we currently have an outstanding request for that block's data towards that peer.
+    ///
+    /// Used to correlate an incoming `BlockInfoReply` with a request we actually made:
+    /// an unsolicited reply proves nothing about what the sender holds, so it must not be
+    /// used to mark the sender as knowing the block. Otherwise any peer could claim knowledge
+    /// of arbitrary block ids and get prioritized by `update_block_retrieval`, wasting an
+    /// ask timeout window before honest peers are tried.
+    fn has_pending_block_ask(&self, peer_id: &PeerId, block_id: &BlockId) -> bool {
+        self.asked_blocks
+            .get(peer_id)
+            .is_some_and(|asked| asked.contains_key(block_id))
+    }
+
     /// Mark a block as invalid
     fn mark_block_as_invalid(&mut self, block_id: &BlockId) {
         // stop retrieving the block
@@ -685,23 +719,23 @@ impl RetrievalThread {
             }
         }
 
-        // ban all peers that know about this block
-        let mut peers_to_ban = Vec::new();
-        {
-            let cache_read = self.cache.read();
-            for (peer_id, peer_known_blocks) in cache_read.blocks_known_by_peer.iter() {
-                if peer_known_blocks.peek(block_id).is_some() {
-                    peers_to_ban.push(*peer_id);
-                }
-            }
-        }
-        if !peers_to_ban.is_empty() {
-            if let Err(err) = self.ban_peers(&peers_to_ban) {
-                warn!(
-                    "Error while banning peers {:?} err: {:?}",
-                    peers_to_ban, err
-                );
-            }
+        // ban the peers that actually sent us the contents of this block.
+        // this is a contents-level defect, so peers that only relayed the header are spared:
+        // they had no way of checking the contents before propagating.
+        // `blocks_known_by_peer` must not be used here: it is mutable propagation state that
+        // also marks peers we announced the block to (and even peers marked as *not* knowing it),
+        // and it is pruned on disconnection and by LRU eviction.
+        let peers_to_ban = self.cache.read().get_block_contents_senders(block_id);
+        if peers_to_ban.is_empty() {
+            warn!(
+                "block {} marked as invalid but no peer could be attributed as a sender of its contents: not banning anyone",
+                block_id
+            );
+        } else if let Err(err) = self.ban_peers(&peers_to_ban) {
+            warn!(
+                "Error while banning peers {:?} err: {:?}",
+                peers_to_ban, err
+            );
         }
 
         // clear retrieval cache
@@ -726,6 +760,11 @@ impl RetrievalThread {
         );
         // Note that the length of the operation list was checked at deserialization to not overflow the max per block.
 
+        // durably record that this peer sent us contents for that block (see `insert_block_sender`)
+        self.cache
+            .write()
+            .insert_block_sender(&block_id, &from_peer_id, BlockDataKind::Contents);
+
         // All operation ids sent into a set to deduplicate and search quickly for presence
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
 
@@ -746,11 +785,16 @@ impl RetrievalThread {
         {
             info
         } else {
-            // we were not actively looking for that data, but mark the remote node as knowing the block
+            // we were not actively looking for that data
             debug!("peer {} sent us a list of operation IDs for block id {} but we were not looking for it", from_peer_id, block_id);
-            self.cache
-                .write()
-                .insert_peer_known_block(&from_peer_id, &[block_id], true);
+            // only mark the remote node as knowing the block if this reply answers a request we
+            // made to it: an unsolicited list is unverifiable here (we have no header to check
+            // its hash against) and must not be allowed to poison peer block knowledge
+            if self.has_pending_block_ask(&from_peer_id, &block_id) {
+                self.cache
+                    .write()
+                    .insert_peer_known_block(&from_peer_id, &[block_id], true);
+            }
             return;
         };
 
@@ -807,6 +851,11 @@ impl RetrievalThread {
             block_id, &from_peer_id
         );
 
+        // durably record that this peer sent us contents for that block (see `insert_block_sender`)
+        self.cache
+            .write()
+            .insert_block_sender(&block_id, &from_peer_id, BlockDataKind::Contents);
+
         // Ensure that we were looking for that data.
         let wishlist_info = if let Some(info) = self
             .block_wishlist
@@ -820,10 +869,17 @@ impl RetrievalThread {
                 "Peer id {} sent us full operations for block id {} but we were not looking for it",
                 from_peer_id, block_id
             );
-            // still mark the sender as knowing the block and operations
-            self.cache
-                .write()
-                .insert_peer_known_block(&from_peer_id, &[block_id], true);
+            // only mark the sender as knowing the block if this reply answers a request we made
+            // to it: an unsolicited reply carries no proof that the sender holds the block
+            // (its payload can be empty or unrelated, and we have nothing to check it against
+            // here) and must not be allowed to poison peer block knowledge
+            if self.has_pending_block_ask(&from_peer_id, &block_id) {
+                self.cache
+                    .write()
+                    .insert_peer_known_block(&from_peer_id, &[block_id], true);
+            }
+            // the operation ids are self-certifying (computed from the operation contents at
+            // deserialization), so the sender can safely be marked as knowing them
             self.operation_cache.write().insert_peer_known_ops(
                 &from_peer_id,
                 &operations
@@ -876,9 +932,6 @@ impl RetrievalThread {
         // Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
 
         // Check the validity of the received operations.
-        // TODO: in the future if the validiy check fails for something non-malleable (eg. not sig verif),
-        //       we should stop retrieving the block and ban everyone who knows it
-        //       because we know for sure that this op's ID belongs to the block.
         if let Err(err) = note_operations_from_peer(
             &self.storage,
             &mut self.operation_cache,
@@ -888,6 +941,17 @@ impl RetrievalThread {
             &mut self.sender_propagation_ops,
             &mut self.pool_controller,
         ) {
+            if is_block_intrinsic_operation_failure(&err) {
+                // The failure is fully determined by operation contents that the block's operation IDs
+                // already commit to: no peer can ever deliver a valid version of this block.
+                // Stop retrieving it instead of asking around forever.
+                warn!(
+                    "block id {} is invalid: one of the operations it commits to failed a content-level check: {}",
+                    block_id, err
+                );
+                self.mark_block_as_invalid(&block_id);
+                return;
+            }
             warn!(
                 "Peer id {} sent us operations for block id {} but they failed validity checks: {}",
                 from_peer_id, block_id, err

@@ -3,7 +3,10 @@ use massa_db_exports::DBBatch;
 use massa_final_state::{FinalStateController, FinalStateError};
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
-use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
+use massa_models::{
+    node::NodeId, slot::Slot, streaming_step::StreamingStep, timeslots::get_block_slot_timestamp,
+    version::Version,
+};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{ComponentStateTypeId, MipInfo, MipState, StateAtError};
@@ -65,7 +68,7 @@ impl BSConnector for DefaultConnector {
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-fn stream_final_state_and_consensus(
+pub(crate) fn stream_final_state_and_consensus(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
@@ -90,6 +93,12 @@ fn stream_final_state_and_consensus(
                 } => {
                     // Set final state
                     let mut write_final_state = global_bootstrap_state.final_state.write();
+
+                    // Reject inconsistent network restart metadata before storing it: both
+                    // fields feed slot and timestamp arithmetic at startup, so impossible values
+                    // would only surface much later, as a panic following an otherwise
+                    // successful bootstrap.
+                    check_restart_metadata(cfg, &last_start_period, &last_slot_before_downtime)?;
 
                     // We only need to receive the initial_state once
                     if let Some(last_start_period) = last_start_period {
@@ -150,8 +159,6 @@ fn stream_final_state_and_consensus(
                 }
                 BootstrapServerMessage::BootstrapFinished => {
                     info!("State bootstrap complete");
-                    // Set next bootstrap message
-                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
 
                     // Update MIP store by reading from the disk
                     let mut guard = global_bootstrap_state.final_state.write();
@@ -162,6 +169,38 @@ fn stream_final_state_and_consensus(
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
 
                     warn_user_about_versioning_updates(updated, added);
+
+                    // The downtime range announced by the server must also be consistent with the
+                    // MIP store we just bootstrapped: startup requires it, so checking it here
+                    // lets us retry with another server instead of failing after the fact.
+                    if let Some(last_slot_before_downtime) = *guard.get_last_slot_before_downtime()
+                    {
+                        let (shutdown_start, shutdown_end) = shutdown_range(
+                            cfg,
+                            guard.get_last_start_period(),
+                            last_slot_before_downtime,
+                        )?;
+                        guard
+                            .get_mip_store()
+                            .is_consistent_with_shutdown_period(
+                                shutdown_start,
+                                shutdown_end,
+                                cfg.thread_count,
+                                cfg.t0,
+                                cfg.genesis_timestamp,
+                            )
+                            .map_err(|e| {
+                                BootstrapError::GeneralError(format!(
+                                    "bootstrapped MIP store is not consistent with the shutdown period announced by the server: {}",
+                                    e
+                                ))
+                            })?;
+                    }
+
+                    // Only advance to the next phase once the streamed state has been fully
+                    // post-processed: on failure the retry must replay the state streaming
+                    // instead of resuming from the peers phase with a half-updated store.
+                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
 
                     return Ok(());
                 }
@@ -176,6 +215,12 @@ fn stream_final_state_and_consensus(
                     };
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
+                    drop(write_final_state);
+                    // The cursor above restarts the consensus stream from `Started`, for which the
+                    // server reports no outdated ids: blocks kept from the aborted attempt would
+                    // never be pruned and would be merged into the next attempt's graph.
+                    global_bootstrap_state.graph = None;
+                    global_bootstrap_state.peers = None;
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
                 // At this point, we have successfully received the next message from the server, and it's an error-message String
@@ -326,6 +371,83 @@ pub(crate) fn bootstrap_from_server(
     }
     info!("Successful bootstrap");
     Ok(())
+}
+
+/// Checks the network restart metadata announced by a bootstrap server.
+///
+/// The server sends `last_start_period` and `last_slot_before_downtime` together, and only once
+/// per stream. Startup then derives the network downtime range and its timestamps from them (see
+/// `massa-node`), assuming they describe a coherent interval, so anything else has to be rejected
+/// as a bootstrap failure rather than stored.
+fn check_restart_metadata(
+    cfg: &BootstrapConfig,
+    last_start_period: &Option<u64>,
+    last_slot_before_downtime: &Option<Option<Slot>>,
+) -> Result<(), BootstrapError> {
+    let (last_start_period, last_slot_before_downtime) =
+        match (last_start_period, last_slot_before_downtime) {
+            (None, None) => return Ok(()),
+            (Some(period), Some(slot)) => (*period, *slot),
+            _ => {
+                return Err(BootstrapError::GeneralError(
+                    "the server sent only one half of the network restart metadata".into(),
+                ))
+            }
+        };
+
+    // the timestamp of the last start slot is computed at startup: it must not overflow
+    get_block_slot_timestamp(
+        cfg.thread_count,
+        cfg.t0,
+        cfg.genesis_timestamp,
+        Slot::new(last_start_period, cfg.thread_count.saturating_sub(1)),
+    )
+    .map_err(|e| {
+        BootstrapError::GeneralError(format!(
+            "the server sent an out of range last_start_period {}: {}",
+            last_start_period, e
+        ))
+    })?;
+
+    let Some(last_slot_before_downtime) = last_slot_before_downtime else {
+        return Ok(());
+    };
+
+    // the last slot executed before the downtime has to precede the restart
+    if last_slot_before_downtime >= Slot::new(last_start_period, 0) {
+        return Err(BootstrapError::GeneralError(format!(
+            "the server announced a downtime starting at {} but a restart at period {}",
+            last_slot_before_downtime, last_start_period
+        )));
+    }
+
+    shutdown_range(cfg, last_start_period, last_slot_before_downtime).map(|_| ())
+}
+
+/// Computes the slot range of the last network shutdown, as startup does: from the slot right
+/// after the last one executed before the downtime, to the slot right before the restart.
+fn shutdown_range(
+    cfg: &BootstrapConfig,
+    last_start_period: u64,
+    last_slot_before_downtime: Slot,
+) -> Result<(Slot, Slot), BootstrapError> {
+    let shutdown_start = last_slot_before_downtime
+        .get_next_slot(cfg.thread_count)
+        .map_err(|e| {
+            BootstrapError::GeneralError(format!(
+                "the server sent an out of range last_slot_before_downtime {}: {}",
+                last_slot_before_downtime, e
+            ))
+        })?;
+    let shutdown_end = Slot::new(last_start_period, 0)
+        .get_prev_slot(cfg.thread_count)
+        .map_err(|e| {
+            BootstrapError::GeneralError(format!(
+                "the server announced a downtime ending at period {}, which has no previous slot: {}",
+                last_start_period, e
+            ))
+        })?;
+    Ok((shutdown_start, shutdown_end))
 }
 
 fn send_client_message(
@@ -684,4 +806,55 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
     }
 
     debug!("MIP store got {} MIP updated from bootstrap", updated.len());
+}
+
+#[cfg(test)]
+mod restart_metadata_tests {
+    use super::*;
+    use crate::tests::tools::get_bootstrap_config;
+    use massa_signature::KeyPair;
+
+    fn config() -> BootstrapConfig {
+        get_bootstrap_config(NodeId::new(KeyPair::generate(0).unwrap().get_public_key()))
+    }
+
+    #[test]
+    fn accepts_plausible_restart_metadata() {
+        let cfg = config();
+        let tc = cfg.thread_count;
+        for (last_start_period, last_slot_before_downtime) in [
+            // a server that has nothing to say about a restart
+            (None, None),
+            // a network that never restarted
+            (Some(0), Some(None)),
+            // a restart leaving no idle slot behind
+            (Some(1), Some(Some(Slot::new(0, tc - 1)))),
+            // a restart after an actual downtime
+            (Some(100), Some(Some(Slot::new(42, 3)))),
+        ] {
+            check_restart_metadata(&cfg, &last_start_period, &last_slot_before_downtime).unwrap();
+        }
+    }
+
+    #[test]
+    fn rejects_impossible_restart_metadata() {
+        let cfg = config();
+        for (last_start_period, last_slot_before_downtime) in [
+            // only one half of the metadata
+            (Some(2), None),
+            (None, Some(Some(Slot::new(1, 0)))),
+            // period 0 has no previous slot, the downtime cannot end before the restart
+            (Some(0), Some(Some(Slot::new(0, 0)))),
+            // the downtime starts after the restart
+            (Some(1), Some(Some(Slot::new(5, 0)))),
+            // the restart timestamp does not fit in a `MassaTime`
+            (Some(u64::MAX), Some(None)),
+        ] {
+            check_restart_metadata(&cfg, &last_start_period, &last_slot_before_downtime)
+                .expect_err(&format!(
+                    "accepted {:?} / {:?}",
+                    last_start_period, last_slot_before_downtime
+                ));
+        }
+    }
 }

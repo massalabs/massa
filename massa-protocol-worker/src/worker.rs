@@ -114,11 +114,11 @@ pub fn create_protocol_controller(
         );
     let (sender_blocks_propagation_ext, receiver_blocks_propagation_ext) = MassaChannel::new(
         "blocks_propagation_ext".to_string(),
-        Some(config.max_size_channel_commands_retrieval_blocks),
+        Some(config.max_size_channel_commands_propagation_blocks),
     );
     let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) = MassaChannel::new(
         "blocks_retrieval_ext".to_string(),
-        Some(config.max_size_channel_commands_propagation_blocks),
+        Some(config.max_size_channel_commands_retrieval_blocks),
     );
     let (sender_connectivity_ext, receiver_connectivity_ext) = MassaChannel::new(
         "connectivity_ext".to_string(),

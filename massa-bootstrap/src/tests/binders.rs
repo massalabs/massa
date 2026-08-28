@@ -1,3 +1,4 @@
+use crate::client::stream_final_state_and_consensus;
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::server::manage_bootstrap;
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
@@ -6,26 +7,31 @@ use crate::{
     bindings::{BootstrapClientBinder, BootstrapServerBinder},
     tests::tools::get_bootstrap_config,
 };
-use crate::{BootstrapConfig, BootstrapError};
+use crate::{BootstrapConfig, BootstrapError, GlobalBootstrapState};
+use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_consensus_exports::MockConsensusController;
-use massa_db_exports::{MassaDBConfig, MassaDBController};
+use massa_db_exports::{MassaDBConfig, MassaDBController, StreamBatch};
 use massa_db_worker::MassaDB;
-use massa_final_state::FinalStateConfig;
+use massa_final_state::{FinalStateConfig, MockFinalStateController};
 use massa_hash::Hash;
+use massa_models::block_id::BlockId;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHAINID, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE,
     MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
     MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
     THREAD_COUNT,
 };
 use massa_models::node::NodeId;
+use massa_models::prehash::{CapacityAllocator, PreHashSet};
 use massa_models::serialization::SerializeMinBEInt;
+use massa_models::slot::Slot;
+use massa_models::streaming_step::StreamingStep;
 use massa_models::version::Version;
 
 use massa_pos_exports::{MockSelectorControllerWrapper, PoSFinalState};
@@ -46,7 +52,7 @@ use std::sync::mpsc::{channel, RecvTimeoutError};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use super::tools::{get_random_final_state_bootstrap, parametric_test};
+use super::tools::{gen_export_active_blocks, get_random_final_state_bootstrap, parametric_test};
 
 /// Fixed-width length slot written by [`BootstrapClientBinder::send_timeout`].
 fn padded_client_bootstrap_length_field(
@@ -151,6 +157,7 @@ fn init_server_client_pair() -> (BootstrapServerBinder, BootstrapClientBinder) {
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
             write_error_timeout: MassaTime::from_millis(1000),
         },
         Some(u64::MAX),
@@ -381,6 +388,7 @@ fn test_partial_msg() {
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
             write_error_timeout: MassaTime::from_millis(1000),
         },
         None,
@@ -458,6 +466,7 @@ fn test_staying_connected_without_message_trigger_read_timeout() {
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
             write_error_timeout: MassaTime::from_millis(1000),
         },
         None,
@@ -553,6 +562,7 @@ fn test_staying_connected_pass_handshake_but_deadline_after() {
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
             write_error_timeout: MassaTime::from_millis(1000),
         },
         None,
@@ -652,6 +662,7 @@ fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
             write_error_timeout: MassaTime::from_millis(1000),
         },
         None,
@@ -752,6 +763,7 @@ fn test_client_drip_feed() {
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
             write_error_timeout: MassaTime::from_millis(1000),
         },
         None,
@@ -845,6 +857,7 @@ fn test_bandwidth() {
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
             write_error_timeout: MassaTime::from_millis(1000),
         },
         Some(100),
@@ -950,4 +963,219 @@ fn test_bandwidth() {
 
     server_thread.join().unwrap();
     client_thread.join().unwrap();
+}
+
+// Build an `AskBootstrapPart` resume cursor holding `nb_block_ids` consensus block ids.
+fn ask_bootstrap_part_with_cursor(nb_block_ids: usize) -> BootstrapClientMessage {
+    let mut rng = rand::thread_rng();
+    let mut block_ids = PreHashSet::with_capacity(nb_block_ids);
+    while block_ids.len() < nb_block_ids {
+        block_ids.insert(BlockId::generate_from_hash(Hash::compute_from(
+            &rng.gen::<[u8; 32]>(),
+        )));
+    }
+    BootstrapClientMessage::AskBootstrapPart {
+        last_slot: Some(Slot::new(1, 0)),
+        last_state_step: StreamingStep::Started,
+        last_versioning_step: StreamingStep::Started,
+        last_consensus_step: StreamingStep::Ongoing(block_ids),
+        send_last_start_period: false,
+    }
+}
+
+/// `last_consensus_step` is a cumulative resume cursor: it grows with every consensus part already
+/// streamed, so the server must accept more than `consensus_bootstrap_part_size` block ids in it.
+#[test]
+#[serial]
+fn test_server_accepts_cumulative_consensus_cursor() {
+    let timeout = Duration::from_secs(30);
+    let (mut server, mut client) = init_server_client_pair();
+
+    // several parts worth of block ids, still within the cumulative cursor bound
+    let msg = ask_bootstrap_part_with_cursor((CONSENSUS_BOOTSTRAP_PART_SIZE as usize) * 3);
+    client.send_timeout(&msg, Some(timeout)).unwrap();
+    assert_server_got_msg(timeout, &mut server, msg);
+}
+
+/// The cumulative cursor is still bounded: a client cannot make the server allocate an unbounded
+/// number of block ids.
+#[test]
+#[serial]
+fn test_server_rejects_oversized_consensus_cursor() {
+    let timeout = Duration::from_secs(30);
+    let (mut server, mut client) = init_server_client_pair();
+
+    let msg = ask_bootstrap_part_with_cursor((MAX_CONSENSUS_BLOCKS_IDS as usize) + 1);
+    client.send_timeout(&msg, Some(timeout)).unwrap();
+    assert!(
+        server.next_timeout(Some(timeout)).is_err(),
+        "Server accepted a consensus cursor above MAX_CONSENSUS_BLOCKS_IDS"
+    );
+}
+
+/// A bootstrap part carrying network restart metadata that no coherent downtime can produce must
+/// be rejected before it is stored: startup derives slots and timestamps from those two fields
+/// and would otherwise fail long after the bootstrap reported success.
+#[test]
+#[serial]
+fn test_client_rejects_inconsistent_restart_metadata() {
+    let timeout = Duration::from_secs(30);
+    let (bootstrap_config, _): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+
+    // period 0 has no previous slot, so the downtime range cannot end before the restart
+    let inconsistent = (Some(0), Some(Some(Slot::new(0, 0))));
+    // the last slot before the downtime is after the restart period
+    let reversed = (Some(1), Some(Some(Slot::new(5, 0))));
+    // a restart period whose timestamp does not fit in a `MassaTime`
+    let overflowing = (Some(u64::MAX), Some(None));
+    // the server always sends both fields together
+    let half = (Some(2), None);
+
+    for (last_start_period, last_slot_before_downtime) in
+        [inconsistent, reversed, overflowing, half]
+    {
+        let (mut server, mut client) = init_server_client_pair();
+
+        // any use of the final state would mean the metadata was accepted: the mock has no
+        // expectation set, so it panics if the client touches it
+        let mut global_bootstrap_state = GlobalBootstrapState {
+            final_state: Arc::new(RwLock::new(MockFinalStateController::new())),
+            graph: None,
+            peers: None,
+        };
+        let mut next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
+            last_slot: None,
+            last_state_step: StreamingStep::Started,
+            last_versioning_step: StreamingStep::Started,
+            last_consensus_step: StreamingStep::Started,
+            send_last_start_period: true,
+        };
+
+        let server_thread = std::thread::Builder::new()
+            .name("test_inconsistent_restart_metadata::server_thread".to_string())
+            .spawn(move || {
+                server.next_timeout(Some(timeout)).unwrap();
+                server
+                    .send_timeout(
+                        BootstrapServerMessage::BootstrapPart {
+                            slot: Slot::new(1, 0),
+                            state_part: StreamBatch {
+                                new_elements: Default::default(),
+                                updates_on_previous_elements: Default::default(),
+                                change_id: Slot::new(1, 0),
+                            },
+                            versioning_part: StreamBatch {
+                                new_elements: Default::default(),
+                                updates_on_previous_elements: Default::default(),
+                                change_id: Slot::new(1, 0),
+                            },
+                            consensus_part: BootstrapableGraph {
+                                final_blocks: vec![],
+                            },
+                            consensus_outdated_ids: PreHashSet::default(),
+                            last_start_period,
+                            last_slot_before_downtime,
+                        },
+                        Some(timeout),
+                    )
+                    .unwrap();
+            })
+            .unwrap();
+
+        let res = stream_final_state_and_consensus(
+            bootstrap_config,
+            &mut client,
+            &mut next_bootstrap_message,
+            &mut global_bootstrap_state,
+        );
+        server_thread.join().unwrap();
+
+        assert!(
+            matches!(res, Err(BootstrapError::GeneralError(_))),
+            "restart metadata {:?} / {:?} was accepted, got {:?}",
+            last_start_period,
+            last_slot_before_downtime,
+            res
+        );
+    }
+}
+
+/// After `SlotTooOld` the client restarts the consensus stream from `Started`, a step for which the
+/// server reports no outdated ids. Blocks retained from the aborted attempt would therefore never
+/// be pruned and would end up merged into the next attempt's graph, so the whole session state has
+/// to be dropped, not just the final state.
+#[test]
+#[serial]
+fn test_slot_too_old_clears_session_state() {
+    let timeout = Duration::from_secs(30);
+    let (bootstrap_config, _): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+    let (mut server, mut client) = init_server_client_pair();
+
+    let mut final_state = MockFinalStateController::new();
+    final_state.expect_reset().times(1).return_const(());
+
+    let mut rng = rand::thread_rng();
+    let mut global_bootstrap_state = GlobalBootstrapState {
+        final_state: Arc::new(RwLock::new(final_state)),
+        graph: Some(BootstrapableGraph {
+            final_blocks: vec![gen_export_active_blocks(&mut rng)],
+        }),
+        peers: Some(BootstrapPeers(vec![])),
+    };
+    // a cursor as it would stand after a first session streamed some parts
+    let mut next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
+        last_slot: Some(Slot::new(1, 0)),
+        last_state_step: StreamingStep::Ongoing(vec![0]),
+        last_versioning_step: StreamingStep::Ongoing(vec![0]),
+        last_consensus_step: StreamingStep::Ongoing(PreHashSet::default()),
+        send_last_start_period: false,
+    };
+
+    let server_thread = std::thread::Builder::new()
+        .name("test_slot_too_old::server_thread".to_string())
+        .spawn(move || {
+            // consume the resume request, then tell the client its cursor is too old
+            server.next_timeout(Some(timeout)).unwrap();
+            server
+                .send_timeout(BootstrapServerMessage::SlotTooOld, Some(timeout))
+                .unwrap();
+        })
+        .unwrap();
+
+    let res = stream_final_state_and_consensus(
+        bootstrap_config,
+        &mut client,
+        &mut next_bootstrap_message,
+        &mut global_bootstrap_state,
+    );
+    server_thread.join().unwrap();
+
+    match res {
+        Err(BootstrapError::GeneralError(err)) => assert_eq!(err, "Slot too old"),
+        other => panic!("Expected a 'Slot too old' error, got {other:?}"),
+    }
+    assert!(
+        global_bootstrap_state.graph.is_none(),
+        "consensus blocks of the aborted attempt were kept across the reset"
+    );
+    assert!(
+        global_bootstrap_state.peers.is_none(),
+        "peers of the aborted attempt were kept across the reset"
+    );
+    match next_bootstrap_message {
+        BootstrapClientMessage::AskBootstrapPart {
+            last_slot,
+            last_consensus_step,
+            send_last_start_period,
+            ..
+        } => {
+            assert!(last_slot.is_none());
+            assert_eq!(last_consensus_step, StreamingStep::Started);
+            assert!(
+                send_last_start_period,
+                "restart metadata must be requested again from the next server"
+            );
+        }
+        other => panic!("Expected an AskBootstrapPart cursor, got {other:?}"),
+    }
 }

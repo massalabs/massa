@@ -149,7 +149,7 @@ pub struct AsyncMessage {
     /// Slot at which the message starts being valid (bound included in the validity range)
     pub validity_start: Slot,
 
-    /// Slot at which the message stops being valid (bound not included in the validity range)
+    /// Slot at which the message stops being valid (bound included in the validity range)
     pub validity_end: Slot,
 
     /// Raw payload parameters to call the function with
@@ -159,7 +159,9 @@ pub struct AsyncMessage {
     pub trigger: Option<AsyncMessageTrigger>,
 
     /// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
-    /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+    /// For messages with filter, this boolean is true if the filter has been matched at any slot up to
+    /// the current one, including before `validity_start`: arming is not restricted to the validity
+    /// interval, which only bounds execution. Once true, this boolean is never set back to false.
     pub can_be_executed: bool,
 }
 
@@ -547,7 +549,9 @@ pub struct AsyncMessageUpdate {
     pub trigger: SetOrKeep<Option<AsyncMessageTrigger>>,
 
     /// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
-    /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+    /// For messages with filter, this boolean is true if the filter has been matched at any slot up to
+    /// the current one, including before `validity_start`: arming is not restricted to the validity
+    /// interval, which only bounds execution. Once true, this boolean is never set back to false.
     pub can_be_executed: SetOrKeep<bool>,
 }
 

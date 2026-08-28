@@ -19,6 +19,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::io;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 use std::{
     convert::TryInto,
@@ -28,9 +29,44 @@ use std::{
     time::Duration,
 };
 use stream_limiter::{Limiter, LimiterOptions};
-use tracing::error;
+use tracing::{error, warn};
 
 use super::BindingWriteExact;
+
+/// Maximum number of refusal threads running concurrently.
+///
+/// Every refused connection is told why before being closed, and that send has
+/// to happen off the bootstrap main loop so a slow client cannot stall it. A
+/// connection flood produces refusals as fast as the listener can accept, so the
+/// helper threads are capped: past the cap the socket is simply closed, which is
+/// what the client would observe on a timed-out error send anyway.
+const MAX_CONCURRENT_ERROR_SENDS: usize = 32;
+
+/// Number of refusal threads currently alive, compared against
+/// [`MAX_CONCURRENT_ERROR_SENDS`].
+static ONGOING_ERROR_SENDS: AtomicUsize = AtomicUsize::new(0);
+
+/// Releases a claimed [`ONGOING_ERROR_SENDS`] slot, panics included, so that a
+/// failing refusal can never leak the budget it took.
+struct ErrorSendSlot;
+
+impl ErrorSendSlot {
+    /// Claims a slot, or returns `None` if the budget is exhausted.
+    fn claim() -> Option<Self> {
+        ONGOING_ERROR_SENDS
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |ongoing| {
+                (ongoing < MAX_CONCURRENT_ERROR_SENDS).then_some(ongoing + 1)
+            })
+            .ok()
+            .map(|_| ErrorSendSlot)
+    }
+}
+
+impl Drop for ErrorSendSlot {
+    fn drop(&mut self) {
+        ONGOING_ERROR_SENDS.fetch_sub(1, Ordering::AcqRel);
+    }
+}
 
 const KNOWN_PREFIX_FROM_CLIENT_LEN: usize =
     HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES;
@@ -42,6 +78,7 @@ struct ClientMessageLeader {
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
+    /// max number of block ids accepted in the client's cumulative bootstrap cursor
     max_consensus_block_ids: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
@@ -73,7 +110,8 @@ impl BootstrapServerBinder {
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
-            consensus_bootstrap_part_size,
+            consensus_bootstrap_part_size: _part_size,
+            max_consensus_block_ids,
             write_error_timeout,
         } = cfg;
 
@@ -82,7 +120,7 @@ impl BootstrapServerBinder {
         });
         let duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapServerBinder {
-            max_consensus_block_ids: consensus_bootstrap_part_size,
+            max_consensus_block_ids,
             local_keypair,
             duplex,
             prev_message: None,
@@ -146,20 +184,34 @@ impl BootstrapServerBinder {
         })
     }
 
-    /// 1. Spawns a thread
+    /// 1. Spawns a thread, unless [`MAX_CONCURRENT_ERROR_SENDS`] are already running
     /// 2. blocks on the passed in runtime
     /// 3. uses passed in handle to send a message to the client
     /// 4. logs an error if the send times out
     /// 5. runs the passed in closure (typically a custom logging msg)
     ///
-    /// consumes the binding in the process
+    /// consumes the binding in the process. When the refusal budget is exhausted
+    /// or the OS refuses the spawn, the binding is dropped instead, closing the
+    /// connection without the courtesy message.
     pub(crate) fn close_and_send_error<F>(mut self, msg: String, addr: SocketAddr, close_fn: F)
     where
         F: FnOnce() + Send + 'static,
     {
-        thread::Builder::new()
+        // Claim a refusal slot, or drop the connection outright rather than let
+        // a flood of refusals spawn an unbounded number of threads.
+        let Some(slot) = ErrorSendSlot::claim() else {
+            warn!(
+                "bootstrap server closing connection from {} without sending error '{}': too many refusals in flight",
+                addr, msg
+            );
+            return;
+        };
+
+        let spawned = thread::Builder::new()
             .name("bootstrap-error-send".to_string())
             .spawn(move || {
+                // Held for the lifetime of the thread, released on the way out.
+                let _slot = slot;
                 let msg_cloned = msg.clone();
                 let err_send = self.send_error_timeout(msg_cloned);
                 match err_send {
@@ -174,10 +226,17 @@ impl BootstrapServerBinder {
                     Ok(_) => {}
                 }
                 close_fn();
-            })
-            // the non-builder spawn doesn't return a Result, and documentation states that
-            // it's an error at the OS level.
-            .unwrap();
+            });
+
+        // A failed spawn is an OS-level resource error: the slot is released with
+        // the dropped closure, and the connection closes on its own rather than
+        // taking the whole server down.
+        if let Err(e) = spawned {
+            error!(
+                "bootstrap server failed to spawn the error-send thread for addr {}: {}",
+                addr, e
+            );
+        }
     }
     pub fn send_error_timeout(&mut self, error: String) -> Result<(), BootstrapError> {
         self.send_timeout(

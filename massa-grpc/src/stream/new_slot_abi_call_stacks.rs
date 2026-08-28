@@ -42,27 +42,38 @@ pub(crate) async fn new_slot_abi_call_stacks(
     // Extract the incoming stream of abi call stacks messages
     let mut in_stream = request.into_inner();
 
-    // Subscribe to the new slot execution events channel
+    // Clone the slot execution traces channel sender to subscribe from the spawned task
     #[cfg(feature = "execution-trace")]
-    let mut subscriber = grpc
-        .execution_channels
-        .slot_execution_traces_sender
-        .subscribe();
-    #[cfg(not(feature = "execution-trace"))]
-    let (mut subscriber, _receiver) = {
-        let (subscriber_, receiver) =
-            tokio::sync::broadcast::channel::<(SlotAbiCallStack, bool)>(0);
-        (subscriber_.subscribe(), receiver)
-    };
+    let traces_sender = grpc.execution_channels.slot_execution_traces_sender.clone();
 
     tokio::spawn(async move {
-        let mut finality = FinalityLevel::Unspecified;
+        // Wait for the first request to establish the finality level before
+        // subscribing, so that no traces are forwarded before the client's
+        // selection is known
+        let mut finality: FinalityLevel = match in_stream.next().await {
+            Some(Ok(message)) => message.finality_level(),
+            _ => {
+                error!("empty request");
+                return;
+            }
+        };
+
+        // Subscribe to the new slot execution events channel
+        #[cfg(feature = "execution-trace")]
+        let mut subscriber = traces_sender.subscribe();
+        #[cfg(not(feature = "execution-trace"))]
+        let (mut subscriber, _receiver) = {
+            let (subscriber_, receiver) =
+                tokio::sync::broadcast::channel::<(SlotAbiCallStack, (), bool)>(0);
+            (subscriber_.subscribe(), receiver)
+        };
+
         loop {
             select! {
                 // Receive a new slot execution traces from the subscriber
                 event = subscriber.recv() => {
                     match event {
-                        Ok((massa_slot_execution_trace, received_finality)) => {
+                        Ok((massa_slot_execution_trace, _slot_transfers, received_finality)) => {
                             if (finality == FinalityLevel::Final && !received_finality) ||
                                 (finality == FinalityLevel::Candidate && received_finality) {
                                 continue;

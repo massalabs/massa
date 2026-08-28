@@ -495,7 +495,7 @@ pub struct OperationDeserializer {
 impl OperationDeserializer {
     /// Creates a `OperationDeserializer`
     pub fn new(
-        max_datastore_value_length: u64,
+        max_bytecode_size: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
@@ -509,7 +509,7 @@ impl OperationDeserializer {
                 Included(Amount::MAX),
             ),
             op_type_deserializer: OperationTypeDeserializer::new(
-                max_datastore_value_length,
+                max_bytecode_size,
                 max_function_name_length,
                 max_parameters_size,
                 max_op_datastore_entry_count,
@@ -802,7 +802,7 @@ pub struct OperationTypeDeserializer {
 impl OperationTypeDeserializer {
     /// Creates a new `OperationTypeDeserializer`
     pub fn new(
-        max_datastore_value_length: u64,
+        max_bytecode_size: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
@@ -814,10 +814,7 @@ impl OperationTypeDeserializer {
             rolls_number_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             max_gas_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::new(),
-            data_deserializer: VecU8Deserializer::new(
-                Included(0),
-                Included(max_datastore_value_length),
-            ),
+            data_deserializer: VecU8Deserializer::new(Included(0), Included(max_bytecode_size)),
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
                 Included(Amount::MAX),
@@ -999,6 +996,41 @@ impl SecureShareOperation {
             OperationType::Transaction { .. } => 0,
         }
         .saturating_add(base_operation_gas_cost)
+    }
+
+    /// Check that the operation can ever fit in a block, gas-wise.
+    ///
+    /// Compares the full gas usage (see `get_gas_usage`, mandatory overheads included)
+    /// against the block gas limit, so that every submission interface applies the same
+    /// includability criterion as the block filling logic.
+    ///
+    /// On failure returns the client-facing error message, stating the highest `max_gas`
+    /// the operation could have declared.
+    pub fn check_gas_usage(
+        &self,
+        max_gas_per_block: u64,
+        base_operation_gas_cost: u64,
+        sp_compilation_cost: u64,
+    ) -> Result<(), String> {
+        // gas that the operation is charged on top of its declared max_gas
+        let (op_name, gas_overhead) = match &self.content.op {
+            OperationType::CallSC { .. } => ("CallSC", base_operation_gas_cost),
+            OperationType::ExecuteSC { .. } => (
+                "ExecuteSC",
+                base_operation_gas_cost.saturating_add(sp_compilation_cost),
+            ),
+            OperationType::RollBuy { .. }
+            | OperationType::RollSell { .. }
+            | OperationType::Transaction { .. } => return Ok(()),
+        };
+        if self.get_gas_usage(base_operation_gas_cost, sp_compilation_cost) > max_gas_per_block {
+            return Err(format!(
+                "Upper gas limit for {} operation is {}. Your operation will never be included in a block.",
+                op_name,
+                max_gas_per_block.saturating_sub(gas_overhead)
+            ));
+        }
+        Ok(())
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view
@@ -1387,7 +1419,7 @@ impl OperationsDeserializer {
     /// Creates a new `OperationsDeserializer`
     pub fn new(
         max_operations_per_message: u32,
-        max_datastore_value_length: u64,
+        max_bytecode_size: u64,
         max_function_name_length: u16,
         max_parameters_size: u32,
         max_op_datastore_entry_count: u64,
@@ -1402,7 +1434,7 @@ impl OperationsDeserializer {
             ),
             signed_op_deserializer: SecureShareDeserializer::new(
                 OperationDeserializer::new(
-                    max_datastore_value_length,
+                    max_bytecode_size,
                     max_function_name_length,
                     max_parameters_size,
                     max_op_datastore_entry_count,
@@ -1491,7 +1523,7 @@ pub fn compute_operations_hash(
 #[cfg(test)]
 mod tests {
     use crate::config::{
-        CHAINID, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        CHAINID, MAX_BYTECODE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
         MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
         MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     };
@@ -1570,7 +1602,7 @@ mod tests {
             .serialize(&op, &mut ser_type)
             .unwrap();
         let (_, res_type) = OperationTypeDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BYTECODE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1593,7 +1625,7 @@ mod tests {
             .serialize(&content, &mut ser_content)
             .unwrap();
         let (_, res_content) = OperationDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BYTECODE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1615,7 +1647,7 @@ mod tests {
             .unwrap();
         let (_, res_op): (&[u8], SecureShareOperation) = SecureShareDeserializer::new(
             OperationDeserializer::new(
-                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_BYTECODE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1650,7 +1682,7 @@ mod tests {
             .serialize(&op, &mut ser_type)
             .unwrap();
         let (_, res_type) = OperationTypeDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BYTECODE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1672,7 +1704,7 @@ mod tests {
             .serialize(&content, &mut ser_content)
             .unwrap();
         let (_, res_content) = OperationDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BYTECODE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1693,7 +1725,7 @@ mod tests {
             .unwrap();
         let (_, res_op): (&[u8], SecureShareOperation) = SecureShareDeserializer::new(
             OperationDeserializer::new(
-                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_BYTECODE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1729,7 +1761,7 @@ mod tests {
             .serialize(&op, &mut ser_type)
             .unwrap();
         let (_, res_type) = OperationTypeDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BYTECODE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1751,7 +1783,7 @@ mod tests {
             .serialize(&content, &mut ser_content)
             .unwrap();
         let (_, res_content) = OperationDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BYTECODE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1772,7 +1804,7 @@ mod tests {
             .unwrap();
         let (_, res_op): (&[u8], SecureShareOperation) = SecureShareDeserializer::new(
             OperationDeserializer::new(
-                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_BYTECODE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1802,7 +1834,7 @@ mod tests {
             .serialize(&op, &mut ser_type)
             .unwrap();
         let (_, res_type) = OperationTypeDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BYTECODE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1844,7 +1876,7 @@ mod tests {
             .serialize(&op, &mut ser_type)
             .unwrap();
         let (_, res_type) = OperationTypeDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BYTECODE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,
@@ -1886,7 +1918,7 @@ mod tests {
             .serialize(&op, &mut ser_type)
             .unwrap();
         let (_, res_type) = OperationTypeDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_BYTECODE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
             MAX_OPERATION_DATASTORE_ENTRY_COUNT,

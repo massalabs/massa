@@ -72,8 +72,8 @@ pub struct GrpcConfig {
     pub endorsement_count: u32,
     /// max endorsements per message
     pub max_endorsements_per_message: u32,
-    /// max datastore value length
-    pub max_datastore_value_length: u64,
+    /// max size of a smart contract bytecode in an `ExecuteSC` operation
+    pub max_bytecode_size: u64,
     /// max op datastore entry
     pub max_op_datastore_entry_count: u64,
     /// max op datastore entries per request
@@ -90,6 +90,10 @@ pub struct GrpcConfig {
     pub max_operations_per_message: u32,
     /// max gas per block
     pub max_gas_per_block: u64,
+    /// gas cost of a basic operation
+    pub base_operation_gas_cost: u64,
+    /// gas cost of the smart contract compilation
+    pub sp_compilation_cost: u64,
     /// `genesis_timestamp`
     pub genesis_timestamp: MassaTime,
     /// t0

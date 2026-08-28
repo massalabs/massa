@@ -46,7 +46,7 @@ use massa_models::{
     error::ModelsError,
     execution::EventFilter,
     node::NodeId,
-    operation::{OperationDeserializer, OperationId, OperationType, SecureShareOperation},
+    operation::{OperationDeserializer, OperationId, SecureShareOperation},
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShareDeserializer,
@@ -136,13 +136,22 @@ impl MassaRpcServer for API<Public> {
                 .consensus_controller
                 .get_blockclique_block_at_slot(slot)
             else {
+                // Every `Transfer` returned here carries the block ID of the slot, so a slot
+                // with no block (`get_blockclique_block_at_slot` also covers final blocks) has
+                // nothing to report. Keep `res` positionally aligned with the input `slots`
+                // anyway: it must still occupy its position, otherwise every later entry would
+                // be misattributed to the wrong slot.
+                res.push(Vec::new());
                 continue;
             };
             let mut transfers = Vec::new();
-            let abi_calls = self
+            // Read the ABI call stack and the direct transfers for this slot from a single
+            // consistent snapshot, so the combined response cannot mix data from two
+            // different executions of the same slot (a re-execution between two reads).
+            let (abi_calls, slot_transfers) = self
                 .0
                 .execution_controller
-                .get_slot_abi_call_stack(slot.clone().into());
+                .get_slot_abi_call_stack_and_transfers(slot);
             if let Some(abi_calls) = abi_calls {
                 // flatten & filter transfer trace in asc_call_stacks
 
@@ -221,10 +230,7 @@ impl MassaRpcServer for API<Public> {
                     }
                 }
             }
-            let transfers_op: Vec<Transfer> = self
-                .0
-                .execution_controller
-                .get_transfers_for_slot(slot)
+            let transfers_op: Vec<Transfer> = slot_transfers
                 .unwrap_or_default()
                 .iter()
                 .map(|t| Transfer {
@@ -662,6 +668,12 @@ impl MassaRpcServer for API<Public> {
         &self,
         operations_ids: Vec<OperationId>,
     ) -> RpcResult<Vec<OperationInfo>> {
+        let api_cfg = self.0.api_settings.clone();
+        // bound the request size on the ids provided by the caller, before any storage lookup
+        if operations_ids.len() as u64 > api_cfg.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+
         // get the operations and the list of blocks that contain them from storage
         let secure_share_operations: Vec<SecureShareOperation> = {
             let read_ops = self.0.storage.read_operations();
@@ -690,11 +702,6 @@ impl MassaRpcServer for API<Public> {
 
         // keep only the ops id (found in storage)
         let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
-
-        let api_cfg = self.0.api_settings.clone();
-        if ops.len() as u64 > api_cfg.max_arguments {
-            return Err(ApiError::BadRequest("too many arguments".into()).into());
-        }
 
         // ask pool whether it carries the operations
         let in_pool = self
@@ -1443,14 +1450,22 @@ impl MassaRpcServer for API<Public> {
 
         to_send.store_operations(verified_ops.clone());
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
-        cmd_sender.add_operations(to_send.clone());
 
-        tokio::task::spawn_blocking(move || protocol_sender.propagate_operations(to_send))
+        // propagate the operations before admitting them into the local pool,
+        // so that an error returned by this method means the operations were
+        // neither propagated nor queued locally
+        let to_propagate = to_send.clone();
+        tokio::task::spawn_blocking(move || protocol_sender.propagate_operations(to_propagate))
             .await
             .map_err(|err| ApiError::InternalServerError(err.to_string()))?
             .map_err(|err| {
                 ApiError::InternalServerError(format!("Failed to propagate operations: {}", err))
             })?;
+
+        cmd_sender.add_operations(to_send).map_err(|err| {
+            ApiError::InternalServerError(format!("Failed to add operations to pool: {}", err))
+        })?;
+
         Ok(ids)
     }
 
@@ -1561,7 +1576,7 @@ fn check_input_operation(
 ) -> RpcResult<SecureShareOperation> {
     let operation_deserializer = SecureShareDeserializer::new(
         OperationDeserializer::new(
-            api_cfg.max_datastore_value_length,
+            api_cfg.max_bytecode_size,
             api_cfg.max_function_name_length,
             api_cfg.max_parameter_size,
             api_cfg.max_op_datastore_entry_count,
@@ -1578,27 +1593,13 @@ fn check_input_operation(
     let (rest, op): (&[u8], SecureShareOperation) = operation_deserializer
         .deserialize::<DeserializeError>(&op_serialized)
         .map_err(|err| ApiError::ModelsError(ModelsError::DeserializeError(err.to_string())))?;
-    match op.content.op {
-        OperationType::CallSC { .. } => {
-            let gas_usage =
-                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
-            if gas_usage > api_cfg.max_gas_per_block {
-                let err_msg = format!("Upper gas limit for CallSC operation is {}. Your operation will never be included in a block.",
-                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost));
-                return Err(ApiError::InconsistencyError(err_msg).into());
-            }
-        }
-        OperationType::ExecuteSC { .. } => {
-            let gas_usage =
-                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
-            if gas_usage > api_cfg.max_gas_per_block {
-                let err_msg = format!("Upper gas limit for ExecuteSC operation is {}. Your operation will never be included in a block.",
-                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost).saturating_sub(api_cfg.sp_compilation_cost));
-                return Err(ApiError::InconsistencyError(err_msg).into());
-            }
-        }
-        _ => {}
-    };
+    if let Err(err_msg) = op.check_gas_usage(
+        api_cfg.max_gas_per_block,
+        api_cfg.base_operation_gas_cost,
+        api_cfg.sp_compilation_cost,
+    ) {
+        return Err(ApiError::InconsistencyError(err_msg).into());
+    }
     if let Some(slot) = last_slot {
         if op.content.expire_period < slot.period {
             return Err(

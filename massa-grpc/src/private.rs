@@ -16,7 +16,6 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_protocol_exports::{PeerConnectionType, PeerId};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use tracing::warn;
 // use massa_proto_rs::massa::model::v1 "add_to_bootstrap_blacklist"as grpc_model;
 
 /// Add IP addresses to node bootstrap blacklist
@@ -29,19 +28,16 @@ pub(crate) fn add_to_bootstrap_blacklist(
     let ips = inner_req
         .ips
         .into_iter()
-        .filter_map(|ip| match IpAddr::from_str(&ip) {
-            Ok(ip_addr) => Some(ip_addr),
-            Err(e) => {
-                warn!("error when parsing address : {}", e);
-                None
-            }
+        .map(|ip| {
+            IpAddr::from_str(&ip)
+                .map_err(|_| GrpcError::InvalidArgument(format!("invalid ip address: {}", ip)))
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     if let Some(bs_list) = &grpc.bs_white_black_list {
-        if let Err(e) = bs_list.add_ips_to_blacklist(ips) {
-            warn!("error when adding ips to bootstrap blacklist : {}", e)
-        }
+        bs_list
+            .add_ips_to_blacklist(ips)
+            .map_err(|e| GrpcError::InternalServerError(e.to_string()))?;
     }
 
     Ok(grpc_api::AddToBootstrapBlacklistResponse {})
@@ -56,19 +52,16 @@ pub(crate) fn add_to_bootstrap_whitelist(
     let ips = inner_req
         .ips
         .into_iter()
-        .filter_map(|ip| match IpAddr::from_str(&ip) {
-            Ok(ip_addr) => Some(ip_addr),
-            Err(e) => {
-                warn!("error when parsing address : {}", e);
-                None
-            }
+        .map(|ip| {
+            IpAddr::from_str(&ip)
+                .map_err(|_| GrpcError::InvalidArgument(format!("invalid ip address: {}", ip)))
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     if let Some(bs_list) = &grpc.bs_white_black_list {
-        if let Err(e) = bs_list.add_ips_to_whitelist(ips) {
-            warn!("error when adding ips to bootstrap whitelist : {}", e)
-        }
+        bs_list
+            .add_ips_to_whitelist(ips)
+            .map_err(|e| GrpcError::InternalServerError(e.to_string()))?;
     }
 
     Ok(grpc_api::AddToBootstrapWhitelistResponse {})
@@ -338,19 +331,16 @@ pub(crate) fn remove_from_bootstrap_blacklist(
     let ips = inner_req
         .ips
         .into_iter()
-        .filter_map(|ip| match IpAddr::from_str(&ip) {
-            Ok(ip_addr) => Some(ip_addr),
-            Err(e) => {
-                warn!("error when parsing address : {}", e);
-                None
-            }
+        .map(|ip| {
+            IpAddr::from_str(&ip)
+                .map_err(|_| GrpcError::InvalidArgument(format!("invalid ip address: {}", ip)))
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     if let Some(bs_list) = &grpc.bs_white_black_list {
-        if let Err(e) = bs_list.remove_ips_from_blacklist(ips) {
-            warn!("error when removing ips to bootstrap blacklist : {}", e)
-        }
+        bs_list
+            .remove_ips_from_blacklist(ips)
+            .map_err(|e| GrpcError::InternalServerError(e.to_string()))?;
     }
 
     Ok(grpc_api::RemoveFromBootstrapBlacklistResponse {})
@@ -364,19 +354,16 @@ pub(crate) fn remove_from_bootstrap_whitelist(
     let ips = inner_req
         .ips
         .into_iter()
-        .filter_map(|ip| match IpAddr::from_str(&ip) {
-            Ok(ip_addr) => Some(ip_addr),
-            Err(e) => {
-                warn!("error when parsing address : {}", e);
-                None
-            }
+        .map(|ip| {
+            IpAddr::from_str(&ip)
+                .map_err(|_| GrpcError::InvalidArgument(format!("invalid ip address: {}", ip)))
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     if let Some(bs_list) = &grpc.bs_white_black_list {
-        if let Err(e) = bs_list.remove_ips_from_whitelist(ips) {
-            warn!("error when removing ips to bootstrap whitelist : {}", e)
-        }
+        bs_list
+            .remove_ips_from_whitelist(ips)
+            .map_err(|e| GrpcError::InternalServerError(e.to_string()))?;
     }
 
     Ok(grpc_api::RemoveFromBootstrapWhitelistResponse {})

@@ -40,6 +40,7 @@ impl FinalLedger {
             config.thread_count,
             config.max_key_length,
             config.max_datastore_value_length,
+            config.max_bytecode_size,
         );
 
         // generate the final ledger
@@ -102,8 +103,7 @@ impl LedgerController for FinalLedger {
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
     fn get_bytecode(&self, addr: &Address) -> Option<Bytecode> {
-        let bytecode_deserializer =
-            BytecodeDeserializer::new(self.config.max_datastore_value_length);
+        let bytecode_deserializer = BytecodeDeserializer::new(self.config.max_bytecode_size);
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Bytecode)
             .map(|bytes| {
