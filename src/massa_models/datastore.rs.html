@@ -576,29 +576,6 @@
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -837,10 +814,7 @@
 }
 
 <span class="doccomment">/// Checks and cleans up a datastore key range query
-/// Returns: (prefix, start_bound, end_bound, count) or error
-/// The returned count is the effective item count limit: it falls back to the
-/// configured maximum when the caller did not provide one, so that callers can
-/// forward it to the datastore scan instead of running an unbounded enumeration.
+/// Returns: (prefix, start_bound, end_bound) or error
 /// Note: only useful to cleanup user-supplied requests (API/ABI)
 </span><span class="attr">#[allow(clippy::type_complexity)]
 </span><span class="kw">pub fn </span>cleanup_datastore_key_range_query(
@@ -850,7 +824,7 @@
     count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     max_datastore_key_length: u8,
     max_datastore_query_config: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, Bound&lt;Vec&lt;u8&gt;&gt;, Bound&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;u32&gt;), ModelsError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;u8&gt;, Bound&lt;Vec&lt;u8&gt;&gt;, Bound&lt;Vec&lt;u8&gt;&gt;), ModelsError&gt; {
     <span class="comment">// check item count
     </span><span class="kw">let </span>count = count.or(max_datastore_query_config);
     <span class="kw">if let </span>(<span class="prelude-val">Some</span>(cnt), <span class="prelude-val">Some</span>(max_cnt)) = (count.as_ref(), max_datastore_query_config.as_ref()) {
@@ -869,7 +843,6 @@
             Vec::new(),
             std::ops::Bound::Excluded(Vec::new()),
             std::ops::Bound::Excluded(Vec::new()),
-            count,
         ));
     } <span class="kw">else </span>{
         prefix.to_vec()
@@ -913,7 +886,7 @@
         }
     };
 
-    <span class="prelude-val">Ok</span>((prefix, start_bound, end_bound, count))
+    <span class="prelude-val">Ok</span>((prefix, start_bound, end_bound))
 }
 
 <span class="attr">#[cfg(test)]
@@ -1102,11 +1075,10 @@
             max_query_config,
         );
         <span class="macro">assert!</span>(result.is_ok());
-        <span class="kw">let </span>(res_prefix, res_start, res_end, res_count) = result.unwrap();
+        <span class="kw">let </span>(res_prefix, res_start, res_end) = result.unwrap();
         <span class="macro">assert_eq!</span>(res_prefix, prefix);
         <span class="macro">assert_eq!</span>(res_start, start_bound);
         <span class="macro">assert_eq!</span>(res_end, end_bound);
-        <span class="macro">assert_eq!</span>(res_count, count);
 
         <span class="comment">// Case 2: Prefix length exceeds max length
         </span><span class="kw">let </span>long_prefix = <span class="macro">vec!</span>[<span class="string">b'a'</span>; <span class="number">30</span>];
@@ -1119,9 +1091,8 @@
             <span class="prelude-val">None</span>,
         );
         <span class="macro">assert!</span>(result.is_ok());
-        <span class="kw">let </span>(res_prefix, res_start, res_end, res_count) = result.unwrap();
+        <span class="kw">let </span>(res_prefix, res_start, res_end) = result.unwrap();
         <span class="macro">assert!</span>(res_prefix.is_empty());
-        <span class="macro">assert_eq!</span>(res_count, <span class="prelude-val">None</span>);
         <span class="macro">assert_eq!</span>(res_start, Bound::Excluded(Vec::new()));
         <span class="macro">assert_eq!</span>(res_end, Bound::Excluded(Vec::new()));
 
@@ -1138,9 +1109,8 @@
             <span class="prelude-val">None</span>,
         );
         <span class="macro">assert!</span>(result.is_ok());
-        <span class="kw">let </span>(res_prefix, res_start, res_end, res_count) = result.unwrap();
+        <span class="kw">let </span>(res_prefix, res_start, res_end) = result.unwrap();
         <span class="macro">assert_eq!</span>(res_prefix, prefix);
-        <span class="macro">assert_eq!</span>(res_count, <span class="prelude-val">None</span>);
         <span class="macro">assert_eq!</span>(
             res_start,
             Bound::Excluded(long_key[<span class="number">0</span>..<span class="number">10</span>].to_vec()) <span class="comment">// Start key truncated
@@ -1178,26 +1148,10 @@
             <span class="prelude-val">None</span>,
         );
         <span class="macro">assert!</span>(result.is_ok());
-        <span class="kw">let </span>(res_prefix, res_start, res_end, res_count) = result.unwrap();
+        <span class="kw">let </span>(res_prefix, res_start, res_end) = result.unwrap();
         <span class="macro">assert_eq!</span>(res_prefix, prefix);
         <span class="macro">assert_eq!</span>(res_start, Bound::Unbounded);
         <span class="macro">assert_eq!</span>(res_end, Bound::Unbounded);
-        <span class="macro">assert_eq!</span>(res_count, <span class="prelude-val">None</span>);
-
-        <span class="comment">// Case 6: No count provided but a max query config is set:
-        // the configured maximum is used as the effective count so that the
-        // datastore scan stays bounded.
-        </span><span class="kw">let </span>result = cleanup_datastore_key_range_query(
-            <span class="kw-2">&amp;</span>prefix,
-            Bound::Unbounded,
-            Bound::Unbounded,
-            <span class="prelude-val">None</span>,
-            <span class="number">10</span>,
-            <span class="prelude-val">Some</span>(<span class="number">50</span>),
-        );
-        <span class="macro">assert!</span>(result.is_ok());
-        <span class="kw">let </span>(_res_prefix, _res_start, _res_end, res_count) = result.unwrap();
-        <span class="macro">assert_eq!</span>(res_count, <span class="prelude-val">Some</span>(<span class="number">50</span>));
     }
 }
 </code></pre></div></section></main></body></html>
