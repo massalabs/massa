@@ -837,9 +837,6 @@
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
 <a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -1412,9 +1409,6 @@
                 <span class="prelude-val">Ok</span>((peer_id, <span class="prelude-val">Some</span>(announcement))) =&gt; {
                     <span class="macro">info!</span>(<span class="string">"Peer connected: {:?}"</span>, peer_id);
                     peer_db_write.set_try_connect_success_or_insert(<span class="kw-2">&amp;</span>addr);
-                    <span class="comment">// Record the successful connection so that `last_success` feeds the
-                    // peer-priority comparator (previously it was never written anywhere).
-                    </span>peer_db_write.set_success_or_insert(<span class="kw-2">&amp;</span>addr);
                     peer_db_write
                         .get_peers_mut()
                         .entry(<span class="kw-2">*</span>peer_id)
