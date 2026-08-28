@@ -3777,7 +3777,7 @@
         }
     }
 
-    <span class="kw">fn </span>update_network_version_stats(
+    <span class="kw">pub fn </span>update_network_version_stats(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot_timestamp: MassaTime,
         network_versions: <span class="prelude-ty">Option</span>&lt;(u32, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
@@ -4145,7 +4145,7 @@
     <span class="comment">// DB methods
 
     </span><span class="doccomment">/// Get MIP store changes between 2 timestamps - used by the db to update the disk
-    </span><span class="kw">fn </span>update_batches(
+    </span><span class="kw">pub fn </span>update_batches(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         batch: <span class="kw-2">&amp;mut </span>DBBatch,
         versioning_batch: <span class="kw-2">&amp;mut </span>DBBatch,
