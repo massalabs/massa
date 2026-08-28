@@ -631,6 +631,126 @@ impl BootstrapServerMessageFaultyPart {
     }
 }
 
+/// Minimal valid `BootstrapPart` for targeted deserialization tests.
+pub(crate) fn minimal_bootstrap_part_message(
+    state_new_elements: BTreeMap<Vec<u8>, Vec<u8>>,
+    versioning_new_elements: BTreeMap<Vec<u8>, Vec<u8>>,
+) -> BootstrapServerMessage {
+    BootstrapServerMessage::BootstrapPart {
+        slot: Slot::new(1, 0),
+        state_part: StreamBatch {
+            new_elements: state_new_elements,
+            updates_on_previous_elements: BTreeMap::new(),
+            change_id: Slot::new(1, 0),
+        },
+        versioning_part: StreamBatch {
+            new_elements: versioning_new_elements,
+            updates_on_previous_elements: BTreeMap::new(),
+            change_id: Slot::new(1, 0),
+        },
+        consensus_part: BootstrapableGraph {
+            final_blocks: vec![],
+        },
+        consensus_outdated_ids: PreHashSet::default(),
+        last_start_period: None,
+        last_slot_before_downtime: None,
+    }
+}
+
+/// `(key, value)` map with single-byte distinct keys and empty values.
+pub(crate) fn indexed_kv_map(count: usize) -> BTreeMap<Vec<u8>, Vec<u8>> {
+    (0..count).map(|i| (vec![i as u8], Vec::new())).collect()
+}
+
+/// Serialized `length_value` section for state `new_elements` (length prefix + pair bytes).
+pub(crate) fn serialize_state_new_elements_section(
+    pair_count: usize,
+    duplicate_empty_keys: bool,
+) -> Vec<u8> {
+    use massa_models::serialization::VecU8Serializer;
+    use massa_serialization::{Serializer, U64VarIntSerializer};
+
+    let vec_u8_ser = VecU8Serializer::new();
+    let mut payload = Vec::new();
+    if duplicate_empty_keys {
+        for _ in 0..pair_count {
+            vec_u8_ser
+                .serialize(&Vec::<u8>::new(), &mut payload)
+                .unwrap();
+            vec_u8_ser
+                .serialize(&Vec::<u8>::new(), &mut payload)
+                .unwrap();
+        }
+    } else {
+        for i in 0..pair_count {
+            vec_u8_ser.serialize(&vec![i as u8], &mut payload).unwrap();
+            vec_u8_ser
+                .serialize(&Vec::<u8>::new(), &mut payload)
+                .unwrap();
+        }
+    }
+    let mut section = Vec::new();
+    U64VarIntSerializer::new()
+        .serialize(&(payload.len() as u64), &mut section)
+        .unwrap();
+    section.extend(payload);
+    section
+}
+
+/// Minimal `BootstrapPart` wire bytes with a crafted state `new_elements` section.
+pub(crate) fn serialize_minimal_bootstrap_part_with_crafted_state_new_elements(
+    state_new_elements_section: Vec<u8>,
+) -> Vec<u8> {
+    use massa_models::block_id::BlockIdSerializer;
+    use massa_models::serialization::PreHashSetSerializer;
+    use massa_models::slot::SlotSerializer;
+    use massa_serialization::{
+        OptionSerializer, Serializer, U32VarIntSerializer, U64VarIntSerializer,
+    };
+
+    let mut buf = Vec::new();
+    U32VarIntSerializer::new()
+        .serialize(&2u32, &mut buf)
+        .unwrap();
+    SlotSerializer::new()
+        .serialize(&Slot::new(1, 0), &mut buf)
+        .unwrap();
+    buf.extend(state_new_elements_section);
+    U64VarIntSerializer::new()
+        .serialize(&0u64, &mut buf)
+        .unwrap();
+    SlotSerializer::new()
+        .serialize(&Slot::new(1, 0), &mut buf)
+        .unwrap();
+    U64VarIntSerializer::new()
+        .serialize(&0u64, &mut buf)
+        .unwrap();
+    U64VarIntSerializer::new()
+        .serialize(&0u64, &mut buf)
+        .unwrap();
+    SlotSerializer::new()
+        .serialize(&Slot::new(1, 0), &mut buf)
+        .unwrap();
+    massa_consensus_exports::bootstrapable_graph::BootstrapableGraphSerializer::new()
+        .serialize(
+            &BootstrapableGraph {
+                final_blocks: vec![],
+            },
+            &mut buf,
+        )
+        .unwrap();
+    PreHashSetSerializer::<BlockId, BlockIdSerializer>::new(BlockIdSerializer::new())
+        .serialize(&PreHashSet::default(), &mut buf)
+        .unwrap();
+    OptionSerializer::new(U64VarIntSerializer::new())
+        .serialize(&None, &mut buf)
+        .unwrap();
+    OptionSerializer::new(OptionSerializer::new(SlotSerializer::new()))
+        .serialize(&None, &mut buf)
+        .unwrap();
+    buf
+}
+
 impl BootstrapServerMessage {
     pub fn generate<R: Rng>(rng: &mut R) -> Self {
         let variant = rng.gen_range(0..6);
