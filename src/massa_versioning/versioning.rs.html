@@ -2773,6 +2773,8 @@
 <a href="#2773" id="2773">2773</a>
 <a href="#2774" id="2774">2774</a>
 <a href="#2775" id="2775">2775</a>
+<a href="#2776" id="2776">2776</a>
+<a href="#2777" id="2777">2777</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -5351,6 +5353,8 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
+            max_final_state_elements_count: <span class="number">100_000</span>,
+            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,

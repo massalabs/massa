@@ -2405,6 +2405,18 @@
 <a href="#2405" id="2405">2405</a>
 <a href="#2406" id="2406">2406</a>
 <a href="#2407" id="2407">2407</a>
+<a href="#2408" id="2408">2408</a>
+<a href="#2409" id="2409">2409</a>
+<a href="#2410" id="2410">2410</a>
+<a href="#2411" id="2411">2411</a>
+<a href="#2412" id="2412">2412</a>
+<a href="#2413" id="2413">2413</a>
+<a href="#2414" id="2414">2414</a>
+<a href="#2415" id="2415">2415</a>
+<a href="#2416" id="2416">2416</a>
+<a href="#2417" id="2417">2417</a>
+<a href="#2418" id="2418">2418</a>
+<a href="#2419" id="2419">2419</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -4026,6 +4038,8 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
+            max_final_state_elements_count: <span class="number">100_000</span>,
+            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -4161,6 +4175,8 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
+            max_final_state_elements_count: <span class="number">100_000</span>,
+            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -4356,6 +4372,8 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
+            max_final_state_elements_count: <span class="number">100_000</span>,
+            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -4457,6 +4475,8 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
+            max_final_state_elements_count: <span class="number">100_000</span>,
+            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -4633,6 +4653,8 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
+            max_final_state_elements_count: <span class="number">100_000</span>,
+            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -4740,6 +4762,8 @@
             thread_count: <span class="number">2</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
+            max_final_state_elements_count: <span class="number">100_000</span>,
+            max_versioning_elements_count: <span class="number">100_000</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
         };
