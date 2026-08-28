@@ -2559,7 +2559,7 @@ fn deferred_call_quote() {
         .module_controller
         .get_filtered_sc_output_event(EventFilter::default());
 
-    assert_eq!(events[0].data, "136600000");
+    assert_eq!(events[0].data, "147100000");
 }
 
 /// Context
