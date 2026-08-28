@@ -283,6 +283,30 @@
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A file describing an optimized datastore keys traversal algorithm.
 //! It is shared between execution.rs and speculative_ledger.rs.
 
@@ -293,7 +317,7 @@
 };
 
 <span class="kw">use </span>massa_final_state::FinalStateController;
-<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
+<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerEntry};
 <span class="kw">use </span>massa_models::{
     address::Address,
     datastore::{get_prefix_bounds, range_intersection},
@@ -353,6 +377,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>key_updates = BTreeMap::new();
     {
         <span class="kw">let </span><span class="kw-2">mut </span>update_indices = VecDeque::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>reset_entry: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LedgerEntry&gt; = <span class="prelude-val">None</span>;
         <span class="kw">let </span>history_lock = active_history.read();
 
         <span class="kw">let </span>it = history_lock
@@ -369,13 +394,9 @@
 
                 <span class="comment">// address ledger entry being reset to an absolute new list of keys
                 </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(v)) =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(k_range) = key_range.as_ref() {
-                        key_updates = v
-                            .datastore
-                            .range(k_range.clone())
-                            .map(|(k, _v)| (k.clone(), <span class="bool-val">true</span>))
-                            .collect();
-                    }
+                    <span class="comment">// the entry is only scanned once the newer updates are known, so that
+                    // the scan can be bounded instead of materializing the whole range
+                    </span>reset_entry = <span class="prelude-val">Some</span>(v);
                     speculative_reset = SpeculativeResetType::Set;
                     <span class="kw">break</span>;
                 }
@@ -429,6 +450,27 @@
                 }
             } <span class="kw">else </span>{
                 <span class="macro">panic!</span>(<span class="string">"unexpected state change"</span>);
+            }
+        }
+
+        <span class="comment">// Scan the keys of a reset entry, now that the newer updates are known.
+        // Only the first `count + key_updates.len()` keys of the entry can matter: the
+        // updates already gathered are the only thing that can delete a key from that
+        // range, so any key past that bound is guaranteed not to reach the final result.
+        // Updates are newer than the reset, so they take precedence over the entry.
+        </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(entry), <span class="prelude-val">Some</span>(k_range)) = (reset_entry, key_range.as_ref()) {
+            <span class="kw">let </span>base_it = entry.datastore.range(k_range.clone()).map(|(k, _v)| k);
+            <span class="kw">match </span>count.map(|cnt| (cnt <span class="kw">as </span>usize).saturating_add(key_updates.len())) {
+                <span class="prelude-val">Some</span>(limit) =&gt; {
+                    <span class="kw">for </span>k <span class="kw">in </span>base_it.take(limit) {
+                        key_updates.entry(k.clone()).or_insert(<span class="bool-val">true</span>);
+                    }
+                }
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="kw">for </span>k <span class="kw">in </span>base_it {
+                        key_updates.entry(k.clone()).or_insert(<span class="bool-val">true</span>);
+                    }
+                }
             }
         }
     }
@@ -549,7 +591,13 @@
         <span class="kw">if </span>final_keys_queue.is_empty() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(last_k) = last_final_batch_key.take() {
                 <span class="comment">// the last final item was consumed: replenish the queue by querying more
-                </span>final_keys_queue = final_state
+                // only the keys still missing to reach `count` are worth fetching
+                </span><span class="kw">let </span>remaining = count.map(|cnt| {
+                    (cnt <span class="kw">as </span>u64)
+                        .saturating_sub(speculative_keys.len() <span class="kw">as </span>u64)
+                        .max(<span class="number">1</span>) <span class="kw">as </span>u32
+                });
+                final_keys_queue = final_state
                     .read()
                     .get_ledger()
                     .get_datastore_keys(
@@ -557,7 +605,7 @@
                         prefix,
                         std::ops::Bound::Excluded(last_k),
                         end_key.clone(),
-                        count,
+                        remaining,
                     )
                     .expect(<span class="string">"address expected to exist in final state"</span>)
                     .iter()
