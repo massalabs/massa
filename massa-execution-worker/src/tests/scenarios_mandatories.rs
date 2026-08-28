@@ -189,8 +189,12 @@ fn expect_finalize_deploy_and_call_blocks(
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(deploy_sc_slot), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(deploy_sc_slot),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             let mut saved_bytecode = saved_bytecode_edit.write();
             if !changes.ledger_changes.get_bytecode_updates().is_empty() {
                 *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
@@ -202,8 +206,12 @@ fn expect_finalize_deploy_and_call_blocks(
             .write()
             .expect_finalize()
             .times(1)
-            .with(predicate::eq(call_sc_slot), predicate::always())
-            .returning(move |_, _| {
+            .with(
+                predicate::eq(call_sc_slot),
+                predicate::always(),
+                predicate::always(),
+            )
+            .returning(move |_, _, _| {
                 finalized_waitpoint_trigger_handle_2.trigger();
             });
     }
@@ -1090,8 +1098,12 @@ fn send_and_receive_async_message() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             {
                 let mut saved_bytecode = saved_bytecode_edit.write();
                 *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
@@ -1115,8 +1127,12 @@ fn send_and_receive_async_message() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 1)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             match changes.ledger_changes.0.get(&destination).unwrap() {
                 // sc has received the coins (0.0000001)
                 SetUpdateOrDelete::Update(change_sc_update) => {
@@ -1240,8 +1256,12 @@ fn send_and_receive_async_message_expired() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             //println!("changes S (1 0): {:?}", changes);
             assert_eq!(
                 changes.async_pool_changes,
@@ -1330,8 +1350,12 @@ fn send_and_receive_async_message_expired_2() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             assert_eq!(
                 changes.async_pool_changes,
                 AsyncPoolChanges(BTreeMap::new())
@@ -1421,8 +1445,12 @@ fn send_and_receive_async_message_without_init_gas() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             assert_eq!(
                 changes.async_pool_changes,
                 AsyncPoolChanges(BTreeMap::new())
@@ -1520,8 +1548,12 @@ fn cancel_async_message() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             {
                 let mut saved_bytecode = saved_bytecode_edit.write();
                 *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
@@ -1544,8 +1576,12 @@ fn cancel_async_message() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 1)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             match changes.ledger_changes.0.get(&sender_addr).unwrap() {
                 // at slot (1,1) msg was canceled so sender has received the coins (0.0000001)
                 // sender has received the coins (0.0000001)
@@ -1720,8 +1756,12 @@ fn deferred_calls() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             {
                 let mut saved_bytecode = saved_bytecode_edit.write();
                 *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
@@ -1738,8 +1778,12 @@ fn deferred_calls() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 1)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             match changes.ledger_changes.0.get(&destination).unwrap() {
                 // sc has received the coins (0.0000001)
                 SetUpdateOrDelete::Update(change_sc_update) => {
@@ -1912,8 +1956,12 @@ fn deferred_call_register() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             // assert sender was debited ( -10 coins) and -5.2866 for fees
             match changes.ledger_changes.0.get(&sender_addr_clone).unwrap() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
@@ -1962,8 +2010,12 @@ fn deferred_call_register() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 1)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             match changes
                 .ledger_changes
                 .0
@@ -2116,8 +2168,12 @@ fn deferred_call_register_fail() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -2128,8 +2184,12 @@ fn deferred_call_register_fail() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 1)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             assert_eq!(changes.deferred_call_changes.slots_change.len(), 1);
             // deferred call was not register
             assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
@@ -2314,8 +2374,12 @@ fn deferred_call_exists() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -2452,8 +2516,12 @@ fn deferred_call_quote() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -2852,8 +2920,12 @@ fn send_and_receive_transaction() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             // 110 because 100 in the get_balance in the `final_state_boilerplate` and 10 from the transfer.
             assert_eq!(
                 changes
@@ -2986,8 +3058,12 @@ fn roll_buy() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             assert_eq!(changes.pos_changes.roll_changes.len(), 1);
             // 100 base + 1 bought
             assert_eq!(changes.pos_changes.roll_changes.get(&address), Some(&101));
@@ -3097,8 +3173,12 @@ fn roll_sell() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(3, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(3, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             let amount = changes
                 .ledger_changes
                 .get_balance_or_else(&address, || None)
@@ -3269,15 +3349,23 @@ fn auto_sell_on_missed_blocks() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, _changes| {});
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, _changes, _| {});
 
     foreign_controllers
         .final_state
         .write()
         .expect_finalize()
-        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 1)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             println!("changes: {:?}", changes);
             let deferred_credits = changes
                 .pos_changes
@@ -3343,7 +3431,7 @@ fn roll_slash() {
         .final_state
         .write()
         .expect_finalize()
-        .returning(move |_, changes| {
+        .returning(move |_, changes, _| {
             let rolls = changes.pos_changes.roll_changes.get(&address).unwrap();
             // 97 sold and 3 slashed
             assert_eq!(rolls, &0);
@@ -3474,7 +3562,7 @@ fn roll_slash_2() {
         .final_state
         .write()
         .expect_finalize()
-        .returning(move |_, changes| {
+        .returning(move |_, changes, _| {
             let rolls = changes.pos_changes.roll_changes.get(&address).unwrap();
             // 100 sold
             assert_eq!(rolls, &0);
@@ -3791,8 +3879,12 @@ fn datastore_manipulations() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             let key_len = (key_a.len() + key_b.len()) as u64;
             let value_len = ([21, 0, 49].len() + [5, 12, 241].len()) as u64;
             let amount = changes
@@ -4202,8 +4294,12 @@ fn test_rewards() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             let block_credits = exec_cfg.block_reward;
             let block_credit_part = block_credits
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -4248,8 +4344,12 @@ fn test_rewards() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 1)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             let block_credits = exec_cfg.block_reward;
             let block_credit_part = block_credits
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -4455,8 +4555,12 @@ fn send_and_receive_async_message_with_reset() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             assert_eq!(changes.async_pool_changes.0.len(), 1);
             assert_eq!(
                 changes.async_pool_changes.0.first_key_value().unwrap().1,
@@ -4476,8 +4580,12 @@ fn send_and_receive_async_message_with_reset() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 1)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             match changes.async_pool_changes.0.first_key_value().unwrap().1 {
                 SetUpdateOrDelete::Delete => {
                     // msg was deleted
@@ -4580,8 +4688,12 @@ fn execution_trace_transfers_are_bound_to_event() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, _| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, _, _| {
             finalized_waitpoint_trigger_handle.trigger();
         });
 
@@ -4932,8 +5044,12 @@ fn test_dump_block() {
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
+        .with(
+            predicate::eq(Slot::new(1, 0)),
+            predicate::always(),
+            predicate::always(),
+        )
+        .returning(move |_, changes, _| {
             // 190 because 100 in the get_balance in the `final_state_boilerplate` and 90 from the transfer.
             assert_eq!(
                 changes

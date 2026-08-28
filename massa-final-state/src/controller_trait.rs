@@ -35,7 +35,12 @@ pub trait FinalStateController: Send + Sync {
     /// Once this is called, the state is attached at the output of the provided slot.
     ///
     /// Panics if the new slot is not the one coming just after the current one.
-    fn finalize(&mut self, slot: Slot, changes: StateChanges);
+    fn finalize(
+        &mut self,
+        slot: Slot,
+        changes: StateChanges,
+        network_versions: Option<(u32, Option<u32>)>,
+    );
 
     /// After bootstrap or load from disk, recompute all the caches.
     fn recompute_caches(&mut self);

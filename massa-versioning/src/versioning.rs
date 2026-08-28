@@ -1002,7 +1002,7 @@ impl MipStoreRaw {
         }
     }
 
-    fn update_network_version_stats(
+    pub fn update_network_version_stats(
         &mut self,
         slot_timestamp: MassaTime,
         network_versions: Option<(u32, Option<u32>)>,
@@ -1370,7 +1370,7 @@ impl MipStoreRaw {
     // DB methods
 
     /// Get MIP store changes between 2 timestamps - used by the db to update the disk
-    fn update_batches(
+    pub fn update_batches(
         &self,
         batch: &mut DBBatch,
         versioning_batch: &mut DBBatch,
