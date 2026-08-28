@@ -9,6 +9,7 @@ use massa_db_exports::StreamBatch;
 
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 
+use massa_models::config::MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE;
 use massa_models::prehash::PreHashSet;
 use massa_models::serialization::{
     PreHashSetDeserializer, PreHashSetSerializer, VecU8Deserializer, VecU8Serializer,
@@ -26,10 +27,11 @@ use massa_serialization::{
     SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
+use std::collections::BTreeMap;
 
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
-use nom::multi::{length_data, length_value, many0};
+use nom::multi::{fold_many0, length_data, length_value};
 use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
@@ -380,9 +382,13 @@ impl BootstrapServerMessageDeserializer {
                 Included(0),
                 Included(args.max_final_state_elements_size.into()),
             ),
+            // The updates section is deliberately allowed to be large (see the
+            // `MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE` doc: update sizes are not capped by
+            // the per-part limits), but it can never exceed the whole message, so bound it
+            // to the maximum message size instead of `u64::MAX`.
             stream_batch_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
-                Included(u64::MAX),
+                Included(MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE as u64),
             ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -500,10 +506,25 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.state_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.datastore_val_deserializer.deserialize(input),
-                                    ))),
+                                    // Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the new_elements
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    fold_many0(
+                                        tuple((
+                                            |input| {
+                                                self.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| {
+                                                self.datastore_val_deserializer.deserialize(input)
+                                            },
+                                        )),
+                                        BTreeMap::new,
+                                        |mut acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context(
@@ -513,10 +534,23 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.stream_batch_updates_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.opt_vec_u8_deserializer.deserialize(input),
-                                    ))),
+                                    // Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the updates
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    fold_many0(
+                                        tuple((
+                                            |input| {
+                                                self.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| self.opt_vec_u8_deserializer.deserialize(input),
+                                        )),
+                                        BTreeMap::new,
+                                        |mut acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context("Failed slot deserialization", |input| {
@@ -534,10 +568,25 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.versioning_part_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.datastore_val_deserializer.deserialize(input),
-                                    ))),
+                                    // Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the new_elements
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    fold_many0(
+                                        tuple((
+                                            |input| {
+                                                self.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| {
+                                                self.datastore_val_deserializer.deserialize(input)
+                                            },
+                                        )),
+                                        BTreeMap::new,
+                                        |mut acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context(
@@ -547,10 +596,23 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.stream_batch_updates_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.opt_vec_u8_deserializer.deserialize(input),
-                                    ))),
+                                    // Fold directly into the target `BTreeMap` instead of
+                                    // collecting into an intermediate `Vec` first: the updates
+                                    // section can be large, so avoiding the extra full-size
+                                    // allocation roughly halves the peak memory of parsing it.
+                                    fold_many0(
+                                        tuple((
+                                            |input| {
+                                                self.datastore_key_deserializer.deserialize(input)
+                                            },
+                                            |input| self.opt_vec_u8_deserializer.deserialize(input),
+                                        )),
+                                        BTreeMap::new,
+                                        |mut acc, (key, value)| {
+                                            acc.insert(key, value);
+                                            acc
+                                        },
+                                    ),
                                 ),
                             ),
                             context("Failed slot deserialization", |input| {
@@ -590,15 +652,15 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         last_slot_before_downtime,
                     )| {
                         let state_part = StreamBatch::<Slot> {
-                            new_elements: state_part_new_elems.into_iter().collect(),
-                            updates_on_previous_elements: state_part_updates.into_iter().collect(),
+                            // both already `BTreeMap`s (folded during parsing)
+                            new_elements: state_part_new_elems,
+                            updates_on_previous_elements: state_part_updates,
                             change_id: state_part_change_id,
                         };
                         let versioning_part = StreamBatch::<Slot> {
-                            new_elements: versioning_part_new_elems.into_iter().collect(),
-                            updates_on_previous_elements: versioning_part_updates
-                                .into_iter()
-                                .collect(),
+                            // both already `BTreeMap`s (folded during parsing)
+                            new_elements: versioning_part_new_elems,
+                            updates_on_previous_elements: versioning_part_updates,
                             change_id: versioning_part_change_id,
                         };
 

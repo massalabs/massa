@@ -116,25 +116,25 @@ jobs:
           submodules: "recursive"
       - uses: crate-ci/typos@master
 
-  # misc:
-  #   if: github.ref != 'refs/heads/staging'
-  #   needs: sanity
-  #   runs-on: ubuntu-latest
-  #   continue-on-error: true
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: "recursive"
-  #     - uses: dtolnay/rust-toolchain@master
-  #       with:
-  #         toolchain: 1.81.0
-  #     - uses: Swatinem/rust-cache@v2
-  #       with:
-  #         shared-key: "clippy"
-  #         save-if: ${{ github.ref_name == 'main' }}
-  #     - run: cargo xtask check_gas_cost_definitions
+  misc:
+    if: github.ref != 'refs/heads/staging'
+    needs: sanity
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.81.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "clippy"
+          save-if: ${{ github.ref_name == 'main' }}
+      - run: cargo xtask check_gas_cost_definitions
 
-  # Full cross-platform tests required to merge on main branch
+  # Full tests required to merge on main branch (Linux; macOS covered by CD binary builds)
   full:
     name: full
     needs: sanity
@@ -143,7 +143,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macOS-latest
+          # - macOS-latest  # disabled: GitHub macOS runners ~10x Linux cost; keep macOS for CD binary builds only
           # - windows-latest
     steps:
       - name: Free Disk Space (Ubuntu)

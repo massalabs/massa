@@ -17,6 +17,7 @@ use massa_models::{
     types::{SetOrKeep, SetUpdateOrDelete},
 };
 use massa_pool_exports::MockPoolController;
+use massa_pos_exports::{MockSelectorController, Selection};
 #[cfg(feature = "execution-trace")]
 use massa_proto_rs::massa::api::v1::NewSlotTransfersRequest;
 use massa_proto_rs::massa::{
@@ -29,7 +30,8 @@ use massa_proto_rs::massa::{
 };
 use massa_protocol_exports::{
     test_exports::tools::{
-        create_block, create_block_with_operations, create_endorsement,
+        create_block, create_block_with_operations, create_call_sc_op_with_too_much_gas,
+        create_endorsement, create_execute_sc_op_with_too_much_gas,
         create_operation_with_expire_period,
     },
     MockProtocolController,
@@ -1404,7 +1406,7 @@ async fn send_operations_low_fee() {
     pool_ctrl.expect_clone_box().returning(|| {
         let mut pool_ctrl = Box::new(MockPoolController::new());
 
-        pool_ctrl.expect_add_operations().returning(|_| ());
+        pool_ctrl.expect_add_operations().returning(|_| Ok(()));
 
         pool_ctrl
     });
@@ -1476,6 +1478,99 @@ async fn send_operations_low_fee() {
 }
 
 #[tokio::test]
+async fn send_operations_gas_over_block_limit() {
+    let addr: SocketAddr = "[::]:4001".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
+    // the raw max_gas of the operations below fits under the block gas limit,
+    // only the mandatory overheads push their total gas usage above it
+    public_server.grpc_config.max_gas_per_block = u32::MAX as u64;
+    public_server.grpc_config.base_operation_gas_cost = 10;
+    public_server.grpc_config.sp_compilation_cost = 10;
+
+    let mut pool_ctrl = Box::new(MockPoolController::new());
+    pool_ctrl.expect_clone_box().returning(|| {
+        let mut pool_ctrl = Box::new(MockPoolController::new());
+
+        pool_ctrl.expect_add_operations().returning(|_| Ok(()));
+
+        pool_ctrl
+    });
+
+    let mut protocol_ctrl = Box::new(MockProtocolController::new());
+    protocol_ctrl.expect_clone_box().returning(|| {
+        let mut ctrl = Box::new(MockProtocolController::new());
+
+        ctrl.expect_propagate_operations().returning(|_| Ok(()));
+
+        ctrl
+    });
+
+    public_server.pool_controller = pool_ctrl;
+    public_server.protocol_controller = protocol_ctrl;
+
+    let config = public_server.grpc_config.clone();
+    let stop_handle = public_server.serve(&config).await.unwrap();
+
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').last().unwrap()
+    ))
+    .await
+    .unwrap();
+
+    let mut resp_stream = public_client
+        .send_operations(request_stream)
+        .await
+        .unwrap()
+        .into_inner();
+
+    let keypair = KeyPair::generate(0).unwrap();
+    for (op, expected_limit) in [
+        (
+            create_execute_sc_op_with_too_much_gas(&keypair, 11950000),
+            "Upper gas limit for ExecuteSC operation is 4294967275",
+        ),
+        (
+            create_call_sc_op_with_too_much_gas(&keypair, 11950000),
+            "Upper gas limit for CallSC operation is 4294967285",
+        ),
+    ] {
+        let mut buffer: Vec<u8> = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(&op, &mut buffer)
+            .unwrap();
+
+        tx.send(SendOperationsRequest {
+            operations: vec![buffer],
+        })
+        .await
+        .unwrap();
+
+        let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap()
+            .result
+            .unwrap();
+
+        match result {
+            massa_proto_rs::massa::api::v1::send_operations_response::Result::OperationIds(_) => {
+                panic!("should be error");
+            }
+            massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(e) => {
+                assert_eq!(e.message, format!("invalid operation(s): Invalid argument error: {}. Your operation will never be included in a block.", expected_limit));
+            }
+        }
+    }
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
 async fn send_operations() {
     let addr: SocketAddr = "[::]:4033".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -1484,7 +1579,7 @@ async fn send_operations() {
     pool_ctrl.expect_clone_box().returning(|| {
         let mut pool_ctrl = Box::new(MockPoolController::new());
 
-        pool_ctrl.expect_add_operations().returning(|_| ());
+        pool_ctrl.expect_add_operations().returning(|_| Ok(()));
 
         pool_ctrl
     });
@@ -1653,8 +1748,27 @@ async fn send_endorsements() {
         ctrl
     });
 
+    let endorsement = create_endorsement();
+
+    // the endorsement is only propagated if its creator is the one drawn for its (slot, index)
+    let drawn_address = endorsement.content_creator_address;
+    let mut selector_ctrl = Box::new(MockSelectorController::new());
+    selector_ctrl.expect_clone_box().returning(move || {
+        let mut ctrl = Box::new(MockSelectorController::new());
+
+        ctrl.expect_get_selection().returning(move |_slot| {
+            Ok(Selection {
+                endorsements: vec![drawn_address],
+                producer: drawn_address,
+            })
+        });
+
+        ctrl
+    });
+
     public_server.pool_controller = pool_ctrl;
     public_server.protocol_controller = protocol_ctrl;
+    public_server.selector_controller = selector_ctrl;
 
     let (tx, rx) = tokio::sync::mpsc::channel(10);
     let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
@@ -1674,7 +1788,6 @@ async fn send_endorsements() {
         .unwrap()
         .into_inner();
 
-    let endorsement = create_endorsement();
     // serialize endorsement
     let mut buffer: Vec<u8> = Vec::new();
     SecureShareSerializer::new()
@@ -1711,6 +1824,34 @@ async fn send_endorsements() {
     match result.result.unwrap() {
         massa_proto_rs::massa::api::v1::send_endorsements_response::Result::Error(err) => {
             assert!(err.message.contains("failed to deserialize endorsement"))
+        }
+        _ => panic!("should be error"),
+    }
+
+    // an endorsement whose creator is not the drawn endorser must be rejected
+    let not_drawn_endorsement = create_endorsement();
+    let mut buffer: Vec<u8> = Vec::new();
+    SecureShareSerializer::new()
+        .serialize(&not_drawn_endorsement, &mut buffer)
+        .unwrap();
+
+    tx.send(SendEndorsementsRequest {
+        endorsements: vec![buffer],
+    })
+    .await
+    .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    match result.result.unwrap() {
+        massa_proto_rs::massa::api::v1::send_endorsements_response::Result::Error(err) => {
+            assert!(err
+                .message
+                .contains("invalid endorsement producer selection"))
         }
         _ => panic!("should be error"),
     }

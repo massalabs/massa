@@ -69,7 +69,7 @@ pub fn start_operation_injector(
     println!("Sending init ops len: {}", init_ops.len());
     let mut storage = storage.clone_without_refs();
     storage.store_operations(init_ops);
-    pool_controller.add_operations(storage.clone());
+    pool_controller.add_operations(storage.clone()).unwrap();
     protocol_controller
         .propagate_operations(storage.clone())
         .unwrap();
@@ -106,7 +106,7 @@ pub fn start_operation_injector(
                 }
             }
             storage.store_operations(ops);
-            pool_controller.add_operations(storage.clone());
+            pool_controller.add_operations(storage.clone()).unwrap();
             protocol_controller
                 .propagate_operations(storage.clone())
                 .unwrap();

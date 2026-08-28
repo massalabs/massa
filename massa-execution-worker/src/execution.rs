@@ -356,11 +356,11 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         {
             if self.config.broadcast_traces_enabled {
-                if let Some((slot_trace, _)) = exec_out.slot_trace.clone() {
+                if let Some((slot_trace, transfers)) = exec_out.slot_trace.clone() {
                     if let Err(err) = self
                         .channels
                         .slot_execution_traces_sender
-                        .send((slot_trace, true))
+                        .send((slot_trace, transfers, true))
                     {
                         trace!(
                             "error, failed to broadcast abi trace for slot {} due to: {}",
@@ -946,6 +946,12 @@ impl ExecutionState {
 
     /// Execute an operation of type `Transaction`
     /// Will panic if called with another operation type
+    ///
+    /// The recipient can be any address, including a deployed smart contract:
+    /// a transaction only moves coins and never executes the destination's bytecode.
+    /// Contracts must therefore not treat a balance increase as a handled deposit.
+    /// Note that transfers to a *non-existing* SC address are rejected by the ledger,
+    /// since only user addresses can be created from transferred coins.
     ///
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be a `Transaction`
@@ -1599,7 +1605,7 @@ impl ExecutionState {
         // Block execution
 
         let mut block_info: Option<ExecutedBlockInfo> = None;
-        // Set block gas (max_gas_per_block - gas used by deferred calls)
+        // Set block gas (deferred calls have their own budget, see async gas below)
         let mut remaining_block_gas = self.config.max_gas_per_block;
 
         // Check if there is a block at this slot
@@ -1887,6 +1893,9 @@ impl ExecutionState {
 
         // Get asynchronous messages to execute
         // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
+        // Reusing the gas the block left unused is intentional (activated by MIP-0001, MipComponent::Execution v1):
+        // it keeps the whole-slot budget bounded by max_gas_per_block + max_async_gas while letting
+        // underfilled slots do more async work. Changing this formula is a consensus change.
         let async_msg_gas_available = self
             .config
             .max_async_gas
@@ -1929,11 +1938,7 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         self.trace_history
             .write()
-            .save_traces_for_slot(*slot, slot_trace.clone());
-        #[cfg(feature = "execution-trace")]
-        self.trace_history
-            .write()
-            .save_transfers_for_slot(*slot, transfers.clone());
+            .save_for_slot(*slot, slot_trace.clone(), transfers.clone());
 
         // Finish slot
         #[allow(unused_mut)]
@@ -2033,6 +2038,8 @@ impl ExecutionState {
             self.active_history
                 .write()
                 .truncate_from(slot, self.config.thread_count);
+            #[cfg(feature = "execution-trace")]
+            self.trace_history.write().truncate_from(slot);
             self.active_cursor = slot
                 .get_prev_slot(self.config.thread_count)
                 .expect("overflow when iterating on slots");
@@ -2042,11 +2049,11 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         {
             if self.config.broadcast_traces_enabled {
-                if let Some((slot_trace, _)) = exec_out.slot_trace.clone() {
+                if let Some((slot_trace, transfers)) = exec_out.slot_trace.clone() {
                     if let Err(err) = self
                         .channels
                         .slot_execution_traces_sender
-                        .send((slot_trace, false))
+                        .send((slot_trace, transfers, false))
                     {
                         trace!(
                             "error, failed to broadcast abi trace for slot {} due to: {}",
@@ -2113,6 +2120,8 @@ impl ExecutionState {
 
         // truncate the whole execution queue
         self.active_history.write().0.clear();
+        #[cfg(feature = "execution-trace")]
+        self.trace_history.write().truncate_from(slot);
         self.active_cursor = self.final_cursor;
 
         // execute slot
@@ -2140,9 +2149,38 @@ impl ExecutionState {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
-        // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
-        // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
+        // Run the read-only execution request.
+        let result = self.execute_readonly_request_inner(req);
 
+        // Always reset the shared execution context to a clean read-only context,
+        // regardless of whether the execution succeeded or failed.
+        // Otherwise, a failed read-only execution could leave stale, caller-controlled
+        // speculative changes in the shared context, which would then be exposed
+        // to subsequent RPC queries.
+        let slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow in readonly execution context reset from active slot");
+        *context_guard!(self) = ExecutionContext::readonly(
+            self.config.clone(),
+            slot,
+            Vec::new(),
+            self.final_state.clone(),
+            self.active_history.clone(),
+            self.module_cache.clone(),
+            self.mip_store.clone(),
+        );
+
+        result
+    }
+
+    /// Inner implementation of `execute_readonly_request`.
+    /// The caller is responsible for resetting the shared execution context
+    /// after this function returns, on both success and error paths.
+    fn execute_readonly_request_inner(
+        &self,
+        req: ReadOnlyExecutionRequest,
+    ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
         // check if read only request max gas is above the threshold
         if req.max_gas > self.config.max_read_only_gas {
             return Err(ExecutionError::TooMuchGas(format!(

@@ -1054,8 +1054,12 @@ impl ExecutionContext {
         }
 
         // update module cache
-        let bc_updates = self.speculative_ledger.added_changes.get_bytecode_updates();
-        {
+        // Skip this for read-only executions: their speculative bytecode is never
+        // finalized, so importing it would only pollute the shared RAM + on-disk module
+        // cache (potentially evicting legitimately warmed modules) with no cache-warming
+        // benefit. Real executions (read_only == false) still warm the cache as intended.
+        if !self.read_only {
+            let bc_updates = self.speculative_ledger.added_changes.get_bytecode_updates();
             let mut cache_write_lock = self.module_cache.write();
             for bytecode in bc_updates {
                 cache_write_lock.save_module(&bytecode.0, self.config.condom_limits.clone());

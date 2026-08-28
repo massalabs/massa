@@ -11,7 +11,7 @@ use massa_models::amount::Amount;
 use massa_models::config::CHAINID;
 use massa_models::{
     config::{
-        BASE_OPERATION_GAS_COST, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
+        BASE_OPERATION_GAS_COST, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_BYTECODE_LENGTH,
         MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_MESSAGE_SIZE,
         MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
         MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
@@ -52,7 +52,7 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
         ping_interval: MassaTime::from_millis(60000),
         enable_http: true,
         enable_ws: true,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
@@ -133,7 +133,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         ping_interval: MassaTime::from_millis(60000),
         enable_http: true,
         enable_ws: true,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
@@ -213,6 +213,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
             genesis_timestamp: MassaTime::now(),
             t0: MassaTime::from_millis(16000),
             max_ops_kept_for_propagation: 10000,
+            max_endorsements_per_propagation_round: 10000,
             max_operations_propagation_time: MassaTime::from_millis(30000),
             max_endorsements_propagation_time: MassaTime::from_millis(60000),
             initial_peers: NamedTempFile::new()
@@ -236,7 +237,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
             max_size_channel_commands_peers: 300,
             max_message_size: MAX_MESSAGE_SIZE as usize,
             endorsement_count: ENDORSEMENT_COUNT,
-            max_size_value_datastore: 1_000_000,
+            max_bytecode_size: 1_000_000,
             max_size_function_name: u16::MAX,
             max_size_call_sc_parameter: 10_000_000,
             max_denunciations_in_block_header: 100,

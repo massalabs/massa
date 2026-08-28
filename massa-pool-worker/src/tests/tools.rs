@@ -178,10 +178,20 @@ pub fn create_endorsement(
     index: u32,
     slot: Slot,
 ) -> SecureShareEndorsement {
+    create_endorsement_on_block(sender_keypair, index, slot, "blabla")
+}
+
+/// Creates an endorsement endorsing a block derived from `block_seed`, for use in pool tests.
+pub fn create_endorsement_on_block(
+    sender_keypair: &KeyPair,
+    index: u32,
+    slot: Slot,
+    block_seed: &str,
+) -> SecureShareEndorsement {
     let content = Endorsement {
         slot,
         index,
-        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blabla".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from(block_seed.as_bytes())),
     };
     Endorsement::new_verifiable(
         content,

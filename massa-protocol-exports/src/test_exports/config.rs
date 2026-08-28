@@ -42,6 +42,7 @@ impl Default for ProtocolConfig {
             genesis_timestamp: MassaTime::now(),
             t0: MassaTime::from_millis(16000),
             max_ops_kept_for_propagation: 10000,
+            max_endorsements_per_propagation_round: 10000,
             max_operations_propagation_time: MassaTime::from_millis(30000),
             max_endorsements_propagation_time: MassaTime::from_millis(60000),
             initial_peers: NamedTempFile::new()
@@ -65,7 +66,7 @@ impl Default for ProtocolConfig {
             max_size_channel_commands_peers: 300,
             max_message_size: MAX_MESSAGE_SIZE as usize,
             endorsement_count: ENDORSEMENT_COUNT,
-            max_size_value_datastore: 1_000_000,
+            max_bytecode_size: 1_000_000,
             max_size_function_name: u16::MAX,
             max_size_call_sc_parameter: 10_000_000,
             max_denunciations_in_block_header: 100,

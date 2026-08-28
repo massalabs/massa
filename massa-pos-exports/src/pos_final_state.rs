@@ -311,10 +311,11 @@ impl PoSFinalState {
 
         let cycle = last_slot.get_cycle(self.config.periods_per_cycle);
 
-        let num_slots = last_slot
-            .slots_since(&first_slot, self.config.thread_count)
-            .expect("Error in slot ordering")
-            .saturating_add(1);
+        let num_slots = match last_slot.slots_since(&first_slot, self.config.thread_count) {
+            Ok(slots_since) => slots_since.saturating_add(1),
+            // if first_slot is greater than last_slot, we have nothing to do
+            Err(_) => return Ok(()),
+        };
 
         rng_seed.extend(vec![false; num_slots as usize]);
 

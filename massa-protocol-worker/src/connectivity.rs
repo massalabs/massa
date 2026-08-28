@@ -368,7 +368,9 @@ pub(crate) fn start_connectivity_thread(
                                 // Default category
                                 None if connection_slots["default"] > 0 => {
                                     // In case the connection succeeds, we take a place in a slot
-                                    if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
+                                    // (mirrors the special-category branch above: the slot is
+                                    // consumed and the address recorded on success, not failure).
+                                    if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_ok() {
                                         if let Some(v) = connection_slots.get_mut("default") {
                                             *v = v.saturating_sub(1);
                                         }

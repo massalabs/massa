@@ -10,6 +10,9 @@
 //!
 //! Here we need to announce block headers to other nodes that haven't sene them,
 //! and keep the blocks alive long enough for our peers to be able to retrieve them from us.
+//! That retention is best-effort: blocks are kept for `max_block_propagation_time` unless
+//! the `max_blocks_kept_for_propagation` size cap forces an earlier eviction. Blocks that
+//! are still active in the graph remain retrievable through consensus storage anyway.
 
 use super::{
     cache::SharedBlockCache, commands_propagation::BlockHandlerPropagationCommand,
@@ -53,7 +56,8 @@ pub struct PropagationThread {
     config: ProtocolConfig,
     /// Shared access to the block cache
     cache: SharedBlockCache,
-    /// Blocks stored for propagation
+    /// Blocks stored for propagation, bounded both by `max_block_propagation_time`
+    /// and by `max_blocks_kept_for_propagation` entries
     stored_for_propagation: LruMap<BlockId, BlockPropagationData>,
     /// Shared access to the list of peers connected to us
     active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -93,12 +97,45 @@ impl PropagationThread {
                                 }
                             };
 
+                            // Mark the integrated header as already checked so that a peer
+                            // bouncing it back to us (after we announce it) is recognized as
+                            // known and not re-validated / re-registered with consensus.
+                            // Locally-produced blocks never go through `note_header_from_peer`,
+                            // so without this they would be absent from `checked_headers`.
+                            self.cache
+                                .write()
+                                .checked_headers
+                                .insert(block_id, header.clone());
+
                             // Add the block and its dependencies to the propagation LRU
-                            // to ensure they are stored for the time of the propagation.
+                            // to keep them stored for the duration of the propagation.
+                            // Retention is best-effort: entries normally leave the map once
+                            // `max_block_propagation_time` has elapsed, but the map is also
+                            // capped at `max_blocks_kept_for_propagation` entries to bound
+                            // memory. Drop expired entries first so that the size cap only
+                            // ever cuts the propagation window short when the node really
+                            // integrates more blocks than the cap allows.
+                            let now = Instant::now();
+                            self.prune_expired_propagations(now);
+                            if self.stored_for_propagation.len()
+                                >= self.config.max_blocks_kept_for_propagation
+                            {
+                                if let Some((evicted_id, evicted)) =
+                                    self.stored_for_propagation.peek_oldest()
+                                {
+                                    warn!(
+                                        "block propagation cache full ({} entries): dropping block {} after only {:?} of propagation instead of {:?}, consider raising max_blocks_kept_for_propagation",
+                                        self.config.max_blocks_kept_for_propagation,
+                                        evicted_id,
+                                        now.saturating_duration_since(evicted.time_added),
+                                        self.config.max_block_propagation_time.to_duration()
+                                    );
+                                }
+                            }
                             self.stored_for_propagation.insert(
                                 block_id,
                                 BlockPropagationData {
-                                    time_added: Instant::now(),
+                                    time_added: now,
                                     _storage: storage,
                                     header,
                                 },
@@ -114,19 +151,20 @@ impl PropagationThread {
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) => {
                             debug!("received AttackBlockDetected({})", block_id);
-                            let peers_to_ban: Vec<PeerId> = self
-                                .cache
-                                .read()
-                                .blocks_known_by_peer
-                                .iter()
-                                .filter_map(|(peer_id, knowledge)| {
-                                    match knowledge.peek(&block_id) {
-                                        Some((true, _)) => Some(*peer_id),
-                                        _ => None,
-                                    }
-                                })
-                                .collect();
-                            self.ban_peers(&peers_to_ban);
+                            // Only ban peers that actually sent us data for that block.
+                            // `blocks_known_by_peer` must not be used here: it is mutable
+                            // propagation state that also marks peers we announced the block to,
+                            // and it is pruned on disconnection and by LRU eviction.
+                            let peers_to_ban: Vec<PeerId> =
+                                self.cache.read().get_block_senders(&block_id);
+                            if peers_to_ban.is_empty() {
+                                warn!(
+                                    "attack block {} detected but no peer could be attributed as its sender: not banning anyone",
+                                    block_id
+                                );
+                            } else {
+                                self.ban_peers(&peers_to_ban);
+                            }
                         }
                         BlockHandlerPropagationCommand::Stop => {
                             info!("Stop block propagation thread");
@@ -150,11 +188,10 @@ impl PropagationThread {
         }
     }
 
-    /// Propagate blocks to peers that need them
-    fn perform_propagations(&mut self) {
-        let now = Instant::now();
-
-        // stop propagating blocks that have been propagating for too long
+    /// Drop the blocks that have been propagating for longer than `max_block_propagation_time`.
+    /// Entries are inserted in chronological order and never promoted, so the LRU order
+    /// matches the insertion order and stopping at the first non-expired entry is enough.
+    fn prune_expired_propagations(&mut self, now: Instant) {
         while let Some(time_added) = self
             .stored_for_propagation
             .peek_oldest()
@@ -168,6 +205,14 @@ impl PropagationThread {
                 break;
             }
         }
+    }
+
+    /// Propagate blocks to peers that need them
+    fn perform_propagations(&mut self) {
+        let now = Instant::now();
+
+        // stop propagating blocks that have been propagating for too long
+        self.prune_expired_propagations(now);
 
         // update caches based on currently connected peers
         let peers_connected = self.active_connections.get_peer_ids_connected();

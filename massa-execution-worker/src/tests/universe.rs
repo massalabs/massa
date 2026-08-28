@@ -16,7 +16,7 @@ use massa_event_cache::MockEventCacheControllerWrapper;
 #[cfg(feature = "execution-info")]
 use massa_execution_exports::execution_info::ExecutionInfoForSlot;
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::types_trace_info::SlotAbiCallStack;
+use massa_execution_exports::types_trace_info::{SlotAbiCallStack, Transfer};
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, SlotExecutionOutput,
@@ -169,7 +169,7 @@ pub struct ExecutionTestUniverse {
     pub broadcast_channel_receiver: Option<tokio::sync::broadcast::Receiver<SlotExecutionOutput>>,
     #[cfg(feature = "execution-trace")]
     pub broadcast_traces_channel_receiver:
-        Option<tokio::sync::broadcast::Receiver<(SlotAbiCallStack, bool)>>,
+        Option<tokio::sync::broadcast::Receiver<(SlotAbiCallStack, Vec<Transfer>, bool)>>,
     #[cfg(feature = "execution-info")]
     pub broadcast_execution_info_channel_receiver:
         Option<tokio::sync::broadcast::Receiver<ExecutionInfoForSlot>>,

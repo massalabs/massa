@@ -107,10 +107,12 @@ async fn get_largest_stakers() {
     let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl.expect_get_cycle_active_rolls().returning(|_| {
         let mut map = BTreeMap::new();
-        map.insert(
-            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-            100,
-        );
+        for rolls in 1..=60u64 {
+            map.insert(
+                Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()),
+                rolls,
+            );
+        }
         map
     });
 
@@ -132,12 +134,58 @@ async fn get_largest_stakers() {
         .await
         .unwrap();
     let client = ClientBuilder::default().build_with_tokio(tx, rx);
+
+    let assert_default_page = |response: &Value| {
+        assert_eq!(response["total_count"], 60);
+        let content = response["content"]
+            .as_array()
+            .expect("content should be an array");
+        assert_eq!(content.len(), 50);
+        assert_eq!(content[0][1], 60);
+        assert_eq!(content[49][1], 11);
+    };
+
+    // omitted api_request
     let response: Value = client
         .request("get_largest_stakers", rpc_params![])
         .await
         .unwrap();
+    assert_default_page(&response);
 
-    assert_eq!(response["total_count"], 1);
+    // empty request object
+    let response: Value = client
+        .request("get_largest_stakers", rpc_params![serde_json::json!({})])
+        .await
+        .unwrap();
+    assert_default_page(&response);
+
+    // explicit null page_request
+    let response: Value = client
+        .request(
+            "get_largest_stakers",
+            rpc_params![serde_json::json!({ "page_request": null })],
+        )
+        .await
+        .unwrap();
+    assert_default_page(&response);
+
+    // explicit pagination
+    let response: Value = client
+        .request(
+            "get_largest_stakers",
+            rpc_params![serde_json::json!({
+                "page_request": { "offset": 0, "limit": 10 }
+            })],
+        )
+        .await
+        .unwrap();
+    assert_eq!(response["total_count"], 60);
+    let content = response["content"]
+        .as_array()
+        .expect("content should be an array");
+    assert_eq!(content.len(), 10);
+    assert_eq!(content[0][1], 60);
+    assert_eq!(content[9][1], 51);
 
     api_handle.stop().await;
 }

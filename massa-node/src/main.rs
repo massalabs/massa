@@ -182,6 +182,7 @@ async fn launch(
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
@@ -378,6 +379,8 @@ async fn launch(
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
         periods_per_cycle: PERIODS_PER_CYCLE,
         endorsement_count: ENDORSEMENT_COUNT,
         max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -442,27 +445,10 @@ async fn launch(
             .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     }
 
-    let last_slot_before_downtime_ = *final_state.read().get_last_slot_before_downtime();
-    if let Some(last_slot_before_downtime) = last_slot_before_downtime_ {
-        let last_shutdown_start = last_slot_before_downtime
-            .get_next_slot(THREAD_COUNT)
-            .unwrap();
-        let last_shutdown_end = Slot::new(final_state.read().get_last_start_period(), 0)
-            .get_prev_slot(THREAD_COUNT)
-            .unwrap();
-
-        final_state
-            .read()
-            .get_mip_store()
-            .is_consistent_with_shutdown_period(
-                last_shutdown_start,
-                last_shutdown_end,
-                THREAD_COUNT,
-                T0,
-                *GENESIS_TIMESTAMP,
-            )
-            .expect("Mip store is not consistent with shutdown period");
-
+    // Note: the consistency of the network restart metadata with the MIP store has already been
+    // checked, either by the bootstrap client before storing what the server sent, or by
+    // `FinalState::new_derived_from_snapshot` when restarting from a local snapshot.
+    if final_state.read().get_last_slot_before_downtime().is_some() {
         // If we are before a network restart, print the hash to make it easier to debug bootstrapping issues
         let now = MassaTime::now();
         let last_start_slot = Slot::new(
@@ -546,6 +532,7 @@ async fn launch(
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
+        readonly_starvation_timeout: SETTINGS.execution.readonly_starvation_timeout,
         cursor_delay: SETTINGS.execution.cursor_delay,
         max_async_gas: MAX_ASYNC_GAS,
         async_msg_cst_gas_cost: ASYNC_MSG_CST_GAS_COST,
@@ -741,6 +728,9 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_message_size: MAX_MESSAGE_SIZE as usize,
         max_ops_kept_for_propagation: SETTINGS.protocol.max_ops_kept_for_propagation,
+        max_endorsements_per_propagation_round: SETTINGS
+            .protocol
+            .max_endorsements_per_propagation_round,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().get_last_start_period(),
@@ -773,7 +763,7 @@ async fn launch(
         max_size_channel_network_to_endorsement_handler:
             MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER,
         max_size_channel_network_to_peer_handler: MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER,
-        max_size_value_datastore: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
@@ -839,6 +829,24 @@ async fn launch(
             .force_keep_final_periods_without_ops,
         chain_id: *CHAINID,
     };
+
+    // Blocks are kept in the shared storage by consensus until they are older than
+    // `force_keep_final_periods` (past that point `strip_to_block` drops the storage
+    // reference, so the block is no longer servable to peers). That retention is what
+    // covers the tail of the propagation window when the propagation cache has to evict
+    // an entry early because of its `max_blocks_kept_for_propagation` size cap.
+    let consensus_block_retention = consensus_config
+        .t0
+        .saturating_mul(consensus_config.force_keep_final_periods);
+    if consensus_block_retention < protocol_config.max_block_propagation_time {
+        warn!(
+            "consensus only keeps blocks for {:?} (force_keep_final_periods={} * t0={:?}) which is shorter than max_block_propagation_time={:?}: a block evicted early by the max_blocks_kept_for_propagation cap will not be retrievable by peers anymore, consider raising force_keep_final_periods or lowering max_block_propagation_time",
+            consensus_block_retention.to_duration(),
+            consensus_config.force_keep_final_periods,
+            consensus_config.t0.to_duration(),
+            protocol_config.max_block_propagation_time.to_duration()
+        );
+    }
 
     let (consensus_event_sender, consensus_event_receiver) =
         MassaChannel::new("consensus_event".to_string(), Some(CHANNEL_SIZE));
@@ -958,7 +966,7 @@ async fn launch(
         ping_interval: SETTINGS.api.ping_interval,
         enable_http: SETTINGS.api.enable_http,
         enable_ws: SETTINGS.api.enable_ws,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
@@ -1014,6 +1022,7 @@ async fn launch(
             keypair.clone(),
             &final_state,
             SETTINGS.pool.minimal_fees,
+            gas_costs.sp_compilation_cost,
         );
 
         let grpc_public_api = MassaPublicGrpc {
@@ -1055,6 +1064,7 @@ async fn launch(
             keypair.clone(),
             &final_state,
             SETTINGS.pool.minimal_fees,
+            gas_costs.sp_compilation_cost,
         );
 
         let bs_white_black_list = bootstrap_manager
@@ -1213,6 +1223,7 @@ fn configure_grpc(
     keypair: KeyPair,
     final_state: &Arc<RwLock<dyn FinalStateController>>,
     minimal_fees: Amount,
+    sp_compilation_cost: u64,
 ) -> GrpcConfig {
     GrpcConfig {
         name,
@@ -1246,7 +1257,7 @@ fn configure_grpc(
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         endorsement_count: ENDORSEMENT_COUNT,
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_datastore_entries_per_request: settings.max_datastore_entries_per_request,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
@@ -1255,6 +1266,8 @@ fn configure_grpc(
         max_parameter_size: MAX_PARAMETERS_SIZE,
         max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        sp_compilation_cost,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,

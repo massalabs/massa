@@ -26,4 +26,6 @@ pub enum WalletError {
     MassaCipherError(#[from] massa_cipher::CipherError),
     /// Version error: {0}
     VersionError(String),
+    /// Inconsistent wallet file: {0}
+    InconsistentWalletFile(String),
 }

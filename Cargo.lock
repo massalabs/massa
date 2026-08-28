@@ -3819,6 +3819,7 @@ version = "5.0.0"
 dependencies = [
  "massa-sc-runtime",
  "massa_models",
+ "serde_json",
  "toml_edit 0.21.1",
  "walkdir",
 ]
@@ -4297,7 +4298,7 @@ dependencies = [
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?rev=04b05ddd320fbe76cc858115af7b5fc28bdb8310#04b05ddd320fbe76cc858115af7b5fc28bdb8310"
+source = "git+https://github.com/massalabs/PeerNet?rev=c26659997602386d3c9883361d8867139d8de246#c26659997602386d3c9883361d8867139d8de246"
 dependencies = [
  "crossbeam",
  "enum_delegate",

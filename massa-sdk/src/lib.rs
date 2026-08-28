@@ -82,6 +82,11 @@ pub struct Client {
 
 impl Client {
     /// creates a new client
+    ///
+    /// Note: this constructor always uses plaintext transports (`http` for the JSON-RPC
+    /// APIs, `grpc` for the gRPC APIs) and cannot connect to a node whose gRPC server has
+    /// `enable_tls` set. For a TLS-enabled JSON-RPC endpoint, build the client with
+    /// [`RpcClient::from_url`] and an `https` url instead.
     pub async fn new(
         ip: IpAddr,
         public_port: u16,
@@ -141,6 +146,9 @@ pub struct RpcClient {
 
 impl RpcClient {
     /// Default constructor
+    ///
+    /// The transport is selected by the scheme of `url`: an `https` url yields a TLS
+    /// client validating the server against the platform trust store.
     pub async fn from_url(url: &str, http_config: &HttpConfig) -> RpcClient {
         RpcClient {
             http_client: http_client_from_url(url, http_config),
@@ -476,6 +484,9 @@ pub struct ClientV2 {
 
 impl ClientV2 {
     /// creates a new client
+    ///
+    /// Note: this constructor always uses plaintext transports (`http` and `ws`), see
+    /// [`Client::new`].
     pub async fn new(
         ip: IpAddr,
         api_port: u16,
@@ -650,15 +661,8 @@ fn http_client_from_url(url: &str, http_config: &HttpConfig) -> HttpClient<HttpB
         .id_format(get_id_kind(http_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(&http_config.client_config.headers));
 
-    // Note: use_*_rustls() are not available anymore
-    //       keep the config for compatibility reason but this will be unused
-    /*
-    match http_config.client_config.certificate_store.as_str() {
-        "Native" => builder = builder.use_native_rustls(),
-        "WebPki" => builder = builder.use_webpki_rustls(),
-        _ => {}
-    }
-    */
+    // Note: `client_config.certificate_store` is ignored here, see its documentation.
+    //       TLS is selected by the `https` scheme of `url`, using the platform trust store.
 
     builder
         .build(url)
@@ -678,15 +682,8 @@ where
         .max_buffer_capacity_per_subscription(ws_config.max_notifs_per_subscription)
         .max_redirections(ws_config.max_redirections);
 
-    // Note: use_*_rustls() are not available anymore
-    //       keep the config for compatibility reason but this will be unused
-    /*
-    match ws_config.client_config.certificate_store.as_str() {
-        "Native" => builder = builder.use_native_rustls(),
-        "WebPki" => builder = builder.use_webpki_rustls(),
-        _ => {}
-    }
-    */
+    // Note: `client_config.certificate_store` is ignored here, see its documentation.
+    //       TLS is selected by the `wss` scheme of `url`, using the platform trust store.
 
     builder
         .build(url)

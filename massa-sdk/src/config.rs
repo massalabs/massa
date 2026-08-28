@@ -13,6 +13,11 @@ pub struct ClientConfig {
     /// maximum concurrent requests.
     pub max_concurrent_requests: usize,
     /// certificate_store, `Native` or `WebPki`
+    ///
+    /// Deprecated: this setting is currently ignored. The underlying `jsonrpsee` client no
+    /// longer exposes a trust-store selection, and TLS is instead enabled by using an
+    /// `https`/`wss` url, validated against the platform trust store. It is kept to avoid
+    /// breaking existing configuration files.
     pub certificate_store: String,
     /// JSON-RPC request object id data type, `Number` or `String`
     pub id_kind: String,

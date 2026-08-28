@@ -28,6 +28,7 @@ pub struct CliSettings {
 pub struct ExecutionSettings {
     pub max_final_events: usize,
     pub readonly_queue_length: usize,
+    pub readonly_starvation_timeout: MassaTime,
     pub cursor_delay: MassaTime,
     pub stats_time_window_duration: MassaTime,
     pub max_read_only_gas: u64,
@@ -268,6 +269,8 @@ pub struct ProtocolSettings {
     pub max_operations_per_message: u64,
     /// MAx number of operations kept for propagation
     pub max_ops_kept_for_propagation: usize,
+    /// Max number of endorsements merged into a single propagation round
+    pub max_endorsements_per_propagation_round: usize,
     /// Time threshold after which operation are not propagated
     pub max_operations_propagation_time: MassaTime,
     /// Time threshold after which operation are not propagated
