@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"fn":["start_propagation_thread"],"struct":["PropagationThread"]};
+window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"fn":["operations_within_size_limit","start_propagation_thread"],"struct":["PropagationThread"]};
