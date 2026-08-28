@@ -81,6 +81,33 @@ impl ExportActiveBlock {
         Ok(())
     }
 
+    /// Enforce genesis vs non-genesis parent-count rules for a known `last_start_period`.
+    pub fn check_slot_parent_count(
+        &self,
+        thread_count: u8,
+        last_start_period: u64,
+    ) -> Result<(), String> {
+        let slot = self.block.content.header.content.slot;
+        let header_parents = &self.block.content.header.content.parents;
+        if slot.period == last_start_period {
+            if !header_parents.is_empty() {
+                return Err(format!(
+                    "ExportActiveBlock {} at genesis period {} must have empty header parents",
+                    self.block.id, last_start_period
+                ));
+            }
+        } else if header_parents.len() != thread_count as usize {
+            return Err(format!(
+                "ExportActiveBlock {} at period {} must have {} header parents, got {}",
+                self.block.id,
+                slot.period,
+                thread_count,
+                header_parents.len()
+            ));
+        }
+        self.check_parents_match_header(thread_count)
+    }
+
     /// consuming conversion from `ExportActiveBlock` to `ActiveBlock`
     pub fn to_active_block(
         self,

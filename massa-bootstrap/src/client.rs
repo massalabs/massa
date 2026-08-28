@@ -74,6 +74,21 @@ pub(crate) fn stream_final_state_and_consensus(
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
+    if let BootstrapClientMessage::AskBootstrapPart {
+        send_last_start_period: false,
+        ..
+    } = &next_bootstrap_message
+    {
+        // Reconnect / continuation: server will not resend last_start_period, but we
+        // already have it locally — enable header parent-count checks while parsing.
+        client.set_last_start_period(Some(
+            global_bootstrap_state
+                .final_state
+                .read()
+                .get_last_start_period(),
+        ));
+    }
+
     if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
         client.send_timeout(
             next_bootstrap_message,
@@ -100,9 +115,19 @@ pub(crate) fn stream_final_state_and_consensus(
                     // successful bootstrap.
                     check_restart_metadata(cfg, &last_start_period, &last_slot_before_downtime)?;
 
+                    // Enforce genesis / non-genesis parent-count rules using the server
+                    // last_start_period when present (first parts), otherwise the value
+                    // already stored locally (subsequent parts / reconnect).
+                    let effective_last_start_period = last_start_period
+                        .unwrap_or_else(|| write_final_state.get_last_start_period());
+                    consensus_part
+                        .check_parent_invariants(cfg.thread_count, effective_last_start_period)
+                        .map_err(BootstrapError::GeneralError)?;
+
                     // We only need to receive the initial_state once
                     if let Some(last_start_period) = last_start_period {
                         write_final_state.set_last_start_period(last_start_period);
+                        client.set_last_start_period(Some(last_start_period));
                     }
                     if let Some(last_slot_before_downtime) = last_slot_before_downtime {
                         write_final_state.set_last_slot_before_downtime(last_slot_before_downtime);

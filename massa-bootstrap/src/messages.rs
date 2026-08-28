@@ -7,6 +7,7 @@ use massa_consensus_exports::bootstrapable_graph::{
 
 use massa_db_exports::StreamBatch;
 
+use massa_models::block::BlockDeserializerArgs;
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 
 use massa_models::config::MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE;
@@ -338,6 +339,19 @@ pub struct BootstrapServerMessageDeserializer {
 impl BootstrapServerMessageDeserializer {
     /// Creates a new `BootstrapServerMessageDeserializer`
     pub fn new(args: BootstrapServerMessageDeserializerArgs) -> Self {
+        Self::with_last_start_period(args, None)
+    }
+
+    /// Same as [`Self::new`], but applies `last_start_period` to bootstrap block header
+    /// deserialization so genesis vs non-genesis parent-count rules are enforced while
+    /// parsing. Use `None` for the first bootstrap part (server value arrives after the
+    /// graph on the wire); pass the known value for subsequent parts.
+    pub fn with_last_start_period(
+        args: BootstrapServerMessageDeserializerArgs,
+        last_start_period: Option<u64>,
+    ) -> Self {
+        let mut block_args: BlockDeserializerArgs = (&args).into();
+        block_args.last_start_period = last_start_period;
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -362,7 +376,7 @@ impl BootstrapServerMessageDeserializer {
                 Included(args.max_datastore_value_length),
             )),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
-                (&args).into(),
+                block_args,
                 args.max_bootstrap_blocks_length,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(

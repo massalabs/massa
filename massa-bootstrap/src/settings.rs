@@ -210,7 +210,10 @@ pub struct BootstrapServerMessageDeserializerArgs {
 }
 
 // TODO: add a proc macro for this case
-// We set last_start_period to None because we set the value during Bootstrap
+// Default last_start_period is None: the bootstrap wire order puts consensus_part
+// before last_start_period in the same message, so the first part cannot use the
+// server value during header deser. Callers pass a known value via
+// BootstrapServerMessageDeserializer::with_last_start_period once available.
 impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
     fn from(value: &BootstrapServerMessageDeserializerArgs) -> Self {
         Self {

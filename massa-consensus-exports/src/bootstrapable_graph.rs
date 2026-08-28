@@ -17,6 +17,21 @@ pub struct BootstrapableGraph {
     pub final_blocks: Vec<ExportActiveBlock>,
 }
 
+impl BootstrapableGraph {
+    /// Enforce genesis vs non-genesis parent-count rules and header/export parent
+    /// consistency for every block in the graph.
+    pub fn check_parent_invariants(
+        &self,
+        thread_count: u8,
+        last_start_period: u64,
+    ) -> Result<(), String> {
+        for block in &self.final_blocks {
+            block.check_slot_parent_count(thread_count, last_start_period)?;
+        }
+        Ok(())
+    }
+}
+
 /// Basic serializer for `BootstrapableGraph`
 #[derive(Default)]
 pub struct BootstrapableGraphSerializer {
