@@ -369,8 +369,8 @@ mod tests {
     use massa_models::operation::{Operation, OperationSerializer, OperationType};
     use massa_models::secure_share::Id;
     use massa_models::secure_share::SecureShareContent;
-    use massa_protocol_exports::ProtocolError;
     use massa_protocol_exports::test_exports::tools::create_operation_with_expire_period;
+    use massa_protocol_exports::ProtocolError;
     use massa_signature::KeyPair;
     use massa_storage::Storage;
     use parking_lot::RwLock;
