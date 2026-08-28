@@ -2016,7 +2016,9 @@ async fn new_slot_transfers_default_finality() {
 
     // Emit a FINAL trace before the client has sent any request. The stream must NOT emit it yet
     // (it waits for the first request). Before the fix it would be sent immediately.
-    trace_tx.send((empty_trace(Slot::new(1, 0)), true)).unwrap();
+    trace_tx
+        .send((empty_trace(Slot::new(1, 0)), vec![], true))
+        .unwrap();
     assert!(
         tokio::time::timeout(Duration::from_millis(300), resp_stream.next())
             .await
@@ -2042,7 +2044,7 @@ async fn new_slot_transfers_default_finality() {
     // Unspecified meant final-only and this would time out.
     tokio::time::sleep(Duration::from_millis(50)).await;
     trace_tx
-        .send((empty_trace(Slot::new(1, 1)), false))
+        .send((empty_trace(Slot::new(1, 1)), vec![], false))
         .unwrap();
     let cand_resp = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
         .await
