@@ -42,11 +42,13 @@ impl ConsensusState {
         // process those elements
         self.rec_process(to_process, Some(current_slot))?;
 
-        // Update the stats
-        self.stats_tick()?;
-
-        // take care of block db changes
+        // Propagate new_final_blocks into final_block_stats before desync detection.
+        // Otherwise check_desync (via stats_tick) can miss same-slot finalizations
+        // and emit a spurious NeedSync.
         self.block_db_changed()?;
+
+        // Update the stats (includes check_desync)
+        self.stats_tick()?;
 
         for i in 0..self.latest_final_blocks_periods.len() {
             if let Some((_blockid, period)) = self.latest_final_blocks_periods.get(i) {
