@@ -171,15 +171,12 @@ async fn massa_service_status(mut reporter: HealthReporter) {
 
 /// mTLS is a strict extension of TLS: reject the combination rather than silently serving in
 /// plaintext a service the operator meant to protect with client certificates.
+///
+/// The invariant itself is shared with the gRPC client (massa-client), see
+/// `massa_sdk::check_mtls_requires_tls`.
 pub(crate) fn check_mtls_requires_tls(config: &GrpcConfig) -> Result<(), GrpcError> {
-    if config.enable_mtls && !config.enable_tls {
-        return Err(GrpcError::ConfigError(format!(
-            "gRPC {:?} API: `enable_mtls` requires `enable_tls` to be enabled, refusing to start in plaintext",
-            config.name
-        )));
-    }
-
-    Ok(())
+    massa_sdk::check_mtls_requires_tls(config.enable_tls, config.enable_mtls)
+        .map_err(|err| GrpcError::ConfigError(format!("gRPC {:?} API: {}", config.name, err)))
 }
 
 // Configure and start the gRPC API with the given service

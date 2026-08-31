@@ -2841,6 +2841,7 @@ dependencies = [
  "strum_macros",
  "tokio",
  "toml_edit 0.21.1",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3702,8 +3703,12 @@ dependencies = [
  "massa_models",
  "massa_time",
  "rcgen",
+ "tempfile",
  "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
  "tonic",
+ "tonic-health",
  "tracing",
 ]
 

@@ -48,6 +48,7 @@ pub struct ClientSettings {
     pub max_log_length: u32,
     pub headers: Vec<(String, String)>,
     pub http: HttpSettings,
+    pub grpc: GrpcSettings,
 }
 
 ///TODO add WebSocket to CLI
@@ -56,6 +57,24 @@ pub struct ClientSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct HttpSettings {
     pub enabled: bool,
+}
+
+/// gRPC client settings, one TLS block per endpoint.
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcSettings {
+    pub public: GrpcTlsSettings,
+    pub private: GrpcTlsSettings,
+}
+
+/// TLS settings towards one gRPC endpoint of the node.
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcTlsSettings {
+    pub enable_tls: bool,
+    pub enable_mtls: bool,
+    pub server_name: String,
+    pub certificate_authority_root_path: PathBuf,
+    pub client_certificate_path: PathBuf,
+    pub client_private_key_path: PathBuf,
 }
 
 #[cfg(test)]

@@ -10,7 +10,7 @@ use console::style;
 use dialoguer::Password;
 use is_terminal::IsTerminal;
 use massa_models::config::handle_disclaimer;
-use massa_sdk::{Client, ClientConfig, HttpConfig};
+use massa_sdk::{Client, ClientConfig, GrpcTlsConfig, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
 use std::env;
@@ -89,8 +89,24 @@ pub(crate) fn ask_password(wallet_path: &Path) -> String {
     }
 }
 
+/// Route massa warn/error logs to stderr, so that failures inside the SDK (e.g. a
+/// gRPC TLS connection error) are visible to the user instead of being silently
+/// dropped for lack of a tracing subscriber.
+fn init_tracing() {
+    use tracing_subscriber::filter::{filter_fn, LevelFilter};
+    use tracing_subscriber::prelude::*;
+    let tracing_layer = tracing_subscriber::fmt::layer()
+        .with_writer(std::io::stderr)
+        .with_filter(LevelFilter::WARN)
+        .with_filter(filter_fn(|metadata| {
+            metadata.target().starts_with("massa") // ignore non-massa logs
+        }));
+    tracing_subscriber::registry().with(tracing_layer).init();
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
+    init_tracing();
     let tokio_rt = tokio::runtime::Builder::new_multi_thread()
         .thread_name_fn(|| {
             static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
@@ -102,6 +118,34 @@ fn main() -> anyhow::Result<()> {
         .unwrap();
 
     tokio_rt.block_on(run(args))
+}
+
+/// Build the SDK TLS configuration for one gRPC endpoint from the client settings.
+fn grpc_tls_config(
+    settings: &settings::GrpcTlsSettings,
+    endpoint_name: &str,
+) -> anyhow::Result<Option<GrpcTlsConfig>> {
+    // The invariant is shared with the gRPC server's own check (massa-grpc), see
+    // `massa_sdk::check_mtls_requires_tls`.
+    massa_sdk::check_mtls_requires_tls(settings.enable_tls, settings.enable_mtls)
+        .map_err(|err| anyhow::anyhow!("[client.grpc.{}]: {}", endpoint_name, err))?;
+    if !settings.enable_tls {
+        return Ok(None);
+    }
+    let (client_certificate_path, client_private_key_path) = if settings.enable_mtls {
+        (
+            Some(settings.client_certificate_path.clone()),
+            Some(settings.client_private_key_path.clone()),
+        )
+    } else {
+        (None, None)
+    };
+    Ok(Some(GrpcTlsConfig {
+        server_name: settings.server_name.clone(),
+        certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
+        client_certificate_path,
+        client_private_key_path,
+    }))
 }
 
 async fn run(args: Args) -> Result<()> {
@@ -119,6 +163,9 @@ async fn run(args: Args) -> Result<()> {
         client_config,
         enabled: SETTINGS.client.http.enabled,
     };
+
+    let grpc_public_tls = grpc_tls_config(&SETTINGS.client.grpc.public, "public")?;
+    let grpc_private_tls = grpc_tls_config(&SETTINGS.client.grpc.private, "private")?;
 
     // TODO: move settings loading in another crate ... see #1277
     let settings = SETTINGS.clone();
@@ -175,6 +222,8 @@ async fn run(args: Args) -> Result<()> {
         grpc_priv_port,
         chain_id,
         &http_config,
+        grpc_public_tls.as_ref(),
+        grpc_private_tls.as_ref(),
     )
     .await?;
     if std::io::stdout().is_terminal() && args.command == Command::help && !args.json {
@@ -226,4 +275,54 @@ async fn run(args: Args) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod grpc_tls_config_tests {
+    use super::grpc_tls_config;
+    use crate::settings::GrpcTlsSettings;
+
+    fn tls_settings(enable_tls: bool, enable_mtls: bool) -> GrpcTlsSettings {
+        GrpcTlsSettings {
+            enable_tls,
+            enable_mtls,
+            server_name: "localhost".to_string(),
+            certificate_authority_root_path: "ca.pem".into(),
+            client_certificate_path: "client.pem".into(),
+            client_private_key_path: "client.key".into(),
+        }
+    }
+
+    #[test]
+    fn tls_disabled_yields_plaintext() {
+        assert!(grpc_tls_config(&tls_settings(false, false), "public")
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn tls_without_mtls_yields_no_client_identity() {
+        let config = grpc_tls_config(&tls_settings(true, false), "public")
+            .unwrap()
+            .unwrap();
+        assert!(config.client_certificate_path.is_none());
+        assert!(config.client_private_key_path.is_none());
+    }
+
+    #[test]
+    fn mtls_yields_client_identity() {
+        let config = grpc_tls_config(&tls_settings(true, true), "public")
+            .unwrap()
+            .unwrap();
+        assert!(config.client_certificate_path.is_some());
+        assert!(config.client_private_key_path.is_some());
+    }
+
+    #[test]
+    fn mtls_without_tls_is_rejected() {
+        let err = grpc_tls_config(&tls_settings(false, true), "public").unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("`enable_mtls` requires `enable_tls`"));
+    }
 }

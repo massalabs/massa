@@ -49,9 +49,21 @@ use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 use thiserror::Error;
 
+// dev-dependencies used only by the integration tests
+#[cfg(test)]
+use tempfile as _;
+#[cfg(test)]
+use tokio as _;
+#[cfg(test)]
+use tokio_stream as _;
+#[cfg(test)]
+use tonic_health as _;
+
 pub mod cert_manager;
 mod config;
+pub use config::check_mtls_requires_tls;
 pub use config::ClientConfig;
+pub use config::GrpcTlsConfig;
 pub use config::HttpConfig;
 pub use config::WsConfig;
 
@@ -64,6 +76,66 @@ pub enum ClientError {
     /// Connection error
     #[error("Cannot connect to grpc server: {0}")]
     Connect(#[from] tonic::transport::Error),
+    /// TLS configuration error
+    #[error("Invalid grpc TLS configuration: {0}")]
+    InvalidTlsConfig(String),
+}
+
+/// Connect a gRPC channel to `addr`: in plaintext when `tls_config` is `None`, over TLS
+/// (or mTLS when a client identity is configured) otherwise.
+///
+/// Errors on an invalid TLS configuration (unreadable certificate material, or a client
+/// certificate without its key and vice versa) as well as on connection failure.
+pub async fn connect_grpc_channel(
+    addr: SocketAddr,
+    tls_config: Option<&GrpcTlsConfig>,
+) -> Result<tonic::transport::Channel, ClientError> {
+    let endpoint = match tls_config {
+        Some(tls) => {
+            let ca_pem = std::fs::read(&tls.certificate_authority_root_path).map_err(|err| {
+                ClientError::InvalidTlsConfig(format!(
+                    "failed to read certificate authority root {}: {}",
+                    tls.certificate_authority_root_path.display(),
+                    err
+                ))
+            })?;
+            let mut client_tls_config = tonic::transport::ClientTlsConfig::new()
+                .ca_certificate(tonic::transport::Certificate::from_pem(ca_pem))
+                // the certificate is verified under this name while dialing `addr`
+                .domain_name(tls.server_name.clone());
+            match (&tls.client_certificate_path, &tls.client_private_key_path) {
+                (Some(cert_path), Some(key_path)) => {
+                    let cert = std::fs::read(cert_path).map_err(|err| {
+                        ClientError::InvalidTlsConfig(format!(
+                            "failed to read client certificate {}: {}",
+                            cert_path.display(),
+                            err
+                        ))
+                    })?;
+                    let key = std::fs::read(key_path).map_err(|err| {
+                        ClientError::InvalidTlsConfig(format!(
+                            "failed to read client private key {}: {}",
+                            key_path.display(),
+                            err
+                        ))
+                    })?;
+                    client_tls_config =
+                        client_tls_config.identity(tonic::transport::Identity::from_pem(cert, key));
+                }
+                (None, None) => {}
+                _ => {
+                    return Err(ClientError::InvalidTlsConfig(
+                        "client_certificate_path and client_private_key_path must be set together"
+                            .to_string(),
+                    ));
+                }
+            }
+            tonic::transport::Channel::from_shared(format!("https://{}", addr))?
+                .tls_config(client_tls_config)?
+        }
+        None => tonic::transport::Channel::from_shared(format!("grpc://{}", addr))?,
+    };
+    endpoint.connect().await.map_err(ClientError::Connect)
 }
 
 /// Client
@@ -83,10 +155,15 @@ pub struct Client {
 impl Client {
     /// creates a new client
     ///
-    /// Note: this constructor always uses plaintext transports (`http` for the JSON-RPC
-    /// APIs, `grpc` for the gRPC APIs) and cannot connect to a node whose gRPC server has
-    /// `enable_tls` set. For a TLS-enabled JSON-RPC endpoint, build the client with
-    /// [`RpcClient::from_url`] and an `https` url instead.
+    /// The gRPC transports are plaintext when the corresponding TLS configuration is
+    /// `None`, TLS (or mTLS) otherwise. An invalid TLS configuration is a hard error; a
+    /// connection failure leaves the corresponding gRPC client to `None`, so the JSON-RPC
+    /// clients stay usable when the node is unreachable.
+    ///
+    /// Note: the JSON-RPC transports of this constructor are plaintext `http`. For a
+    /// TLS-enabled JSON-RPC endpoint, build the client with [`RpcClient::from_url`] and
+    /// an `https` url instead.
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ip: IpAddr,
         public_port: u16,
@@ -95,6 +172,8 @@ impl Client {
         grpc_private_port: u16,
         chain_id: u64,
         http_config: &HttpConfig,
+        grpc_public_tls: Option<&GrpcTlsConfig>,
+        grpc_private_tls: Option<&GrpcTlsConfig>,
     ) -> Result<Client, ClientError> {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
@@ -102,32 +181,36 @@ impl Client {
         let grpc_private_socket_addr = SocketAddr::new(ip, grpc_private_port);
         let public_url = format!("http://{}", public_socket_addr);
         let private_url = format!("http://{}", private_socket_addr);
-        let grpc_public_url = format!("grpc://{}", grpc_public_socket_addr);
-        let grpc_private_url = format!("grpc://{}", grpc_private_socket_addr);
 
         // try to start grpc client (public api) and connect to the server
-        let grpc_pub_client = match tonic::transport::Channel::from_shared(grpc_public_url)?
-            .connect()
-            .await
-        {
-            Ok(channel) => Some(PublicServiceClient::new(channel)),
-            Err(e) => {
-                tracing::warn!("unable to connect to grpc server {}", e);
-                None
-            }
-        };
+        let grpc_pub_client =
+            match connect_grpc_channel(grpc_public_socket_addr, grpc_public_tls).await {
+                Ok(channel) => Some(PublicServiceClient::new(channel)),
+                Err(err @ ClientError::InvalidTlsConfig(_)) => return Err(err),
+                Err(err) => {
+                    tracing::error!(
+                        "unable to connect to the public grpc server at {}: {}",
+                        grpc_public_socket_addr,
+                        err
+                    );
+                    None
+                }
+            };
 
         // try to start grpc client (private api) and connect to the server
-        let grpc_priv_client = match tonic::transport::Channel::from_shared(grpc_private_url)?
-            .connect()
-            .await
-        {
-            Ok(channel) => Some(PrivateServiceClient::new(channel)),
-            Err(e) => {
-                tracing::warn!("unable to connect to grpc server {}", e);
-                None
-            }
-        };
+        let grpc_priv_client =
+            match connect_grpc_channel(grpc_private_socket_addr, grpc_private_tls).await {
+                Ok(channel) => Some(PrivateServiceClient::new(channel)),
+                Err(err @ ClientError::InvalidTlsConfig(_)) => return Err(err),
+                Err(err) => {
+                    tracing::error!(
+                        "unable to connect to the private grpc server at {}: {}",
+                        grpc_private_socket_addr,
+                        err
+                    );
+                    None
+                }
+            };
 
         Ok(Client {
             public: RpcClient::from_url(&public_url, http_config).await,
