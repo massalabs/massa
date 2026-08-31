@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ListFileRead"],"struct":["SharedWhiteBlackList","WhiteBlackListInner"]};
+window.SIDEBAR_ITEMS = {"struct":["SharedWhiteBlackList","WhiteBlackListInner"]};
