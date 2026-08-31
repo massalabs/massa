@@ -402,8 +402,13 @@ pub(crate) fn gen_export_active_blocks<R: Rng>(rng: &mut R) -> ExportActiveBlock
     let block = gen_random_block(&keypair, rng)
         .new_verifiable(BlockSerializer::new(), &keypair, *CHAINID)
         .unwrap();
-    let parents = (0..32)
-        .map(|_| (gen_random_block_id(rng), rng.gen()))
+    let parents = block
+        .content
+        .header
+        .content
+        .parents
+        .iter()
+        .map(|id| (*id, rng.gen()))
         .collect();
     ExportActiveBlock {
         block,
