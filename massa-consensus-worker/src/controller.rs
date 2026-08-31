@@ -31,6 +31,24 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 /// - still be able to read the current state of the graph as processed so far (for this we need a shared state)
 ///
 /// Note that sending commands and reading the state is done from different, mutually-asynchronous tasks and they can have data that are not sync yet.
+///
+/// The command channel is bounded and the sends below use `try_send`: when it is full, the command
+/// is dropped rather than waited on. This is deliberate, and waiting instead would be worse:
+///
+/// - the consensus worker blocks on the protocol block-retrieval channel (`send_wishlist_delta`)
+///   while processing these very commands, and the block-retrieval thread is what both drains that
+///   channel and calls `register_block_header`, so waiting here without a deadline deadlocks the
+///   two threads against each other;
+/// - `register_block` is called by the block factory, which does not propagate the block we just
+///   produced until the command has gone through, so waiting would delay the announcement of our
+///   own block precisely when the node is already struggling.
+///
+/// Dropping is acceptable because consensus is already its own retry mechanism: a block whose
+/// dependencies are missing is held in `WaitingForDependencies` and re-requested from peers through
+/// the wishlist. A header that was merely announced to us is therefore fetched again if it turns
+/// out to matter, so layering another retry queue on top of the graph would duplicate that
+/// mechanism rather than add robustness. Channel saturation is visible through the
+/// `consensus_command_channel_actual_size` metric.
 #[derive(Clone)]
 pub struct ConsensusControllerImpl {
     command_sender: MassaSender<ConsensusCommand>,
@@ -284,6 +302,7 @@ impl ConsensusController for ConsensusControllerImpl {
             ))
         {
             warn!("error trying to register a block: {}", err);
+            // dropping on a full channel is intended, see the note on `ConsensusControllerImpl`
         }
     }
 
@@ -303,6 +322,7 @@ impl ConsensusController for ConsensusControllerImpl {
             .try_send(ConsensusCommand::RegisterBlockHeader(block_id, header))
         {
             warn!("error trying to register a block header: {}", err);
+            // dropping on a full channel is intended, see the note on `ConsensusControllerImpl`
         }
     }
 
@@ -312,6 +332,7 @@ impl ConsensusController for ConsensusControllerImpl {
             .try_send(ConsensusCommand::MarkInvalidBlock(block_id, header))
         {
             warn!("error trying to mark block as invalid: {}", err);
+            // dropping on a full channel is intended, see the note on `ConsensusControllerImpl`
         }
     }
 

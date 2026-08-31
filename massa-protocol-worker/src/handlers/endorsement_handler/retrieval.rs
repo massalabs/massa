@@ -20,7 +20,7 @@ use tracing::{debug, info, warn};
 
 use crate::{
     handlers::{
-        endorsement_handler::messages::EndorsementMessage,
+        endorsement_handler::{is_endorsement_fresh, messages::EndorsementMessage},
         peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     },
     sig_verifier::verify_sigs_batch,
@@ -173,24 +173,6 @@ impl RetrievalThread {
         self.peer_cmd_sender
             .try_send(PeerManagementCmd::Ban(vec![*peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
-    }
-}
-
-/// Returns true if the inclusion slot of the endorsement is recent enough for the
-/// endorsement to still be worth processing (see `max_endorsements_propagation_time`).
-fn is_endorsement_fresh(
-    endorsement: &SecureShareEndorsement,
-    config: &ProtocolConfig,
-    now: MassaTime,
-) -> bool {
-    match get_block_slot_timestamp(
-        config.thread_count,
-        config.t0,
-        config.genesis_timestamp,
-        endorsement.content.slot,
-    ) {
-        Ok(t) => t.saturating_add(config.max_endorsements_propagation_time) >= now,
-        Err(_) => false,
     }
 }
 

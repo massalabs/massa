@@ -1,13 +1,15 @@
 use super::{
     cache::SharedEndorsementCache, commands_propagation::EndorsementHandlerPropagationCommand,
-    messages::EndorsementMessageSerializer, EndorsementMessage,
+    is_endorsement_fresh, messages::EndorsementMessageSerializer, EndorsementMessage,
 };
 use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
 use massa_channel::receiver::MassaReceiver;
+use massa_models::endorsement::SecureShareEndorsement;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use std::thread::JoinHandle;
-use tracing::{info, log::warn};
+use tracing::{debug, info, log::warn};
 
 // protocol-endorsement-handler-propagation
 const THREAD_NAME: &str = "peh-propagation";
@@ -72,6 +74,16 @@ impl PropagationThread {
                 .collect()
         };
 
+        // Drop endorsements whose inclusion slot is already too old to be worth relaying.
+        // The retrieval thread already filters those out, but other callers reach us directly
+        // (the endorsement factory, the gRPC `send_endorsements` endpoint), so applying the
+        // policy here makes it hold for every source: obsolete endorsements neither consume
+        // propagation bandwidth nor pollute `checked_endorsements`.
+        let endorsements = filter_fresh_endorsements(endorsements, &self.config);
+        if endorsements.is_empty() {
+            return;
+        }
+
         // get connected peers
         let peers_connected = self.active_connections.get_peer_ids_connected();
 
@@ -128,6 +140,28 @@ impl PropagationThread {
             }
         }
     }
+}
+
+/// Keep only the endorsements that are still fresh enough to be propagated, logging the
+/// discarded ones (see `is_endorsement_fresh`).
+fn filter_fresh_endorsements(
+    endorsements: Vec<SecureShareEndorsement>,
+    config: &ProtocolConfig,
+) -> Vec<SecureShareEndorsement> {
+    let now = MassaTime::now();
+    endorsements
+        .into_iter()
+        .filter(|endorsement| {
+            let fresh = is_endorsement_fresh(endorsement, config, now);
+            if !fresh {
+                debug!(
+                    "not propagating endorsement {}: its inclusion slot {} is too old",
+                    endorsement.id, endorsement.content.slot
+                );
+            }
+            fresh
+        })
+        .collect()
 }
 
 /// Merge the queued `PropagateEndorsements` commands into `endorsements` until the channel is
@@ -198,9 +232,14 @@ mod tests {
 
     /// Build an endorsement, `index` making it unique so that the storage does not deduplicate it
     fn endorsement(index: u32) -> SecureShareEndorsement {
+        endorsement_at_slot(index, Slot::new(1, 0))
+    }
+
+    /// Build an endorsement for the given inclusion slot
+    fn endorsement_at_slot(index: u32, slot: Slot) -> SecureShareEndorsement {
         let keypair = KeyPair::generate(0).unwrap();
         let content = Endorsement {
-            slot: Slot::new(1, 0),
+            slot,
             index,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(b"block")),
         };
@@ -212,6 +251,26 @@ mod tests {
         let mut storage = root.clone_without_refs();
         storage.store_endorsements((0..count).map(endorsement).collect());
         storage
+    }
+
+    #[test]
+    fn test_filter_fresh_endorsements_drops_obsolete_slots() {
+        let config = ProtocolConfig {
+            thread_count: 32,
+            t0: MassaTime::from_millis(16000),
+            max_endorsements_propagation_time: MassaTime::from_millis(32000),
+            // genesis is far in the past, so the first slots are long obsolete
+            genesis_timestamp: MassaTime::now().saturating_sub(MassaTime::from_millis(1_000_000)),
+            ..Default::default()
+        };
+
+        let stale = endorsement_at_slot(0, Slot::new(1, 0));
+        // a slot far in the future is not obsolete
+        let fresh = endorsement_at_slot(1, Slot::new(100, 0));
+
+        let kept = filter_fresh_endorsements(vec![stale.clone(), fresh.clone()], &config);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].id, fresh.id);
     }
 
     #[test]
