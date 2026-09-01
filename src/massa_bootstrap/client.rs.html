@@ -858,6 +858,31 @@
 <a href="#858" id="858">858</a>
 <a href="#859" id="859">859</a>
 <a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_db_exports::DBBatch;
 <span class="kw">use </span>massa_final_state::{FinalStateController, FinalStateError};
@@ -934,6 +959,21 @@
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
+    <span class="kw">if let </span>BootstrapClientMessage::AskBootstrapPart {
+        send_last_start_period: <span class="bool-val">false</span>,
+        ..
+    } = <span class="kw-2">&amp;</span>next_bootstrap_message
+    {
+        <span class="comment">// Reconnect / continuation: server will not resend last_start_period, but we
+        // already have it locally — enable header parent-count checks while parsing.
+        </span>client.set_last_start_period(<span class="prelude-val">Some</span>(
+            global_bootstrap_state
+                .final_state
+                .read()
+                .get_last_start_period(),
+        ));
+    }
+
     <span class="kw">if let </span>BootstrapClientMessage::AskBootstrapPart { .. } = <span class="kw-2">&amp;</span>next_bootstrap_message {
         client.send_timeout(
             next_bootstrap_message,
@@ -960,9 +1000,19 @@
                     // successful bootstrap.
                     </span>check_restart_metadata(cfg, <span class="kw-2">&amp;</span>last_start_period, <span class="kw-2">&amp;</span>last_slot_before_downtime)<span class="question-mark">?</span>;
 
+                    <span class="comment">// Enforce genesis / non-genesis parent-count rules using the server
+                    // last_start_period when present (first parts), otherwise the value
+                    // already stored locally (subsequent parts / reconnect).
+                    </span><span class="kw">let </span>effective_last_start_period = last_start_period
+                        .unwrap_or_else(|| write_final_state.get_last_start_period());
+                    consensus_part
+                        .check_parent_invariants(cfg.thread_count, effective_last_start_period)
+                        .map_err(BootstrapError::GeneralError)<span class="question-mark">?</span>;
+
                     <span class="comment">// We only need to receive the initial_state once
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_start_period) = last_start_period {
                         write_final_state.set_last_start_period(last_start_period);
+                        client.set_last_start_period(<span class="prelude-val">Some</span>(last_start_period));
                     }
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(last_slot_before_downtime) = last_slot_before_downtime {
                         write_final_state.set_last_slot_before_downtime(last_slot_before_downtime);
