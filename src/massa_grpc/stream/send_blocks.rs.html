@@ -199,12 +199,19 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
+<span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
@@ -284,15 +291,20 @@
                                 .<span class="kw">await</span>;
                                 <span class="kw">continue</span>;
                             }
-                            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = res_block.verify_signature().and_then(|<span class="kw">_</span>| {
-                                res_block
-                                    .content
-                                    .header
-                                    .content
-                                    .endorsements
-                                    .iter()
-                                    .try_for_each(|endorsement| endorsement.verify_signature())
-                            }) {
+                            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = res_block
+                                .verify_signature()
+                                .and_then(|<span class="kw">_</span>| res_block.content.header.verify_signature())
+                                .map(|<span class="kw">_</span>| {
+                                    res_block
+                                        .content
+                                        .header
+                                        .content
+                                        .endorsements
+                                        .iter()
+                                        .map(|endorsement| endorsement.verify_signature())
+                                        .collect::&lt;Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ModelsError&gt;&gt;&gt;()
+                                })
+                            {
                                 report_error(
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
