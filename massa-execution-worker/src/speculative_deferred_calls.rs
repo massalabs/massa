@@ -19,6 +19,11 @@ use std::{
 
 const TARGET_BOOKING: u128 = (MAX_ASYNC_GAS / 2) as u128;
 
+/// Execution component version at which deferred-call per-slot index allocation
+/// uses the full effective set (final state + active history + speculative changes).
+/// Bundled into the same MIP as the WMAS patch (`MIP-0002-BugFix`).
+pub(crate) const DEFERRED_CALL_INDEX_FIX_EXEC_VERSION: u32 = 2;
+
 pub(crate) struct SpeculativeDeferredCallRegistry {
     final_state: Arc<RwLock<dyn FinalStateController>>,
     active_history: Arc<RwLock<ActiveHistory>>,
@@ -461,26 +466,33 @@ impl SpeculativeDeferredCallRegistry {
         &mut self,
         call: DeferredCall,
         trail_hash: massa_hash::Hash,
+        use_effective_index: bool,
     ) -> Result<DeferredCallId, ExecutionError> {
-        let mut index = 0;
+        let index = if use_effective_index {
+            self.get_calls_by_slot(call.target_slot).slot_calls.len()
+        } else {
+            let mut index = 0;
 
-        if let Some(val) = self
-            .deferred_calls_changes
-            .slots_change
-            .get(&call.target_slot)
-        {
-            index += val.calls_len();
-        }
+            if let Some(val) = self
+                .deferred_calls_changes
+                .slots_change
+                .get(&call.target_slot)
+            {
+                index += val.calls_len();
+            }
 
-        {
-            // final state
-            let slots_call = self
-                .final_state
-                .read()
-                .get_deferred_call_registry()
-                .get_slot_calls(call.target_slot);
-            index += slots_call.slot_calls.len();
-        }
+            {
+                // final state
+                let slots_call = self
+                    .final_state
+                    .read()
+                    .get_deferred_call_registry()
+                    .get_slot_calls(call.target_slot);
+                index += slots_call.slot_calls.len();
+            }
+
+            index
+        };
 
         let id = DeferredCallId::new(0, call.target_slot, index as u64, trail_hash.to_bytes())?;
 
@@ -512,13 +524,22 @@ impl SpeculativeDeferredCallRegistry {
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, sync::Arc};
+    use std::{collections::VecDeque, str::FromStr, sync::Arc};
 
+    use crate::active_history::ActiveHistory;
     use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_db_worker::MassaDB;
-    use massa_deferred_calls::{config::DeferredCallsConfig, DeferredCallRegistry};
-    use massa_final_state::MockFinalStateController;
-    use massa_models::{amount::Amount, config::THREAD_COUNT, slot::Slot};
+    use massa_deferred_calls::{
+        config::DeferredCallsConfig, registry_changes::DeferredCallRegistryChanges, DeferredCall,
+        DeferredCallRegistry,
+    };
+    use massa_execution_exports::ExecutionOutput;
+    use massa_final_state::{MockFinalStateController, StateChanges};
+    use massa_hash::Hash;
+    use massa_models::{
+        address::Address, amount::Amount, config::THREAD_COUNT, deferred_calls::DeferredCallId,
+        slot::Slot,
+    };
     use parking_lot::RwLock;
     use tempfile::TempDir;
 
@@ -659,5 +680,170 @@ mod tests {
                 .unwrap(),
             Amount::from_str("1.036600079").unwrap()
         );
+    }
+
+    fn sample_deferred_call(target_slot: Slot) -> DeferredCall {
+        DeferredCall::new(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            target_slot,
+            Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
+            "receive".to_string(),
+            vec![42],
+            Amount::from_raw(100),
+            300_000,
+            Amount::from_raw(1),
+            false,
+        )
+    }
+
+    fn deferred_call_index(id: &DeferredCallId) -> u64 {
+        use massa_models::config::THREAD_COUNT;
+        use massa_serialization::{DeserializeError, Deserializer, U64VarIntDeserializer};
+        use std::ops::Bound;
+
+        let version_deserializer =
+            U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX));
+        let slot_deser = massa_models::slot::SlotDeserializer::new(
+            (Bound::Included(0), Bound::Included(u64::MAX)),
+            (Bound::Included(0), Bound::Excluded(THREAD_COUNT)),
+        );
+        let (rest, _) = version_deserializer
+            .deserialize::<DeserializeError>(id.as_bytes())
+            .unwrap();
+        let (rest, _) = slot_deser.deserialize::<DeserializeError>(rest).unwrap();
+        let mut index_bytes = [0u8; 8];
+        index_bytes.copy_from_slice(&rest[..8]);
+        u64::from_be_bytes(index_bytes)
+    }
+
+    fn registry_with_history_call(
+        target_slot: Slot,
+        history_call_id: DeferredCallId,
+    ) -> SpeculativeDeferredCallRegistry {
+        let disk_ledger = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: disk_ledger.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: THREAD_COUNT,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let mock_final_state = Arc::new(RwLock::new(MockFinalStateController::new()));
+        let deferred_call_registry =
+            DeferredCallRegistry::new(db.clone(), DeferredCallsConfig::default());
+
+        mock_final_state
+            .write()
+            .expect_get_deferred_call_registry()
+            .return_const(deferred_call_registry);
+
+        let mut history_changes = DeferredCallRegistryChanges::default();
+        history_changes.set_call(history_call_id, sample_deferred_call(target_slot));
+
+        let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([
+            ExecutionOutput {
+                slot: Slot::new(1, 0),
+                block_info: None,
+                state_changes: StateChanges {
+                    deferred_call_changes: history_changes,
+                    ..Default::default()
+                },
+                events: Default::default(),
+                #[cfg(feature = "execution-trace")]
+                slot_trace: Default::default(),
+                #[cfg(feature = "dump-block")]
+                storage: None,
+                deferred_credits_execution: Default::default(),
+                cancel_async_message_execution: Default::default(),
+                auto_sell_execution: Default::default(),
+                transfers_history: Default::default(),
+                execution_info: None,
+            },
+        ]))));
+
+        SpeculativeDeferredCallRegistry::new(
+            mock_final_state,
+            active_history,
+            DeferredCallsConfig::default(),
+        )
+    }
+
+    // Before MIP-0002, active-history deferred calls are not counted when allocating
+    // the per-slot index, which can assign an already-used index.
+    #[test]
+    fn register_call_legacy_index_ignores_active_history() {
+        let target_slot = Slot::new(10, 1);
+        let history_id =
+            DeferredCallId::new(0, target_slot, 0, Hash::compute_from(b"history").to_bytes())
+                .unwrap();
+        let mut registry = registry_with_history_call(target_slot, history_id);
+
+        let id = registry
+            .register_call(
+                sample_deferred_call(target_slot),
+                Hash::compute_from(b"new-call"),
+                false,
+            )
+            .unwrap();
+
+        assert_eq!(deferred_call_index(&id), 0);
+    }
+
+    // From MIP-0002 on, index allocation uses the same effective view as execution.
+    #[test]
+    fn register_call_effective_index_includes_active_history() {
+        let target_slot = Slot::new(10, 1);
+        let history_id =
+            DeferredCallId::new(0, target_slot, 0, Hash::compute_from(b"history").to_bytes())
+                .unwrap();
+        let mut registry = registry_with_history_call(target_slot, history_id);
+
+        assert_eq!(registry.get_calls_by_slot(target_slot).slot_calls.len(), 1);
+
+        let id = registry
+            .register_call(
+                sample_deferred_call(target_slot),
+                Hash::compute_from(b"new-call"),
+                true,
+            )
+            .unwrap();
+
+        assert_eq!(deferred_call_index(&id), 1);
+    }
+
+    // Two registrations for the same slot must get strictly increasing indices.
+    #[test]
+    fn register_call_effective_index_is_monotonic_for_same_slot() {
+        let target_slot = Slot::new(10, 1);
+        let mut registry = registry_with_history_call(
+            target_slot,
+            DeferredCallId::new(0, target_slot, 0, Hash::compute_from(b"history").to_bytes())
+                .unwrap(),
+        );
+
+        let id1 = registry
+            .register_call(
+                sample_deferred_call(target_slot),
+                Hash::compute_from(b"first"),
+                true,
+            )
+            .unwrap();
+        let id2 = registry
+            .register_call(
+                sample_deferred_call(target_slot),
+                Hash::compute_from(b"second"),
+                true,
+            )
+            .unwrap();
+
+        assert_eq!(deferred_call_index(&id1), 1);
+        assert_eq!(deferred_call_index(&id2), 2);
+        assert!(id1 < id2);
     }
 }

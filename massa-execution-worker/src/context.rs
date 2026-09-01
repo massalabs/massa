@@ -9,7 +9,9 @@
 
 use crate::active_history::HistorySearchResult;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
-use crate::speculative_deferred_calls::SpeculativeDeferredCallRegistry;
+use crate::speculative_deferred_calls::{
+    SpeculativeDeferredCallRegistry, DEFERRED_CALL_INDEX_FIX_EXEC_VERSION,
+};
 use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
@@ -1323,8 +1325,11 @@ impl ExecutionContext {
         &mut self,
         call: DeferredCall,
     ) -> Result<DeferredCallId, ExecutionError> {
-        self.speculative_deferred_calls
-            .register_call(call, self.execution_trail_hash)
+        self.speculative_deferred_calls.register_call(
+            call,
+            self.execution_trail_hash,
+            self.is_execution_component_version_at_least(DEFERRED_CALL_INDEX_FIX_EXEC_VERSION),
+        )
     }
 
     /// Check if a deferred call exists
