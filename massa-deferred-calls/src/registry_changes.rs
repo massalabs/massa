@@ -192,6 +192,39 @@ impl DeferredRegistryChangesDeserializer {
     }
 }
 
+fn validate_deferred_call_slot_consistency<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+    input: &'a [u8],
+    slot: Slot,
+    changes: &DeferredRegistrySlotChanges,
+) -> Result<(), nom::Err<E>> {
+    for (id, change) in &changes.calls {
+        let id_slot = id.get_slot().map_err(|_| {
+            nom::Err::Failure(ContextError::add_context(
+                input,
+                "Failed to parse slot from deferred call id",
+                ParseError::from_error_kind(input, nom::error::ErrorKind::Fail),
+            ))
+        })?;
+        if id_slot != slot {
+            return Err(nom::Err::Failure(ContextError::add_context(
+                input,
+                "Deferred call id slot does not match outer slot key",
+                ParseError::from_error_kind(input, nom::error::ErrorKind::Fail),
+            )));
+        }
+        if let DeferredRegistryCallChange::Set(call) = change {
+            if call.target_slot != slot {
+                return Err(nom::Err::Failure(ContextError::add_context(
+                    input,
+                    "Deferred call target_slot does not match outer slot key",
+                    ParseError::from_error_kind(input, nom::error::ErrorKind::Fail),
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 // only used in tests
 impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
@@ -206,7 +239,7 @@ impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeseri
                         self.u64_deserializer.deserialize(input)
                     }),
                     |input| {
-                        tuple((
+                        let (input, (slot, changes)) = tuple((
                             context("Failed slot deserialization", |input| {
                                 self.slot_deserializer.deserialize(input)
                             }),
@@ -214,7 +247,9 @@ impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeseri
                                 "Failed set_update_or_delete_message deserialization",
                                 |input| self.slot_changes_deserializer.deserialize(input),
                             ),
-                        ))(input)
+                        ))(input)?;
+                        validate_deferred_call_slot_consistency(input, slot, &changes)?;
+                        Ok((input, (slot, changes)))
                     },
                 ),
                 context("Failed total_gas deserialization", |input| {
@@ -327,5 +362,55 @@ mod tests {
             changes.effective_total_gas,
             deserialized.effective_total_gas
         );
+    }
+
+    #[test]
+    fn test_deferred_registry_rejects_inconsistent_call_slots() {
+        use crate::DeferredCallRegistryChanges;
+        use massa_models::slot::Slot;
+        use massa_serialization::{Deserializer, Serializer};
+        use std::collections::BTreeMap;
+
+        let outer_slot = Slot {
+            thread: 5,
+            period: 1,
+        };
+        let mismatched_slot = Slot {
+            thread: 3,
+            period: 2,
+        };
+
+        let call = DeferredCall::new(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            mismatched_slot,
+            Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
+            "receive".to_string(),
+            vec![42],
+            Amount::from_raw(100),
+            3000000,
+            Amount::from_raw(1),
+            false,
+        );
+        let id = DeferredCallId::new(0, mismatched_slot, 1, &[]).unwrap();
+
+        let mut registry_slot_changes = DeferredRegistrySlotChanges::default();
+        registry_slot_changes.set_call(id, call);
+
+        let mut changes = DeferredCallRegistryChanges {
+            slots_change: BTreeMap::from([(outer_slot, registry_slot_changes)]),
+            effective_total_gas: Default::default(),
+            exec_stats: (0, 0, 0),
+        };
+        changes.set_effective_total_gas(100_000);
+
+        let mut buffer = Vec::new();
+        DeferredRegistryChangesSerializer::new()
+            .serialize(&changes, &mut buffer)
+            .unwrap();
+
+        let deserializer = DeferredRegistryChangesDeserializer::new(DeferredCallsConfig::default());
+        assert!(deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .is_err());
     }
 }
