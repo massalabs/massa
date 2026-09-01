@@ -190,6 +190,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// use std::collections::HashSet;
     /// use massa_models::block::BlockDeserializerArgs;
     /// use massa_models::config::CHAINID;
+    /// use massa_models::operation::{compute_operations_hash, OperationIdSerializer};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -205,7 +206,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents,
-    ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    ///         operation_merkle_root: compute_operations_hash(&[], &OperationIdSerializer::new()),
     ///         endorsements: vec![
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {

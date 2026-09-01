@@ -10,7 +10,8 @@ use crate::{
     // endorsement::{Endorsement, EndorsementDeserializerLW, SecureShareEndorsement},
     error::ModelsError,
     operation::{
-        OperationId, OperationIdsDeserializer, OperationIdsSerializer, SecureShareOperation,
+        compute_operations_hash, OperationId, OperationIdSerializer, OperationIdsDeserializer,
+        OperationIdsSerializer, SecureShareOperation,
     },
     // slot::{Slot, SlotDeserializer, SlotSerializer},
 };
@@ -152,7 +153,8 @@ impl Serializer<Block> for BlockSerializer {
     /// use massa_hash::Hash;
     /// use massa_models::config::CHAINID;
     /// use massa_signature::KeyPair;
-    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::operation::{compute_operations_hash, OperationIdSerializer};
+    /// use massa_serialization::Serializer;
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
     ///     .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
@@ -165,7 +167,7 @@ impl Serializer<Block> for BlockSerializer {
     ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents,
-    ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    ///         operation_merkle_root: compute_operations_hash(&[], &OperationIdSerializer::new()),
     ///         endorsements: vec![
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {
@@ -235,6 +237,7 @@ pub struct BlockDeserializerArgs {
 pub struct BlockDeserializer {
     header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
     op_ids_deserializer: OperationIdsDeserializer,
+    op_id_serializer: OperationIdSerializer,
 }
 
 impl BlockDeserializer {
@@ -252,6 +255,7 @@ impl BlockDeserializer {
                 args.chain_id,
             ),
             op_ids_deserializer: OperationIdsDeserializer::new(args.max_operations_per_block),
+            op_id_serializer: OperationIdSerializer::new(),
         }
     }
 }
@@ -265,6 +269,7 @@ impl Deserializer<Block> for BlockDeserializer {
     /// use massa_hash::Hash;
     /// use massa_models::config::CHAINID;
     /// use massa_signature::KeyPair;
+    /// use massa_models::operation::{compute_operations_hash, OperationIdSerializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
@@ -278,7 +283,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents: parents.clone(),
-    ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    ///         operation_merkle_root: compute_operations_hash(&[], &OperationIdSerializer::new()),
     ///         endorsements: vec![
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {
@@ -349,7 +354,7 @@ impl Deserializer<Block> for BlockDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Block, E> {
-        context(
+        let (rest, (header, operations)) = context(
             "Failed Block deserialization",
             tuple((
                 context("Failed header deserialization", |input| {
@@ -360,8 +365,19 @@ impl Deserializer<Block> for BlockDeserializer {
                 }),
             )),
         )
-        .map(|(header, operations)| Block { header, operations })
-        .parse(buffer)
+        .parse(buffer)?;
+
+        let computed_operations_hash = compute_operations_hash(&operations, &self.op_id_serializer);
+
+        if header.content.operation_merkle_root != computed_operations_hash {
+            return Err(nom::Err::Failure(ContextError::add_context(
+                rest,
+                "operation list hash does not match header operation_merkle_root",
+                ParseError::from_error_kind(rest, nom::error::ErrorKind::Verify),
+            )));
+        }
+
+        Ok((rest, Block { header, operations }))
     }
 }
 
@@ -443,11 +459,15 @@ mod test {
         slot::Slot,
     };
     use massa_hash::Hash;
-    use massa_serialization::DeserializeError;
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
     use massa_signature::KeyPair;
     use serde_json::Value;
     use serial_test::serial;
     use std::str::FromStr;
+
+    fn empty_operations_merkle_root() -> Hash {
+        compute_operations_hash(&[], &OperationIdSerializer::new())
+    }
 
     #[test]
     #[serial]
@@ -499,7 +519,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![endo1, endo2],
                 denunciations: Vec::new(), // FIXME
             },
@@ -579,6 +599,57 @@ mod test {
 
     #[test]
     #[serial]
+    fn test_block_deserialization_merkle_root_mismatch() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let parents: Vec<BlockId> = (0..THREAD_COUNT)
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
+            .collect();
+
+        let orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                current_version: 0,
+                announced_version: None,
+                slot: Slot::new(1, 0),
+                parents,
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements: vec![],
+                denunciations: Vec::new(),
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+            *CHAINID,
+        )
+        .unwrap();
+
+        let orig_block = Block {
+            header: orig_header,
+            operations: Default::default(),
+        };
+
+        let secured_block: SecureShareBlock =
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+        let mut ser_block = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(&secured_block, &mut ser_block)
+            .unwrap();
+
+        let args = BlockDeserializerArgs {
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            last_start_period: Some(0),
+            chain_id: *CHAINID,
+        };
+        let res: Result<(&[u8], SecureShareBlock), _> =
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
+                .deserialize::<DeserializeError>(&ser_block);
+
+        assert!(res.is_err());
+    }
+
+    #[test]
+    #[serial]
     fn test_genesis_block_serialization() {
         let keypair = KeyPair::generate(0).unwrap();
         let parents: Vec<BlockId> = vec![];
@@ -590,7 +661,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(0, 1),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![],
                 denunciations: vec![],
             },
@@ -685,7 +756,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(0, 1),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![Endorsement::new_verifiable(
                     endorsement,
                     EndorsementSerializer::new(),
@@ -750,7 +821,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(0, 1),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![],
                 denunciations: vec![],
             },
@@ -804,7 +875,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(1, 1),
                 parents: vec![],
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![],
                 denunciations: vec![],
             },
@@ -861,7 +932,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(1, 1),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![],
                 denunciations: vec![],
             },
@@ -942,7 +1013,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements,
                 denunciations: vec![],
             },
@@ -1001,7 +1072,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(1, 1),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![],
                 denunciations: vec![],
             },
@@ -1073,7 +1144,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(1, 1),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements,
                 denunciations: vec![],
             },
@@ -1150,7 +1221,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![endo1],
                 denunciations: vec![],
             },
@@ -1240,7 +1311,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![endo1, endo2],
                 denunciations: vec![],
             },
@@ -1332,7 +1403,7 @@ mod test {
                 announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_merkle_root: empty_operations_merkle_root(),
                 endorsements: vec![endo1, endo2],
                 denunciations: Vec::new(), // FIXME
             },
