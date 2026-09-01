@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["TARGET_BOOKING"],"struct":["SpeculativeDeferredCallRegistry"]};
+window.SIDEBAR_ITEMS = {"constant":["DEFERRED_CALL_INDEX_FIX_EXEC_VERSION","TARGET_BOOKING"],"struct":["SpeculativeDeferredCallRegistry"]};

@@ -324,13 +324,6 @@
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -433,6 +426,12 @@
     <span class="doccomment">/// Takes a batch of asynchronous messages to execute,
     /// removing them from the speculative asynchronous pool and settling their deletion from it
     /// in the changes accumulator.
+    ///
+    /// A message is only taken when `message.max_gas + async_msg_cst_gas_cost` still fits in
+    /// the remaining budget. Messages asking for more than the largest budget a slot can ever
+    /// get (`max_async_gas + max_gas_per_block`) are therefore never taken; `send_message`
+    /// rejects those at emission from execution component version 2 on, but messages emitted
+    /// before that activation can still be sitting in the pool, and they expire unexecuted.
     ///
     /// # Arguments
     /// * `slot`: slot at which the batch is taken (allows filtering by validity interval)
@@ -544,20 +543,6 @@
         </span>}
 
         <span class="comment">// Activate the messages that can be activated (triggered)
-        //
-        // Note: arming is intentionally not restricted to the message validity interval. A trigger
-        //       observed before `validity_start` arms the message for good, and it then executes at
-        //       the first slot of its validity interval that has gas available. This is wanted: a
-        //       message is armed by an event that happened, and consistently with the fact that an
-        //       armed message can never be disarmed, that event is not forgotten just because it
-        //       came early. The validity interval bounds execution, not observation of the trigger.
-        //
-        // Note: activation happens here, i.e. after `take_batch_to_execute` already selected the
-        //       messages to execute at this slot, so a message armed at slot S is executable from
-        //       S+1 on. A trigger first observed at `validity_end` therefore never executes: the
-        //       message is armed and then expires at the next slot, its coins being reimbursed by
-        //       `cancel_async_message`. This cannot be avoided, since the ledger writes that arm
-        //       the message are only known once the slot has been executed.
         </span><span class="kw">for </span>(id, msg) <span class="kw">in </span><span class="self">self</span>.message_cache.iter_mut() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="kw-2">&amp;</span>msg.trigger {
                 <span class="kw">if </span>is_triggered(filter, ledger_changes) {
@@ -615,6 +600,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
     <span class="comment">// Test if is_message_expired &amp; is_message_ready_to_execute are consistent
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_validity() {

@@ -418,6 +418,24 @@
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -440,7 +458,7 @@
 
 <span class="kw">use crate</span>::{
     handlers::{
-        endorsement_handler::{is_endorsement_fresh, messages::EndorsementMessage},
+        endorsement_handler::messages::EndorsementMessage,
         peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     },
     sig_verifier::verify_sigs_batch,
@@ -593,6 +611,24 @@
         <span class="self">self</span>.peer_cmd_sender
             .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[<span class="kw-2">*</span>peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
+    }
+}
+
+<span class="doccomment">/// Returns true if the inclusion slot of the endorsement is recent enough for the
+/// endorsement to still be worth processing (see `max_endorsements_propagation_time`).
+</span><span class="kw">fn </span>is_endorsement_fresh(
+    endorsement: <span class="kw-2">&amp;</span>SecureShareEndorsement,
+    config: <span class="kw-2">&amp;</span>ProtocolConfig,
+    now: MassaTime,
+) -&gt; bool {
+    <span class="kw">match </span>get_block_slot_timestamp(
+        config.thread_count,
+        config.t0,
+        config.genesis_timestamp,
+        endorsement.content.slot,
+    ) {
+        <span class="prelude-val">Ok</span>(t) =&gt; t.saturating_add(config.max_endorsements_propagation_time) &gt;= now,
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
     }
 }
 

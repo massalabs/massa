@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["is_endorsement_fresh"],"mod":["cache","commands_propagation","commands_retrieval","messages","propagation","retrieval"],"struct":["EndorsementHandler"]};
+window.SIDEBAR_ITEMS = {"mod":["cache","commands_propagation","commands_retrieval","messages","propagation","retrieval"],"struct":["EndorsementHandler"]};

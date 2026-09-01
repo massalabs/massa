@@ -1324,10 +1324,6 @@
 <a href="#1324" id="1324">1324</a>
 <a href="#1325" id="1325">1325</a>
 <a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
@@ -1479,7 +1475,7 @@
     <span class="doccomment">/// Slot at which the message starts being valid (bound included in the validity range)
     </span><span class="kw">pub </span>validity_start: Slot,
 
-    <span class="doccomment">/// Slot at which the message stops being valid (bound included in the validity range)
+    <span class="doccomment">/// Slot at which the message stops being valid (bound not included in the validity range)
     </span><span class="kw">pub </span>validity_end: Slot,
 
     <span class="doccomment">/// Raw payload parameters to call the function with
@@ -1489,9 +1485,7 @@
     </span><span class="kw">pub </span>trigger: <span class="prelude-ty">Option</span>&lt;AsyncMessageTrigger&gt;,
 
     <span class="doccomment">/// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
-    /// For messages with filter, this boolean is true if the filter has been matched at any slot up to
-    /// the current one, including before `validity_start`: arming is not restricted to the validity
-    /// interval, which only bounds execution. Once true, this boolean is never set back to false.
+    /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
     </span><span class="kw">pub </span>can_be_executed: bool,
 }
 
@@ -1879,9 +1873,7 @@
     </span><span class="kw">pub </span>trigger: SetOrKeep&lt;<span class="prelude-ty">Option</span>&lt;AsyncMessageTrigger&gt;&gt;,
 
     <span class="doccomment">/// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
-    /// For messages with filter, this boolean is true if the filter has been matched at any slot up to
-    /// the current one, including before `validity_start`: arming is not restricted to the validity
-    /// interval, which only bounds execution. Once true, this boolean is never set back to false.
+    /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
     </span><span class="kw">pub </span>can_be_executed: SetOrKeep&lt;bool&gt;,
 }
 
