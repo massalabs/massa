@@ -60,7 +60,8 @@ fn test_serialize_bootstrap_server_message() {
                 MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE
             );
 
-            let deser = BootstrapServerMessageDeserializer::new(config.into());
+            let deser =
+                BootstrapServerMessageDeserializer::with_last_start_period(config.into(), None);
             match deser.deserialize::<DeserializeError>(&bytes) {
                 Ok((rest, msg_res)) => {
                     assert!(rest.is_empty(), "Data left after deserialization");
@@ -176,7 +177,7 @@ fn test_serialize_error_cases_servermsg() {
 
     let mut rng = rand::thread_rng();
     let ser = BootstrapServerMessageSerializer::new();
-    let deser = BootstrapServerMessageDeserializer::new((&config).into());
+    let deser = BootstrapServerMessageDeserializer::with_last_start_period((&config).into(), None);
 
     for n in 0..20 {
         let faulty_part = BootstrapServerMessageFaultyPart::from_u8(n);

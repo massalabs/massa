@@ -337,12 +337,7 @@ pub struct BootstrapServerMessageDeserializer {
 }
 
 impl BootstrapServerMessageDeserializer {
-    /// Creates a new `BootstrapServerMessageDeserializer`
-    pub fn new(args: BootstrapServerMessageDeserializerArgs) -> Self {
-        Self::with_last_start_period(args, None)
-    }
-
-    /// Same as [`Self::new`], but applies `last_start_period` to bootstrap block header
+    /// Builds a deserializer that applies `last_start_period` to bootstrap block header
     /// deserialization so genesis vs non-genesis parent-count rules are enforced while
     /// parsing. Use `None` for the first bootstrap part (server value arrives after the
     /// graph on the wire); pass the known value for subsequent parts.
@@ -448,7 +443,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,
     ///     chain_id: *CHAINID
     /// };
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::with_last_start_period(args, None);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from_millis(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
