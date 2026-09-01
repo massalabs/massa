@@ -1429,26 +1429,6 @@
 <a href="#1429" id="1429">1429</a>
 <a href="#1430" id="1430">1430</a>
 <a href="#1431" id="1431">1431</a>
-<a href="#1432" id="1432">1432</a>
-<a href="#1433" id="1433">1433</a>
-<a href="#1434" id="1434">1434</a>
-<a href="#1435" id="1435">1435</a>
-<a href="#1436" id="1436">1436</a>
-<a href="#1437" id="1437">1437</a>
-<a href="#1438" id="1438">1438</a>
-<a href="#1439" id="1439">1439</a>
-<a href="#1440" id="1440">1440</a>
-<a href="#1441" id="1441">1441</a>
-<a href="#1442" id="1442">1442</a>
-<a href="#1443" id="1443">1443</a>
-<a href="#1444" id="1444">1444</a>
-<a href="#1445" id="1445">1445</a>
-<a href="#1446" id="1446">1446</a>
-<a href="#1447" id="1447">1447</a>
-<a href="#1448" id="1448">1448</a>
-<a href="#1449" id="1449">1449</a>
-<a href="#1450" id="1450">1450</a>
-<a href="#1451" id="1451">1451</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="comment">// use crate::config::THREAD_COUNT;
@@ -1467,8 +1447,7 @@
     <span class="comment">// slot::{Slot, SlotDeserializer, SlotSerializer},
 </span>};
 <span class="comment">// use massa_hash::{Hash, HashDeserializer};
-</span><span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_serialization::{
+</span><span class="kw">use </span>massa_serialization::{
     <span class="comment">// DeserializeError,
     </span>Deserializer,
     SerializeError,
@@ -1518,26 +1497,7 @@
 <span class="doccomment">/// Block with associated meta-data and interfaces allowing trust of data in untrusted network
 </span><span class="kw">pub type </span>SecureShareBlock = SecureShare&lt;Block, BlockId&gt;;
 
-<span class="doccomment">/// Blocks are not signed at the block level: authentication lives in the nested
-/// [`SecuredHeader`]. The outer [`SecureShareBlock`] copies the header's signature,
-/// creator key, and id for transport convenience, while `serialized_data` holds
-/// the full block bytes (header + operation ids).
-</span><span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Block {
-    <span class="doccomment">/// Delegates to the nested signed header signing domain.
-    ///
-    /// Outer auth fields are copies of the header's; the default
-    /// [`SecureShareContent::verify_signature`] would verify against the wrong domain.
-    </span><span class="kw">fn </span>verify_signature(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        public_key: <span class="kw-2">&amp;</span>PublicKey,
-        content_hash: <span class="kw-2">&amp;</span>Hash,
-        signature: <span class="kw-2">&amp;</span>Signature,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
-        <span class="self">self</span>.header
-            .content
-            .verify_signature(public_key, content_hash, signature)
-    }
-
+<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Block {
     <span class="kw">fn </span>new_verifiable&lt;SC: Serializer&lt;<span class="self">Self</span>&gt;, U: Id&gt;(
         <span class="self">self</span>,
         content_serializer: SC,
@@ -2056,7 +2016,7 @@
         );
 
         <span class="macro">assert_eq!</span>(orig_block.header.signature, res_block.signature);
-        res_block.verify_signature().unwrap();
+        orig_header.verify_signature().unwrap();
         <span class="kw">for </span>ed <span class="kw">in </span>orig_block.header.content.endorsements.iter() {
             ed.verify_signature().unwrap();
         }
