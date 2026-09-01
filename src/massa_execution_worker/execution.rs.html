@@ -2740,6 +2740,14 @@
 <a href="#2740" id="2740">2740</a>
 <a href="#2741" id="2741">2741</a>
 <a href="#2742" id="2742">2742</a>
+<a href="#2743" id="2743">2743</a>
+<a href="#2744" id="2744">2744</a>
+<a href="#2745" id="2745">2745</a>
+<a href="#2746" id="2746">2746</a>
+<a href="#2747" id="2747">2747</a>
+<a href="#2748" id="2748">2748</a>
+<a href="#2749" id="2749">2749</a>
+<a href="#2750" id="2750">2750</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3541,7 +3549,9 @@
 
         context.insert_executed_denunciation(<span class="kw-2">&amp;</span>de_idx);
 
-        <span class="kw">let </span>slashed = context.try_slash_rolls(
+        <span class="comment">// Punishment is roll slashing only; same-slot block/endorsement rewards are not forfeited
+        // (see comment after the denunciation loop in execute_slot).
+        </span><span class="kw">let </span>slashed = context.try_slash_rolls(
             <span class="kw-2">&amp;</span>addr_denounced,
             <span class="self">self</span>.config.roll_count_to_slash_on_denunciation,
             <span class="kw-2">&amp;</span>de_idx,
@@ -4525,7 +4535,13 @@
                 }
             }
 
-            <span class="comment">// Get block creator address
+            <span class="comment">// Denunciation punishment is limited to slashing locked rolls (see execute_denunciation).
+            // Addresses denounced in this block are intentionally still eligible for the slot's
+            // EndorsementCreatorReward, EndorsementTargetReward, and BlockCreatorReward below.
+            // Excluding them would make the effective penalty depend on whether the denounced
+            // address was also selected by draws for this slot, which is not a coherent punishment model.
+
+            // Get block creator address
             </span><span class="kw">let </span>block_creator_addr = stored_block.content_creator_address;
 
             <span class="comment">// acquire lock on execution context
