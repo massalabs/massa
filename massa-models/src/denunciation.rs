@@ -29,6 +29,15 @@
 //! balance or staked rolls, we will use 'locked' rolls` (or Deferred credits).
 //! Selling a roll will lock it for some time (== 4 cycles). Note that it restricts the time,
 //! a denunciation can be produced (A constant value will be defined for this).
+//!
+//! Punishment model
+//!
+//! A valid denunciation slashes locked rolls only. It does not forfeit slot rewards
+//! (`EndorsementCreatorReward`, `EndorsementTargetReward`, `BlockCreatorReward`) for the
+//! denouncing block. A validator denounced in a block may still receive those rewards in the
+//! same slot. That is intentional: excluding denounced addresses from same-slot rewards would
+//! make the effective penalty depend on whether they were also selected by draws for that slot,
+//! which is not a coherent punishment model.
 
 #![allow(missing_docs)]
 
