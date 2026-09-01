@@ -164,40 +164,28 @@ impl SpeculativeAsyncPool {
         slot: &Slot,
         ledger_changes: &LedgerChanges,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        // Update eliminated_msgs: remove messages that should be removed
+        // Collect messages that should be removed without deleting them yet.
+        // Deletion is finalized only after reimbursement succeeds (see `finalize_eliminated_messages`).
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
 
         let mut eliminated_msgs = Vec::new();
 
-        self.message_cache.retain(|id, msg| {
+        for (id, msg) in &self.message_cache {
             if Self::is_message_expired(slot, &msg.validity_end) {
                 eliminated_msgs.push((*id, msg.clone()));
-                false
-            } else {
-                true
             }
-        });
+        }
 
-        let mut eliminated_new_messages = Vec::new();
-        self.pool_changes.0.retain(|k, v| match v {
-            SetUpdateOrDelete::Set(message) => {
-                if Self::is_message_expired(slot, &message.validity_end) {
-                    eliminated_new_messages.push((*k, v.clone()));
-                    false
-                } else {
-                    true
+        for (k, v) in &self.pool_changes.0 {
+            if let SetUpdateOrDelete::Set(message) = v {
+                if Self::is_message_expired(slot, &message.validity_end)
+                    && !eliminated_msgs.iter().any(|(id, _)| id == k)
+                {
+                    eliminated_msgs.push((*k, message.clone()));
                 }
             }
-            SetUpdateOrDelete::Update(_v) => true,
-            SetUpdateOrDelete::Delete => true,
-        });
-
-        eliminated_msgs.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
-            SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
-            SetUpdateOrDelete::Update(_v) => None,
-            SetUpdateOrDelete::Delete => None,
-        }));
+        }
 
         // Truncate message pool to its max size, removing non-priority items
         let excess_count = self
@@ -206,8 +194,20 @@ impl SpeculativeAsyncPool {
             .saturating_sub(self.async_pool_max_length as usize);
 
         eliminated_msgs.reserve_exact(excess_count);
-        for _ in 0..excess_count {
-            eliminated_msgs.push(self.message_cache.pop_last().unwrap()); // will not panic (checked at excess_count computation)
+        for id in self
+            .message_cache
+            .keys()
+            .rev()
+            .take(excess_count)
+            .copied()
+            .collect::<Vec<_>>()
+        {
+            if eliminated_msgs.iter().any(|(eliminated_id, _)| eliminated_id == &id) {
+                continue;
+            }
+            if let Some(msg) = self.message_cache.get(&id) {
+                eliminated_msgs.push((id, msg.clone()));
+            }
         }
 
         // Activate the messages that can be activated (triggered)
@@ -226,6 +226,9 @@ impl SpeculativeAsyncPool {
         //       `cancel_async_message`. This cannot be avoided, since the ledger writes that arm
         //       the message are only known once the slot has been executed.
         for (id, msg) in self.message_cache.iter_mut() {
+            if eliminated_msgs.iter().any(|(eliminated_id, _)| eliminated_id == id) {
+                continue;
+            }
             if let Some(filter) = &msg.trigger {
                 if is_triggered(filter, ledger_changes) {
                     msg.can_be_executed = true;
@@ -234,17 +237,23 @@ impl SpeculativeAsyncPool {
             }
         }
 
-        // Push message deletion to the pool changes
-        self.delete_messages(eliminated_msgs.iter().map(|(id, _)| *id).collect());
-
-        // reintroduce newly eliminated messages
-        eliminated_msgs.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
-            SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
-            SetUpdateOrDelete::Update(_v) => None,
-            SetUpdateOrDelete::Delete => None,
-        }));
-
         eliminated_msgs
+    }
+
+    /// Removes messages from the speculative pool after their senders have been reimbursed.
+    pub fn finalize_eliminated_messages(&mut self, message_ids: Vec<AsyncMessageId>) {
+        for message_id in &message_ids {
+            self.message_cache.remove(message_id);
+            self.pool_changes.0.remove(message_id);
+        }
+        self.delete_messages(message_ids);
+    }
+
+    /// Restores a message taken for execution when reimbursement failed.
+    pub fn restore_taken_message(&mut self, message: AsyncMessage) {
+        let message_id = message.compute_id();
+        self.message_cache.insert(message_id, message.clone());
+        self.pool_changes.push_add(message_id, message);
     }
 
     fn delete_messages(&mut self, message_ids: Vec<AsyncMessageId>) {
@@ -255,7 +264,7 @@ impl SpeculativeAsyncPool {
 
     /// Return true if a message (given its validity end) is expired
     /// Must be consistent with is_message_valid
-    fn is_message_expired(slot: &Slot, message_validity_end: &Slot) -> bool {
+    pub(crate) fn is_message_expired(slot: &Slot, message_validity_end: &Slot) -> bool {
         // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
         //       (for operation validity) so apply the same rule for message validity
         *slot > *message_validity_end

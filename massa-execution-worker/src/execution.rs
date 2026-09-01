@@ -1197,6 +1197,37 @@ impl ExecutionState {
         }
     }
 
+    /// Reimburses the sender of an async message taken for execution.
+    /// If reimbursement fails, preserves the liability either by restoring the message
+    /// (when it is still valid) or by scheduling a deferred credit (when it is expired).
+    fn reimburse_async_message_taken_for_execution(
+        &self,
+        context: &mut ExecutionContext,
+        message: &AsyncMessage,
+    ) {
+        if context.cancel_async_message(message).is_ok() {
+            return;
+        }
+
+        let slot = context.slot;
+        if crate::speculative_async_pool::SpeculativeAsyncPool::is_message_expired(
+            &slot,
+            &message.validity_end,
+        ) {
+            debug!(
+                "async message cancel: reimbursement of {} failed, deferring {} coins to deferred credits",
+                message.sender, message.coins
+            );
+            context.defer_refund_as_deferred_credit(message.sender, message.coins);
+        } else {
+            debug!(
+                "async message cancel: reimbursement of {} failed, restoring message to pool",
+                message.sender
+            );
+            context.restore_taken_async_message(message.clone());
+        }
+    }
+
     /// Tries to execute an asynchronous message
     /// If the execution failed reimburse the message sender.
     ///
@@ -1246,7 +1277,7 @@ impl ExecutionState {
             // check the target address
             if let Err(err) = context.check_target_sc_address(message.destination) {
                 context.reset_to_snapshot(context_snapshot, err.clone());
-                context.cancel_async_message(&message);
+                self.reimburse_async_message_taken_for_execution(&mut context, &message);
                 return Err(err);
             }
 
@@ -1256,7 +1287,7 @@ impl ExecutionState {
                 None => {
                     let err = ExecutionError::RuntimeError("no target bytecode found".into());
                     context.reset_to_snapshot(context_snapshot, err.clone());
-                    context.cancel_async_message(&message);
+                    self.reimburse_async_message_taken_for_execution(&mut context, &message);
                     return Err(err);
                 }
             };
@@ -1279,7 +1310,7 @@ impl ExecutionState {
                 ));
 
                 context.reset_to_snapshot(context_snapshot, err.clone());
-                context.cancel_async_message(&message);
+                self.reimburse_async_message_taken_for_execution(&mut context, &message);
                 return Err(err);
             } else {
                 result.coins = Some(message.coins);
@@ -1303,7 +1334,7 @@ impl ExecutionState {
                 ));
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(context_snapshot, err.clone());
-                context.cancel_async_message(&message);
+                self.reimburse_async_message_taken_for_execution(&mut context, &message);
                 return Err(err);
             }
         };
@@ -1345,7 +1376,7 @@ impl ExecutionState {
                 };
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(context_snapshot, err.clone());
-                context.cancel_async_message(&message);
+                self.reimburse_async_message_taken_for_execution(&mut context, &message);
                 Err(err)
             }
         }
@@ -1389,6 +1420,7 @@ impl ExecutionState {
         };
 
         if call.cancelled {
+            context_guard!(self).deferred_call_delete(id);
             Ok(result)
         } else {
             let deferred_call_execution = || {
@@ -1510,7 +1542,19 @@ impl ExecutionState {
             if let Err(err) = &execution_result {
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, &call);
+                match context.deferred_call_fail_exec(id, &call) {
+                    Ok(_) => context.deferred_call_delete(id),
+                    Err(refund_err) => {
+                        debug!(
+                            "deferred call {} fail: reimbursement of {} to {} failed: {}, deferring to deferred credits",
+                            id, call.coins, call.sender_address, refund_err
+                        );
+                        context.defer_refund_as_deferred_credit(call.sender_address, call.coins);
+                        context.deferred_call_delete(id);
+                    }
+                }
+            } else {
+                context_guard!(self).deferred_call_delete(id);
             }
             execution_result
         }
