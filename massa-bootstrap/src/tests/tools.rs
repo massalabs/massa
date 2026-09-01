@@ -50,6 +50,7 @@ use massa_models::{
     endorsement::Endorsement,
     endorsement::EndorsementSerializer,
     operation::OperationId,
+    operation::OperationIdSerializer,
     prehash::PreHashMap,
     secure_share::Id,
     secure_share::SecureShareContent,
@@ -537,22 +538,28 @@ fn gen_random_block<R: Rng>(keypair: &KeyPair, rng: &mut R) -> Block {
     //    // TODO    Denunciations generation
     // }
 
-    let header = BlockHeader {
-        current_version: rng.gen(),
-        announced_version: rng.gen(),
-        slot,
-        parents,
-        operation_merkle_root: gen_random_hash(rng),
-        endorsements,
-        denunciations,
-    }
-    .new_verifiable(BlockHeaderSerializer::new(), keypair, *CHAINID)
-    .unwrap();
     let mut operations = vec![];
     for _ in 0..rng.gen_range(0..MAX_OPERATIONS_PER_BLOCK) {
         let op = OperationId::new(gen_random_hash(rng));
         operations.push(op);
     }
+
+    let operation_merkle_root = massa_models::operation::compute_operations_hash(
+        &operations,
+        &OperationIdSerializer::new(),
+    );
+
+    let header = BlockHeader {
+        current_version: rng.gen(),
+        announced_version: rng.gen(),
+        slot,
+        parents,
+        operation_merkle_root,
+        endorsements,
+        denunciations,
+    }
+    .new_verifiable(BlockHeaderSerializer::new(), keypair, *CHAINID)
+    .unwrap();
     Block { header, operations }
 }
 
@@ -935,12 +942,17 @@ impl BootstrapServerMessage {
                 operations.push(op);
             }
 
+            let operation_merkle_root = massa_models::operation::compute_operations_hash(
+                &operations,
+                &OperationIdSerializer::new(),
+            );
+
             let header = BlockHeader {
                 current_version: rng.gen(),
                 announced_version: rng.gen(),
                 slot: block_slot,
                 parents: parents.clone(),
-                operation_merkle_root: gen_random_hash(rng),
+                operation_merkle_root,
                 endorsements: endorsements.clone(),
                 denunciations,
             }
