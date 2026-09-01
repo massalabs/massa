@@ -4,7 +4,6 @@ use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
-use massa_models::error::ModelsError;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_serialization::{DeserializeError, Deserializer};
@@ -84,20 +83,15 @@ pub(crate) async fn send_blocks(
                                 .await;
                                 continue;
                             }
-                            if let Err(e) = res_block
-                                .verify_signature()
-                                .and_then(|_| res_block.content.header.verify_signature())
-                                .map(|_| {
-                                    res_block
-                                        .content
-                                        .header
-                                        .content
-                                        .endorsements
-                                        .iter()
-                                        .map(|endorsement| endorsement.verify_signature())
-                                        .collect::<Vec<Result<(), ModelsError>>>()
-                                })
-                            {
+                            if let Err(e) = res_block.verify_signature().and_then(|_| {
+                                res_block
+                                    .content
+                                    .header
+                                    .content
+                                    .endorsements
+                                    .iter()
+                                    .try_for_each(|endorsement| endorsement.verify_signature())
+                            }) {
                                 report_error(
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
