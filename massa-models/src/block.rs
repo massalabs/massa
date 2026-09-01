@@ -16,6 +16,7 @@ use crate::{
     // slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 // use massa_hash::{Hash, HashDeserializer};
+use massa_hash::Hash;
 use massa_serialization::{
     // DeserializeError,
     Deserializer,
@@ -66,7 +67,26 @@ pub struct FilledBlock {
 /// Block with associated meta-data and interfaces allowing trust of data in untrusted network
 pub type SecureShareBlock = SecureShare<Block, BlockId>;
 
+/// Blocks are not signed at the block level: authentication lives in the nested
+/// [`SecuredHeader`]. The outer [`SecureShareBlock`] copies the header's signature,
+/// creator key, and id for transport convenience, while `serialized_data` holds
+/// the full block bytes (header + operation ids).
 impl SecureShareContent for Block {
+    /// Delegates to the nested signed header signing domain.
+    ///
+    /// Outer auth fields are copies of the header's; the default
+    /// [`SecureShareContent::verify_signature`] would verify against the wrong domain.
+    fn verify_signature(
+        &self,
+        public_key: &PublicKey,
+        content_hash: &Hash,
+        signature: &Signature,
+    ) -> Result<(), ModelsError> {
+        self.header
+            .content
+            .verify_signature(public_key, content_hash, signature)
+    }
+
     fn new_verifiable<SC: Serializer<Self>, U: Id>(
         self,
         content_serializer: SC,
@@ -585,7 +605,7 @@ mod test {
         );
 
         assert_eq!(orig_block.header.signature, res_block.signature);
-        orig_header.verify_signature().unwrap();
+        res_block.verify_signature().unwrap();
         for ed in orig_block.header.content.endorsements.iter() {
             ed.verify_signature().unwrap();
         }
