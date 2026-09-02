@@ -1972,36 +1972,6 @@
 <a href="#1972" id="1972">1972</a>
 <a href="#1973" id="1973">1973</a>
 <a href="#1974" id="1974">1974</a>
-<a href="#1975" id="1975">1975</a>
-<a href="#1976" id="1976">1976</a>
-<a href="#1977" id="1977">1977</a>
-<a href="#1978" id="1978">1978</a>
-<a href="#1979" id="1979">1979</a>
-<a href="#1980" id="1980">1980</a>
-<a href="#1981" id="1981">1981</a>
-<a href="#1982" id="1982">1982</a>
-<a href="#1983" id="1983">1983</a>
-<a href="#1984" id="1984">1984</a>
-<a href="#1985" id="1985">1985</a>
-<a href="#1986" id="1986">1986</a>
-<a href="#1987" id="1987">1987</a>
-<a href="#1988" id="1988">1988</a>
-<a href="#1989" id="1989">1989</a>
-<a href="#1990" id="1990">1990</a>
-<a href="#1991" id="1991">1991</a>
-<a href="#1992" id="1992">1992</a>
-<a href="#1993" id="1993">1993</a>
-<a href="#1994" id="1994">1994</a>
-<a href="#1995" id="1995">1995</a>
-<a href="#1996" id="1996">1996</a>
-<a href="#1997" id="1997">1997</a>
-<a href="#1998" id="1998">1998</a>
-<a href="#1999" id="1999">1999</a>
-<a href="#2000" id="2000">2000</a>
-<a href="#2001" id="2001">2001</a>
-<a href="#2002" id="2002">2002</a>
-<a href="#2003" id="2003">2003</a>
-<a href="#2004" id="2004">2004</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -2213,9 +2183,7 @@
                 <span class="comment">// We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
                 // in order to make deserialization easier
                 </span>new_elements_size += key_len + value_len + buffer.len();
-                <span class="kw">if </span>new_elements_size &lt;= <span class="self">self</span>.config.max_final_state_elements_size
-                    &amp;&amp; new_elements.len() &lt; <span class="self">self</span>.config.max_final_state_elements_count
-                {
+                <span class="kw">if </span>new_elements_size &lt;= <span class="self">self</span>.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -2348,9 +2316,7 @@
                 <span class="comment">// We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
                 // in order to make deserialization easier
                 </span>new_elements_size += key_len + value_len + buffer.len();
-                <span class="kw">if </span>new_elements_size &lt;= <span class="self">self</span>.config.max_versioning_elements_size
-                    &amp;&amp; new_elements.len() &lt; <span class="self">self</span>.config.max_versioning_elements_count
-                {
+                <span class="kw">if </span>new_elements_size &lt;= <span class="self">self</span>.config.max_versioning_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -3079,8 +3045,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3112,8 +3076,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3199,8 +3161,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3287,8 +3247,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3339,8 +3297,6 @@
                 max_history_length: <span class="number">100</span>,
                 max_final_state_elements_size: <span class="number">100</span>,
                 max_versioning_elements_size: <span class="number">100</span>,
-                max_final_state_elements_count: <span class="number">100_000</span>,
-                max_versioning_elements_count: <span class="number">100_000</span>,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: <span class="number">10</span>,
                 enable_metrics: <span class="bool-val">false</span>,
@@ -3366,8 +3322,6 @@
                 max_history_length: <span class="number">100</span>,
                 max_final_state_elements_size: <span class="number">100</span>,
                 max_versioning_elements_size: <span class="number">100</span>,
-                max_final_state_elements_count: <span class="number">100_000</span>,
-                max_versioning_elements_count: <span class="number">100_000</span>,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: <span class="number">10</span>,
                 enable_metrics: <span class="bool-val">false</span>,
@@ -3402,8 +3356,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3452,8 +3404,6 @@
                 max_history_length: <span class="number">100</span>,
                 max_final_state_elements_size: <span class="number">100</span>,
                 max_versioning_elements_size: <span class="number">100</span>,
-                max_final_state_elements_count: <span class="number">100_000</span>,
-                max_versioning_elements_count: <span class="number">100_000</span>,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: <span class="number">10</span>,
                 enable_metrics: <span class="bool-val">false</span>,
@@ -3504,8 +3454,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3600,8 +3548,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3691,8 +3637,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">10</span>,
             max_versioning_elements_size: <span class="number">10</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3779,8 +3723,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">20</span>,
             max_versioning_elements_size: <span class="number">20</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -3894,8 +3836,6 @@
             max_history_length: <span class="number">4</span>,
             max_final_state_elements_size: <span class="number">20</span>,
             max_versioning_elements_size: <span class="number">20</span>,
-            max_final_state_elements_count: <span class="number">100_000</span>,
-            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
