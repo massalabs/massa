@@ -1113,6 +1113,19 @@ fn test_slot_too_old_clears_session_state() {
 
     let mut final_state = MockFinalStateController::new();
     final_state.expect_reset().times(1).return_const(());
+    final_state
+        .expect_set_last_start_period()
+        .with(mockall::predicate::eq(0u64))
+        .times(1)
+        .return_const(());
+    final_state
+        .expect_set_last_slot_before_downtime()
+        .with(mockall::predicate::eq(None))
+        .times(1)
+        .return_const(());
+    final_state
+        .expect_get_last_start_period()
+        .return_const(0u64);
 
     let mut rng = rand::thread_rng();
     let mut global_bootstrap_state = GlobalBootstrapState {

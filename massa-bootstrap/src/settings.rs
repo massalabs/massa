@@ -210,7 +210,9 @@ pub struct BootstrapServerMessageDeserializerArgs {
 }
 
 // TODO: add a proc macro for this case
-// We set last_start_period to None because we set the value during Bootstrap
+// Default last_start_period is None: the server streams state/versioning first with an
+// empty consensus graph and sends restart metadata once. The client caches it on the
+// binder before any part that actually contains blocks.
 impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
     fn from(value: &BootstrapServerMessageDeserializerArgs) -> Self {
         Self {

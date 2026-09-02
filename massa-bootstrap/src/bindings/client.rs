@@ -29,6 +29,8 @@ pub struct BootstrapClientBinder {
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
+    /// Cached from the first bootstrap part; consensus blocks only stream after final state.
+    last_start_period: Option<u64>,
 }
 
 const KNOWN_PREFIX_FROM_SERVER_LEN: usize =
@@ -61,7 +63,13 @@ impl BootstrapClientBinder {
             prev_message: None,
             version_serializer: VersionSerializer::new(),
             cfg,
+            last_start_period: None,
         }
+    }
+
+    /// Update the last start period used when deserializing bootstrap block headers.
+    pub fn set_last_start_period(&mut self, last_start_period: Option<u64>) {
+        self.last_start_period = last_start_period;
     }
 
     /// Performs a handshake. Should be called after connection
@@ -102,7 +110,10 @@ impl BootstrapClientBinder {
         let ServerMessageLeader { sig, msg_len } = self.decode_msg_leader(&known_len_buff)?;
 
         // Update this bindings "most recently received" message hash, retaining the replaced value
-        let message_deserializer = BootstrapServerMessageDeserializer::new((&self.cfg).into());
+        let message_deserializer = BootstrapServerMessageDeserializer::with_last_start_period(
+            (&self.cfg).into(),
+            self.last_start_period,
+        );
         let prev_msg = self
             .prev_message
             .replace(Hash::compute_from(&sig.to_bytes()));

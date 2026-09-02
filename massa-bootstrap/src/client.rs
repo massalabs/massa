@@ -74,6 +74,27 @@ pub(crate) fn stream_final_state_and_consensus(
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
+    if let BootstrapClientMessage::AskBootstrapPart {
+        send_last_start_period: false,
+        ..
+    } = &next_bootstrap_message
+    {
+        // Continuation / reconnect: metadata was received on the first part (empty
+        // consensus); seed the binder for block header validation while parsing.
+        client.set_last_start_period(Some(
+            global_bootstrap_state
+                .final_state
+                .read()
+                .get_last_start_period(),
+        ));
+    } else if let BootstrapClientMessage::AskBootstrapPart {
+        send_last_start_period: true,
+        ..
+    } = &next_bootstrap_message
+    {
+        client.set_last_start_period(None);
+    }
+
     if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
         client.send_timeout(
             next_bootstrap_message,
@@ -100,9 +121,9 @@ pub(crate) fn stream_final_state_and_consensus(
                     // successful bootstrap.
                     check_restart_metadata(cfg, &last_start_period, &last_slot_before_downtime)?;
 
-                    // We only need to receive the initial_state once
                     if let Some(last_start_period) = last_start_period {
                         write_final_state.set_last_start_period(last_start_period);
+                        client.set_last_start_period(Some(last_start_period));
                     }
                     if let Some(last_slot_before_downtime) = last_slot_before_downtime {
                         write_final_state.set_last_slot_before_downtime(last_slot_before_downtime);
@@ -215,7 +236,12 @@ pub(crate) fn stream_final_state_and_consensus(
                     };
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
+                    // `reset()` does not clear restart metadata; drop values from the
+                    // aborted server so the next one defines them from the wire again.
+                    write_final_state.set_last_start_period(0);
+                    write_final_state.set_last_slot_before_downtime(None);
                     drop(write_final_state);
+                    client.set_last_start_period(None);
                     // The cursor above restarts the consensus stream from `Started`, for which the
                     // server reports no outdated ids: blocks kept from the aborted attempt would
                     // never be pruned and would be merged into the next attempt's graph.
@@ -376,9 +402,10 @@ pub(crate) fn bootstrap_from_server(
 /// Checks the network restart metadata announced by a bootstrap server.
 ///
 /// The server sends `last_start_period` and `last_slot_before_downtime` together, and only once
-/// per stream. Startup then derives the network downtime range and its timestamps from them (see
-/// `massa-node`), assuming they describe a coherent interval, so anything else has to be rejected
-/// as a bootstrap failure rather than stored.
+/// per stream (on the first part, before any consensus blocks). Startup derives the network
+/// downtime range and its timestamps from them (see `massa-node`), assuming they describe a
+/// coherent interval, so anything else has to be rejected as a bootstrap failure rather than
+/// stored.
 fn check_restart_metadata(
     cfg: &BootstrapConfig,
     last_start_period: &Option<u64>,
