@@ -1103,28 +1103,6 @@
 <a href="#1103" id="1103">1103</a>
 <a href="#1104" id="1104">1104</a>
 <a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
-<a href="#1124" id="1124">1124</a>
-<a href="#1125" id="1125">1125</a>
-<a href="#1126" id="1126">1126</a>
-<a href="#1127" id="1127">1127</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1292,11 +1270,7 @@
     ///
     /// # Arguments
     </span><span class="attr">#[cfg_attr(not(feature = <span class="string">"test-exports"</span>), allow(dead_code))]
-    </span><span class="kw">pub fn </span>load_initial_ledger(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        initial_ledger: HashMap&lt;Address, LedgerEntry&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
-        <span class="self">self</span>.ensure_ledger_is_empty()<span class="question-mark">?</span>;
+    </span><span class="kw">pub fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>, initial_ledger: HashMap&lt;Address, LedgerEntry&gt;) {
         <span class="kw">let </span>slot = <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="self">self</span>.thread_count.saturating_sub(<span class="number">1</span>)));
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
@@ -1310,12 +1284,10 @@
         <span class="kw">if </span>!batch.is_empty() {
             <span class="self">self</span>.flush_initial_ledger_batch(batch, slot);
         }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Loads the initial disk ledger from a JSON file, one entry at a time.
     </span><span class="kw">pub fn </span>load_initial_ledger_from_path(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
-        <span class="self">self</span>.ensure_ledger_is_empty()<span class="question-mark">?</span>;
         <span class="kw">let </span>file = File::open(path).map_err(|err| initial_ledger_file_error(path, err))<span class="question-mark">?</span>;
         <span class="kw">let </span>reader = BufReader::new(file);
         <span class="kw">let </span><span class="kw-2">mut </span>deserializer = serde_json::Deserializer::from_reader(reader);
@@ -1336,22 +1308,6 @@
 
     <span class="kw">fn </span>flush_initial_ledger_batch(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: DBBatch, slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;) {
         <span class="self">self</span>.db.write().write_batch(batch, Default::default(), slot);
-    }
-
-    <span class="kw">fn </span>ensure_ledger_is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>ledger_prefix = LEDGER_PREFIX.as_bytes();
-        <span class="kw">let </span>has_ledger_data = db
-            .prefix_iterator_cf(STATE_CF, ledger_prefix)
-            .take_while(|(key, <span class="kw">_</span>)| key.starts_with(ledger_prefix))
-            .next()
-            .is_some();
-        <span class="kw">if </span>has_ledger_data {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(LedgerError::ContainerInconsistency(
-                <span class="string">"cannot load initial ledger: ledger database is not empty"</span>.into(),
-            ));
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Allows applying `LedgerChanges` to the disk ledger
