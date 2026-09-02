@@ -461,9 +461,12 @@ impl LedgerChanges {
 
     /// chain with another `LedgerChange`
     pub fn chain(&mut self, other: &LedgerChanges) -> Result<()> {
+        // We avoid mutating self directly to ensure atomicity in error cases.
+        let mut updated = self.clone();
         for (addr, change) in other.0.iter() {
-            self.apply(addr, change)?;
+            updated.apply(addr, change)?;
         }
+        *self = updated;
         Ok(())
     }
 
