@@ -2183,7 +2183,7 @@
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
-        <span class="kw">let </span><span class="kw-2">mut </span>ledger_db = LedgerDB::new(db, <span class="number">32</span>, <span class="number">255</span>, <span class="number">1000</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>ledger_db = LedgerDB::new(db, <span class="number">32</span>, <span class="number">255</span>, <span class="number">1000</span>, <span class="number">1000</span>);
         ledger_db
             .load_initial_ledger_from_path(temp_file.path())
             .unwrap();
