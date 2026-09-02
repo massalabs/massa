@@ -17,10 +17,11 @@ use massa_models::amount::Amount;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP,
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_ASYNC_POOL_LENGTH, MAX_BYTECODE_LENGTH,
-    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
-    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, POS_SAVED_CYCLES, T0,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_ASYNC_POOL_LENGTH,
+    MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+    MAX_BYTECODE_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_FUNCTION_NAME_LENGTH,
+    MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, POS_SAVED_CYCLES, T0,
 };
 use massa_models::slot::Slot;
 use massa_models::{
@@ -43,8 +44,8 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         max_history_length: 10,
         max_final_state_elements_size: 100_000,
         max_versioning_elements_size: 100_000,
-        max_final_state_elements_count: 100_000,
-        max_versioning_elements_count: 100_000,
+        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
         thread_count,
         max_ledger_backups: 10,
         enable_metrics: false,

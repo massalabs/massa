@@ -518,7 +518,14 @@ mod tests {
     use massa_db_worker::MassaDB;
     use massa_deferred_calls::{config::DeferredCallsConfig, DeferredCallRegistry};
     use massa_final_state::MockFinalStateController;
-    use massa_models::{amount::Amount, config::THREAD_COUNT, slot::Slot};
+    use massa_models::{
+        amount::Amount,
+        config::{
+            MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+            THREAD_COUNT,
+        },
+        slot::Slot,
+    };
     use parking_lot::RwLock;
     use tempfile::TempDir;
 
@@ -532,8 +539,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
-            max_final_state_elements_count: 100_000,
-            max_versioning_elements_count: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,

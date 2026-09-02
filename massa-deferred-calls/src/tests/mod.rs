@@ -5,7 +5,10 @@ use massa_db_worker::MassaDB;
 use massa_models::{
     address::Address,
     amount::Amount,
-    config::THREAD_COUNT,
+    config::{
+        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+        THREAD_COUNT,
+    },
     deferred_calls::{DeferredCallId, DeferredCallIdSerializer},
     slot::Slot,
 };
@@ -21,8 +24,8 @@ fn call_registry_apply_changes() {
         max_history_length: 100,
         max_final_state_elements_size: 100,
         max_versioning_elements_size: 100,
-        max_final_state_elements_count: 100_000,
-        max_versioning_elements_count: 100_000,
+        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
         thread_count: THREAD_COUNT,
         max_ledger_backups: 100,
         enable_metrics: false,
@@ -76,8 +79,8 @@ fn call_registry_get_slot_calls() {
         max_history_length: 100,
         max_final_state_elements_size: 100,
         max_versioning_elements_size: 100,
-        max_final_state_elements_count: 100_000,
-        max_versioning_elements_count: 100_000,
+        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
         thread_count: THREAD_COUNT,
         max_ledger_backups: 100,
         enable_metrics: false,
