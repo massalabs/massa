@@ -28,6 +28,10 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Optimized batch signature verifier
@@ -51,8 +55,12 @@
 
     <span class="comment">// otherwise, use parallel batch verif
 
-    // compute chunk size for parallelization
-    </span><span class="kw">let </span>chunk_size = std::cmp::max(<span class="number">1</span>, ops.len() / rayon::current_num_threads());
+    // compute chunk size for parallelization with ceiling division to ensure we batch properly.
+    // note that current_num_threads() will not return 0.
+    </span><span class="kw">let </span>chunk_size = std::cmp::max(
+        SMALL_BATCH_LIMIT,
+        ops.len().div_ceil(rayon::current_num_threads()),
+    );
     <span class="comment">// process chunks in parallel
     </span>ops.par_chunks(chunk_size)
         .try_for_each(verify_signature_batch)
