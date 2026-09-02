@@ -185,7 +185,7 @@ fn bootstrap_client_config_with_new_elements_limit(max: u32) -> BootstrapClientC
 }
 
 fn assert_too_many_new_elements_error(bytes: &[u8], config: &BootstrapClientConfig) {
-    let deser = BootstrapServerMessageDeserializer::new(config.into());
+    let deser = BootstrapServerMessageDeserializer::with_last_start_period(config.into(), None);
     let res = deser.deserialize::<DeserializeError>(bytes);
     assert!(res.is_err(), "expected deserialization to fail");
     let err_msg = format!("{:?}", res.unwrap_err());
