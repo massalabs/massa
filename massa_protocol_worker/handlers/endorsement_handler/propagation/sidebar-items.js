@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"fn":["drain_propagation_commands","filter_fresh_endorsements","start_propagation_thread"],"struct":["PropagationThread"]};
+window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"fn":["drain_propagation_commands","start_propagation_thread"],"struct":["PropagationThread"]};

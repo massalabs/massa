@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["validate_deferred_call_slot_consistency"],"struct":["DeferredCallRegistryChanges","DeferredRegistryChangesDeserializer","DeferredRegistryChangesSerializer"]};
+window.SIDEBAR_ITEMS = {"struct":["DeferredCallRegistryChanges","DeferredRegistryChangesDeserializer","DeferredRegistryChangesSerializer"]};

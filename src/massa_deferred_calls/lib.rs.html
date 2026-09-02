@@ -613,14 +613,6 @@
 <a href="#613" id="613">613</a>
 <a href="#614" id="614">614</a>
 <a href="#615" id="615">615</a>
-<a href="#616" id="616">616</a>
-<a href="#617" id="617">617</a>
-<a href="#618" id="618">618</a>
-<a href="#619" id="619">619</a>
-<a href="#620" id="620">620</a>
-<a href="#621" id="621">621</a>
-<a href="#622" id="622">622</a>
-<a href="#623" id="623">623</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>call::{DeferredCallDeserializer, DeferredCallSerializer};
 <span class="kw">use </span>config::DeferredCallsConfig;
 <span class="kw">use </span>macros::{
@@ -1088,20 +1080,12 @@
 
                     // [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG]
                     </span><span class="kw">let </span>k = <span class="macro">deferred_slot_call_prefix_key!</span>(<span class="kw-2">&amp;</span>slot.to_bytes_key());
-                    <span class="comment">// Malformed keys must return false, not panic (bootstrap / final-state verification).
-                    </span><span class="kw">if </span>!serialized_key.starts_with(<span class="kw-2">&amp;</span>k) {
-                        <span class="kw">return </span><span class="bool-val">false</span>;
-                    }
                     <span class="kw">let </span>rest_key = <span class="kw-2">&amp;</span>serialized_key[k.len()..];
 
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>((rest, _id)) = <span class="self">self
                         </span>.call_id_deserializer
                         .deserialize::&lt;DeserializeError&gt;(rest_key)
                     {
-                        <span class="comment">// Require exactly one field-tag byte after the call id.
-                        </span><span class="kw">if </span>rest.len() != <span class="number">1 </span>{
-                            <span class="kw">return </span><span class="bool-val">false</span>;
-                        }
                         <span class="kw">match </span>rest[<span class="number">0</span>] {
                             CALL_FIELD_SENDER_ADDRESS =&gt; {
                                 <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], Address), nom::Err&lt;DeserializeError&lt;<span class="lifetime">'_</span>&gt;&gt;&gt; =
