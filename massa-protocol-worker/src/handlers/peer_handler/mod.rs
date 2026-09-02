@@ -412,6 +412,10 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             if let Some(info) = peer_db_read.get_peers().get(&peer_id) {
                 if info.state == PeerState::Banned {
                     debug!("Banned peer tried to connect: {:?}", peer_id);
+                    return Err(PeerNetError::HandshakeError.error(
+                        "Massa Handshake",
+                        Some(format!("Banned peer tried to connect: {:?}", peer_id)),
+                    ));
                 }
             }
         }
@@ -682,15 +686,100 @@ mod tests {
     use std::{collections::HashMap, ops::Deref, sync::Arc};
 
     use massa_channel::MassaChannel;
-    use massa_protocol_exports::ProtocolConfig;
-    use massa_serialization::U64VarIntDeserializer;
+    use massa_models::version::VersionSerializer;
+    use massa_protocol_exports::{PeerId, PeerIdSerializer, ProtocolConfig};
+    use massa_serialization::{Serializer, U64VarIntDeserializer};
     use massa_signature::KeyPair;
     use parking_lot::RwLock;
     use peernet::{peer::InitConnectionHandler, transports::endpoint::Endpoint};
 
     use crate::{context::Context, messages::MessagesHandler};
 
-    use super::models::PeerDB;
+    use super::{
+        announcement::{Announcement, AnnouncementSerializer},
+        models::{PeerDB, PeerInfo, PeerState},
+    };
+
+    #[test]
+    fn test_handshake_rejects_banned_peer_and_keeps_ban() {
+        let (sender_blocks, _) = MassaChannel::new(String::from("test_blocks"), None);
+        let (sender_endorsements, _) = MassaChannel::new(String::from("test_endorsements"), None);
+        let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
+        let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
+        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
+        let protocol_config = ProtocolConfig::default();
+        let mut handshake =
+            super::MassaHandshake::new(shared_peer_db.clone(), protocol_config.clone());
+        let our_keypair = KeyPair::generate(0).unwrap();
+        let banned_keypair = KeyPair::generate(0).unwrap();
+        let banned_peer_id = PeerId::from_public_key(banned_keypair.get_public_key());
+
+        shared_peer_db.write().peers.insert(
+            banned_peer_id,
+            PeerInfo {
+                last_announce: None,
+                state: PeerState::Banned,
+            },
+        );
+
+        let messages_handlers = MessagesHandler {
+            id_deserializer: U64VarIntDeserializer::new(
+                std::ops::Bound::Included(0),
+                std::ops::Bound::Included(u64::MAX),
+            ),
+            sender_blocks,
+            sender_endorsements,
+            sender_operations,
+            sender_peers,
+        };
+        let (local_sender, _) =
+            MassaChannel::new(String::from("Test_transport_local_to_remote"), None);
+        let (remote_sender, local_receiver) =
+            MassaChannel::new(String::from("Test_transport_remote_to_local"), None);
+        let mut endpoint = Endpoint::MockEndpoint((
+            (*local_sender.deref()).clone(),
+            (*local_receiver.deref()).clone(),
+            "127.0.0.1:0".parse().unwrap(),
+        ));
+        let context = Context { our_keypair };
+
+        let thread = std::thread::spawn({
+            let remote_sender = remote_sender.clone();
+            let protocol_config = protocol_config.clone();
+            move || {
+                let mut bytes = vec![];
+                PeerIdSerializer::new()
+                    .serialize(&banned_peer_id, &mut bytes)
+                    .unwrap();
+                VersionSerializer::new()
+                    .serialize(&protocol_config.version, &mut bytes)
+                    .unwrap();
+                bytes.push(0);
+                let announcement =
+                    Announcement::new(HashMap::default(), None, &banned_keypair).unwrap();
+                AnnouncementSerializer::new()
+                    .serialize(&announcement, &mut bytes)
+                    .unwrap();
+                remote_sender.send(bytes).unwrap();
+            }
+        });
+
+        let res = handshake.perform_handshake(
+            &context,
+            &mut endpoint,
+            &HashMap::default(),
+            messages_handlers,
+        );
+        assert!(res.is_err());
+        thread.join().unwrap();
+
+        let peer_db = shared_peer_db.read();
+        let banned_info = peer_db
+            .peers
+            .get(&banned_peer_id)
+            .expect("banned peer should still be present");
+        assert_eq!(banned_info.state, PeerState::Banned);
+    }
 
     #[test]
     fn test_handshake_working_behaviour() {
