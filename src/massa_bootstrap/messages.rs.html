@@ -993,6 +993,14 @@
 <a href="#993" id="993">993</a>
 <a href="#994" id="994">994</a>
 <a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -1329,6 +1337,8 @@
     opt_last_start_period_deserializer: OptionDeserializer&lt;u64, U64VarIntDeserializer&gt;,
     opt_last_slot_before_downtime_deserializer:
         OptionDeserializer&lt;<span class="prelude-ty">Option</span>&lt;Slot&gt;, OptionDeserializer&lt;Slot, SlotDeserializer&gt;&gt;,
+    max_final_state_elements_count: usize,
+    max_versioning_elements_count: usize,
 }
 
 <span class="kw">impl </span>BootstrapServerMessageDeserializer {
@@ -1407,7 +1417,38 @@
                     (Included(<span class="number">0</span>), Excluded(args.thread_count)),
                 )),
             ),
+            max_final_state_elements_count: args.max_final_state_elements_count <span class="kw">as </span>usize,
+            max_versioning_elements_count: args.max_versioning_elements_count <span class="kw">as </span>usize,
         }
+    }
+
+    <span class="doccomment">/// Deserialize a map of `(key, value)` pairs, rejecting more than `max_count` entries.
+    /// Counts parsed pairs (not unique keys after insert) so duplicate-key floods are capped too.
+    </span><span class="kw">fn </span>deserialize_kv_map&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">mut </span>input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+        max_count: usize,
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;, E&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>acc = BTreeMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>parsed = <span class="number">0usize</span>;
+        <span class="kw">while </span>!input.is_empty() {
+            <span class="kw">if </span>parsed &gt;= max_count {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
+                    input,
+                    <span class="string">"too many new_elements entries"</span>,
+                    ParseError::from_error_kind(input, nom::error::ErrorKind::Count),
+                )));
+            }
+            <span class="kw">let </span>(rest, (key, value)) = tuple((
+                |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
+                |input| <span class="self">self</span>.datastore_val_deserializer.deserialize(input),
+            ))
+            .parse(input)<span class="question-mark">?</span>;
+            parsed += <span class="number">1</span>;
+            acc.insert(key, value);
+            input = rest;
+        }
+        <span class="prelude-val">Ok</span>((input, acc))
     }
 }
 
@@ -1431,6 +1472,7 @@
     ///     max_ledger_changes_count: 1000, max_datastore_key_length: 255,
     ///     max_datastore_value_length: 1000,
     ///     max_final_state_elements_size: 1000,
+    ///     max_final_state_elements_count: 100000, max_versioning_elements_count: 100000,
     ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
     ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
@@ -1510,25 +1552,12 @@
                                         <span class="self">self</span>.state_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    <span class="comment">// Fold directly into the target `BTreeMap` instead of
-                                    // collecting into an intermediate `Vec` first: the new_elements
-                                    // section can be large, so avoiding the extra full-size
-                                    // allocation roughly halves the peak memory of parsing it.
-                                    </span>fold_many0(
-                                        tuple((
-                                            |input| {
-                                                <span class="self">self</span>.datastore_key_deserializer.deserialize(input)
-                                            },
-                                            |input| {
-                                                <span class="self">self</span>.datastore_val_deserializer.deserialize(input)
-                                            },
-                                        )),
-                                        BTreeMap::new,
-                                        |<span class="kw-2">mut </span>acc, (key, value)| {
-                                            acc.insert(key, value);
-                                            acc
-                                        },
-                                    ),
+                                    |input| {
+                                        <span class="self">self</span>.deserialize_kv_map(
+                                            input,
+                                            <span class="self">self</span>.max_final_state_elements_count,
+                                        )
+                                    },
                                 ),
                             ),
                             context(
@@ -1572,25 +1601,12 @@
                                         <span class="self">self</span>.versioning_part_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    <span class="comment">// Fold directly into the target `BTreeMap` instead of
-                                    // collecting into an intermediate `Vec` first: the new_elements
-                                    // section can be large, so avoiding the extra full-size
-                                    // allocation roughly halves the peak memory of parsing it.
-                                    </span>fold_many0(
-                                        tuple((
-                                            |input| {
-                                                <span class="self">self</span>.datastore_key_deserializer.deserialize(input)
-                                            },
-                                            |input| {
-                                                <span class="self">self</span>.datastore_val_deserializer.deserialize(input)
-                                            },
-                                        )),
-                                        BTreeMap::new,
-                                        |<span class="kw-2">mut </span>acc, (key, value)| {
-                                            acc.insert(key, value);
-                                            acc
-                                        },
-                                    ),
+                                    |input| {
+                                        <span class="self">self</span>.deserialize_kv_map(
+                                            input,
+                                            <span class="self">self</span>.max_versioning_elements_count,
+                                        )
+                                    },
                                 ),
                             ),
                             context(
