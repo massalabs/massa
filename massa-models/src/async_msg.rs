@@ -219,7 +219,12 @@ impl AsyncMessage {
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
     ///
     /// Uses `fee / max(max_gas, 1)`. Prefer [`Self::compute_priority_id`] when ranking must
-    /// match the gas actually charged at execution (`max_gas + async_msg_cst_gas_cost`).
+    /// match the gas actually charged at execution (`max_gas + async_msg_cst_gas_cost`) to avoid any pricing issue.
+    /// The pricing mismatch between the two functions is real, but small in practice: `send_message` rejects `max_gas` below
+    /// `gas_costs.max_instance_cost` (2.1M gas), so the skew `(max_gas + cst) / max_gas` is at
+    /// most `1 + 1M/2.1M ≈ 1.48×`. Emitting costs 40M gas of ABI per message (~107 per block
+    /// at most, by taking the whole block), so the priority advantage tops out around 48% for a
+    /// sender paying full blocks.
     pub fn compute_id(&self) -> AsyncMessageId {
         self.compute_priority_id(0)
     }
