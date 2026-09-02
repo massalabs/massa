@@ -1078,7 +1078,7 @@ mod tests {
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
         ));
 
-        let mut ledger_db = LedgerDB::new(db, 32, 255, 1000);
+        let mut ledger_db = LedgerDB::new(db, 32, 255, 1000, 1000);
         ledger_db
             .load_initial_ledger_from_path(temp_file.path())
             .unwrap();
