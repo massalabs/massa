@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LedgerSubEntry"],"fn":["delete_datastore_entries","end_prefix"],"struct":["LedgerDB"]};
+window.SIDEBAR_ITEMS = {"enum":["LedgerSubEntry"],"fn":["db_batch_byte_size","delete_datastore_entries","end_prefix","initial_ledger_file_error"],"struct":["InitialLedgerLoader","LedgerDB"]};
