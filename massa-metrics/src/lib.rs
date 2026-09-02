@@ -13,7 +13,9 @@ use std::{
 };
 
 use lazy_static::lazy_static;
-use prometheus::{register_int_gauge, Gauge, Histogram, IntCounter, IntGauge};
+use prometheus::{
+    register_int_counter, register_int_gauge, Gauge, Histogram, IntCounter, IntGauge,
+};
 use tokio::sync::oneshot::Sender;
 use tracing::warn;
 
@@ -48,6 +50,31 @@ lazy_static! {
 
         static ref EVENT_CACHE_VEC: IntGauge = register_int_gauge!(
             "event_cache_vec_len", "vector len for events" ).unwrap();
+
+        static ref FACTORY_POOL_TIMEOUT_ENDORSEMENTS: IntCounter = register_int_counter!(
+            "factory_pool_timeout_endorsements",
+            "number of times block factory timed out while fetching endorsements from the pool"
+        ).unwrap();
+
+        static ref FACTORY_POOL_TIMEOUT_OPERATIONS: IntCounter = register_int_counter!(
+            "factory_pool_timeout_operations",
+            "number of times block factory timed out while fetching operations from the pool"
+        ).unwrap();
+
+        static ref FACTORY_POOL_TIMEOUT_DENUNCIATIONS: IntCounter = register_int_counter!(
+            "factory_pool_timeout_denunciations",
+            "number of times block factory timed out while fetching denunciations from the pool"
+        ).unwrap();
+
+        static ref FACTORY_BLOCKS_PRODUCED: IntCounter = register_int_counter!(
+            "factory_blocks_produced",
+            "number of blocks produced by the local block factory"
+        ).unwrap();
+
+        static ref FACTORY_BLOCKS_PRODUCED_WITH_POOL_TIMEOUT: IntCounter = register_int_counter!(
+            "factory_blocks_produced_with_pool_timeout",
+            "number of locally produced blocks where at least one pool read timed out during assembly"
+        ).unwrap();
 
 }
 
@@ -103,6 +130,36 @@ pub fn set_endorsements_counter(val: usize) {
 
 pub fn set_operations_counter(val: usize) {
     OPERATIONS_COUNTER.set(val as i64);
+}
+
+pub fn inc_factory_pool_timeout_endorsements() {
+    FACTORY_POOL_TIMEOUT_ENDORSEMENTS.inc();
+}
+
+pub fn inc_factory_pool_timeout_operations() {
+    FACTORY_POOL_TIMEOUT_OPERATIONS.inc();
+}
+
+pub fn inc_factory_pool_timeout_denunciations() {
+    FACTORY_POOL_TIMEOUT_DENUNCIATIONS.inc();
+}
+
+pub fn inc_factory_blocks_produced(had_pool_timeout: bool) {
+    FACTORY_BLOCKS_PRODUCED.inc();
+    if had_pool_timeout {
+        FACTORY_BLOCKS_PRODUCED_WITH_POOL_TIMEOUT.inc();
+    }
+}
+
+/// Eagerly register lazy_static metrics so they appear on `/metrics` even before
+/// the first increment (e.g. factory pool timeouts that have not occurred yet).
+#[cfg(not(feature = "test-exports"))]
+fn register_lazy_static_metrics() {
+    lazy_static::initialize(&FACTORY_POOL_TIMEOUT_ENDORSEMENTS);
+    lazy_static::initialize(&FACTORY_POOL_TIMEOUT_OPERATIONS);
+    lazy_static::initialize(&FACTORY_POOL_TIMEOUT_DENUNCIATIONS);
+    lazy_static::initialize(&FACTORY_BLOCKS_PRODUCED);
+    lazy_static::initialize(&FACTORY_BLOCKS_PRODUCED_WITH_POOL_TIMEOUT);
 }
 
 #[derive(Default)]
@@ -513,6 +570,7 @@ impl MassaMetrics {
         if enabled {
             #[cfg(not(feature = "test-exports"))]
             {
+                register_lazy_static_metrics();
                 let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
                 let _ = prometheus::register(Box::new(final_cursor_period.clone()));
                 let _ = prometheus::register(Box::new(active_cursor_thread.clone()));
