@@ -650,6 +650,7 @@ mod test {
             BlockHeaderSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -659,7 +660,8 @@ mod test {
         };
 
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None)
+                .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)

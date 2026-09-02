@@ -35,6 +35,7 @@ use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     address::Address,
     block_id::BlockId,
