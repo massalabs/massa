@@ -165,7 +165,11 @@ impl LedgerDB {
     ///
     /// # Arguments
     #[cfg_attr(not(feature = "test-exports"), allow(dead_code))]
-    pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
+    pub fn load_initial_ledger(
+        &mut self,
+        initial_ledger: HashMap<Address, LedgerEntry>,
+    ) -> Result<(), LedgerError> {
+        self.ensure_ledger_is_empty()?;
         let slot = Some(Slot::new(0, self.thread_count.saturating_sub(1)));
         let mut batch = DBBatch::new();
 
@@ -179,10 +183,12 @@ impl LedgerDB {
         if !batch.is_empty() {
             self.flush_initial_ledger_batch(batch, slot);
         }
+        Ok(())
     }
 
     /// Loads the initial disk ledger from a JSON file, one entry at a time.
     pub fn load_initial_ledger_from_path(&mut self, path: &Path) -> Result<(), LedgerError> {
+        self.ensure_ledger_is_empty()?;
         let file = File::open(path).map_err(|err| initial_ledger_file_error(path, err))?;
         let reader = BufReader::new(file);
         let mut deserializer = serde_json::Deserializer::from_reader(reader);
@@ -203,6 +209,22 @@ impl LedgerDB {
 
     fn flush_initial_ledger_batch(&self, batch: DBBatch, slot: Option<Slot>) {
         self.db.write().write_batch(batch, Default::default(), slot);
+    }
+
+    fn ensure_ledger_is_empty(&self) -> Result<(), LedgerError> {
+        let db = self.db.read();
+        let ledger_prefix = LEDGER_PREFIX.as_bytes();
+        let has_ledger_data = db
+            .prefix_iterator_cf(STATE_CF, ledger_prefix)
+            .take_while(|(key, _)| key.starts_with(ledger_prefix))
+            .next()
+            .is_some();
+        if has_ledger_data {
+            return Err(LedgerError::ContainerInconsistency(
+                "cannot load initial ledger: ledger database is not empty".into(),
+            ));
+        }
+        Ok(())
     }
 
     /// Allows applying `LedgerChanges` to the disk ledger
