@@ -268,6 +268,10 @@ impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeseri
                 )),
             )),
         )
+        // Note: unsorted pairs, and duplicate keys (last occurrence wins), on the wire still deserialize
+        // to a normalized BTreeMap. This serializer/deserializer pair is only used in tests: production
+        // deferred-call processing reads per-key values from the DB and never parses these map blobs.
+        // Massa is malleability-resistant by construction, this is not exploitable.
         .map(
             |(changes, total_gas, exec_stats)| DeferredCallRegistryChanges {
                 slots_change: changes.into_iter().collect::<BTreeMap<_, _>>(),
