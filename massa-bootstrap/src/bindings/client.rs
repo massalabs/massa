@@ -29,9 +29,7 @@ pub struct BootstrapClientBinder {
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
-    /// Known last start period for bootstrap block header validation.
-    /// `None` until the server sends it (first bootstrap parts); then reused
-    /// for subsequent graph deserialization.
+    /// Cached from the first bootstrap part; consensus blocks only stream after final state.
     last_start_period: Option<u64>,
 }
 

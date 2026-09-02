@@ -210,10 +210,9 @@ pub struct BootstrapServerMessageDeserializerArgs {
 }
 
 // TODO: add a proc macro for this case
-// Default last_start_period is None: the bootstrap wire order puts consensus_part
-// before last_start_period in the same message, so the first part cannot use the
-// server value during header deser. Callers pass a known value via
-// BootstrapServerMessageDeserializer::with_last_start_period once available.
+// Default last_start_period is None: the server streams state/versioning first with an
+// empty consensus graph and sends restart metadata once. The client caches it on the
+// binder before any part that actually contains blocks.
 impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
     fn from(value: &BootstrapServerMessageDeserializerArgs) -> Self {
         Self {

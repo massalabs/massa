@@ -1168,11 +1168,7 @@ impl BootstrapClientMessage {
                     StreamingStep::Started
                 };
 
-                let send_last_start_period = if last_slot.is_none() {
-                    true
-                } else {
-                    rng.gen_bool(0.5)
-                };
+                let send_last_start_period = last_slot.is_none();
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,
                     last_state_step,

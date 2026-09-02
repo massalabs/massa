@@ -339,8 +339,8 @@ pub struct BootstrapServerMessageDeserializer {
 impl BootstrapServerMessageDeserializer {
     /// Builds a deserializer that applies `last_start_period` to bootstrap block header
     /// deserialization so genesis vs non-genesis parent-count rules are enforced while
-    /// parsing. Use `None` for the first bootstrap part (server value arrives after the
-    /// graph on the wire); pass the known value for subsequent parts.
+    /// parsing. Pass `None` for the first part; the server sends restart metadata once on
+    /// that part (empty consensus graph), then the client reuses the cached value.
     pub fn with_last_start_period(
         args: BootstrapServerMessageDeserializerArgs,
         last_start_period: Option<u64>,
