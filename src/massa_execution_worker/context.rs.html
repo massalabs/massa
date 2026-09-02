@@ -1564,6 +1564,12 @@
 <a href="#1564" id="1564">1564</a>
 <a href="#1565" id="1565">1565</a>
 <a href="#1566" id="1566">1566</a>
+<a href="#1567" id="1567">1567</a>
+<a href="#1568" id="1568">1568</a>
+<a href="#1569" id="1569">1569</a>
+<a href="#1570" id="1570">1570</a>
+<a href="#1571" id="1571">1571</a>
+<a href="#1572" id="1572">1572</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1574,17 +1580,16 @@
 //! and does not write anything persistent to the consensus state.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::HistorySearchResult;
-<span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
+<span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::{
+    SpeculativeAsyncPool, ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
+};
 <span class="kw">use </span><span class="kw">crate</span>::speculative_deferred_calls::{
     SpeculativeDeferredCallRegistry, DEFERRED_CALL_INDEX_FIX_EXEC_VERSION,
 };
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
-<span class="kw">use crate</span>::{
-    active_history::ActiveHistory,
-    speculative_roll_state::{SpeculativeRollState, SETTLE_ACTIVE_ROLLS_EXEC_VERSION},
-};
+<span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 <span class="kw">use </span>massa_async_pool::AsyncPoolChanges;
 
 <span class="kw">use </span>massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
@@ -2051,6 +2056,9 @@
             <span class="self">self</span>.slot,
             max_gas,
             async_msg_cst_gas_cost,
+            <span class="self">self</span>.is_execution_component_version_at_least(
+                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
+            ),
         )
     }
 
@@ -2629,9 +2637,14 @@
         </span><span class="kw">let </span>deferred_credits_transfers = <span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
         <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
-        </span><span class="kw">let </span>deleted_messages = <span class="self">self
-            </span>.speculative_async_pool
-            .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span><span class="self">self</span>.speculative_ledger.added_changes);
+        </span><span class="kw">let </span>deleted_messages = <span class="self">self</span>.speculative_async_pool.settle_slot(
+            <span class="kw-2">&amp;</span>slot,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.speculative_ledger.added_changes,
+            <span class="self">self</span>.config.async_msg_cst_gas_cost,
+            <span class="self">self</span>.is_execution_component_version_at_least(
+                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
+            ),
+        );
 
         <span class="kw">let </span><span class="kw-2">mut </span>cancel_async_message_transfers = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
@@ -2664,7 +2677,6 @@
                 <span class="self">self</span>.config.thread_count,
                 <span class="self">self</span>.config.roll_price,
                 <span class="self">self</span>.config.max_miss_ratio,
-                <span class="self">self</span>.is_execution_component_version_at_least(SETTLE_ACTIVE_ROLLS_EXEC_VERSION),
             )
         } <span class="kw">else </span>{
             <span class="macro">vec!</span>[]
