@@ -223,6 +223,8 @@
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::block::BlockDeserializerArgs;
@@ -435,7 +437,9 @@
 }
 
 <span class="comment">// TODO: add a proc macro for this case
-// We set last_start_period to None because we set the value during Bootstrap
+// Default last_start_period is None: the server streams state/versioning first with an
+// empty consensus graph and sends restart metadata once. The client caches it on the
+// binder before any part that actually contains blocks.
 </span><span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>BootstrapServerMessageDeserializerArgs&gt; <span class="kw">for </span>BlockDeserializerArgs {
     <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>BootstrapServerMessageDeserializerArgs) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{

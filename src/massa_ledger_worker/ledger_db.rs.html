@@ -1125,91 +1125,6 @@
 <a href="#1125" id="1125">1125</a>
 <a href="#1126" id="1126">1126</a>
 <a href="#1127" id="1127">1127</a>
-<a href="#1128" id="1128">1128</a>
-<a href="#1129" id="1129">1129</a>
-<a href="#1130" id="1130">1130</a>
-<a href="#1131" id="1131">1131</a>
-<a href="#1132" id="1132">1132</a>
-<a href="#1133" id="1133">1133</a>
-<a href="#1134" id="1134">1134</a>
-<a href="#1135" id="1135">1135</a>
-<a href="#1136" id="1136">1136</a>
-<a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
-<a href="#1139" id="1139">1139</a>
-<a href="#1140" id="1140">1140</a>
-<a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
-<a href="#1143" id="1143">1143</a>
-<a href="#1144" id="1144">1144</a>
-<a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
-<a href="#1147" id="1147">1147</a>
-<a href="#1148" id="1148">1148</a>
-<a href="#1149" id="1149">1149</a>
-<a href="#1150" id="1150">1150</a>
-<a href="#1151" id="1151">1151</a>
-<a href="#1152" id="1152">1152</a>
-<a href="#1153" id="1153">1153</a>
-<a href="#1154" id="1154">1154</a>
-<a href="#1155" id="1155">1155</a>
-<a href="#1156" id="1156">1156</a>
-<a href="#1157" id="1157">1157</a>
-<a href="#1158" id="1158">1158</a>
-<a href="#1159" id="1159">1159</a>
-<a href="#1160" id="1160">1160</a>
-<a href="#1161" id="1161">1161</a>
-<a href="#1162" id="1162">1162</a>
-<a href="#1163" id="1163">1163</a>
-<a href="#1164" id="1164">1164</a>
-<a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
-<a href="#1169" id="1169">1169</a>
-<a href="#1170" id="1170">1170</a>
-<a href="#1171" id="1171">1171</a>
-<a href="#1172" id="1172">1172</a>
-<a href="#1173" id="1173">1173</a>
-<a href="#1174" id="1174">1174</a>
-<a href="#1175" id="1175">1175</a>
-<a href="#1176" id="1176">1176</a>
-<a href="#1177" id="1177">1177</a>
-<a href="#1178" id="1178">1178</a>
-<a href="#1179" id="1179">1179</a>
-<a href="#1180" id="1180">1180</a>
-<a href="#1181" id="1181">1181</a>
-<a href="#1182" id="1182">1182</a>
-<a href="#1183" id="1183">1183</a>
-<a href="#1184" id="1184">1184</a>
-<a href="#1185" id="1185">1185</a>
-<a href="#1186" id="1186">1186</a>
-<a href="#1187" id="1187">1187</a>
-<a href="#1188" id="1188">1188</a>
-<a href="#1189" id="1189">1189</a>
-<a href="#1190" id="1190">1190</a>
-<a href="#1191" id="1191">1191</a>
-<a href="#1192" id="1192">1192</a>
-<a href="#1193" id="1193">1193</a>
-<a href="#1194" id="1194">1194</a>
-<a href="#1195" id="1195">1195</a>
-<a href="#1196" id="1196">1196</a>
-<a href="#1197" id="1197">1197</a>
-<a href="#1198" id="1198">1198</a>
-<a href="#1199" id="1199">1199</a>
-<a href="#1200" id="1200">1200</a>
-<a href="#1201" id="1201">1201</a>
-<a href="#1202" id="1202">1202</a>
-<a href="#1203" id="1203">1203</a>
-<a href="#1204" id="1204">1204</a>
-<a href="#1205" id="1205">1205</a>
-<a href="#1206" id="1206">1206</a>
-<a href="#1207" id="1207">1207</a>
-<a href="#1208" id="1208">1208</a>
-<a href="#1209" id="1209">1209</a>
-<a href="#1210" id="1210">1210</a>
-<a href="#1211" id="1211">1211</a>
-<a href="#1212" id="1212">1212</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1725,19 +1640,10 @@
 
     <span class="doccomment">/// Update the ledger entry of a given address.
     ///
-    /// If the address has no canonical entry yet (no VERSION marker), a default entry is
-    /// materialized first via [`Self::put_entry`], matching the contract documented on
-    /// [`Self::apply_changes_to_batch`] and the `LedgerChanges` Vacant helpers (F84).
-    ///
     /// # Arguments
     /// * `entry_update`: a descriptor of the entry updates to be applied
     /// * `batch`: the given operation batch to update
     </span><span class="kw">fn </span>update_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, entry_update: LedgerEntryUpdate, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
-        <span class="comment">// Existence is defined by the VERSION subkey (see FinalLedger::entry_exists).
-        </span><span class="kw">if </span><span class="self">self</span>.get_sub_entry(addr, LedgerSubEntry::Version).is_none() {
-            <span class="self">self</span>.put_entry(addr, LedgerEntry::default(), batch);
-        }
-
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="comment">// balance
@@ -2344,82 +2250,6 @@
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>balance2)
             .unwrap();
         <span class="macro">assert_eq!</span>(balance2, Amount::from_str(<span class="string">"200"</span>).unwrap());
-    }
-
-    <span class="doccomment">/// Updating a missing address must materialize a full canonical entry (VERSION + defaults)
-    /// before applying field updates — otherwise entry_exists stays false with partial state (F84).
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_update_entry_materializes_missing_address() {
-        <span class="kw">use </span>massa_models::bytecode::Bytecode;
-        <span class="kw">use </span>massa_models::types::SetOrDelete;
-
-        <span class="kw">let </span>temp_dir = TempDir::new().unwrap();
-        <span class="kw">let </span>db_config = MassaDBConfig {
-            path: temp_dir.path().to_path_buf(),
-            max_history_length: <span class="number">10</span>,
-            max_final_state_elements_size: <span class="number">100_000</span>,
-            max_versioning_elements_size: <span class="number">100_000</span>,
-            max_ledger_backups: <span class="number">10</span>,
-            thread_count: <span class="number">32</span>,
-            enable_metrics: <span class="bool-val">false</span>,
-        };
-        <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
-        ));
-        <span class="kw">let </span>ledger_db = LedgerDB::new(db, <span class="number">32</span>, <span class="number">255</span>, <span class="number">1000</span>, <span class="number">1000</span>);
-        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
-
-        <span class="macro">assert!</span>(ledger_db
-            .get_sub_entry(<span class="kw-2">&amp;</span>addr, LedgerSubEntry::Version)
-            .is_none());
-
-        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>datastore = BTreeMap::new();
-        datastore.insert(<span class="string">b"k"</span>.to_vec(), SetOrDelete::Set(<span class="string">b"v"</span>.to_vec()));
-        ledger_db.update_entry(
-            <span class="kw-2">&amp;</span>addr,
-            LedgerEntryUpdate {
-                balance: SetOrKeep::Set(Amount::from_str(<span class="string">"7"</span>).unwrap()),
-                bytecode: SetOrKeep::Set(Bytecode(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])),
-                datastore,
-            },
-            <span class="kw-2">&amp;mut </span>batch,
-        );
-        ledger_db
-            .db
-            .write()
-            .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
-
-        <span class="macro">assert!</span>(
-            ledger_db
-                .get_sub_entry(<span class="kw-2">&amp;</span>addr, LedgerSubEntry::Version)
-                .is_some(),
-            <span class="string">"VERSION marker must be created for a previously missing address"
-        </span>);
-        <span class="macro">assert!</span>(ledger_db
-            .get_sub_entry(<span class="kw-2">&amp;</span>addr, LedgerSubEntry::Balance)
-            .is_some());
-        <span class="macro">assert!</span>(ledger_db
-            .get_sub_entry(<span class="kw-2">&amp;</span>addr, LedgerSubEntry::Bytecode)
-            .is_some());
-        <span class="macro">assert_eq!</span>(
-            ledger_db.get_entire_datastore(<span class="kw-2">&amp;</span>addr).get(<span class="string">b"k"</span>.as_slice()),
-            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="string">b"v"</span>.to_vec())
-        );
-
-        <span class="kw">let </span>amount_deserializer =
-            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
-        <span class="macro">assert_eq!</span>(
-            amount_deserializer
-                .deserialize::&lt;DeserializeError&gt;(
-                    <span class="kw-2">&amp;</span>ledger_db
-                        .get_sub_entry(<span class="kw-2">&amp;</span>addr, LedgerSubEntry::Balance)
-                        .unwrap()
-                )
-                .unwrap()
-                .<span class="number">1</span>,
-            Amount::from_str(<span class="string">"7"</span>).unwrap()
-        );
     }
 }
 </code></pre></div></section></main></body></html>
