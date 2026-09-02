@@ -65,6 +65,8 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span>massa_consensus_exports::{block_status::BlockStatus, error::ConsensusError};
@@ -109,11 +111,13 @@
         <span class="comment">// process those elements
         </span><span class="self">self</span>.rec_process(to_process, <span class="prelude-val">Some</span>(current_slot))<span class="question-mark">?</span>;
 
-        <span class="comment">// Update the stats
-        </span><span class="self">self</span>.stats_tick()<span class="question-mark">?</span>;
-
-        <span class="comment">// take care of block db changes
+        <span class="comment">// Propagate new_final_blocks into final_block_stats before desync detection.
+        // Otherwise check_desync (via stats_tick) can miss same-slot finalizations
+        // and emit a spurious NeedSync.
         </span><span class="self">self</span>.block_db_changed()<span class="question-mark">?</span>;
+
+        <span class="comment">// Update the stats (includes check_desync)
+        </span><span class="self">self</span>.stats_tick()<span class="question-mark">?</span>;
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.latest_final_blocks_periods.len() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>((_blockid, period)) = <span class="self">self</span>.latest_final_blocks_periods.get(i) {
