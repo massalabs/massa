@@ -203,11 +203,10 @@ impl Deserializer<DeferredRegistrySlotChanges> for DeferredRegistrySlotChangesDe
                 }),
             )),
         )
-        // Note: Unsorted or duplicate (DeferredCallId, change) pairs on the wire still deserialize
-        // to the same BTreeMap. This serializer/deserializer pair is effectively test-only; production
-        // deferred-call processing does not rely on these serialized map blobs for hashing, networking,
-        // or deduplication. This is intentional malleability that Massa tolerates by construction
-        // and is not exploitable.
+        // Note: unsorted pairs, and duplicate keys (last occurrence wins), on the wire still deserialize
+        // to a normalized BTreeMap. This serializer/deserializer pair is only used in tests: production
+        // deferred-call processing reads per-key values from the DB and never parses these map blobs.
+        // Massa is malleability-resistant by construction, this is not exploitable.
         .map(|(vec, gas, base_fee)| {
             let calls = vec.into_iter().collect::<BTreeMap<_, _>>();
 
