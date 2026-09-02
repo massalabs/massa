@@ -4,6 +4,7 @@ use std::{
 };
 
 use ip_rfc::global;
+use massa_protocol_exports::ProtocolError;
 use peernet::transports::TransportType;
 
 // TODO: Use std one when stable
@@ -55,9 +56,23 @@ pub(crate) fn filter_routable_listeners(
         .collect()
 }
 
+/// Rejects destinations that must never be dialed (SSRF / internal port-scan).
+/// Used as the last line of defense on the outbound connect path.
+pub(crate) fn ensure_routable_peer_addr(
+    addr: &SocketAddr,
+    allow_local_peers: bool,
+) -> Result<(), ProtocolError> {
+    if is_routable_peer_addr(addr, allow_local_peers) {
+        Ok(())
+    } else {
+        Err(ProtocolError::InvalidIpError(addr.ip()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{filter_routable_listeners, is_routable_peer_addr};
+    use super::{ensure_routable_peer_addr, filter_routable_listeners, is_routable_peer_addr};
+    use massa_protocol_exports::ProtocolError;
     use peernet::transports::TransportType;
     use std::collections::HashMap;
     use std::net::SocketAddr;
@@ -120,5 +135,20 @@ mod tests {
         assert!(filtered.contains_key(&addr("1.2.3.4:31244")));
 
         assert_eq!(filter_routable_listeners(listeners, true).len(), 3);
+    }
+
+    #[test]
+    fn test_ensure_routable_peer_addr_rejects_untrusted_private() {
+        // untrusted private / loopback must be refused when local peers are disabled
+        for forbidden in ["127.0.0.1:31244", "10.0.0.1:31244", "192.168.1.2:0"] {
+            match ensure_routable_peer_addr(&addr(forbidden), false) {
+                Err(ProtocolError::InvalidIpError(_)) => {}
+                other => panic!("expected InvalidIpError for {}, got {:?}", forbidden, other),
+            }
+        }
+        assert!(ensure_routable_peer_addr(&addr("1.2.3.4:31244"), false).is_ok());
+        // configured local topologies still dial private endpoints
+        assert!(ensure_routable_peer_addr(&addr("127.0.0.1:31244"), true).is_ok());
+        assert!(ensure_routable_peer_addr(&addr("10.0.0.1:31244"), true).is_ok());
     }
 }
