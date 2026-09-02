@@ -171,6 +171,28 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::time::Instant;
 
 <span class="kw">use </span>massa_consensus_exports::{error::ConsensusError, events::ConsensusEvent};
@@ -283,6 +305,60 @@
         (next_slot, next_instant)
     }
 
+    <span class="doccomment">/// Performs all per-slot maintenance: episode-end check, cycle logging,
+    /// `slot_tick`, pruning, and advancing to the next slot.
+    ///
+    /// # Arguments
+    /// * `last_prune`: instant when the block DB was last pruned
+    ///
+    /// # Returns
+    /// `true` if the worker should keep running, `false` if the episode ended.
+    </span><span class="kw">fn </span>process_slot_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>, last_prune: <span class="kw-2">&amp;mut </span>Instant) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="self">self</span>.config.end_timestamp {
+            <span class="comment">// The testnet has ended. Will be removed for mainnet.
+            </span><span class="kw">if </span><span class="self">self</span>.next_instant &gt; end.estimate_instant().unwrap() {
+                <span class="macro">info!</span>(<span class="string">"This episode has come to an end, please get the latest testnet node version to continue"</span>);
+                <span class="kw">let _ </span>= <span class="self">self
+                    </span>.shared_state
+                    .read()
+                    .channels
+                    .controller_event_tx
+                    .send(ConsensusEvent::Stop);
+                <span class="kw">return </span><span class="bool-val">false</span>;
+            }
+        }
+        <span class="kw">let </span>previous_cycle = <span class="self">self
+            </span>.previous_slot
+            .map(|s| s.get_cycle(<span class="self">self</span>.config.periods_per_cycle));
+        <span class="kw">let </span>observed_cycle = <span class="self">self</span>.next_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
+        <span class="kw">if </span>previous_cycle.is_none() {
+            <span class="comment">// first cycle observed
+            </span><span class="macro">info!</span>(<span class="string">"Massa network has started ! 🎉"</span>)
+        }
+        <span class="kw">if </span>previous_cycle &lt; <span class="prelude-val">Some</span>(observed_cycle) {
+            <span class="macro">info!</span>(<span class="string">"Started cycle {}"</span>, observed_cycle);
+        }
+        <span class="comment">// Execute all operations and checks that should be performed at each slot
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = <span class="self">self</span>.shared_state.write();
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = write_shared_state.slot_tick(<span class="self">self</span>.next_slot) {
+                <span class="macro">warn!</span>(<span class="string">"Error while processing block tick: {}"</span>, err);
+            }
+        };
+        <span class="kw">if </span>last_prune.elapsed().as_millis()
+            &gt; <span class="self">self</span>.config.block_db_prune_interval.as_millis() <span class="kw">as </span>u128
+        {
+            <span class="self">self</span>.shared_state
+                .write()
+                .prune()
+                .expect(<span class="string">"Error while pruning"</span>);
+            <span class="kw-2">*</span>last_prune = Instant::now();
+        }
+        <span class="self">self</span>.previous_slot = <span class="prelude-val">Some</span>(<span class="self">self</span>.next_slot);
+        (<span class="self">self</span>.next_slot, <span class="self">self</span>.next_instant) = <span class="self">self</span>.get_next_slot(<span class="prelude-val">Some</span>(<span class="self">self</span>.next_slot));
+        <span class="bool-val">true
+    </span>}
+
     <span class="doccomment">/// Runs in loop forever. This loop must stop every slot to perform operations on stats and graph
     /// but can be stopped anytime by a command received.
     </span><span class="kw">pub fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -291,54 +367,22 @@
             <span class="kw">match </span><span class="self">self</span>.wait_slot_or_command(<span class="self">self</span>.next_instant) {
                 <span class="comment">// When we reached the instant of the next slot
                 </span>WaitingStatus::Ended =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="self">self</span>.config.end_timestamp {
-                        <span class="comment">// The testnet has ended. Will be removed for mainnet.
-                        </span><span class="kw">if </span><span class="self">self</span>.next_instant &gt; end.estimate_instant().unwrap() {
-                            <span class="macro">info!</span>(<span class="string">"This episode has come to an end, please get the latest testnet node version to continue"</span>);
-                            <span class="kw">let _ </span>= <span class="self">self
-                                </span>.shared_state
-                                .read()
-                                .channels
-                                .controller_event_tx
-                                .send(ConsensusEvent::Stop);
-                            <span class="kw">break</span>;
-                        }
+                    <span class="kw">if </span>!<span class="self">self</span>.process_slot_tick(<span class="kw-2">&amp;mut </span>last_prune) {
+                        <span class="kw">break</span>;
                     }
-                    <span class="kw">let </span>previous_cycle = <span class="self">self
-                        </span>.previous_slot
-                        .map(|s| s.get_cycle(<span class="self">self</span>.config.periods_per_cycle));
-                    <span class="kw">let </span>observed_cycle = <span class="self">self</span>.next_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
-                    <span class="kw">if </span>previous_cycle.is_none() {
-                        <span class="comment">// first cycle observed
-                        </span><span class="macro">info!</span>(<span class="string">"Massa network has started ! 🎉"</span>)
-                    }
-                    <span class="kw">if </span>previous_cycle &lt; <span class="prelude-val">Some</span>(observed_cycle) {
-                        <span class="macro">info!</span>(<span class="string">"Started cycle {}"</span>, observed_cycle);
-                    }
-                    <span class="comment">// Execute all operations and checks that should be performed at each slot
-                    </span>{
-                        <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = <span class="self">self</span>.shared_state.write();
-                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = write_shared_state.slot_tick(<span class="self">self</span>.next_slot) {
-                            <span class="macro">warn!</span>(<span class="string">"Error while processing block tick: {}"</span>, err);
-                        }
-                    };
-                    <span class="kw">if </span>last_prune.elapsed().as_millis()
-                        &gt; <span class="self">self</span>.config.block_db_prune_interval.as_millis() <span class="kw">as </span>u128
-                    {
-                        <span class="self">self</span>.shared_state
-                            .write()
-                            .prune()
-                            .expect(<span class="string">"Error while pruning"</span>);
-                        last_prune = Instant::now();
-                    }
-                    <span class="self">self</span>.previous_slot = <span class="prelude-val">Some</span>(<span class="self">self</span>.next_slot);
-                    (<span class="self">self</span>.next_slot, <span class="self">self</span>.next_instant) = <span class="self">self</span>.get_next_slot(<span class="prelude-val">Some</span>(<span class="self">self</span>.next_slot));
                 }
                 WaitingStatus::Disconnected =&gt; {
                     <span class="kw">break</span>;
                 }
                 WaitingStatus::Interrupted =&gt; {
-                    <span class="kw">continue</span>;
+                    <span class="comment">// A command was processed. If the slot deadline has already passed,
+                    // run the overdue slot maintenance before waiting again so that a
+                    // sustained flood of commands cannot starve time-driven work.
+                    </span><span class="kw">if </span>Instant::now() &gt;= <span class="self">self</span>.next_instant
+                        &amp;&amp; !<span class="self">self</span>.process_slot_tick(<span class="kw-2">&amp;mut </span>last_prune)
+                    {
+                        <span class="kw">break</span>;
+                    }
                 }
             };
         }

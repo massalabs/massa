@@ -414,10 +414,6 @@
 <a href="#414" id="414">414</a>
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::BTreeMap, ops::Bound};
 
 <span class="kw">use </span>massa_models::{
@@ -688,11 +684,7 @@
                 )),
             )),
         )
-        <span class="comment">// Note: unsorted pairs, and duplicate keys (last occurrence wins), on the wire still deserialize
-        // to a normalized BTreeMap. This serializer/deserializer pair is only used in tests: production
-        // deferred-call processing reads per-key values from the DB and never parses these map blobs.
-        // Massa is malleability-resistant by construction, this is not exploitable.
-        </span>.map(
+        .map(
             |(changes, total_gas, exec_stats)| DeferredCallRegistryChanges {
                 slots_change: changes.into_iter().collect::&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;(),
                 effective_total_gas: total_gas,
