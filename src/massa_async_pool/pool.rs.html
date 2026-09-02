@@ -1454,19 +1454,6 @@
 <a href="#1454" id="1454">1454</a>
 <a href="#1455" id="1455">1455</a>
 <a href="#1456" id="1456">1456</a>
-<a href="#1457" id="1457">1457</a>
-<a href="#1458" id="1458">1458</a>
-<a href="#1459" id="1459">1459</a>
-<a href="#1460" id="1460">1460</a>
-<a href="#1461" id="1461">1461</a>
-<a href="#1462" id="1462">1462</a>
-<a href="#1463" id="1463">1463</a>
-<a href="#1464" id="1464">1464</a>
-<a href="#1465" id="1465">1465</a>
-<a href="#1466" id="1466">1466</a>
-<a href="#1467" id="1467">1467</a>
-<a href="#1468" id="1468">1468</a>
-<a href="#1469" id="1469">1469</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -2509,9 +2496,8 @@
 
     <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
     <span class="kw">use </span>massa_models::config::{
-        MAX_ASYNC_POOL_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
-        MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_DATASTORE_KEY_LENGTH,
-        MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
+        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        MAX_PARAMETERS_SIZE, THREAD_COUNT,
     };
     <span class="kw">use </span>massa_models::{address::Address, amount::Amount, slot::Slot};
 
@@ -2563,8 +2549,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -2618,8 +2602,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -2693,8 +2675,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -2764,8 +2744,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -2826,8 +2804,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -2879,8 +2855,6 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
             enable_metrics: <span class="bool-val">false</span>,
