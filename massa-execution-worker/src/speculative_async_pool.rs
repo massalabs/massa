@@ -417,13 +417,21 @@ mod tests {
 
     // Low-max_gas messages look better under fee/max_gas, but worse once the fixed
     // async_msg_cst_gas_cost is included — the MIP-0002 ranking must prefer the latter.
+    //
+    // Values are ABI-reachable: `send_message` rejects `max_gas < max_instance_cost` (2.1M).
+    // Old ratio 25_000/2.1M ≈ 0.0119 vs 1_000_000/100M = 0.0100 (attacker first);
+    // new ratio 25_000/3.1M ≈ 0.00806 vs 1_000_000/101M ≈ 0.0099 (honest first).
+    const MAX_INSTANCE_COST: u64 = 2_100_000;
+    const ATTACKER_MAX_GAS: u64 = MAX_INSTANCE_COST;
+    const ATTACKER_FEE: u64 = 25_000;
+    const HONEST_MAX_GAS: u64 = 100_000_000;
+    const HONEST_FEE: u64 = 1_000_000;
+
     #[test]
     fn test_take_batch_effective_gas_priority() {
         let cst = 1_000_000u64;
-        // Old ratio 100/1 = 100; effective 100 / 1_000_001 ≈ 0.0001
-        let cheap_looking = test_message(0, 1, 100);
-        // Old ratio 50_000 / 1_000_000 = 0.05; effective 50_000 / 2_000_000 = 0.025
-        let honest = test_message(1, 1_000_000, 50_000);
+        let cheap_looking = test_message(0, ATTACKER_MAX_GAS, ATTACKER_FEE);
+        let honest = test_message(1, HONEST_MAX_GAS, HONEST_FEE);
 
         assert!(
             cheap_looking.compute_id() < honest.compute_id(),
@@ -468,8 +476,8 @@ mod tests {
     #[test]
     fn test_settle_slot_effective_gas_eviction() {
         let cst = 1_000_000u64;
-        let cheap_looking = test_message(0, 1, 100);
-        let honest = test_message(1, 1_000_000, 50_000);
+        let cheap_looking = test_message(0, ATTACKER_MAX_GAS, ATTACKER_FEE);
+        let honest = test_message(1, HONEST_MAX_GAS, HONEST_FEE);
 
         let mut pool = test_pool();
         pool.async_pool_max_length = 1;
