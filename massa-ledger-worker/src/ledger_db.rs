@@ -12,7 +12,8 @@ use massa_models::bytecode::BytecodeDeserializer;
 use massa_models::datastore::{get_prefix_bounds, range_intersection};
 use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{
-    address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
+    address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer,
+    config::MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, slot::Slot,
 };
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -22,7 +23,27 @@ use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
 use massa_models::amount::Amount;
+use serde::de::{Deserializer as SerdeDeserializer, MapAccess, Visitor};
+use std::fmt;
+use std::fs::File;
+use std::io::BufReader;
 use std::ops::Bound;
+use std::path::Path;
+
+fn initial_ledger_file_error(path: &Path, err: impl std::fmt::Display) -> LedgerError {
+    LedgerError::FileError(format!(
+        "error loading initial ledger file {}: {}",
+        path.to_str().unwrap_or("(non-utf8 path)"),
+        err
+    ))
+}
+
+fn db_batch_byte_size(batch: &DBBatch) -> usize {
+    batch
+        .iter()
+        .map(|(key, value)| key.len() + value.as_ref().map_or(0, |v| v.len()))
+        .sum()
+}
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
@@ -44,6 +65,40 @@ impl LedgerSubEntry {
             LedgerSubEntry::Bytecode => Key::new(addr, KeyType::BYTECODE),
             LedgerSubEntry::Datastore(hash) => Key::new(addr, KeyType::DATASTORE(hash.to_vec())),
         }
+    }
+}
+
+struct InitialLedgerLoader<'a> {
+    ledger_db: &'a mut LedgerDB,
+    batch: DBBatch,
+    slot: Option<Slot>,
+}
+
+impl<'de> Visitor<'de> for InitialLedgerLoader<'_> {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a map of address to ledger entry")
+    }
+
+    fn visit_map<M>(mut self, mut access: M) -> Result<Self::Value, M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        while let Some((address, entry)) = access.next_entry::<Address, LedgerEntry>()? {
+            self.ledger_db.put_entry(&address, entry, &mut self.batch);
+            if db_batch_byte_size(&self.batch) > MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize {
+                self.ledger_db
+                    .flush_initial_ledger_batch(std::mem::take(&mut self.batch), self.slot);
+            }
+        }
+
+        if !self.batch.is_empty() {
+            self.ledger_db
+                .flush_initial_ledger_batch(std::mem::take(&mut self.batch), self.slot);
+        }
+
+        Ok(())
     }
 }
 
@@ -106,21 +161,48 @@ impl LedgerDB {
         }
     }
 
-    /// Loads the initial disk ledger
+    /// Loads the initial disk ledger from an in-memory map.
     ///
     /// # Arguments
+    #[cfg_attr(not(feature = "test-exports"), allow(dead_code))]
     pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
+        let slot = Some(Slot::new(0, self.thread_count.saturating_sub(1)));
         let mut batch = DBBatch::new();
 
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
+            if db_batch_byte_size(&batch) > MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize {
+                self.flush_initial_ledger_batch(std::mem::take(&mut batch), slot);
+            }
         }
 
-        self.db.write().write_batch(
-            batch,
-            Default::default(),
-            Some(Slot::new(0, self.thread_count.saturating_sub(1))),
-        );
+        if !batch.is_empty() {
+            self.flush_initial_ledger_batch(batch, slot);
+        }
+    }
+
+    /// Loads the initial disk ledger from a JSON file, one entry at a time.
+    pub fn load_initial_ledger_from_path(&mut self, path: &Path) -> Result<(), LedgerError> {
+        let file = File::open(path).map_err(|err| initial_ledger_file_error(path, err))?;
+        let reader = BufReader::new(file);
+        let mut deserializer = serde_json::Deserializer::from_reader(reader);
+        let slot = Some(Slot::new(0, self.thread_count.saturating_sub(1)));
+
+        SerdeDeserializer::deserialize_map(
+            &mut deserializer,
+            InitialLedgerLoader {
+                ledger_db: self,
+                batch: DBBatch::new(),
+                slot,
+            },
+        )
+        .map_err(|err| initial_ledger_file_error(path, err))?;
+
+        Ok(())
+    }
+
+    fn flush_initial_ledger_batch(&self, batch: DBBatch, slot: Option<Slot>) {
+        self.db.write().write_batch(batch, Default::default(), slot);
     }
 
     /// Allows applying `LedgerChanges` to the disk ledger
@@ -952,5 +1034,72 @@ mod tests {
             .db
             .write()
             .write_batch(batch, Default::default(), None);
+    }
+
+    #[test]
+    fn test_load_initial_ledger_from_path() {
+        use std::collections::HashMap;
+
+        let keypair1 = KeyPair::generate(0).unwrap();
+        let keypair2 = KeyPair::generate(0).unwrap();
+        let addr1 = Address::from_public_key(&keypair1.get_public_key());
+        let addr2 = Address::from_public_key(&keypair2.get_public_key());
+
+        let mut initial_ledger = HashMap::new();
+        initial_ledger.insert(
+            addr1,
+            LedgerEntry {
+                balance: Amount::from_str("100").unwrap(),
+                ..Default::default()
+            },
+        );
+        initial_ledger.insert(
+            addr2,
+            LedgerEntry {
+                balance: Amount::from_str("200").unwrap(),
+                ..Default::default()
+            },
+        );
+
+        let temp_file = tempfile::NamedTempFile::new().unwrap();
+        serde_json::to_writer_pretty(temp_file.as_file(), &initial_ledger).unwrap();
+
+        let temp_dir = TempDir::new().unwrap();
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            max_ledger_backups: 10,
+            thread_count: 32,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        let mut ledger_db = LedgerDB::new(db, 32, 255, 1000, 1000);
+        ledger_db
+            .load_initial_ledger_from_path(temp_file.path())
+            .unwrap();
+
+        let amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
+
+        let balance1 = ledger_db
+            .get_sub_entry(&addr1, LedgerSubEntry::Balance)
+            .unwrap();
+        let (_, balance1) = amount_deserializer
+            .deserialize::<DeserializeError>(&balance1)
+            .unwrap();
+        assert_eq!(balance1, Amount::from_str("100").unwrap());
+
+        let balance2 = ledger_db
+            .get_sub_entry(&addr2, LedgerSubEntry::Balance)
+            .unwrap();
+        let (_, balance2) = amount_deserializer
+            .deserialize::<DeserializeError>(&balance2)
+            .unwrap();
+        assert_eq!(balance2, Amount::from_str("200").unwrap());
     }
 }
