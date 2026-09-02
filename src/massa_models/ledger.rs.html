@@ -518,6 +518,9 @@
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
@@ -981,9 +984,12 @@
 
     <span class="doccomment">/// chain with another `LedgerChange`
     </span><span class="kw">pub fn </span>chain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>LedgerChanges) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="comment">// We avoid mutating self directly to ensure atomicity in error cases.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>updated = <span class="self">self</span>.clone();
         <span class="kw">for </span>(addr, change) <span class="kw">in </span>other.<span class="number">0</span>.iter() {
-            <span class="self">self</span>.apply(addr, change)<span class="question-mark">?</span>;
+            updated.apply(addr, change)<span class="question-mark">?</span>;
         }
+        <span class="kw-2">*</span><span class="self">self </span>= updated;
         <span class="prelude-val">Ok</span>(())
     }
 
