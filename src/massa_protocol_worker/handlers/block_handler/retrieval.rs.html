@@ -1376,6 +1376,24 @@
 <a href="#1376" id="1376">1376</a>
 <a href="#1377" id="1377">1377</a>
 <a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
+<a href="#1394" id="1394">1394</a>
+<a href="#1395" id="1395">1395</a>
+<a href="#1396" id="1396">1396</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1850,7 +1868,25 @@
                 // save the header
                 </span>info.header = <span class="prelude-val">Some</span>(header);
 
-                <span class="comment">// Clear the list of peers we asked that header for.
+                <span class="comment">// SECURITY NOTE (see issue #5033): this header has only passed the protocol-level
+                // structural checks (signature, endorsements, format), not the consensus-level ones
+                // (producer draw, staleness, parent compatibility). We deliberately proceed to
+                // retrieve the block contents without waiting for consensus to validate the header:
+                //
+                // - Blocks only enter the wishlist headerless as missing dependencies of a header
+                //   that consensus already accepted, which includes the producer-draw check. The
+                //   parent IDs are committed in that accepted child header (block id = header hash),
+                //   so only the child's producer — a staker who won a real draw and burned that slot
+                //   on a block that can never become active — can make us fetch consensus-invalid
+                //   contents here, and the waste is bounded by the number of parents and max block size.
+                //
+                // - Gating content retrieval on a consensus round-trip would couple retrieval
+                //   liveness and latency to the consensus worker (busy during catch-up, bounded
+                //   command channel), which is a worse failure mode than the bounded bandwidth
+                //   waste it would prevent. Consensus still fully validates the header when the
+                //   assembled block is submitted via register_block.
+
+                // Clear the list of peers we asked that header for.
                 // This is done so that update_block_retrieval can prioritize asking the rest of the block data
                 // to that same peer that just gave us the header, and not exclude the peer
                 // because we still believe we are actively asking it for stuff.

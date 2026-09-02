@@ -95,11 +95,6 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::AsyncPool;
 <span class="kw">use </span>massa_db_exports::{DBBatch, ShareableMassaDBController};
 <span class="kw">use </span>massa_deferred_calls::DeferredCallRegistry;
@@ -137,12 +132,7 @@
     /// Once this is called, the state is attached at the output of the provided slot.
     ///
     /// Panics if the new slot is not the one coming just after the current one.
-    </span><span class="kw">fn </span>finalize(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        slot: Slot,
-        changes: StateChanges,
-        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
-    );
+    </span><span class="kw">fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, changes: StateChanges);
 
     <span class="doccomment">/// After bootstrap or load from disk, recompute all the caches.
     </span><span class="kw">fn </span>recompute_caches(<span class="kw-2">&amp;mut </span><span class="self">self</span>);

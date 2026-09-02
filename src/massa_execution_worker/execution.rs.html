@@ -2728,6 +2728,26 @@
 <a href="#2728" id="2728">2728</a>
 <a href="#2729" id="2729">2729</a>
 <a href="#2730" id="2730">2730</a>
+<a href="#2731" id="2731">2731</a>
+<a href="#2732" id="2732">2732</a>
+<a href="#2733" id="2733">2733</a>
+<a href="#2734" id="2734">2734</a>
+<a href="#2735" id="2735">2735</a>
+<a href="#2736" id="2736">2736</a>
+<a href="#2737" id="2737">2737</a>
+<a href="#2738" id="2738">2738</a>
+<a href="#2739" id="2739">2739</a>
+<a href="#2740" id="2740">2740</a>
+<a href="#2741" id="2741">2741</a>
+<a href="#2742" id="2742">2742</a>
+<a href="#2743" id="2743">2743</a>
+<a href="#2744" id="2744">2744</a>
+<a href="#2745" id="2745">2745</a>
+<a href="#2746" id="2746">2746</a>
+<a href="#2747" id="2747">2747</a>
+<a href="#2748" id="2748">2748</a>
+<a href="#2749" id="2749">2749</a>
+<a href="#2750" id="2750">2750</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2764,6 +2784,7 @@
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
+<span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_models::{
     address::Address,
     block_id::BlockId,
@@ -3012,6 +3033,11 @@
             );
         }
 
+        <span class="comment">// Update versioning stats
+        // This will update the MIP store and must be called before final state write
+        // as it will also write the MIP store on disk
+        </span><span class="self">self</span>.update_versioning_stats(<span class="kw-2">&amp;</span>exec_out.block_info, <span class="kw-2">&amp;</span>exec_out.slot);
+
         <span class="kw">let </span>exec_out_2 = exec_out.clone();
         <span class="attr">#[cfg(feature = <span class="string">"slot-replayer"</span>)]
         </span>{
@@ -3020,13 +3046,9 @@
             <span class="macro">println!</span>(<span class="string">"&lt;&lt;&lt;"</span>);
         }
         <span class="comment">// apply state changes to the final ledger
-        </span><span class="kw">let </span>network_versions = exec_out
-            .block_info
-            .as_ref()
-            .map(|i| (i.current_version, i.announced_version));
-        <span class="self">self</span>.final_state
+        </span><span class="self">self</span>.final_state
             .write()
-            .finalize(exec_out.slot, exec_out.state_changes, network_versions);
+            .finalize(exec_out.slot, exec_out.state_changes);
 
         <span class="comment">// update the final ledger's slot
         </span><span class="self">self</span>.final_cursor = exec_out.slot;
@@ -5423,6 +5445,24 @@
                 }
             })
             .collect()
+    }
+
+    <span class="doccomment">/// Update MipStore with block header stats
+    </span><span class="kw">pub fn </span>update_versioning_stats(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_info: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt;, slot: <span class="kw-2">&amp;</span>Slot) {
+        <span class="kw">let </span>slot_ts = get_block_slot_timestamp(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.t0,
+            <span class="self">self</span>.config.genesis_timestamp,
+            <span class="kw-2">*</span>slot,
+        )
+        .expect(<span class="string">"Cannot get timestamp from slot"</span>);
+
+        <span class="self">self</span>.mip_store.update_network_version_stats(
+            slot_ts,
+            block_info
+                .as_ref()
+                .map(|i| (i.current_version, i.announced_version)),
+        );
     }
 
     <span class="kw">pub fn </span>deferred_call_quote(
