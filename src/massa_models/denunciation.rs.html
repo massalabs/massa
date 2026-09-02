@@ -1543,6 +1543,15 @@
 <a href="#1543" id="1543">1543</a>
 <a href="#1544" id="1544">1544</a>
 <a href="#1545" id="1545">1545</a>
+<a href="#1546" id="1546">1546</a>
+<a href="#1547" id="1547">1547</a>
+<a href="#1548" id="1548">1548</a>
+<a href="#1549" id="1549">1549</a>
+<a href="#1550" id="1550">1550</a>
+<a href="#1551" id="1551">1551</a>
+<a href="#1552" id="1552">1552</a>
+<a href="#1553" id="1553">1553</a>
+<a href="#1554" id="1554">1554</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Denunciation intro
@@ -1574,6 +1583,15 @@
 //! balance or staked rolls, we will use 'locked' rolls` (or Deferred credits).
 //! Selling a roll will lock it for some time (== 4 cycles). Note that it restricts the time,
 //! a denunciation can be produced (A constant value will be defined for this).
+//!
+//! Punishment model
+//!
+//! A valid denunciation slashes locked rolls only. It does not forfeit slot rewards
+//! (`EndorsementCreatorReward`, `EndorsementTargetReward`, `BlockCreatorReward`) for the
+//! denouncing block. A validator denounced in a block may still receive those rewards in the
+//! same slot. That is intentional: excluding denounced addresses from same-slot rewards would
+//! make the effective penalty depend on whether they were also selected by draws for that slot,
+//! which is not a coherent punishment model.
 
 </span><span class="attr">#![allow(missing_docs)]
 

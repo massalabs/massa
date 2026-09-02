@@ -263,6 +263,72 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{block_status::StorageOrBlock, error::ConsensusError};
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
@@ -309,11 +375,54 @@
         }
     }
 
+    <span class="doccomment">/// Parent block IDs must match the signed header (order and content).
+    /// Periods are not in the header and remain bootstrap metadata.
+    </span><span class="kw">fn </span>check_parents_match_header(<span class="kw-2">&amp;</span><span class="self">self</span>, thread_count: u8) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="kw">let </span>header_parents = <span class="kw-2">&amp;</span><span class="self">self</span>.block.content.header.content.parents;
+        <span class="kw">if </span><span class="self">self</span>.parents.is_empty() {
+            <span class="kw">if </span>!header_parents.is_empty() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(
+                    <span class="string">"ExportActiveBlock {} has empty parents but header lists {} parents"</span>,
+                    <span class="self">self</span>.block.id,
+                    header_parents.len()
+                ));
+            }
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+        <span class="kw">let </span>expected_len = thread_count <span class="kw">as </span>usize;
+        <span class="kw">if </span><span class="self">self</span>.parents.len() != expected_len || header_parents.len() != expected_len {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(
+                <span class="string">"ExportActiveBlock {} parents length mismatch: export={}, header={}, expected={}"</span>,
+                <span class="self">self</span>.block.id,
+                <span class="self">self</span>.parents.len(),
+                header_parents.len(),
+                expected_len
+            ));
+        }
+        <span class="kw">for </span>(thread, ((export_parent, <span class="kw">_</span>), header_parent)) <span class="kw">in
+            </span><span class="self">self</span>.parents.iter().zip(header_parents.iter()).enumerate()
+        {
+            <span class="kw">if </span>export_parent != header_parent {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(
+                    <span class="string">"ExportActiveBlock {} parent id mismatch in thread {}: export={} header={}"</span>,
+                    <span class="self">self</span>.block.id, thread, export_parent, header_parent
+                ));
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
     <span class="doccomment">/// consuming conversion from `ExportActiveBlock` to `ActiveBlock`
     </span><span class="kw">pub fn </span>to_active_block(
         <span class="self">self</span>,
         thread_count: u8,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(ActiveBlock, StorageOrBlock), ConsensusError&gt; {
+        <span class="comment">// Also enforced in ExportActiveBlockDeserializer for the bootstrap wire
+        // path; kept here for ExportActiveBlock values that did not come from it
+        // (e.g. tests or other construction).
+        </span><span class="self">self</span>.check_parents_match_header(thread_count)
+            .map_err(ConsensusError::ContainerInconsistency)<span class="question-mark">?</span>;
+
         <span class="comment">// create ActiveBlock
         </span><span class="kw">let </span>active_block = ActiveBlock {
             creator_address: <span class="self">self</span>.block.content_creator_address,
@@ -412,6 +521,7 @@
     /// use std::collections::HashSet;
     /// use massa_models::block::BlockDeserializerArgs;
     /// use massa_models::config::CHAINID;
+    /// use massa_models::operation::{compute_operations_hash, OperationIdSerializer};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -427,7 +537,7 @@
     ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents,
-    ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    ///         operation_merkle_root: compute_operations_hash(&amp;[], &amp;OperationIdSerializer::new()),
     ///         endorsements: vec![
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {
@@ -466,9 +576,18 @@
     /// };
     ///
     /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &amp;keypair, *CHAINID).unwrap();
+    /// let export_parents = full_block
+    ///     .content
+    ///     .header
+    ///     .content
+    ///     .parents
+    ///     .iter()
+    ///     .enumerate()
+    ///     .map(|(n, id)| (*id, n as u64))
+    ///     .collect();
     /// let export_active_block = ExportActiveBlock {
     ///    block: full_block.clone(),
-    ///    parents: vec![],
+    ///    parents: export_parents,
     ///    is_final: false,
     /// };
     ///
@@ -479,13 +598,14 @@
     /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
+    /// assert_eq!(export_deserialized.parents, export_active_block.parents);
     /// assert_eq!(rest.len(), 0);
     /// ```
     </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], ExportActiveBlock, E&gt; {
-        context(
+        <span class="kw">let </span>(rest, (block, parents, is_final)) = context(
             <span class="string">"Failed ExportActiveBlock deserialization"</span>,
             tuple((
                 <span class="comment">// block
@@ -520,12 +640,24 @@
                 ),
             )),
         )
-        .map(|(block, parents, is_final)| ExportActiveBlock {
+        .parse(buffer)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>export = ExportActiveBlock {
             block,
             parents,
             is_final,
-        })
-        .parse(buffer)
+        };
+        <span class="kw">if </span>export
+            .check_parents_match_header(<span class="self">self</span>.thread_count)
+            .is_err()
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
+                rest,
+                <span class="string">"ExportActiveBlock parents must match signed header parents"</span>,
+                ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+            )));
+        }
+        <span class="prelude-val">Ok</span>((rest, export))
     }
 }
 </code></pre></div></section></main></body></html>

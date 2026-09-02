@@ -837,6 +837,95 @@
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
 <a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -1251,6 +1340,10 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_read.get_peers().get(<span class="kw-2">&amp;</span>peer_id) {
                 <span class="kw">if </span>info.state == PeerState::Banned {
                     <span class="macro">debug!</span>(<span class="string">"Banned peer tried to connect: {:?}"</span>, peer_id);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
+                        <span class="string">"Massa Handshake"</span>,
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Banned peer tried to connect: {:?}"</span>, peer_id)),
+                    ));
                 }
             }
         }
@@ -1521,15 +1614,100 @@
     <span class="kw">use </span>std::{collections::HashMap, ops::Deref, sync::Arc};
 
     <span class="kw">use </span>massa_channel::MassaChannel;
-    <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
-    <span class="kw">use </span>massa_serialization::U64VarIntDeserializer;
+    <span class="kw">use </span>massa_models::version::VersionSerializer;
+    <span class="kw">use </span>massa_protocol_exports::{PeerId, PeerIdSerializer, ProtocolConfig};
+    <span class="kw">use </span>massa_serialization::{Serializer, U64VarIntDeserializer};
     <span class="kw">use </span>massa_signature::KeyPair;
     <span class="kw">use </span>parking_lot::RwLock;
     <span class="kw">use </span>peernet::{peer::InitConnectionHandler, transports::endpoint::Endpoint};
 
     <span class="kw">use crate</span>::{context::Context, messages::MessagesHandler};
 
-    <span class="kw">use </span><span class="kw">super</span>::models::PeerDB;
+    <span class="kw">use super</span>::{
+        announcement::{Announcement, AnnouncementSerializer},
+        models::{PeerDB, PeerInfo, PeerState},
+    };
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_handshake_rejects_banned_peer_and_keeps_ban() {
+        <span class="kw">let </span>(sender_blocks, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_blocks"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_endorsements, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_endorsements"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_operations, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_operations"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_peers, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_peers"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
+        <span class="kw">let </span>protocol_config = ProtocolConfig::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>handshake =
+            <span class="kw">super</span>::MassaHandshake::new(shared_peer_db.clone(), protocol_config.clone());
+        <span class="kw">let </span>our_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>banned_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>banned_peer_id = PeerId::from_public_key(banned_keypair.get_public_key());
+
+        shared_peer_db.write().peers.insert(
+            banned_peer_id,
+            PeerInfo {
+                last_announce: <span class="prelude-val">None</span>,
+                state: PeerState::Banned,
+            },
+        );
+
+        <span class="kw">let </span>messages_handlers = MessagesHandler {
+            id_deserializer: U64VarIntDeserializer::new(
+                std::ops::Bound::Included(<span class="number">0</span>),
+                std::ops::Bound::Included(u64::MAX),
+            ),
+            sender_blocks,
+            sender_endorsements,
+            sender_operations,
+            sender_peers,
+        };
+        <span class="kw">let </span>(local_sender, <span class="kw">_</span>) =
+            MassaChannel::new(String::from(<span class="string">"Test_transport_local_to_remote"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(remote_sender, local_receiver) =
+            MassaChannel::new(String::from(<span class="string">"Test_transport_remote_to_local"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>endpoint = Endpoint::MockEndpoint((
+            (<span class="kw-2">*</span>local_sender.deref()).clone(),
+            (<span class="kw-2">*</span>local_receiver.deref()).clone(),
+            <span class="string">"127.0.0.1:0"</span>.parse().unwrap(),
+        ));
+        <span class="kw">let </span>context = Context { our_keypair };
+
+        <span class="kw">let </span>thread = std::thread::spawn({
+            <span class="kw">let </span>remote_sender = remote_sender.clone();
+            <span class="kw">let </span>protocol_config = protocol_config.clone();
+            <span class="kw">move </span>|| {
+                <span class="kw">let </span><span class="kw-2">mut </span>bytes = <span class="macro">vec!</span>[];
+                PeerIdSerializer::new()
+                    .serialize(<span class="kw-2">&amp;</span>banned_peer_id, <span class="kw-2">&amp;mut </span>bytes)
+                    .unwrap();
+                VersionSerializer::new()
+                    .serialize(<span class="kw-2">&amp;</span>protocol_config.version, <span class="kw-2">&amp;mut </span>bytes)
+                    .unwrap();
+                bytes.push(<span class="number">0</span>);
+                <span class="kw">let </span>announcement =
+                    Announcement::new(HashMap::default(), <span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>banned_keypair).unwrap();
+                AnnouncementSerializer::new()
+                    .serialize(<span class="kw-2">&amp;</span>announcement, <span class="kw-2">&amp;mut </span>bytes)
+                    .unwrap();
+                remote_sender.send(bytes).unwrap();
+            }
+        });
+
+        <span class="kw">let </span>res = handshake.perform_handshake(
+            <span class="kw-2">&amp;</span>context,
+            <span class="kw-2">&amp;mut </span>endpoint,
+            <span class="kw-2">&amp;</span>HashMap::default(),
+            messages_handlers,
+        );
+        <span class="macro">assert!</span>(res.is_err());
+        thread.join().unwrap();
+
+        <span class="kw">let </span>peer_db = shared_peer_db.read();
+        <span class="kw">let </span>banned_info = peer_db
+            .peers
+            .get(<span class="kw-2">&amp;</span>banned_peer_id)
+            .expect(<span class="string">"banned peer should still be present"</span>);
+        <span class="macro">assert_eq!</span>(banned_info.state, PeerState::Banned);
+    }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_handshake_working_behaviour() {

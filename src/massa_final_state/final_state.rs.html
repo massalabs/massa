@@ -1346,6 +1346,24 @@
 <a href="#1346" id="1346">1346</a>
 <a href="#1347" id="1347">1347</a>
 <a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1766,7 +1784,12 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>_finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, changes: StateChanges) -&gt; AnyResult&lt;()&gt; {
+    <span class="kw">fn </span>_finalize(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        slot: Slot,
+        changes: StateChanges,
+        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
+    ) -&gt; AnyResult&lt;()&gt; {
         <span class="kw">let </span>cur_slot = <span class="self">self</span>.db.read().get_change_id()<span class="question-mark">?</span>;
         <span class="comment">// check slot consistency
         </span><span class="kw">let </span>next_slot = cur_slot.get_next_slot(<span class="self">self</span>.config.thread_count)<span class="question-mark">?</span>;
@@ -1818,7 +1841,12 @@
             slot.get_prev_slot(<span class="self">self</span>.config.thread_count)<span class="question-mark">?</span>,
         )<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.mip_store.update_batches(
+        <span class="comment">// Hold the MIP store write lock while updating versioning stats, serializing
+        // them to the DB batch, and committing the batch atomically. This prevents
+        // other threads from observing in-memory versioning state ahead of disk.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>mip_guard = <span class="self">self</span>.mip_store.<span class="number">0</span>.write();
+        mip_guard.update_network_version_stats(slot_ts, network_versions);
+        mip_guard.update_batches(
             <span class="kw-2">&amp;mut </span>db_batch,
             <span class="kw-2">&amp;mut </span>db_versioning_batch,
             <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>slot_prev_ts, <span class="kw-2">&amp;</span>slot_ts)),
@@ -1835,6 +1863,7 @@
         <span class="self">self</span>.db
             .write()
             .write_batch(db_batch, db_versioning_batch, <span class="prelude-val">Some</span>(slot));
+        drop(mip_guard);
 
         <span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_xof_db_hash();
 
@@ -2152,8 +2181,13 @@
             .map_err(|err| FinalStateError::PosError(err.to_string()))
     }
 
-    <span class="kw">fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, changes: StateChanges) {
-        <span class="self">self</span>._finalize(slot, changes).unwrap()
+    <span class="kw">fn </span>finalize(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        slot: Slot,
+        changes: StateChanges,
+        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
+    ) {
+        <span class="self">self</span>._finalize(slot, changes, network_versions).unwrap()
     }
 
     <span class="kw">fn </span>get_execution_trail_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
@@ -2398,6 +2432,8 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
+            max_final_state_elements_count: <span class="number">100_000</span>,
+            max_versioning_elements_count: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -2488,7 +2524,7 @@
         <span class="kw">let </span>ok_next_slot = Slot::new(<span class="number">0</span>, <span class="number">1</span>);
         <span class="kw">let </span>changes = get_state_changes();
 
-        <span class="kw">let </span>res = fstate._finalize(wrong_next_slot, changes.clone());
+        <span class="kw">let </span>res = fstate._finalize(wrong_next_slot, changes.clone(), <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(res
             .err()
             .unwrap()
@@ -2498,7 +2534,7 @@
         <span class="macro">assert_eq!</span>(fstate.get_slot(), initial_slot);
 
         <span class="comment">// This should also fail because there is no initial cycle (required by POS state)
-        </span><span class="kw">let </span>res = fstate._finalize(ok_next_slot, changes.clone());
+        </span><span class="kw">let </span>res = fstate._finalize(ok_next_slot, changes.clone(), <span class="prelude-val">None</span>);
 
         <span class="macro">assert!</span>(res.is_err());
         <span class="kw">match </span>res {
@@ -2516,7 +2552,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
         fstate.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
-        <span class="kw">let </span>res = fstate._finalize(ok_next_slot, changes);
+        <span class="kw">let </span>res = fstate._finalize(ok_next_slot, changes, <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(res.is_ok());
         <span class="macro">assert_eq!</span>(fstate.get_slot(), ok_next_slot);
     }
@@ -2532,7 +2568,7 @@
         <span class="kw">let </span>changes = get_state_changes();
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
         fstate.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
-        <span class="kw">let </span>res = fstate._finalize(ok_next_slot, changes);
+        <span class="kw">let </span>res = fstate._finalize(ok_next_slot, changes, <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(res.is_ok());
         <span class="macro">assert_eq!</span>(fstate.get_slot(), ok_next_slot);
 
@@ -2592,7 +2628,7 @@
         <span class="kw">let </span>changes = get_state_changes();
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
         fstate.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
-        <span class="kw">let </span>res = fstate._finalize(ok_next_slot, changes);
+        <span class="kw">let </span>res = fstate._finalize(ok_next_slot, changes, <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(res.is_ok());
         <span class="macro">assert_eq!</span>(fstate.get_slot(), ok_next_slot);
 
