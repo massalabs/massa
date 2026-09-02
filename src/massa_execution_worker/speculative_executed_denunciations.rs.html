@@ -89,13 +89,6 @@
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! Speculative list of previously executed denunciations, to prevent reuse.
@@ -162,14 +155,7 @@
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
 
-        <span class="comment">// Lookup order is: current changes -&gt; active history (backward walk) -&gt; final state (disk).
-        // This is a pure lookup with OR semantics, the order does not affect the result,
-        // it only avoids a DB read in the common case (fresh denunciations are never in the final state).
-        // A block producer can replay up to MAX_DENUNCIATIONS_PER_BLOCK_HEADER already-finalized denunciations
-        // to force this many linear walks of the active history. This is intentional and harmless:
-        // the walk is one hash lookup per active history element, negligible compared to the two
-        // signature verifications already done in `is_valid()` before reaching this point,
-        // and replays are bounded by the denunciation expiry period.
+        <span class="comment">// check in the active history, backwards
         </span><span class="kw">match </span><span class="self">self
             </span>.active_history
             .read()
