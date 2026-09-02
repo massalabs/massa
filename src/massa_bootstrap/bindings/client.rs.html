@@ -254,17 +254,6 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::{BindingReadExact, BindingWriteExact};
@@ -296,8 +285,6 @@
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
-    <span class="doccomment">/// Cached from the first bootstrap part; consensus blocks only stream after final state.
-    </span>last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 }
 
 <span class="kw">const </span>KNOWN_PREFIX_FROM_SERVER_LEN: usize =
@@ -330,13 +317,7 @@
             prev_message: <span class="prelude-val">None</span>,
             version_serializer: VersionSerializer::new(),
             cfg,
-            last_start_period: <span class="prelude-val">None</span>,
         }
-    }
-
-    <span class="doccomment">/// Update the last start period used when deserializing bootstrap block headers.
-    </span><span class="kw">pub fn </span>set_last_start_period(<span class="kw-2">&amp;mut </span><span class="self">self</span>, last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;) {
-        <span class="self">self</span>.last_start_period = last_start_period;
     }
 
     <span class="doccomment">/// Performs a handshake. Should be called after connection
@@ -377,10 +358,7 @@
         <span class="kw">let </span>ServerMessageLeader { sig, msg_len } = <span class="self">self</span>.decode_msg_leader(<span class="kw-2">&amp;</span>known_len_buff)<span class="question-mark">?</span>;
 
         <span class="comment">// Update this bindings "most recently received" message hash, retaining the replaced value
-        </span><span class="kw">let </span>message_deserializer = BootstrapServerMessageDeserializer::with_last_start_period(
-            (<span class="kw-2">&amp;</span><span class="self">self</span>.cfg).into(),
-            <span class="self">self</span>.last_start_period,
-        );
+        </span><span class="kw">let </span>message_deserializer = BootstrapServerMessageDeserializer::new((<span class="kw-2">&amp;</span><span class="self">self</span>.cfg).into());
         <span class="kw">let </span>prev_msg = <span class="self">self
             </span>.prev_message
             .replace(Hash::compute_from(<span class="kw-2">&amp;</span>sig.to_bytes()));

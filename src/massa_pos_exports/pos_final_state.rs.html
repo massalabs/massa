@@ -2708,6 +2708,29 @@
 <a href="#2708" id="2708">2708</a>
 <a href="#2709" id="2709">2709</a>
 <a href="#2710" id="2710">2710</a>
+<a href="#2711" id="2711">2711</a>
+<a href="#2712" id="2712">2712</a>
+<a href="#2713" id="2713">2713</a>
+<a href="#2714" id="2714">2714</a>
+<a href="#2715" id="2715">2715</a>
+<a href="#2716" id="2716">2716</a>
+<a href="#2717" id="2717">2717</a>
+<a href="#2718" id="2718">2718</a>
+<a href="#2719" id="2719">2719</a>
+<a href="#2720" id="2720">2720</a>
+<a href="#2721" id="2721">2721</a>
+<a href="#2722" id="2722">2722</a>
+<a href="#2723" id="2723">2723</a>
+<a href="#2724" id="2724">2724</a>
+<a href="#2725" id="2725">2725</a>
+<a href="#2726" id="2726">2726</a>
+<a href="#2727" id="2727">2727</a>
+<a href="#2728" id="2728">2728</a>
+<a href="#2729" id="2729">2729</a>
+<a href="#2730" id="2730">2730</a>
+<a href="#2731" id="2731">2731</a>
+<a href="#2732" id="2732">2732</a>
+<a href="#2733" id="2733">2733</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -3000,9 +3023,19 @@
         );
     }
 
-    <span class="doccomment">/// Create the a cycle based off of another cycle_info.
+    <span class="doccomment">/// Create a cycle based off of another cycle_info.
     ///
     /// Used for downtime interpolation, when restarting from a snapshot.
+    /// Roll counts are always carried over from `last_cycle_info`.
+    ///
+    /// `rng_seed` and `production_stats` are kept only when continuing the same
+    /// incomplete cycle (`last_cycle_info.cycle` matches the target cycle and
+    /// `first_slot` is not the first slot of that cycle). Otherwise the seed
+    /// starts fresh and `production_stats` are empty, so interpolated future
+    /// cycles do not inherit stale production results from the snapshot.
+    ///
+    /// In all cases, `rng_seed` is then extended with `false` bits for every
+    /// interpolated slot in `[first_slot, last_slot]`.
     </span><span class="kw">pub fn </span>create_new_cycle_from_last(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         last_cycle_info: <span class="kw-2">&amp;</span>CycleInfo,
@@ -3010,13 +3043,25 @@
         last_slot: Slot,
         batch: <span class="kw-2">&amp;mut </span>DBBatch,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PosError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng_seed = <span class="kw">if </span>first_slot.is_first_of_cycle(<span class="self">self</span>.config.periods_per_cycle) {
-            BitVec::with_capacity(<span class="self">self</span>.slots_per_cycle())
-        } <span class="kw">else </span>{
-            last_cycle_info.rng_seed.clone()
-        };
-
         <span class="kw">let </span>cycle = last_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
+
+        <span class="comment">// Keep seed/stats only when filling the gap in the same incomplete cycle.
+        // Require both same cycle id and a non-first first_slot (defense in depth:
+        // callers may reuse a snapshot CycleInfo across several target cycles).
+        </span><span class="kw">let </span>continuing_same_cycle = last_cycle_info.cycle == cycle
+            &amp;&amp; !first_slot.is_first_of_cycle(<span class="self">self</span>.config.periods_per_cycle);
+
+        <span class="kw">let </span>(<span class="kw-2">mut </span>rng_seed, production_stats) = <span class="kw">if </span>continuing_same_cycle {
+            (
+                last_cycle_info.rng_seed.clone(),
+                last_cycle_info.production_stats.clone(),
+            )
+        } <span class="kw">else </span>{
+            (
+                BitVec::with_capacity(<span class="self">self</span>.slots_per_cycle()),
+                PreHashMap::default(),
+            )
+        };
 
         <span class="kw">let </span>num_slots = <span class="kw">match </span>last_slot.slots_since(<span class="kw-2">&amp;</span>first_slot, <span class="self">self</span>.config.thread_count) {
             <span class="prelude-val">Ok</span>(slots_since) =&gt; slots_since.saturating_add(<span class="number">1</span>),
@@ -3035,7 +3080,8 @@
                 slots_per_cycle
             )));
         }
-        <span class="kw">let </span>to_add = (num_slots <span class="kw">as </span>usize).min(slots_per_cycle.saturating_sub(rng_seed.len()));
+        <span class="comment">// Pad downtime slots; not the same as leaving the seed empty.
+        </span><span class="kw">let </span>to_add = (num_slots <span class="kw">as </span>usize).min(slots_per_cycle.saturating_sub(rng_seed.len()));
         rng_seed.extend(<span class="macro">vec!</span>[<span class="bool-val">false</span>; to_add]);
 
         <span class="kw">let </span>complete =
@@ -3056,7 +3102,7 @@
                 complete,
                 last_cycle_info.roll_counts.clone(),
                 rng_seed,
-                last_cycle_info.production_stats.clone(),
+                production_stats,
             ),
             batch,
         );
