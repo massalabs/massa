@@ -331,6 +331,12 @@
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -433,6 +439,12 @@
     <span class="doccomment">/// Takes a batch of asynchronous messages to execute,
     /// removing them from the speculative asynchronous pool and settling their deletion from it
     /// in the changes accumulator.
+    ///
+    /// A message is only taken when `message.max_gas + async_msg_cst_gas_cost` still fits in
+    /// the remaining budget. Messages asking for more than the largest budget a slot can ever
+    /// get (`max_async_gas + max_gas_per_block`) are therefore never taken; `send_message`
+    /// rejects those at emission from execution component version 2 on, but messages emitted
+    /// before that activation can still be sitting in the pool, and they expire unexecuted.
     ///
     /// # Arguments
     /// * `slot`: slot at which the batch is taken (allows filtering by validity interval)

@@ -2708,25 +2708,6 @@
 <a href="#2708" id="2708">2708</a>
 <a href="#2709" id="2709">2709</a>
 <a href="#2710" id="2710">2710</a>
-<a href="#2711" id="2711">2711</a>
-<a href="#2712" id="2712">2712</a>
-<a href="#2713" id="2713">2713</a>
-<a href="#2714" id="2714">2714</a>
-<a href="#2715" id="2715">2715</a>
-<a href="#2716" id="2716">2716</a>
-<a href="#2717" id="2717">2717</a>
-<a href="#2718" id="2718">2718</a>
-<a href="#2719" id="2719">2719</a>
-<a href="#2720" id="2720">2720</a>
-<a href="#2721" id="2721">2721</a>
-<a href="#2722" id="2722">2722</a>
-<a href="#2723" id="2723">2723</a>
-<a href="#2724" id="2724">2724</a>
-<a href="#2725" id="2725">2725</a>
-<a href="#2726" id="2726">2726</a>
-<a href="#2727" id="2727">2727</a>
-<a href="#2728" id="2728">2728</a>
-<a href="#2729" id="2729">2729</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -4339,7 +4320,6 @@
     <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
     <span class="kw">use </span>massa_db_worker::MassaDB;
     <span class="kw">use </span>massa_models::config::constants::{
-        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,
     };
@@ -4398,8 +4378,6 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -4535,8 +4513,6 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -4732,8 +4708,6 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -4836,8 +4810,6 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -5014,8 +4986,6 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -5123,8 +5093,6 @@
             thread_count: <span class="number">2</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
         };
@@ -5216,8 +5184,6 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -5311,8 +5277,6 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
@@ -5396,8 +5360,6 @@
             max_history_length: <span class="number">10</span>,
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
