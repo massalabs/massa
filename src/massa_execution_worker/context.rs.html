@@ -1560,6 +1560,10 @@
 <a href="#1560" id="1560">1560</a>
 <a href="#1561" id="1561">1561</a>
 <a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1577,7 +1581,10 @@
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
-<span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
+<span class="kw">use crate</span>::{
+    active_history::ActiveHistory,
+    speculative_roll_state::{SpeculativeRollState, SETTLE_ACTIVE_ROLLS_EXEC_VERSION},
+};
 <span class="kw">use </span>massa_async_pool::AsyncPoolChanges;
 
 <span class="kw">use </span>massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
@@ -2657,6 +2664,7 @@
                 <span class="self">self</span>.config.thread_count,
                 <span class="self">self</span>.config.roll_price,
                 <span class="self">self</span>.config.max_miss_ratio,
+                <span class="self">self</span>.is_execution_component_version_at_least(SETTLE_ACTIVE_ROLLS_EXEC_VERSION),
             )
         } <span class="kw">else </span>{
             <span class="macro">vec!</span>[]
