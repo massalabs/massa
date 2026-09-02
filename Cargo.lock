@@ -3338,6 +3338,7 @@ dependencies = [
  "massa_consensus_exports",
  "massa_factory_exports",
  "massa_hash",
+ "massa_metrics",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",

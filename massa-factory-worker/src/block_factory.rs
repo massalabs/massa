@@ -124,6 +124,7 @@ impl BlockFactoryWorker {
     fn process_slot(&mut self, slot: Slot) {
         let mut timings = Vec::new();
         let channel_timeout = self.cfg.block_opt_channel_timeout;
+        let mut had_pool_timeout = false;
 
         // get block producer address for that slot
         timings.push(("get_producer START", MassaTime::now()));
@@ -204,6 +205,13 @@ impl BlockFactoryWorker {
         ) {
             Ok(result) => result,
             Err(e) => {
+                // Pool reads are best effort: a block MUST be produced on time. A late or missed block is worse
+                // than an empty one (lost block reward, production stat miss, the network loses the slot),
+                // while an empty block only loses the fees of that block. So pool lock timeouts degrade to an
+                // empty block instead of aborting the slot. This also prevents pool slowness (e.g. op flooding)
+                // from turning into missed blocks. Timeouts are exposed via metrics so the node runner can act.
+                had_pool_timeout = true;
+                massa_metrics::inc_factory_pool_timeout_endorsements();
                 warn!(
                     "Channel timeout: get_block_endorsements took >{}ms for slot {}: {:?}. Proceeding with empty endorsements.",
                     channel_timeout.as_millis(), slot, e
@@ -243,6 +251,8 @@ impl BlockFactoryWorker {
         {
             Ok(result) => result,
             Err(e) => {
+                had_pool_timeout = true;
+                massa_metrics::inc_factory_pool_timeout_operations();
                 warn!(
                     "Channel timeout: get_block_operations took >{}ms for slot {}: {:?}. Proceeding without operations.",
                     channel_timeout.as_millis(), slot, e
@@ -274,6 +284,8 @@ impl BlockFactoryWorker {
         {
             Ok(result) => result,
             Err(e) => {
+                had_pool_timeout = true;
+                massa_metrics::inc_factory_pool_timeout_denunciations();
                 warn!(
                     "Channel timeout: get_block_denunciations took >{}ms for slot {}: {:?}. Proceeding without denunciations.",
                     channel_timeout.as_millis(), slot, e
@@ -330,6 +342,7 @@ impl BlockFactoryWorker {
         self.channels
             .consensus
             .register_block(block_id, slot, block_storage, true);
+        massa_metrics::inc_factory_blocks_produced(had_pool_timeout);
         timings.push(("register_block END", MassaTime::now()));
 
         // Check block latency
