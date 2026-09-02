@@ -217,7 +217,7 @@ fn test_final_state() {
         );
         state_changes.ledger_changes = ledger_changes;
 
-        fs.write().finalize(slot, state_changes);
+        fs.write().finalize(slot, state_changes, None);
 
         hash = fs.read().db.read().get_xof_db_hash();
 

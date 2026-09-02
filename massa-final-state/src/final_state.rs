@@ -418,7 +418,12 @@ impl FinalState {
         Ok(())
     }
 
-    fn _finalize(&mut self, slot: Slot, changes: StateChanges) -> AnyResult<()> {
+    fn _finalize(
+        &mut self,
+        slot: Slot,
+        changes: StateChanges,
+        network_versions: Option<(u32, Option<u32>)>,
+    ) -> AnyResult<()> {
         let cur_slot = self.db.read().get_change_id()?;
         // check slot consistency
         let next_slot = cur_slot.get_next_slot(self.config.thread_count)?;
@@ -470,7 +475,12 @@ impl FinalState {
             slot.get_prev_slot(self.config.thread_count)?,
         )?;
 
-        self.mip_store.update_batches(
+        // Hold the MIP store write lock while updating versioning stats, serializing
+        // them to the DB batch, and committing the batch atomically. This prevents
+        // other threads from observing in-memory versioning state ahead of disk.
+        let mut mip_guard = self.mip_store.0.write();
+        mip_guard.update_network_version_stats(slot_ts, network_versions);
+        mip_guard.update_batches(
             &mut db_batch,
             &mut db_versioning_batch,
             Some((&slot_prev_ts, &slot_ts)),
@@ -487,6 +497,7 @@ impl FinalState {
         self.db
             .write()
             .write_batch(db_batch, db_versioning_batch, Some(slot));
+        drop(mip_guard);
 
         let final_state_hash = self.db.read().get_xof_db_hash();
 
@@ -804,8 +815,13 @@ impl FinalStateController for FinalState {
             .map_err(|err| FinalStateError::PosError(err.to_string()))
     }
 
-    fn finalize(&mut self, slot: Slot, changes: StateChanges) {
-        self._finalize(slot, changes).unwrap()
+    fn finalize(
+        &mut self,
+        slot: Slot,
+        changes: StateChanges,
+        network_versions: Option<(u32, Option<u32>)>,
+    ) {
+        self._finalize(slot, changes, network_versions).unwrap()
     }
 
     fn get_execution_trail_hash(&self) -> Hash {
@@ -1140,7 +1156,7 @@ mod test {
         let ok_next_slot = Slot::new(0, 1);
         let changes = get_state_changes();
 
-        let res = fstate._finalize(wrong_next_slot, changes.clone());
+        let res = fstate._finalize(wrong_next_slot, changes.clone(), None);
         assert!(res
             .err()
             .unwrap()
@@ -1150,7 +1166,7 @@ mod test {
         assert_eq!(fstate.get_slot(), initial_slot);
 
         // This should also fail because there is no initial cycle (required by POS state)
-        let res = fstate._finalize(ok_next_slot, changes.clone());
+        let res = fstate._finalize(ok_next_slot, changes.clone(), None);
 
         assert!(res.is_err());
         match res {
@@ -1168,7 +1184,7 @@ mod test {
 
         let mut batch = DBBatch::new();
         fstate.pos_state.create_initial_cycle(&mut batch);
-        let res = fstate._finalize(ok_next_slot, changes);
+        let res = fstate._finalize(ok_next_slot, changes, None);
         assert!(res.is_ok());
         assert_eq!(fstate.get_slot(), ok_next_slot);
     }
@@ -1184,7 +1200,7 @@ mod test {
         let changes = get_state_changes();
         let mut batch = DBBatch::new();
         fstate.pos_state.create_initial_cycle(&mut batch);
-        let res = fstate._finalize(ok_next_slot, changes);
+        let res = fstate._finalize(ok_next_slot, changes, None);
         assert!(res.is_ok());
         assert_eq!(fstate.get_slot(), ok_next_slot);
 
@@ -1244,7 +1260,7 @@ mod test {
         let changes = get_state_changes();
         let mut batch = DBBatch::new();
         fstate.pos_state.create_initial_cycle(&mut batch);
-        let res = fstate._finalize(ok_next_slot, changes);
+        let res = fstate._finalize(ok_next_slot, changes, None);
         assert!(res.is_ok());
         assert_eq!(fstate.get_slot(), ok_next_slot);
 
