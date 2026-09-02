@@ -205,6 +205,11 @@ impl BlockFactoryWorker {
         ) {
             Ok(result) => result,
             Err(e) => {
+                // Pool reads are best effort: a block MUST be produced on time. A late or missed block is worse
+                // than an empty one (lost block reward, production stat miss, the network loses the slot),
+                // while an empty block only loses the fees of that block. So pool lock timeouts degrade to an
+                // empty block instead of aborting the slot. This also prevents pool slowness (e.g. op flooding)
+                // from turning into missed blocks. Timeouts are exposed via metrics so the node runner can act.
                 had_pool_timeout = true;
                 massa_metrics::inc_factory_pool_timeout_endorsements();
                 warn!(
