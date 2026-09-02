@@ -1610,6 +1610,7 @@ mod tests {
     use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_db_worker::MassaDB;
     use massa_models::config::constants::{
+        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,
     };
@@ -2486,6 +2487,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -2579,6 +2582,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -2662,6 +2667,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,

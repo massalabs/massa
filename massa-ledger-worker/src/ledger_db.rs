@@ -752,6 +752,9 @@ mod tests {
     use massa_db_worker::MassaDB;
     use massa_hash::HashXof;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
+    use massa_models::config::{
+        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+    };
     use massa_models::types::SetOrKeep;
     use massa_models::{
         address::Address,
@@ -1094,6 +1097,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             max_ledger_backups: 10,
             thread_count: 32,
             enable_metrics: false,
