@@ -329,91 +329,6 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::BTreeMap, ops::Bound};
 
 <span class="kw">use </span>massa_models::{
@@ -608,39 +523,6 @@
     }
 }
 
-<span class="kw">fn </span>validate_deferred_call_slot_consistency&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
-    input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
-    slot: Slot,
-    changes: <span class="kw-2">&amp;</span>DeferredRegistrySlotChanges,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), nom::Err&lt;E&gt;&gt; {
-    <span class="kw">for </span>(id, change) <span class="kw">in </span><span class="kw-2">&amp;</span>changes.calls {
-        <span class="kw">let </span>id_slot = id.get_slot().map_err(|<span class="kw">_</span>| {
-            nom::Err::Failure(ContextError::add_context(
-                input,
-                <span class="string">"Failed to parse slot from deferred call id"</span>,
-                ParseError::from_error_kind(input, nom::error::ErrorKind::Fail),
-            ))
-        })<span class="question-mark">?</span>;
-        <span class="kw">if </span>id_slot != slot {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
-                input,
-                <span class="string">"Deferred call id slot does not match outer slot key"</span>,
-                ParseError::from_error_kind(input, nom::error::ErrorKind::Fail),
-            )));
-        }
-        <span class="kw">if let </span>DeferredRegistryCallChange::Set(call) = change {
-            <span class="kw">if </span>call.target_slot != slot {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
-                    input,
-                    <span class="string">"Deferred call target_slot does not match outer slot key"</span>,
-                    ParseError::from_error_kind(input, nom::error::ErrorKind::Fail),
-                )));
-            }
-        }
-    }
-    <span class="prelude-val">Ok</span>(())
-}
-
 <span class="comment">// only used in tests
 </span><span class="kw">impl </span>Deserializer&lt;DeferredCallRegistryChanges&gt; <span class="kw">for </span>DeferredRegistryChangesDeserializer {
     <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
@@ -655,7 +537,7 @@
                         <span class="self">self</span>.u64_deserializer.deserialize(input)
                     }),
                     |input| {
-                        <span class="kw">let </span>(input, (slot, changes)) = tuple((
+                        tuple((
                             context(<span class="string">"Failed slot deserialization"</span>, |input| {
                                 <span class="self">self</span>.slot_deserializer.deserialize(input)
                             }),
@@ -663,9 +545,7 @@
                                 <span class="string">"Failed set_update_or_delete_message deserialization"</span>,
                                 |input| <span class="self">self</span>.slot_changes_deserializer.deserialize(input),
                             ),
-                        ))(input)<span class="question-mark">?</span>;
-                        validate_deferred_call_slot_consistency(input, slot, <span class="kw-2">&amp;</span>changes)<span class="question-mark">?</span>;
-                        <span class="prelude-val">Ok</span>((input, (slot, changes)))
+                        ))(input)
                     },
                 ),
                 context(<span class="string">"Failed total_gas deserialization"</span>, |input| {
@@ -778,56 +658,6 @@
             changes.effective_total_gas,
             deserialized.effective_total_gas
         );
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_deferred_registry_rejects_inconsistent_call_slots() {
-        <span class="kw">use </span><span class="kw">crate</span>::DeferredCallRegistryChanges;
-        <span class="kw">use </span>massa_models::slot::Slot;
-        <span class="kw">use </span>massa_serialization::{Deserializer, Serializer};
-        <span class="kw">use </span>std::collections::BTreeMap;
-
-        <span class="kw">let </span>outer_slot = Slot {
-            thread: <span class="number">5</span>,
-            period: <span class="number">1</span>,
-        };
-        <span class="kw">let </span>mismatched_slot = Slot {
-            thread: <span class="number">3</span>,
-            period: <span class="number">2</span>,
-        };
-
-        <span class="kw">let </span>call = DeferredCall::new(
-            Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>).unwrap(),
-            mismatched_slot,
-            Address::from_str(<span class="string">"AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6"</span>).unwrap(),
-            <span class="string">"receive"</span>.to_string(),
-            <span class="macro">vec!</span>[<span class="number">42</span>],
-            Amount::from_raw(<span class="number">100</span>),
-            <span class="number">3000000</span>,
-            Amount::from_raw(<span class="number">1</span>),
-            <span class="bool-val">false</span>,
-        );
-        <span class="kw">let </span>id = DeferredCallId::new(<span class="number">0</span>, mismatched_slot, <span class="number">1</span>, <span class="kw-2">&amp;</span>[]).unwrap();
-
-        <span class="kw">let </span><span class="kw-2">mut </span>registry_slot_changes = DeferredRegistrySlotChanges::default();
-        registry_slot_changes.set_call(id, call);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>changes = DeferredCallRegistryChanges {
-            slots_change: BTreeMap::from([(outer_slot, registry_slot_changes)]),
-            effective_total_gas: Default::default(),
-            exec_stats: (<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>),
-        };
-        changes.set_effective_total_gas(<span class="number">100_000</span>);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
-        DeferredRegistryChangesSerializer::new()
-            .serialize(<span class="kw-2">&amp;</span>changes, <span class="kw-2">&amp;mut </span>buffer)
-            .unwrap();
-
-        <span class="kw">let </span>deserializer = DeferredRegistryChangesDeserializer::new(DeferredCallsConfig::default());
-        <span class="macro">assert!</span>(deserializer
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
-            .is_err());
     }
 }
 </code></pre></div></section></main></body></html>

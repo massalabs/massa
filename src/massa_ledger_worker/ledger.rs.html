@@ -166,13 +166,43 @@
 <a href="#166" id="166">166</a>
 <a href="#167" id="167">167</a>
 <a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ledger_db::{LedgerDB, LedgerSubEntry};
 <span class="kw">use </span>massa_db_exports::{DBBatch, ShareableMassaDBController};
-<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerController, LedgerError};
+<span class="kw">use </span>massa_ledger_exports::{
+    LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
+};
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::{Amount, AmountDeserializer},
@@ -180,7 +210,10 @@
 };
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>std::ops::Bound::Included;
-<span class="kw">use </span>std::{collections::BTreeSet, ops::Bound};
+<span class="kw">use </span>std::{
+    collections::{BTreeSet, HashMap},
+    ops::Bound,
+};
 
 <span class="doccomment">/// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -217,8 +250,31 @@
 <span class="kw">impl </span>LedgerController <span class="kw">for </span>FinalLedger {
     <span class="doccomment">/// Loads ledger from file
     </span><span class="kw">fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
-        <span class="self">self</span>.sorted_ledger
-            .load_initial_ledger_from_path(<span class="kw-2">&amp;</span><span class="self">self</span>.config.initial_ledger_path)
+        <span class="comment">// load the ledger tree from file
+        </span><span class="kw">let </span>initial_ledger: HashMap&lt;Address, LedgerEntry&gt; = serde_json::from_str(
+            <span class="kw-2">&amp;</span>std::fs::read_to_string(<span class="kw-2">&amp;</span><span class="self">self</span>.config.initial_ledger_path).map_err(|err| {
+                LedgerError::FileError(<span class="macro">format!</span>(
+                    <span class="string">"error loading initial ledger file {}: {}"</span>,
+                    <span class="self">self</span>.config
+                        .initial_ledger_path
+                        .to_str()
+                        .unwrap_or(<span class="string">"(non-utf8 path)"</span>),
+                    err
+                ))
+            })<span class="question-mark">?</span>,
+        )
+        .map_err(|err| {
+            LedgerError::FileError(<span class="macro">format!</span>(
+                <span class="string">"error parsing initial ledger file {}: {}"</span>,
+                <span class="self">self</span>.config
+                    .initial_ledger_path
+                    .to_str()
+                    .unwrap_or(<span class="string">"(non-utf8 path)"</span>),
+                err
+            ))
+        })<span class="question-mark">?</span>;
+        <span class="self">self</span>.sorted_ledger.load_initial_ledger(initial_ledger);
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Gets the balance of a ledger entry

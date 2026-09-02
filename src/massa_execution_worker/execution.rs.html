@@ -2748,6 +2748,35 @@
 <a href="#2748" id="2748">2748</a>
 <a href="#2749" id="2749">2749</a>
 <a href="#2750" id="2750">2750</a>
+<a href="#2751" id="2751">2751</a>
+<a href="#2752" id="2752">2752</a>
+<a href="#2753" id="2753">2753</a>
+<a href="#2754" id="2754">2754</a>
+<a href="#2755" id="2755">2755</a>
+<a href="#2756" id="2756">2756</a>
+<a href="#2757" id="2757">2757</a>
+<a href="#2758" id="2758">2758</a>
+<a href="#2759" id="2759">2759</a>
+<a href="#2760" id="2760">2760</a>
+<a href="#2761" id="2761">2761</a>
+<a href="#2762" id="2762">2762</a>
+<a href="#2763" id="2763">2763</a>
+<a href="#2764" id="2764">2764</a>
+<a href="#2765" id="2765">2765</a>
+<a href="#2766" id="2766">2766</a>
+<a href="#2767" id="2767">2767</a>
+<a href="#2768" id="2768">2768</a>
+<a href="#2769" id="2769">2769</a>
+<a href="#2770" id="2770">2770</a>
+<a href="#2771" id="2771">2771</a>
+<a href="#2772" id="2772">2772</a>
+<a href="#2773" id="2773">2773</a>
+<a href="#2774" id="2774">2774</a>
+<a href="#2775" id="2775">2775</a>
+<a href="#2776" id="2776">2776</a>
+<a href="#2777" id="2777">2777</a>
+<a href="#2778" id="2778">2778</a>
+<a href="#2779" id="2779">2779</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2765,6 +2794,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::storage_backend::StorageBackend;
+<span class="kw">use </span><span class="kw">crate</span>::wmas_patch;
 <span class="kw">use </span>massa_deferred_calls::DeferredCall;
 <span class="kw">use </span>massa_event_cache::controller::EventCacheController;
 <span class="kw">use </span>massa_execution_exports::{
@@ -3549,9 +3579,7 @@
 
         context.insert_executed_denunciation(<span class="kw-2">&amp;</span>de_idx);
 
-        <span class="comment">// Punishment is roll slashing only; same-slot block/endorsement rewards are not forfeited
-        // (see comment after the denunciation loop in execute_slot).
-        </span><span class="kw">let </span>slashed = context.try_slash_rolls(
+        <span class="kw">let </span>slashed = context.try_slash_rolls(
             <span class="kw-2">&amp;</span>addr_denounced,
             <span class="self">self</span>.config.roll_count_to_slash_on_denunciation,
             <span class="kw-2">&amp;</span>de_idx,
@@ -4321,6 +4349,42 @@
 
         <span class="kw">let </span>deferred_calls_slot_gas = calls.effective_slot_gas;
 
+        <span class="comment">// One-time, versioning-gated WMAS bytecode patch (see `wmas_patch`).
+        // Applied here so it is part of the slot's ledger changes and shared by
+        // both candidate and final execution (this function is called by both).
+        </span><span class="kw">if </span>execution_context
+            .is_execution_component_version_activation(wmas_patch::WMAS_PATCH_EXEC_VERSION)
+        {
+            <span class="kw">match </span>wmas_patch::wmas_address(<span class="self">self</span>.config.chain_id) {
+                <span class="prelude-val">Some</span>(addr) =&gt; {
+                    <span class="comment">// Existence guard: only overwrite an already-deployed WMAS
+                    // contract, never create a new entry. Keeps the patch a
+                    // no-op on networks that share a known chain_id but do not
+                    // actually have WMAS deployed (e.g. a private fork or a
+                    // sandbox misconfigured with a mainnet/buildnet chain_id).
+                    </span><span class="kw">if </span>execution_context.get_bytecode(<span class="kw-2">&amp;</span>addr).is_some() {
+                        execution_context
+                            .override_bytecode(<span class="kw-2">&amp;</span>addr, wmas_patch::patched_wmas_bytecode());
+                        <span class="macro">info!</span>(<span class="string">"applied WMAS bytecode patch at slot {}"</span>, slot);
+                    } <span class="kw">else </span>{
+                        <span class="macro">warn!</span>(
+                            <span class="string">"WMAS bytecode patch activation slot {} reached but no contract exists at {}; skipping"</span>,
+                            slot, addr
+                        );
+                    }
+                }
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="comment">// Fail-safe: the patch is not applicable on this network
+                    // (unknown chain_id). Leave WMAS untouched rather than abort
+                    // consensus.
+                    </span><span class="macro">warn!</span>(
+                        <span class="string">"WMAS bytecode patch activation slot {} reached but no address for chain_id {}; skipping"</span>,
+                        slot, <span class="self">self</span>.config.chain_id
+                    );
+                }
+            }
+        }
+
         <span class="comment">// Apply the created execution context for slot execution
         </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
@@ -4535,13 +4599,7 @@
                 }
             }
 
-            <span class="comment">// Denunciation punishment is limited to slashing locked rolls (see execute_denunciation).
-            // Addresses denounced in this block are intentionally still eligible for the slot's
-            // EndorsementCreatorReward, EndorsementTargetReward, and BlockCreatorReward below.
-            // Excluding them would make the effective penalty depend on whether the denounced
-            // address was also selected by draws for this slot, which is not a coherent punishment model.
-
-            // Get block creator address
+            <span class="comment">// Get block creator address
             </span><span class="kw">let </span>block_creator_addr = stored_block.content_creator_address;
 
             <span class="comment">// acquire lock on execution context
