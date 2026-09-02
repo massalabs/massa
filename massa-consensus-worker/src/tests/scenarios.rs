@@ -400,3 +400,134 @@ fn test_parent_in_the_future() {
         "wrong status"
     );
 }
+
+/// Regression test for F29: slot-driven maintenance must not be starved by a
+/// sustained flood of consensus commands.
+///
+/// A future block header is registered, then the worker is flooded with
+/// cheap `mark_invalid_block` commands. While the flood is still running, the
+/// block's slot passes. With the starvation bug the block would stay in
+/// `WaitingForSlot` until the flood ends; with the fix `slot_tick` runs
+/// between commands and the block leaves `WaitingForSlot` during the flood.
+#[test]
+fn test_slot_maintenance_not_starved_by_command_flood() {
+    let staking_key: KeyPair = KeyPair::generate(0).unwrap();
+    let thread_count = 2;
+    let t0 = MassaTime::from_millis(100);
+    let cfg = ConsensusConfig {
+        t0,
+        thread_count,
+        genesis_timestamp: MassaTime::now(),
+        force_keep_final_periods: 50,
+        force_keep_final_periods_without_ops: 128,
+        max_future_processing_blocks: 10,
+        genesis_key: staking_key.clone(),
+        ..ConsensusConfig::default()
+    };
+
+    let last_start_period = cfg.last_start_period;
+
+    let staking_address = Address::from_public_key(&staking_key.get_public_key());
+
+    let mut foreign_controllers = ConsensusForeignControllers::new_with_mocks();
+
+    // `slot_tick` / `block_db_changed` will call the execution controller
+    // multiple times, so use `returning` rather than `return_once`.
+    foreign_controllers
+        .execution_controller
+        .expect_update_blockclique_status()
+        .returning(|_, _, _| {});
+    foreign_controllers
+        .pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+    foreign_controllers
+        .pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(|_| {});
+    foreign_controllers
+        .selector_controller
+        .expect_get_producer()
+        .returning(move |_| Ok(staking_address));
+    foreign_controllers
+        .selector_controller
+        .expect_get_selection()
+        .returning(move |_| {
+            Ok(Selection {
+                producer: staking_address,
+                endorsements: vec![staking_address; ENDORSEMENT_COUNT as usize],
+            })
+        });
+
+    let universe = ConsensusTestUniverse::new(foreign_controllers, cfg);
+    let controller = universe.module_controller.clone();
+
+    let genesis_hashes = controller
+        .get_block_graph_status(None, None)
+        .expect("could not get block graph status")
+        .genesis_blocks;
+
+    // Register a block header whose slot is far enough in the future that
+    // the test can flood commands across its slot boundary.
+    let future_block = create_block(
+        Slot::new(3 + last_start_period, 0),
+        genesis_hashes.clone(),
+        &staking_key,
+    );
+    controller.register_block_header(future_block.id, future_block.content.header.clone());
+
+    // Wait until the block is known and waiting for its slot.
+    let mut waited = 0u64;
+    loop {
+        std::thread::sleep(Duration::from_millis(10));
+        waited += 10;
+        let status = &controller.get_block_statuses(&[future_block.id])[0];
+        if *status == BlockGraphStatus::WaitingForSlot {
+            break;
+        }
+        assert!(
+            waited < 1000,
+            "future block never reached WaitingForSlot (status: {:?})",
+            status
+        );
+    }
+
+    // Cheap command used to keep the worker busy. The block must exist in the
+    // graph before we can mark it invalid, so register its header first.
+    let dummy_block = create_block(
+        Slot::new(1 + last_start_period, 0),
+        genesis_hashes,
+        &staking_key,
+    );
+    controller.register_block_header(dummy_block.id, dummy_block.content.header.clone());
+
+    // Flood the command channel from a separate thread.
+    let flood_controller = controller.clone();
+    let flood_handle = std::thread::spawn(move || {
+        let start = std::time::Instant::now();
+        while start.elapsed() < Duration::from_millis(600) {
+            flood_controller.mark_invalid_block(dummy_block.id, dummy_block.content.header.clone());
+        }
+    });
+
+    // Poll the future block status while the flood is still running.
+    // With the fix, slot_tick will run during the flood and process the block.
+    let mut processed_during_flood = false;
+    let poll_start = std::time::Instant::now();
+    while poll_start.elapsed() < Duration::from_millis(600) {
+        std::thread::sleep(Duration::from_millis(25));
+        if &controller.get_block_statuses(&[future_block.id])[0]
+            != &BlockGraphStatus::WaitingForSlot
+        {
+            processed_during_flood = true;
+            break;
+        }
+    }
+
+    flood_handle.join().expect("flood thread panicked");
+
+    assert!(
+        processed_during_flood,
+        "future block stayed in WaitingForSlot during command flood; slot maintenance was starved"
+    );
+}
