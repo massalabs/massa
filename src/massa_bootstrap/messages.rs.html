@@ -984,6 +984,15 @@
 <a href="#984" id="984">984</a>
 <a href="#985" id="985">985</a>
 <a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -993,6 +1002,7 @@
 
 <span class="kw">use </span>massa_db_exports::StreamBatch;
 
+<span class="kw">use </span>massa_models::block::BlockDeserializerArgs;
 <span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 
 <span class="kw">use </span>massa_models::config::MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE;
@@ -1322,8 +1332,16 @@
 }
 
 <span class="kw">impl </span>BootstrapServerMessageDeserializer {
-    <span class="doccomment">/// Creates a new `BootstrapServerMessageDeserializer`
-    </span><span class="kw">pub fn </span>new(args: BootstrapServerMessageDeserializerArgs) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Builds a deserializer that applies `last_start_period` to bootstrap block header
+    /// deserialization so genesis vs non-genesis parent-count rules are enforced while
+    /// parsing. Pass `None` for the first part; the server sends restart metadata once on
+    /// that part (empty consensus graph), then the client reuses the cached value.
+    </span><span class="kw">pub fn </span>with_last_start_period(
+        args: BootstrapServerMessageDeserializerArgs,
+        last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>block_args: BlockDeserializerArgs = (<span class="kw-2">&amp;</span>args).into();
+        block_args.last_start_period = last_start_period;
         <span class="self">Self </span>{
             message_id_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -1348,7 +1366,7 @@
                 Included(args.max_datastore_value_length),
             )),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
-                (<span class="kw-2">&amp;</span>args).into(),
+                block_args,
                 args.max_bootstrap_blocks_length,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(
@@ -1420,7 +1438,7 @@
     ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,
     ///     chain_id: *CHAINID
     /// };
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::with_last_start_period(args, None);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from_millis(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),

@@ -378,14 +378,6 @@
 <a href="#378" id="378">378</a>
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -512,7 +504,6 @@
     </span><span class="kw">fn </span>process_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
         <span class="kw">let </span><span class="kw-2">mut </span>timings = Vec::new();
         <span class="kw">let </span>channel_timeout = <span class="self">self</span>.cfg.block_opt_channel_timeout;
-        <span class="kw">let </span><span class="kw-2">mut </span>had_pool_timeout = <span class="bool-val">false</span>;
 
         <span class="comment">// get block producer address for that slot
         </span>timings.push((<span class="string">"get_producer START"</span>, MassaTime::now()));
@@ -593,8 +584,6 @@
         ) {
             <span class="prelude-val">Ok</span>(result) =&gt; result,
             <span class="prelude-val">Err</span>(e) =&gt; {
-                had_pool_timeout = <span class="bool-val">true</span>;
-                massa_metrics::inc_factory_pool_timeout_endorsements();
                 <span class="macro">warn!</span>(
                     <span class="string">"Channel timeout: get_block_endorsements took &gt;{}ms for slot {}: {:?}. Proceeding with empty endorsements."</span>,
                     channel_timeout.as_millis(), slot, e
@@ -634,8 +623,6 @@
         {
             <span class="prelude-val">Ok</span>(result) =&gt; result,
             <span class="prelude-val">Err</span>(e) =&gt; {
-                had_pool_timeout = <span class="bool-val">true</span>;
-                massa_metrics::inc_factory_pool_timeout_operations();
                 <span class="macro">warn!</span>(
                     <span class="string">"Channel timeout: get_block_operations took &gt;{}ms for slot {}: {:?}. Proceeding without operations."</span>,
                     channel_timeout.as_millis(), slot, e
@@ -667,8 +654,6 @@
         {
             <span class="prelude-val">Ok</span>(result) =&gt; result,
             <span class="prelude-val">Err</span>(e) =&gt; {
-                had_pool_timeout = <span class="bool-val">true</span>;
-                massa_metrics::inc_factory_pool_timeout_denunciations();
                 <span class="macro">warn!</span>(
                     <span class="string">"Channel timeout: get_block_denunciations took &gt;{}ms for slot {}: {:?}. Proceeding without denunciations."</span>,
                     channel_timeout.as_millis(), slot, e
@@ -725,7 +710,6 @@
         <span class="self">self</span>.channels
             .consensus
             .register_block(block_id, slot, block_storage, <span class="bool-val">true</span>);
-        massa_metrics::inc_factory_blocks_produced(had_pool_timeout);
         timings.push((<span class="string">"register_block END"</span>, MassaTime::now()));
 
         <span class="comment">// Check block latency
