@@ -407,12 +407,13 @@ mod tests {
         };
         changes.set_effective_total_gas(100_000);
 
+        let deferred_calls_config = DeferredCallsConfig::default();
         let mut buffer = Vec::new();
-        DeferredRegistryChangesSerializer::new()
+        DeferredRegistryChangesSerializer::new(deferred_calls_config)
             .serialize(&changes, &mut buffer)
             .unwrap();
 
-        let deserializer = DeferredRegistryChangesDeserializer::new(DeferredCallsConfig::default());
+        let deserializer = DeferredRegistryChangesDeserializer::new(deferred_calls_config);
         assert!(deserializer
             .deserialize::<DeserializeError>(&buffer)
             .is_err());
