@@ -1646,6 +1646,8 @@
 <a href="#1646" id="1646">1646</a>
 <a href="#1647" id="1647">1647</a>
 <a href="#1648" id="1648">1648</a>
+<a href="#1649" id="1649">1649</a>
+<a href="#1650" id="1650">1650</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2340,6 +2342,8 @@
         },
         selector: selector_controller.clone(),
         execution_controller: execution_controller.clone(),
+        mip_store: mip_store.clone(),
+        chain_id: <span class="kw-2">*</span>CHAINID,
     };
 
     <span class="kw">let </span>(pool_manager, pool_controller) = start_pool_controller(
