@@ -293,6 +293,20 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file deals with the announcement of block headers to other nodes
@@ -363,6 +377,15 @@
 }
 
 <span class="kw">impl </span>PropagationThread {
+    <span class="doccomment">/// Run one propagation tick: announce stored blocks to peers that need them
+    /// and advance the next tick deadline.
+    </span><span class="kw">fn </span>propagation_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>, deadline: <span class="kw-2">&amp;mut </span>Instant) {
+        <span class="self">self</span>.perform_propagations();
+        <span class="kw-2">*</span>deadline = Instant::now()
+            .checked_add(<span class="self">self</span>.config.block_propagation_tick.to_duration())
+            .expect(<span class="string">"could not get time of next propagation tick"</span>);
+    }
+
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span>tick_interval = <span class="self">self</span>.config.block_propagation_tick.to_duration();
         <span class="kw">let </span><span class="kw-2">mut </span>deadline = Instant::now()
@@ -388,6 +411,11 @@
                                         <span class="string">"claimed block {} absent from storage on propagation"</span>,
                                         block_id
                                     );
+                                    <span class="comment">// Even on this error path, don't let a command flood
+                                    // starve the periodic propagation tick.
+                                    </span><span class="kw">if </span>Instant::now() &gt;= deadline {
+                                        <span class="self">self</span>.propagation_tick(<span class="kw-2">&amp;mut </span>deadline);
+                                    }
                                     <span class="kw">continue</span>;
                                 }
                             };
@@ -437,12 +465,7 @@
                             );
 
                             <span class="comment">// propagate everything that needs to be propagated
-                            </span><span class="self">self</span>.perform_propagations();
-
-                            <span class="comment">// renew tick because propagation propagations were updated
-                            </span>deadline = Instant::now()
-                                .checked_add(tick_interval)
-                                .expect(<span class="string">"could not get time of next propagation tick"</span>);
+                            </span><span class="self">self</span>.propagation_tick(<span class="kw-2">&amp;mut </span>deadline);
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) =&gt; {
                             <span class="macro">debug!</span>(<span class="string">"received AttackBlockDetected({})"</span>, block_id);
@@ -460,6 +483,15 @@
                             } <span class="kw">else </span>{
                                 <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>peers_to_ban);
                             }
+
+                            <span class="comment">// `recv_deadline` returns immediately whenever a message is ready,
+                            // so a continuously non-empty channel would never let the timeout
+                            // branch below fire. Enforce the deadline here as well to make sure
+                            // periodic re-propagation to newly connected nodes keeps happening
+                            // under a constant flow of commands.
+                            </span><span class="kw">if </span>Instant::now() &gt;= deadline {
+                                <span class="self">self</span>.propagation_tick(<span class="kw-2">&amp;mut </span>deadline);
+                            }
                         }
                         BlockHandlerPropagationCommand::Stop =&gt; {
                             <span class="macro">info!</span>(<span class="string">"Stop block propagation thread"</span>);
@@ -469,11 +501,7 @@
                 }
                 <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; {
                     <span class="comment">// Propagation tick. This is useful to quickly propagate headers to newly connected nodes.
-                    </span><span class="self">self</span>.perform_propagations();
-                    <span class="comment">// renew deadline of next tick
-                    </span>deadline = Instant::now()
-                        .checked_add(tick_interval)
-                        .expect(<span class="string">"could not get time of next propagation tick"</span>);
+                    </span><span class="self">self</span>.propagation_tick(<span class="kw-2">&amp;mut </span>deadline);
                 }
                 <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected) =&gt; {
                     <span class="macro">info!</span>(<span class="string">"Stop block propagation thread"</span>);
