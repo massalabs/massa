@@ -407,7 +407,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
 pub(crate) fn gen_export_active_blocks<R: Rng>(rng: &mut R) -> ExportActiveBlock {
     let keypair = KeyPair::generate(0).unwrap();
     let block = gen_random_block(&keypair, rng)
-        .new_verifiable(BlockSerializer::new(), &keypair, *CHAINID)
+        .new_verifiable(BlockSerializer::new(), &keypair, *CHAINID, None)
         .unwrap();
     let parents = block
         .content
@@ -534,7 +534,12 @@ fn gen_random_block<R: Rng>(keypair: &KeyPair, rng: &mut R) -> Block {
         };
 
         let endorsement = endorsement
-            .new_verifiable(EndorsementSerializer::new(), keypair, *CHAINID)
+            .new_verifiable(
+                EndorsementSerializer::new(),
+                keypair,
+                *CHAINID,
+                Some(*CHAINID),
+            )
             .unwrap();
         endorsements.push(endorsement);
     }
@@ -564,7 +569,12 @@ fn gen_random_block<R: Rng>(keypair: &KeyPair, rng: &mut R) -> Block {
         endorsements,
         denunciations,
     }
-    .new_verifiable(BlockHeaderSerializer::new(), keypair, *CHAINID)
+    .new_verifiable(
+        BlockHeaderSerializer::new(),
+        keypair,
+        *CHAINID,
+        Some(*CHAINID),
+    )
     .unwrap();
     Block { header, operations }
 }
@@ -1052,7 +1062,12 @@ impl BootstrapServerMessage {
                 };
 
                 let endorsement = endorsement
-                    .new_verifiable(EndorsementSerializer::new(), &keypair, *CHAINID)
+                    .new_verifiable(
+                        EndorsementSerializer::new(),
+                        &keypair,
+                        *CHAINID,
+                        Some(*CHAINID),
+                    )
                     .unwrap();
                 endorsements.push(endorsement);
             }
@@ -1097,7 +1112,12 @@ impl BootstrapServerMessage {
                 endorsements: endorsements.clone(),
                 denunciations,
             }
-            .new_verifiable(BlockHeaderSerializer::new(), &keypair, *CHAINID)
+            .new_verifiable(
+                BlockHeaderSerializer::new(),
+                &keypair,
+                *CHAINID,
+                Some(*CHAINID),
+            )
             .unwrap();
 
             let block = Block {
@@ -1112,7 +1132,7 @@ impl BootstrapServerMessage {
                     .collect(),
                 is_final: false,
                 block: block
-                    .new_verifiable(BlockSerializer::new(), &keypair, *CHAINID)
+                    .new_verifiable(BlockSerializer::new(), &keypair, *CHAINID, None)
                     .unwrap(),
             };
             for _ in 0..block_nb {
