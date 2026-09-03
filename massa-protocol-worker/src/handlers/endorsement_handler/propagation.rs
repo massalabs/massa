@@ -243,7 +243,8 @@ mod tests {
             index,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(b"block")),
         };
-        Endorsement::new_verifiable(content, EndorsementSerializer::new(), &keypair, 0).unwrap()
+        Endorsement::new_verifiable(content, EndorsementSerializer::new(), &keypair, 0, None)
+            .unwrap()
     }
 
     /// Build a storage sharing `root`'s objects and holding `count` distinct endorsements

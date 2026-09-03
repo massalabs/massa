@@ -89,6 +89,7 @@
 #![allow(clippy::result_large_err)]
 
 pub mod address_factory;
+pub mod consensus_signature;
 pub mod grpc_mapping;
 pub mod keypair_factory;
 pub mod mips;

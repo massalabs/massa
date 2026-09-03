@@ -56,5 +56,6 @@ massa_consensus_exports = { workspace = true, "features" = ["test-exports"] }
 massa_protocol_exports = { workspace = true, "features" = ["test-exports"] }
 massa_final_state = { workspace = true }
 massa_ledger_exports = { workspace = true }
+massa_versioning = { workspace = true, "features" = ["test-exports"] }
 tokio = { workspace = true, "features" = ["test-util", "time"] }
 num = { workspace = true }
