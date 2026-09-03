@@ -98,9 +98,6 @@
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! # General description
@@ -145,9 +142,6 @@
 //! ## How is the `AsyncPool` handled
 //! ```md
 //! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(rev(Ratio(msg.fee, max(msg.max_gas,1))), rev(msg.slot), rev(msg.emission_index))`
-//!   From execution component version 2 (MIP-0002), batch selection and overflow eviction
-//!   re-rank with `fee / max(max_gas + async_msg_cst_gas_cost, 1)` so priority matches the
-//!   gas actually charged when taking a batch.
 //!
 //! * when an AsyncMessage is added to the AsyncPool:
 //!   * if the AsyncPool length has exceeded config.max_async_pool_length:
