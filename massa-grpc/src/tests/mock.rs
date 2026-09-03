@@ -22,6 +22,7 @@ use massa_protocol_exports::{MockProtocolController, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::keypair_factory::KeyPairFactory;
+use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 // use massa_wallet::test_exports::create_test_wallet;
 use massa_models::config::{CHAINID, MAX_DATASTORE_KEY_LENGTH};
@@ -123,7 +124,7 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
 
-    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config)).unwrap();
 
     MassaPublicGrpc {
         consensus_broadcasts: ConsensusBroadcasts {
