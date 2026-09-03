@@ -217,6 +217,11 @@ impl SpeculativeDeferredCallRegistry {
 
         slot_calls.effective_total_gas = total_gas_after;
 
+        // delete call in the current slot
+        for id in slot_calls.slot_calls.keys() {
+            self.delete_call(id, current_slot);
+        }
+
         slot_calls
     }
 

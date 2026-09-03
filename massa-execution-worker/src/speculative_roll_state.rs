@@ -647,50 +647,42 @@ impl SpeculativeRollState {
         (accumulated_stats, !underflow && !overflow)
     }
 
-    /// Gather the non-zero deferred credits at or before `slot` without consuming them.
+    /// Take the non-zero deferred credits at or before `slot`.
+    /// Set them to zero in the speculative state.
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    pub fn gather_unexecuted_deferred_credits(&self, slot: &Slot) -> DeferredCredits {
+    pub fn take_unexecuted_deferred_credits(&mut self, slot: &Slot) -> DeferredCredits {
+        // NOTE: Deferred credits are overridden. Zeros will be deleted at finality.
+
+        // get final deferred credits
         let mut credits = self
             .final_state
             .read()
             .get_pos_state()
             .get_deferred_credits_range(..=slot, None);
 
+        // fetch active history deferred credits
         credits.extend(
             self.active_history
                 .read()
                 .get_all_deferred_credits_until(slot),
         );
 
+        // added deferred credits
         credits.extend(self.added_changes.deferred_credits.get_slot_range(..=slot));
+
+        // filter out zeros
         credits.remove_zeros();
 
+        // set all the taken ones to zero in added_changes
+        credits.for_each(|slot, address, _amount| {
+            self.added_changes
+                .deferred_credits
+                .insert(*slot, *address, Amount::zero());
+        });
+
+        // return taken credits
         credits
-    }
-
-    /// Zero a deferred credit after it has been successfully transferred to its recipient.
-    ///
-    /// # Arguments
-    /// * `slot`: associated slot of the deferred credit
-    /// * `address`: recipient address
-    pub fn finalize_deferred_credit(&mut self, slot: &Slot, address: &Address) {
-        // NOTE: Deferred credits are overridden. Zeros will be deleted at finality.
-        self.added_changes
-            .deferred_credits
-            .insert(*slot, *address, Amount::zero());
-    }
-
-    /// Schedule a direct ledger credit for a future slot when an immediate transfer failed.
-    pub fn add_deferred_credit(&mut self, slot: &Slot, address: &Address, amount: Amount) {
-        let new_amount = self
-            .get_address_deferred_credit_for_slot(address, slot)
-            .unwrap_or_default()
-            .saturating_add(amount);
-
-        self.added_changes
-            .deferred_credits
-            .insert(*slot, *address, new_amount);
     }
 }

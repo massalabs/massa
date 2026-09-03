@@ -831,8 +831,10 @@ impl ExecutionContext {
     pub fn cancel_async_message(
         &mut self,
         msg: &AsyncMessage,
-    ) -> Result<Option<(Address, Result<Amount, String>)>, ExecutionError> {
-        self.transfer_coins(
+    ) -> Option<(Address, Result<Amount, String>)> {
+        #[allow(unused_assignments, unused_mut)]
+        let mut result = None;
+        let transfer_result = self.transfer_coins(
             None,
             Some(msg.sender),
             msg.coins,
@@ -841,27 +843,22 @@ impl ExecutionContext {
                 async_message_id: Some(msg.compute_id()),
                 ..Default::default()
             }),
-        )?;
+        );
+        if let Err(e) = transfer_result.as_ref() {
+            debug!(
+                "async message cancel: reimbursement of {} failed: {}",
+                msg.sender, e
+            );
+        }
 
         #[cfg(feature = "execution-info")]
-        {
-            Ok(Some((msg.sender, Ok(msg.coins))))
+        if let Err(e) = transfer_result {
+            result = Some((msg.sender, Err(e.to_string())))
+        } else {
+            result = Some((msg.sender, Ok(msg.coins)));
         }
-        #[cfg(not(feature = "execution-info"))]
-        {
-            Ok(None)
-        }
-    }
 
-    /// Restores an async message taken for execution when reimbursement failed.
-    pub fn restore_taken_async_message(&mut self, message: AsyncMessage) {
-        self.speculative_async_pool.restore_taken_message(message);
-    }
-
-    /// Preserves a refund liability as a deferred credit when an immediate transfer failed.
-    pub fn defer_refund_as_deferred_credit(&mut self, address: Address, amount: Amount) {
-        self.speculative_roll_state
-            .add_deferred_credit(&self.slot, &address, amount);
+        result
     }
 
     /// Add `roll_count` rolls to the buyer address.
@@ -996,13 +993,13 @@ impl ExecutionContext {
         #[allow(unused_mut)]
         let mut result = vec![];
 
-        let credits = self
+        for (_slot, map) in self
             .speculative_roll_state
-            .gather_unexecuted_deferred_credits(slot);
-
-        for (credit_slot, map) in credits.credits {
+            .take_unexecuted_deferred_credits(slot)
+            .credits
+        {
             for (address, amount) in map {
-                match self.transfer_coins(
+                let transfer_result = self.transfer_coins(
                     None,
                     Some(address),
                     amount,
@@ -1010,21 +1007,20 @@ impl ExecutionContext {
                     TransferContext::DeferredCredits(OriginTransferContext {
                         ..Default::default()
                     }),
-                ) {
-                    Ok(()) => {
-                        self.speculative_roll_state
-                            .finalize_deferred_credit(&credit_slot, &address);
-                        #[cfg(feature = "execution-info")]
-                        result.push((address, Ok(amount)));
-                    }
-                    Err(e) => {
-                        debug!(
-                            "could not credit {} deferred coins to {} at slot {}: {}",
-                            amount, address, slot, e
-                        );
-                        #[cfg(feature = "execution-info")]
-                        result.push((address, Err(e.to_string())));
-                    }
+                );
+
+                if let Err(e) = transfer_result.as_ref() {
+                    debug!(
+                        "could not credit {} deferred coins to {} at slot {}: {}",
+                        amount, address, slot, e
+                    );
+                }
+
+                #[cfg(feature = "execution-info")]
+                if let Err(e) = transfer_result {
+                    result.push((address, Err(e.to_string())));
+                } else {
+                    result.push((address, Ok(amount)));
                 }
             }
         }
@@ -1051,28 +1047,11 @@ impl ExecutionContext {
             .settle_slot(&slot, &self.speculative_ledger.added_changes);
 
         let mut cancel_async_message_transfers = vec![];
-        let mut finalized_deletions = Vec::new();
-        for (msg_id, msg) in deleted_messages {
-            match self.cancel_async_message(&msg) {
-                Ok(opt_transfer) => {
-                    if let Some(t) = opt_transfer {
-                        cancel_async_message_transfers.push(t);
-                    }
-                }
-                Err(e) => {
-                    debug!(
-                        "async message cancel: reimbursement of {} failed: {}, deferring {} coins to deferred credits",
-                        msg.sender, e, msg.coins
-                    );
-                    self.defer_refund_as_deferred_credit(msg.sender, msg.coins);
-                }
+        for (_msg_id, msg) in deleted_messages {
+            if let Some(t) = self.cancel_async_message(&msg) {
+                cancel_async_message_transfers.push(t)
             }
-            // Expired or excess messages must leave the pool regardless of transfer outcome.
-            // Retrying via the pool would not help for the errors `transfer_coins` can return.
-            finalized_deletions.push(msg_id);
         }
-        self.speculative_async_pool
-            .finalize_eliminated_messages(finalized_deletions);
 
         // update module cache
         // Skip this for read-only executions: their speculative bytecode is never
@@ -1342,8 +1321,11 @@ impl ExecutionContext {
         &mut self,
         id: &DeferredCallId,
         call: &DeferredCall,
-    ) -> Result<Option<(Address, Result<Amount, String>)>, ExecutionError> {
-        self.transfer_coins(
+    ) -> Option<(Address, Result<Amount, String>)> {
+        #[allow(unused_assignments, unused_mut)]
+        let mut result = None;
+
+        let transfer_result = self.transfer_coins(
             None,
             Some(call.sender_address),
             call.coins,
@@ -1354,21 +1336,22 @@ impl ExecutionContext {
                 async_message_id: self.async_msg_id,
                 ..Default::default()
             }),
-        )?;
+        );
+        if let Err(e) = transfer_result.as_ref() {
+            debug!(
+                "deferred call {} fail: reimbursement of {} to {} failed: {}",
+                id, call.coins, call.sender_address, e
+            );
+        }
 
         #[cfg(feature = "execution-info")]
-        {
-            Ok(Some((call.sender_address, Ok(call.coins))))
+        if let Err(e) = transfer_result {
+            result = Some((call.sender_address, Err(e.to_string())))
+        } else {
+            result = Some((call.sender_address, Ok(call.coins)));
         }
-        #[cfg(not(feature = "execution-info"))]
-        {
-            Ok(None)
-        }
-    }
 
-    /// Removes a deferred call from the registry after successful execution or reimbursement.
-    pub fn deferred_call_delete(&mut self, id: &DeferredCallId) {
-        self.speculative_deferred_calls.delete_call(id, self.slot);
+        result
     }
 
     /// when a deferred call is cancelled we need to refund the coins to the caller
@@ -1387,17 +1370,10 @@ impl ExecutionContext {
                     )));
                 }
 
-                if call.cancelled {
-                    return Err(ExecutionError::DeferredCallsError(
-                        "Call ID is already cancelled.".into(),
-                    ));
-                }
+                let (address, amount) = self.speculative_deferred_calls.cancel_call(call_id)?;
 
-                let address = call.sender_address;
-                let amount = call.coins;
-
-                // refund the coins to the caller before consuming the call
-                self.transfer_coins(
+                // refund the coins to the caller
+                let transfer_result = self.transfer_coins(
                     None,
                     Some(address),
                     amount,
@@ -1408,9 +1384,13 @@ impl ExecutionContext {
                         async_message_id: self.async_msg_id,
                         ..Default::default()
                     }),
-                )?;
-
-                self.speculative_deferred_calls.cancel_call(call_id)?;
+                );
+                if let Err(e) = transfer_result.as_ref() {
+                    debug!(
+                        "deferred call cancel: reimbursement of {} failed: {}",
+                        address, e
+                    );
+                }
 
                 Ok(())
             }
