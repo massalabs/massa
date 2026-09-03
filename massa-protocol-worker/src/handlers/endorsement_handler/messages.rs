@@ -183,6 +183,7 @@ mod tests {
                 EndorsementSerializer::new(),
                 &KeyPair::generate(0).unwrap(),
                 *CHAINID,
+                Some(*CHAINID),
             )
             .unwrap();
         let message = super::EndorsementMessage::Endorsements(vec![

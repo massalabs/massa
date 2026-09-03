@@ -11,6 +11,8 @@ use massa_models::{
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning::consensus_signature::sig_chain_id_for_slot;
+use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{sync::Arc, thread, time::Instant};
@@ -22,6 +24,7 @@ pub(crate) struct EndorsementFactoryWorker {
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
     factory_receiver: MassaReceiver<()>,
+    mip_store: MipStore,
     half_t0: MassaTime,
     endorsement_serializer: EndorsementSerializer,
 }
@@ -34,6 +37,7 @@ impl EndorsementFactoryWorker {
         wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
         factory_receiver: MassaReceiver<()>,
+        mip_store: MipStore,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
             .name("endorsement-factory".into())
@@ -47,6 +51,7 @@ impl EndorsementFactoryWorker {
                     wallet,
                     channels,
                     factory_receiver,
+                    mip_store,
                     endorsement_serializer: EndorsementSerializer::new(),
                 };
                 this.run();
@@ -177,6 +182,14 @@ impl EndorsementFactoryWorker {
         // produce endorsements
         let mut endorsements: Vec<SecureShareEndorsement> =
             Vec::with_capacity(producers_indices.len());
+        let slot_ts = get_block_slot_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            slot,
+        )
+        .expect("could not get block slot timestamp");
+        let sig_chain_id = sig_chain_id_for_slot(&self.mip_store, self.cfg.chain_id, slot_ts);
         for (keypair, index) in producers_indices {
             let endorsement = Endorsement::new_verifiable(
                 Endorsement {
@@ -187,6 +200,7 @@ impl EndorsementFactoryWorker {
                 self.endorsement_serializer.clone(),
                 &keypair,
                 self.cfg.chain_id,
+                sig_chain_id,
             )
             .expect("could not create endorsement");
 

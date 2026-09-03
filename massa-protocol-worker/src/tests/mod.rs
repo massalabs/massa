@@ -9,6 +9,7 @@ use massa_pos_exports::MockSelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use peernet::transports::TransportType;
 use tempfile::NamedTempFile;
@@ -145,7 +146,7 @@ fn basic() {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
-    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config)).unwrap();
 
     let metrics = MassaMetrics::new(
         false,
@@ -305,7 +306,7 @@ fn stop_with_controller_still_exists() {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
-    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config)).unwrap();
     let metrics = MassaMetrics::new(
         false,
         "0.0.0.0:9898".parse().unwrap(),
