@@ -637,7 +637,15 @@ impl MipStore {
 
     // Query
 
-    /// Get latest version at given timestamp (e.g. slot) for the given MipComponent
+    /// Get latest version at given timestamp (e.g. slot) for the given MipComponent.
+    ///
+    /// Considers MIPs whose current store state is `Active` or `LockedIn`: the
+    /// LockedIn→Active transition is a pure function of `(locked_in_at,
+    /// activation_delay, ts)`, so a node still in LockedIn agrees with peers
+    /// that have already advanced to Active on whether `ts` is past activation.
+    /// `state_at(ts)` remains the gate that decides if the version applies at
+    /// `ts` (pre-activation queries while LockedIn still return the previous
+    /// version).
     pub fn get_latest_component_version_at(&self, component: &MipComponent, ts: MassaTime) -> u32 {
         let guard = self.0.read();
         guard.get_latest_component_version_at(component, ts)
@@ -1118,7 +1126,12 @@ impl MipStoreRaw {
 
     // Query
 
-    /// Get latest version at given timestamp (e.g. slot)
+    /// Get latest version at given timestamp (e.g. slot).
+    ///
+    /// Pre-filter includes `LockedIn` as well as `Active`: LockedIn→Active is
+    /// deterministic given history, so lagging nodes still in LockedIn across
+    /// the activation instant agree with up-to-date peers on the version at
+    /// `ts`. See [`MipStore::get_latest_component_version_at`].
     fn get_latest_component_version_at(&self, component: &MipComponent, ts: MassaTime) -> u32 {
         let version = self
             .store
@@ -1126,7 +1139,10 @@ impl MipStoreRaw {
             .rev()
             .filter(|(mi, ms)| {
                 mi.components.contains_key(component)
-                    && matches!(ms.state, ComponentState::Active(_))
+                    && matches!(
+                        ms.state,
+                        ComponentState::Active(_) | ComponentState::LockedIn(_)
+                    )
             })
             .find_map(|(mi, ms)| {
                 let res = ms.state_at(ts, mi.start, mi.timeout, mi.activation_delay);
@@ -2776,5 +2792,66 @@ mod test {
         // First announced version 1 was removed and so the counter decremented
         assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&1));
         assert_eq!(mip_store.stats.network_version_counters.get(&2), Some(&1));
+    }
+
+    /// A node still in LockedIn must agree with an Active peer on the component
+    /// version at a post-activation timestamp (activation-boundary determinism).
+    #[test]
+    fn test_get_latest_component_version_at_locked_in_matches_active() {
+        let start = MassaTime::from_millis(10_000);
+        let timeout = MassaTime::from_millis(100_000);
+        let activation_delay = MassaTime::from_millis(5_000);
+        let mi = MipInfo {
+            name: "MIP-test-LockedIn".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Execution, 2)]),
+            start,
+            timeout,
+            activation_delay,
+        };
+        let stats = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        };
+
+        let ms_locked =
+            advance_state_until(ComponentState::locked_in(MassaTime::from_millis(0)), &mi);
+        assert_matches!(ms_locked.state, ComponentState::LockedIn(_));
+        let store_locked =
+            MipStore::try_from(([(mi.clone(), ms_locked)], stats.clone())).expect("locked store");
+
+        let ms_active = advance_state_until(ComponentState::active(MassaTime::from_millis(0)), &mi);
+        assert_matches!(ms_active.state, ComponentState::Active(_));
+        let store_active =
+            MipStore::try_from(([(mi.clone(), ms_active)], stats)).expect("active store");
+
+        let locked_in_at = match store_locked.0.read().store.get(&mi).unwrap().state {
+            ComponentState::LockedIn(LockedIn { at }) => at,
+            other => panic!("expected LockedIn, got {:?}", other),
+        };
+        let before = locked_in_at
+            .saturating_add(activation_delay)
+            .saturating_sub(MassaTime::from_millis(1));
+        // LockedIn::on_advance activates only when `now > locked_in_at + delay`
+        let after = locked_in_at
+            .saturating_add(activation_delay)
+            .saturating_add(MassaTime::from_millis(1));
+
+        assert_eq!(
+            store_locked.get_latest_component_version_at(&MipComponent::Execution, before),
+            0
+        );
+        assert_eq!(
+            store_active.get_latest_component_version_at(&MipComponent::Execution, before),
+            0
+        );
+        assert_eq!(
+            store_locked.get_latest_component_version_at(&MipComponent::Execution, after),
+            2
+        );
+        assert_eq!(
+            store_active.get_latest_component_version_at(&MipComponent::Execution, after),
+            2
+        );
     }
 }
