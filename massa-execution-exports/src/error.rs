@@ -77,4 +77,6 @@ pub enum ExecutionError {
 pub enum ExecutionQueryError {
     /// Not found: {0}
     NotFound(String),
+    /// Cumulative response size limit exceeded: {0}
+    TooLargeResponse(String),
 }

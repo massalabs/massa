@@ -28,7 +28,7 @@ use massa_api_exports::{
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
-    ExecutionController, ExecutionQueryRequest, ExecutionQueryRequestItem,
+    ExecutionController, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
     ExecutionQueryResponseItem, ExecutionStackElement, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget,
 };
@@ -95,6 +95,15 @@ impl API<Public> {
             storage,
             keypair_factory: KeyPairFactory { mip_store },
         })
+    }
+
+    fn exec_query(&self, requests: Vec<ExecutionQueryRequestItem>) -> ExecutionQueryResponse {
+        self.0
+            .execution_controller
+            .query_state(ExecutionQueryRequest {
+                requests,
+                max_response_size: self.0.api_settings.max_response_body_size as usize,
+            })
     }
 }
 
@@ -1034,10 +1043,7 @@ impl MassaRpcServer for API<Public> {
 
         let mut result: Vec<GetAddressDatastoreKeysResponse> = Vec::with_capacity(requests.len());
 
-        let response = self
-            .0
-            .execution_controller
-            .query_state(ExecutionQueryRequest { requests });
+        let response = self.exec_query(requests);
 
         for response_item in response.responses {
             match response_item {
@@ -1253,11 +1259,7 @@ impl MassaRpcServer for API<Public> {
             return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", self.0.api_settings.max_arguments)).into());
         }
 
-        let responses = self
-            .0
-            .execution_controller
-            .query_state(ExecutionQueryRequest { requests: queries })
-            .responses;
+        let responses = self.exec_query(queries).responses;
 
         let res: Result<Vec<Vec<u8>>, ApiError> = responses
             .into_iter()
@@ -1293,9 +1295,7 @@ impl MassaRpcServer for API<Public> {
             .collect();
 
         let result = self
-            .0
-            .execution_controller
-            .query_state(ExecutionQueryRequest { requests: queries })
+            .exec_query(queries)
             .responses
             .into_iter()
             .map(|response| match response {
@@ -1338,9 +1338,7 @@ impl MassaRpcServer for API<Public> {
             .collect::<Result<_, _>>()?;
 
         let result: Vec<DeferredCallResponse> = self
-            .0
-            .execution_controller
-            .query_state(ExecutionQueryRequest { requests })
+            .exec_query(requests)
             .responses
             .into_iter()
             .map(|exec| match exec {
@@ -1375,13 +1373,7 @@ impl MassaRpcServer for API<Public> {
 
         let mut slot_calls = Vec::new();
 
-        for exec in self
-            .0
-            .execution_controller
-            .query_state(ExecutionQueryRequest { requests })
-            .responses
-            .into_iter()
-        {
+        for exec in self.exec_query(requests).responses.into_iter() {
             match exec {
                 Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, result)) => {
                     let call_ids = result.into_iter().map(|id| id.to_string()).collect();

@@ -4032,6 +4032,7 @@ fn datastore_manipulations() {
                 },
                 ExecutionQueryRequestItem::Events(EventFilter::default()),
             ],
+            max_response_size: usize::MAX,
         });
     // Just checking that is works no asserts for now
     universe
