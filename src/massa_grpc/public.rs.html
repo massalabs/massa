@@ -1561,6 +1561,12 @@
 <a href="#1561" id="1561">1561</a>
 <a href="#1562" id="1562">1562</a>
 <a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
+<a href="#1567" id="1567">1567</a>
+<a href="#1568" id="1568">1568</a>
+<a href="#1569" id="1569">1569</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2529,7 +2535,10 @@
     </span>};
     <span class="kw">let </span>next_cycle_time = current_cycle_time.checked_add(cycle_duration)<span class="question-mark">?</span>;
     <span class="comment">//TODO to be enhanced
-    </span><span class="kw">let </span>empty_request = ExecutionQueryRequest { requests: <span class="macro">vec!</span>[] };
+    </span><span class="kw">let </span>empty_request = ExecutionQueryRequest {
+        requests: <span class="macro">vec!</span>[],
+        max_response_size: grpc.grpc_config.max_encoding_message_size,
+    };
     <span class="kw">let </span>state = grpc.execution_controller.query_state(empty_request);
 
     <span class="kw">let </span>current_mip_version = grpc.keypair_factory.mip_store.get_network_version_current();
@@ -2603,7 +2612,10 @@
 
     <span class="kw">let </span>response = grpc
         .execution_controller
-        .query_state(ExecutionQueryRequest { requests: queries });
+        .query_state(ExecutionQueryRequest {
+            requests: queries,
+            max_response_size: grpc.grpc_config.max_encoding_message_size,
+        });
 
     <span class="prelude-val">Ok</span>(grpc_api::QueryStateResponse {
         final_cursor: <span class="prelude-val">Some</span>(response.final_cursor.into()),

@@ -610,6 +610,10 @@
 <a href="#610" id="610">610</a>
 <a href="#611" id="611">611</a>
 <a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::str::FromStr;
@@ -1076,6 +1080,10 @@
             ExecutionQueryError::NotFound(error) =&gt; grpc_model::Error {
                 <span class="comment">//TODO to be defined
                 </span>code: <span class="number">404</span>,
+                message: error,
+            },
+            ExecutionQueryError::TooLargeResponse(error) =&gt; grpc_model::Error {
+                code: <span class="number">413</span>,
                 message: error,
             },
         }

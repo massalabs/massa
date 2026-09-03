@@ -2773,83 +2773,6 @@
 <a href="#2773" id="2773">2773</a>
 <a href="#2774" id="2774">2774</a>
 <a href="#2775" id="2775">2775</a>
-<a href="#2776" id="2776">2776</a>
-<a href="#2777" id="2777">2777</a>
-<a href="#2778" id="2778">2778</a>
-<a href="#2779" id="2779">2779</a>
-<a href="#2780" id="2780">2780</a>
-<a href="#2781" id="2781">2781</a>
-<a href="#2782" id="2782">2782</a>
-<a href="#2783" id="2783">2783</a>
-<a href="#2784" id="2784">2784</a>
-<a href="#2785" id="2785">2785</a>
-<a href="#2786" id="2786">2786</a>
-<a href="#2787" id="2787">2787</a>
-<a href="#2788" id="2788">2788</a>
-<a href="#2789" id="2789">2789</a>
-<a href="#2790" id="2790">2790</a>
-<a href="#2791" id="2791">2791</a>
-<a href="#2792" id="2792">2792</a>
-<a href="#2793" id="2793">2793</a>
-<a href="#2794" id="2794">2794</a>
-<a href="#2795" id="2795">2795</a>
-<a href="#2796" id="2796">2796</a>
-<a href="#2797" id="2797">2797</a>
-<a href="#2798" id="2798">2798</a>
-<a href="#2799" id="2799">2799</a>
-<a href="#2800" id="2800">2800</a>
-<a href="#2801" id="2801">2801</a>
-<a href="#2802" id="2802">2802</a>
-<a href="#2803" id="2803">2803</a>
-<a href="#2804" id="2804">2804</a>
-<a href="#2805" id="2805">2805</a>
-<a href="#2806" id="2806">2806</a>
-<a href="#2807" id="2807">2807</a>
-<a href="#2808" id="2808">2808</a>
-<a href="#2809" id="2809">2809</a>
-<a href="#2810" id="2810">2810</a>
-<a href="#2811" id="2811">2811</a>
-<a href="#2812" id="2812">2812</a>
-<a href="#2813" id="2813">2813</a>
-<a href="#2814" id="2814">2814</a>
-<a href="#2815" id="2815">2815</a>
-<a href="#2816" id="2816">2816</a>
-<a href="#2817" id="2817">2817</a>
-<a href="#2818" id="2818">2818</a>
-<a href="#2819" id="2819">2819</a>
-<a href="#2820" id="2820">2820</a>
-<a href="#2821" id="2821">2821</a>
-<a href="#2822" id="2822">2822</a>
-<a href="#2823" id="2823">2823</a>
-<a href="#2824" id="2824">2824</a>
-<a href="#2825" id="2825">2825</a>
-<a href="#2826" id="2826">2826</a>
-<a href="#2827" id="2827">2827</a>
-<a href="#2828" id="2828">2828</a>
-<a href="#2829" id="2829">2829</a>
-<a href="#2830" id="2830">2830</a>
-<a href="#2831" id="2831">2831</a>
-<a href="#2832" id="2832">2832</a>
-<a href="#2833" id="2833">2833</a>
-<a href="#2834" id="2834">2834</a>
-<a href="#2835" id="2835">2835</a>
-<a href="#2836" id="2836">2836</a>
-<a href="#2837" id="2837">2837</a>
-<a href="#2838" id="2838">2838</a>
-<a href="#2839" id="2839">2839</a>
-<a href="#2840" id="2840">2840</a>
-<a href="#2841" id="2841">2841</a>
-<a href="#2842" id="2842">2842</a>
-<a href="#2843" id="2843">2843</a>
-<a href="#2844" id="2844">2844</a>
-<a href="#2845" id="2845">2845</a>
-<a href="#2846" id="2846">2846</a>
-<a href="#2847" id="2847">2847</a>
-<a href="#2848" id="2848">2848</a>
-<a href="#2849" id="2849">2849</a>
-<a href="#2850" id="2850">2850</a>
-<a href="#2851" id="2851">2851</a>
-<a href="#2852" id="2852">2852</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -3489,15 +3412,7 @@
 
     <span class="comment">// Query
 
-    </span><span class="doccomment">/// Get latest version at given timestamp (e.g. slot) for the given MipComponent.
-    ///
-    /// Considers MIPs whose current store state is `Active` or `LockedIn`: the
-    /// LockedIn→Active transition is a pure function of `(locked_in_at,
-    /// activation_delay, ts)`, so a node still in LockedIn agrees with peers
-    /// that have already advanced to Active on whether `ts` is past activation.
-    /// `state_at(ts)` remains the gate that decides if the version applies at
-    /// `ts` (pre-activation queries while LockedIn still return the previous
-    /// version).
+    </span><span class="doccomment">/// Get latest version at given timestamp (e.g. slot) for the given MipComponent
     </span><span class="kw">pub fn </span>get_latest_component_version_at(<span class="kw-2">&amp;</span><span class="self">self</span>, component: <span class="kw-2">&amp;</span>MipComponent, ts: MassaTime) -&gt; u32 {
         <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.read();
         guard.get_latest_component_version_at(component, ts)
@@ -3978,12 +3893,7 @@
 
     <span class="comment">// Query
 
-    </span><span class="doccomment">/// Get latest version at given timestamp (e.g. slot).
-    ///
-    /// Pre-filter includes `LockedIn` as well as `Active`: LockedIn→Active is
-    /// deterministic given history, so lagging nodes still in LockedIn across
-    /// the activation instant agree with up-to-date peers on the version at
-    /// `ts`. See [`MipStore::get_latest_component_version_at`].
+    </span><span class="doccomment">/// Get latest version at given timestamp (e.g. slot)
     </span><span class="kw">fn </span>get_latest_component_version_at(<span class="kw-2">&amp;</span><span class="self">self</span>, component: <span class="kw-2">&amp;</span>MipComponent, ts: MassaTime) -&gt; u32 {
         <span class="kw">let </span>version = <span class="self">self
             </span>.store
@@ -3991,10 +3901,7 @@
             .rev()
             .filter(|(mi, ms)| {
                 mi.components.contains_key(component)
-                    &amp;&amp; <span class="macro">matches!</span>(
-                        ms.state,
-                        ComponentState::Active(<span class="kw">_</span>) | ComponentState::LockedIn(<span class="kw">_</span>)
-                    )
+                    &amp;&amp; <span class="macro">matches!</span>(ms.state, ComponentState::Active(<span class="kw">_</span>))
             })
             .find_map(|(mi, ms)| {
                 <span class="kw">let </span>res = ms.state_at(ts, mi.start, mi.timeout, mi.activation_delay);
@@ -5639,67 +5546,6 @@
         <span class="comment">// First announced version 1 was removed and so the counter decremented
         </span><span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>));
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">2</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>));
-    }
-
-    <span class="doccomment">/// A node still in LockedIn must agree with an Active peer on the component
-    /// version at a post-activation timestamp (activation-boundary determinism).
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_get_latest_component_version_at_locked_in_matches_active() {
-        <span class="kw">let </span>start = MassaTime::from_millis(<span class="number">10_000</span>);
-        <span class="kw">let </span>timeout = MassaTime::from_millis(<span class="number">100_000</span>);
-        <span class="kw">let </span>activation_delay = MassaTime::from_millis(<span class="number">5_000</span>);
-        <span class="kw">let </span>mi = MipInfo {
-            name: <span class="string">"MIP-test-LockedIn"</span>.to_string(),
-            version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Execution, <span class="number">2</span>)]),
-            start,
-            timeout,
-            activation_delay,
-        };
-        <span class="kw">let </span>stats = MipStatsConfig {
-            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
-        };
-
-        <span class="kw">let </span>ms_locked =
-            advance_state_until(ComponentState::locked_in(MassaTime::from_millis(<span class="number">0</span>)), <span class="kw-2">&amp;</span>mi);
-        <span class="macro">assert_matches!</span>(ms_locked.state, ComponentState::LockedIn(<span class="kw">_</span>));
-        <span class="kw">let </span>store_locked =
-            MipStore::try_from(([(mi.clone(), ms_locked)], stats.clone())).expect(<span class="string">"locked store"</span>);
-
-        <span class="kw">let </span>ms_active = advance_state_until(ComponentState::active(MassaTime::from_millis(<span class="number">0</span>)), <span class="kw-2">&amp;</span>mi);
-        <span class="macro">assert_matches!</span>(ms_active.state, ComponentState::Active(<span class="kw">_</span>));
-        <span class="kw">let </span>store_active =
-            MipStore::try_from(([(mi.clone(), ms_active)], stats)).expect(<span class="string">"active store"</span>);
-
-        <span class="kw">let </span>locked_in_at = <span class="kw">match </span>store_locked.<span class="number">0</span>.read().store.get(<span class="kw-2">&amp;</span>mi).unwrap().state {
-            ComponentState::LockedIn(LockedIn { at }) =&gt; at,
-            other =&gt; <span class="macro">panic!</span>(<span class="string">"expected LockedIn, got {:?}"</span>, other),
-        };
-        <span class="kw">let </span>before = locked_in_at
-            .saturating_add(activation_delay)
-            .saturating_sub(MassaTime::from_millis(<span class="number">1</span>));
-        <span class="comment">// LockedIn::on_advance activates only when `now &gt; locked_in_at + delay`
-        </span><span class="kw">let </span>after = locked_in_at
-            .saturating_add(activation_delay)
-            .saturating_add(MassaTime::from_millis(<span class="number">1</span>));
-
-        <span class="macro">assert_eq!</span>(
-            store_locked.get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, before),
-            <span class="number">0
-        </span>);
-        <span class="macro">assert_eq!</span>(
-            store_active.get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, before),
-            <span class="number">0
-        </span>);
-        <span class="macro">assert_eq!</span>(
-            store_locked.get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, after),
-            <span class="number">2
-        </span>);
-        <span class="macro">assert_eq!</span>(
-            store_active.get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, after),
-            <span class="number">2
-        </span>);
     }
 }
 </code></pre></div></section></main></body></html>

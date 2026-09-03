@@ -469,6 +469,9 @@
 <a href="#469" id="469">469</a>
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::net::IpAddr;
@@ -753,7 +756,10 @@
             })<span class="question-mark">?
     </span>};
     <span class="kw">let </span>next_cycle_time = current_cycle_time.checked_add(cycle_duration)<span class="question-mark">?</span>;
-    <span class="kw">let </span>empty_request = ExecutionQueryRequest { requests: <span class="macro">vec!</span>[] };
+    <span class="kw">let </span>empty_request = ExecutionQueryRequest {
+        requests: <span class="macro">vec!</span>[],
+        max_response_size: grpc.grpc_config.max_encoding_message_size,
+    };
     <span class="kw">let </span>state = grpc.execution_controller.query_state(empty_request);
     <span class="kw">let </span>node_ip = grpc
         .protocol_config
