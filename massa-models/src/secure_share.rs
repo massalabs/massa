@@ -56,31 +56,52 @@ pub trait SecureShareContent
 where
     Self: Sized + Display,
 {
-    /// Sign the SecureShare given the content
-    fn sign(&self, keypair: &KeyPair, content_hash: &Hash) -> Result<Signature, ModelsError> {
-        Ok(keypair.sign(&self.compute_signed_hash(&keypair.get_public_key(), content_hash))?)
+    /// Sign the SecureShare given the content. `sig_chain_id` selects the
+    /// signed-hash layout: `None` for the legacy (chain-agnostic) layout,
+    /// `Some(chain_id)` to fold the chain id into the signed hash. Signing,
+    /// verification and denunciation reconstruction must use the same value
+    /// for a given message (see [`Self::compute_signed_hash`]).
+    fn sign(
+        &self,
+        keypair: &KeyPair,
+        content_hash: &Hash,
+        sig_chain_id: Option<u64>,
+    ) -> Result<Signature, ModelsError> {
+        Ok(keypair.sign(&self.compute_signed_hash(
+            &keypair.get_public_key(),
+            content_hash,
+            sig_chain_id,
+        ))?)
     }
 
-    /// verify signature
+    /// Verify a signature. `sig_chain_id` selects the signed-hash layout used
+    /// to reconstruct the signature hash (see [`Self::compute_signed_hash`]).
     fn verify_signature(
         &self,
         public_key: &PublicKey,
         content_hash: &Hash,
         signature: &Signature,
+        sig_chain_id: Option<u64>,
     ) -> Result<(), ModelsError> {
         Ok(public_key.verify_signature(
-            &self.compute_signed_hash(public_key, content_hash),
+            &self.compute_signed_hash(public_key, content_hash, sig_chain_id),
             signature,
         )?)
     }
 
     /// Using the provided key-pair, applies a cryptographic signature, and packages
     /// the data required to share and verify the data in a trust-free network of peers.
+    ///
+    /// `chain_id` computes the content id ([`Self::compute_hash`]); `sig_chain_id`
+    /// selects the signed-hash layout (`None` = legacy / chain-agnostic,
+    /// `Some(chain_id)` = chain-scoped). The two must flip together at the
+    /// deterministic MIP-0002 activation slot so all nodes switch simultaneously.
     fn new_verifiable<Ser: Serializer<Self>, ID: Id>(
         self,
         content_serializer: Ser,
         keypair: &KeyPair,
         chain_id: u64,
+        sig_chain_id: Option<u64>,
     ) -> Result<SecureShare<Self, ID>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&self, &mut content_serialized)?;
@@ -88,7 +109,7 @@ where
         let hash = Self::compute_hash(&self, &content_serialized, &public_key, chain_id);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
-            signature: self.sign(keypair, &hash)?,
+            signature: self.sign(keypair, &hash, sig_chain_id)?,
             content_creator_pub_key: public_key,
             content_creator_address: creator_address,
             content: self,
@@ -110,8 +131,28 @@ where
         Hash::compute_from(&hash_data)
     }
 
-    /// Compute hash used for signature
-    fn compute_signed_hash(&self, _public_key: &PublicKey, content_hash: &Hash) -> Hash {
+    /// Compute hash used for signature.
+    ///
+    /// `sig_chain_id` selects the layout:
+    /// * `None` -> legacy (chain-agnostic) layout, identical to the pre-fix
+    ///   one. Used for messages whose slot is governed by a network version
+    ///   predating the MIP-0002 `Execution` v2 activation.
+    /// * `Some(chain_id)` -> chain-scoped layout, folding `chain_id` into the
+    ///   signed hash so two signatures produced on different chains for the
+    ///   same (slot, index) cannot be replayed as a denunciation on either
+    ///   chain (F90 / PDF #11).
+    ///
+    /// The default ignores `sig_chain_id` and returns `*content_hash` (the
+    /// legacy layout), which is correct for components that never chain-scope
+    /// their signed hash (e.g. `Operation`, whose `compute_hash` already folds
+    /// in the chain id). `Endorsement` and `BlockHeader` override this to fold
+    /// in `chain_id` when `Some`.
+    fn compute_signed_hash(
+        &self,
+        _public_key: &PublicKey,
+        content_hash: &Hash,
+        _sig_chain_id: Option<u64>,
+    ) -> Hash {
         *content_hash
     }
 
@@ -215,19 +256,27 @@ where
         Ok(keypair.sign(content_hash)?)
     }
 
-    /// check if self has been signed by public key
-    pub fn verify_signature(&self) -> Result<(), ModelsError> {
+    /// check if self has been signed by public key. `sig_chain_id` selects the
+    /// signed-hash layout (`None` = legacy, `Some(chain_id)` = chain-scoped); see
+    /// [`SecureShareContent::compute_signed_hash`].
+    pub fn verify_signature(&self, sig_chain_id: Option<u64>) -> Result<(), ModelsError> {
         self.content.verify_signature(
             &self.content_creator_pub_key,
             self.id.get_hash(),
             &self.signature,
+            sig_chain_id,
         )
     }
 
-    /// Compute the signed hash
-    pub fn compute_signed_hash(&self) -> Hash {
-        self.content
-            .compute_signed_hash(&self.content_creator_pub_key, self.id.get_hash())
+    /// Compute the signed hash. `sig_chain_id` selects the signed-hash layout
+    /// (`None` = legacy, `Some(chain_id)` = chain-scoped); see
+    /// [`SecureShareContent::compute_signed_hash`].
+    pub fn compute_signed_hash(&self, sig_chain_id: Option<u64>) -> Hash {
+        self.content.compute_signed_hash(
+            &self.content_creator_pub_key,
+            self.id.get_hash(),
+            sig_chain_id,
+        )
     }
 
     /// get full serialized size
@@ -389,7 +438,8 @@ where
     ///    content,
     ///    EndorsementSerializer::new(),
     ///    &keypair,
-    ///    *CHAINID
+    ///    *CHAINID,
+    ///    None
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = SecureShareSerializer::new().serialize(&secured, &mut serialized_data).unwrap();

@@ -81,18 +81,24 @@ pub struct EndorsementDenunciation {
 }
 
 impl EndorsementDenunciation {
-    /// Rebuild full hash of SecureShareEndorsement from given arguments
+    /// Rebuild full hash of SecureShareEndorsement from given arguments.
+    ///
+    /// `sig_chain_id` selects the signed-hash layout: `None` reproduces the legacy
+    /// (chain-agnostic) layout, `Some(chain_id)` reproduces the chain-scoped layout
+    /// used post MIP-0002 `Execution` v2 activation. It must match the layout used to
+    /// sign the endorsement.
     fn compute_hash_for_sig_verif(
         public_key: &PublicKey,
         slot: &Slot,
         index: &u32,
         content_hash: &Hash,
+        sig_chain_id: Option<u64>,
     ) -> Hash {
         let mut hash_data = Vec::new();
         // Public key
         hash_data.extend(public_key.to_bytes());
-        // Ser slot & index
-        let denunciation_data = EndorsementDenunciationData::new(*slot, *index);
+        // Ser slot & index (+ optional chain id)
+        let denunciation_data = EndorsementDenunciationData::new(*slot, *index, sig_chain_id);
         hash_data.extend(&denunciation_data.to_bytes());
         // Add content hash
         hash_data.extend(content_hash.to_bytes());
@@ -136,17 +142,23 @@ pub struct BlockHeaderDenunciation {
 }
 
 impl BlockHeaderDenunciation {
-    /// Rebuild full hash of SecuredHeader from given arguments
+    /// Rebuild full hash of SecuredHeader from given arguments.
+    ///
+    /// `sig_chain_id` selects the signed-hash layout: `None` reproduces the legacy
+    /// (chain-agnostic) layout, `Some(chain_id)` reproduces the chain-scoped layout
+    /// used post MIP-0002 `Execution` v2 activation. It must match the layout used to
+    /// sign the block header.
     fn compute_hash_for_sig_verif(
         public_key: &PublicKey,
         slot: &Slot,
         content_hash: &Hash,
+        sig_chain_id: Option<u64>,
     ) -> Hash {
         let mut hash_data = Vec::new();
         // Public key
         hash_data.extend(public_key.to_bytes());
-        // Ser slot
-        let de_data = BlockHeaderDenunciationData::new(*slot);
+        // Ser slot (+ optional chain id)
+        let de_data = BlockHeaderDenunciationData::new(*slot, sig_chain_id);
         hash_data.extend(de_data.to_bytes());
         // Add content hash
         hash_data.extend(content_hash.to_bytes());
@@ -195,9 +207,13 @@ impl Denunciation {
     }
 
     /// Check if it is a Denunciation for this endorsement
+    ///
+    /// `sig_chain_id` selects the signed-hash layout used to reconstruct the
+    /// signature hash (see [`EndorsementDenunciation::compute_hash_for_sig_verif`]).
     pub fn is_also_for_endorsement(
         &self,
         s_endorsement: &SecureShareEndorsement,
+        sig_chain_id: Option<u64>,
     ) -> Result<bool, DenunciationError> {
         match self {
             Denunciation::BlockHeader(_) => Ok(false),
@@ -209,6 +225,7 @@ impl Denunciation {
                     &endo_de.slot,
                     &endo_de.index,
                     content_hash,
+                    sig_chain_id,
                 );
 
                 Ok(endo_de.slot == s_endorsement.content.slot
@@ -225,9 +242,13 @@ impl Denunciation {
     }
 
     /// Check if it is a Denunciation for this block header
+    ///
+    /// `sig_chain_id` selects the signed-hash layout used to reconstruct the
+    /// signature hash (see [`BlockHeaderDenunciation::compute_hash_for_sig_verif`]).
     pub fn is_also_for_block_header(
         &self,
         s_block_header: &SecuredHeader,
+        sig_chain_id: Option<u64>,
     ) -> Result<bool, DenunciationError> {
         match self {
             Denunciation::Endorsement(_) => Ok(false),
@@ -238,6 +259,7 @@ impl Denunciation {
                     &endo_bh.public_key,
                     &endo_bh.slot,
                     content_hash,
+                    sig_chain_id,
                 );
 
                 Ok(endo_bh.slot == s_block_header.content.slot
@@ -252,9 +274,25 @@ impl Denunciation {
         }
     }
 
-    /// Check if Denunciation is valid
-    /// Should be used if received from the network (prevent against invalid or attacker crafted denunciation)
+    /// Check if Denunciation is valid using the legacy (chain-agnostic) signed-hash
+    /// layout. Kept for backward compatibility with tests / pre-activation data.
+    /// Production code should use [`Self::is_valid_with_chain`] with the
+    /// `sig_chain_id` derived from the denounced slot's network-agreed active
+    /// version.
     pub fn is_valid(&self) -> bool {
+        self.is_valid_with_chain(None)
+    }
+
+    /// Check if Denunciation is valid, reconstructing signatures with the
+    /// chain-scoped signed-hash layout selected by `sig_chain_id` (`None` = legacy,
+    /// `Some(chain_id)` = chain-scoped).
+    ///
+    /// This is the chain-aware variant that prevents cross-chain replay of
+    /// endorsements / block headers as denunciations (F90 / PDF #11): when
+    /// `sig_chain_id` is `Some(local_chain_id)`, a denunciation combining two
+    /// messages signed on different chains no longer verifies, because the second
+    /// message's signature was produced over a hash folding in a different chain id.
+    pub fn is_valid_with_chain(&self, sig_chain_id: Option<u64>) -> bool {
         let (signature_1, signature_2, hash_1, hash_2, public_key) = match self {
             Denunciation::Endorsement(de) => {
                 let hash_1 = EndorsementDenunciation::compute_hash_for_sig_verif(
@@ -262,12 +300,14 @@ impl Denunciation {
                     &de.slot,
                     &de.index,
                     &de.hash_1,
+                    sig_chain_id,
                 );
                 let hash_2 = EndorsementDenunciation::compute_hash_for_sig_verif(
                     &de.public_key,
                     &de.slot,
                     &de.index,
                     &de.hash_2,
+                    sig_chain_id,
                 );
 
                 (
@@ -283,11 +323,13 @@ impl Denunciation {
                     &de.public_key,
                     &de.slot,
                     &de.hash_1,
+                    sig_chain_id,
                 );
                 let hash_2 = BlockHeaderDenunciation::compute_hash_for_sig_verif(
                     &de.public_key,
                     &de.slot,
                     &de.hash_2,
+                    sig_chain_id,
                 );
 
                 (
@@ -342,12 +384,38 @@ impl Denunciation {
     }
 }
 
-/// Create a new Denunciation from 2 SecureShareEndorsement
+/// Create a new Denunciation from 2 SecureShareEndorsement (legacy, chain-agnostic
+/// signed-hash layout). Kept for backward compatibility with tests and
+/// pre-activation data. Production code should use the chain-aware tuple variant.
 impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciation {
     type Error = DenunciationError;
 
     fn try_from(
         (s_e1, s_e2): (&SecureShareEndorsement, &SecureShareEndorsement),
+    ) -> Result<Self, Self::Error> {
+        Denunciation::try_from((s_e1, s_e2, None))
+    }
+}
+
+/// Create a new Denunciation from 2 SecureShareEndorsement using the chain-scoped
+/// signed-hash layout selected by `sig_chain_id` (`None` = legacy, `Some(chain_id)`
+/// = chain-scoped). The same `sig_chain_id` must be used to sign the endorsements
+/// and to verify the resulting denunciation.
+impl
+    TryFrom<(
+        &SecureShareEndorsement,
+        &SecureShareEndorsement,
+        Option<u64>,
+    )> for Denunciation
+{
+    type Error = DenunciationError;
+
+    fn try_from(
+        (s_e1, s_e2, sig_chain_id): (
+            &SecureShareEndorsement,
+            &SecureShareEndorsement,
+            Option<u64>,
+        ),
     ) -> Result<Self, Self::Error> {
         // In order to create a Denunciation, there should be the same
         // slot, index & public key
@@ -369,6 +437,7 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
             &s_e1.content.slot,
             &s_e1.content.index,
             s_e1_hash_content,
+            sig_chain_id,
         );
         // Check sig of s_e2 but with s_e1.public_key, s_e1.slot, s_e1.index
         let s_e2_hash_content = s_e2.id.get_hash();
@@ -377,6 +446,7 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
             &s_e1.content.slot,
             &s_e1.content.index,
             s_e2_hash_content,
+            sig_chain_id,
         );
 
         s_e1.content_creator_pub_key
@@ -396,11 +466,26 @@ impl TryFrom<(&SecureShareEndorsement, &SecureShareEndorsement)> for Denunciatio
     }
 }
 
-/// Create a new Denunciation from 2 SecureHeader
+/// Create a new Denunciation from 2 SecureHeader (legacy, chain-agnostic signed-hash
+/// layout). Kept for backward compatibility with tests and pre-activation data.
+/// Production code should use the chain-aware tuple variant.
 impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
     type Error = DenunciationError;
 
     fn try_from((s_bh1, s_bh2): (&SecuredHeader, &SecuredHeader)) -> Result<Self, Self::Error> {
+        Denunciation::try_from((s_bh1, s_bh2, None))
+    }
+}
+
+/// Create a new Denunciation from 2 SecureHeader using the chain-scoped signed-hash
+/// layout selected by `sig_chain_id` (`None` = legacy, `Some(chain_id)` =
+/// chain-scoped).
+impl TryFrom<(&SecuredHeader, &SecuredHeader, Option<u64>)> for Denunciation {
+    type Error = DenunciationError;
+
+    fn try_from(
+        (s_bh1, s_bh2, sig_chain_id): (&SecuredHeader, &SecuredHeader, Option<u64>),
+    ) -> Result<Self, Self::Error> {
         // Cannot use the same block header twice
         // In order to create a Denunciation, there should be the same slot & public key
         if s_bh1.content.slot != s_bh2.content.slot
@@ -419,12 +504,14 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
             &s_bh1.content_creator_pub_key,
             &s_bh1.content.slot,
             s_bh1_hash_content,
+            sig_chain_id,
         );
         let s_bh2_hash_content = s_bh2.id.get_hash();
         let s_bh2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
             &s_bh1.content_creator_pub_key,
             &s_bh1.content.slot,
             s_bh2_hash_content,
+            sig_chain_id,
         );
 
         s_bh1
@@ -1116,12 +1203,31 @@ impl From<&SecuredHeader> for DenunciationPrecursor {
     }
 }
 
-/// Create a new Denunciation from 2 SecureHeader
+/// Create a new Denunciation from 2 DenunciationPrecursor (legacy, chain-agnostic
+/// signed-hash layout). Kept for backward compatibility. Production code should use
+/// the chain-aware tuple variant.
 impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation {
     type Error = DenunciationError;
 
     fn try_from(
         (de_p_1, de_p_2): (&DenunciationPrecursor, &DenunciationPrecursor),
+    ) -> Result<Self, Self::Error> {
+        Denunciation::try_from((de_p_1, de_p_2, None))
+    }
+}
+
+/// Create a new Denunciation from 2 DenunciationPrecursor using the chain-scoped
+/// signed-hash layout selected by `sig_chain_id` (`None` = legacy, `Some(chain_id)`
+/// = chain-scoped).
+impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor, Option<u64>)> for Denunciation {
+    type Error = DenunciationError;
+
+    fn try_from(
+        (de_p_1, de_p_2, sig_chain_id): (
+            &DenunciationPrecursor,
+            &DenunciationPrecursor,
+            Option<u64>,
+        ),
     ) -> Result<Self, Self::Error> {
         match (de_p_1, de_p_2) {
             (
@@ -1143,11 +1249,13 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
                     &de_p_blkh_1.public_key,
                     &de_p_blkh_1.slot,
                     &de_p_blkh_1.hash,
+                    sig_chain_id,
                 );
                 let de_p_blkh_2_hash = BlockHeaderDenunciation::compute_hash_for_sig_verif(
                     &de_p_blkh_2.public_key,
                     &de_p_blkh_2.slot,
                     &de_p_blkh_2.hash,
+                    sig_chain_id,
                 );
 
                 de_p_blkh_1
@@ -1187,12 +1295,14 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
                     &de_p_endo_1.slot,
                     &de_p_endo_1.index,
                     &de_p_endo_1.hash,
+                    sig_chain_id,
                 );
                 let de_p_endo_2_hash = EndorsementDenunciation::compute_hash_for_sig_verif(
                     &de_p_endo_2.public_key,
                     &de_p_endo_2.slot,
                     &de_p_endo_2.index,
                     &de_p_endo_2.hash,
+                    sig_chain_id,
                 );
 
                 de_p_endo_1
@@ -1230,7 +1340,7 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
 impl Denunciation {
     /// Used under testing conditions to validate an instance of Self
     pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if !self.is_valid() {
+        if !self.is_valid_with_chain(Some(*crate::config::CHAINID)) {
             return Err(format!("Denunciation is invalid: {:?}", self).into());
         }
         Ok(())
@@ -1243,6 +1353,7 @@ impl Denunciation {
 mod tests {
     use super::*;
 
+    use massa_hash::Hash;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
 
@@ -1260,10 +1371,12 @@ mod tests {
         // Create an endorsement denunciation and check if it is valid
         let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _s_endorsement_3) =
             gen_endorsements_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
+        let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))
+            .try_into()
+            .unwrap();
 
         assert!(denunciation.is_for_endorsement());
-        assert!(denunciation.is_valid());
+        assert!(denunciation.is_valid_with_chain(Some(*CHAINID)));
     }
 
     #[test]
@@ -1282,10 +1395,12 @@ mod tests {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
-        let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_4));
+        let denunciation =
+            Denunciation::try_from((&s_endorsement_1, &s_endorsement_4, Some(*CHAINID)));
 
         assert!(matches!(
             denunciation,
@@ -1293,7 +1408,8 @@ mod tests {
         ));
 
         // Try to create a denunciation from only 1 endorsement
-        let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_1));
+        let denunciation =
+            Denunciation::try_from((&s_endorsement_1, &s_endorsement_1, Some(*CHAINID)));
 
         assert!(matches!(
             denunciation,
@@ -1306,10 +1422,12 @@ mod tests {
         let (slot, keypair, s_endorsement_1, s_endorsement_2, s_endorsement_3) =
             gen_endorsements_for_denunciation(None, None);
 
-        let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
+        let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))
+            .try_into()
+            .unwrap();
 
         assert!(denunciation.is_for_endorsement());
-        assert!(denunciation.is_valid());
+        assert!(denunciation.is_valid_with_chain(Some(*CHAINID)));
 
         // Try to create a denunciation from 2 endorsements @ != index
         let endorsement_4 = Endorsement {
@@ -1322,16 +1440,17 @@ mod tests {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
         assert!(!denunciation
-            .is_also_for_endorsement(&s_endorsement_4)
+            .is_also_for_endorsement(&s_endorsement_4, Some(*CHAINID))
             .unwrap());
         assert!(denunciation
-            .is_also_for_endorsement(&s_endorsement_3)
+            .is_also_for_endorsement(&s_endorsement_3, Some(*CHAINID))
             .unwrap());
-        assert!(denunciation.is_valid());
+        assert!(denunciation.is_valid_with_chain(Some(*CHAINID)));
     }
 
     #[test]
@@ -1339,12 +1458,14 @@ mod tests {
         // Create an block header denunciation and check if it is valid
         let (_slot, _keypair, s_block_header_1, s_block_header_2, s_block_header_3) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+            .try_into()
+            .unwrap();
 
         assert!(denunciation.is_for_block_header());
-        assert!(denunciation.is_valid());
+        assert!(denunciation.is_valid_with_chain(Some(*CHAINID)));
         assert!(denunciation
-            .is_also_for_block_header(&s_block_header_3)
+            .is_also_for_block_header(&s_block_header_3, Some(*CHAINID))
             .unwrap());
     }
 
@@ -1365,6 +1486,7 @@ mod tests {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -1379,6 +1501,7 @@ mod tests {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -1394,7 +1517,7 @@ mod tests {
         });
 
         // hash_1 == hash_2 -> this is invalid
-        assert!(!de_forged_1.is_valid());
+        assert!(!de_forged_1.is_valid_with_chain(Some(*CHAINID)));
 
         // from an attacker - building manually a Denunciation object
         let de_forged_2 = Denunciation::Endorsement(EndorsementDenunciation {
@@ -1409,7 +1532,7 @@ mod tests {
 
         // An attacker uses an old s_endorsement_1 to forge a Denunciation object @ slot_2
         // This has to be detected if Denunciation are send via the network
-        assert!(!de_forged_2.is_valid());
+        assert!(!de_forged_2.is_valid_with_chain(Some(*CHAINID)));
     }
 
     // SER / DER
@@ -1418,7 +1541,8 @@ mod tests {
         let (_, _, s_endorsement_1, s_endorsement_2, _) =
             gen_endorsements_for_denunciation(None, None);
 
-        let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+        let denunciation =
+            Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
 
         let mut buffer = Vec::new();
         let de_ser = EndorsementDenunciationSerializer::new();
@@ -1444,7 +1568,9 @@ mod tests {
     fn test_block_header_denunciation_ser_der() {
         let (_, _, s_block_header_1, s_block_header_2, _) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+            .try_into()
+            .unwrap();
 
         let mut buffer = Vec::new();
         let de_ser = BlockHeaderDenunciationSerializer::new();
@@ -1469,7 +1595,9 @@ mod tests {
     fn test_denunciation_ser_der() {
         let (_, _, s_block_header_1, s_block_header_2, _) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+            .try_into()
+            .unwrap();
 
         let mut buffer = Vec::new();
         let de_ser = DenunciationSerializer::new();
@@ -1484,7 +1612,8 @@ mod tests {
 
         let (_, _, s_endorsement_1, s_endorsement_2, _) =
             gen_endorsements_for_denunciation(None, None);
-        let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+        let denunciation =
+            Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
         buffer.clear();
 
         de_ser.serialize(&denunciation, &mut buffer).unwrap();
@@ -1497,21 +1626,24 @@ mod tests {
     fn test_denunciation_precursor() {
         let (_, _, s_block_header_1, s_block_header_2, _) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+            .try_into()
+            .unwrap();
 
         let de_p_1 = DenunciationPrecursor::from(&s_block_header_1);
         let de_p_2 = DenunciationPrecursor::from(&s_block_header_2);
-        let denunciation_2: Denunciation = (&de_p_1, &de_p_2).try_into().unwrap();
+        let denunciation_2: Denunciation = (&de_p_1, &de_p_2, Some(*CHAINID)).try_into().unwrap();
 
         assert_eq!(denunciation, denunciation_2);
 
         let (_, _, s_endorsement_1, s_endorsement_2, _) =
             gen_endorsements_for_denunciation(None, None);
-        let denunciation_3 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+        let denunciation_3 =
+            Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
 
         let de_p_3 = DenunciationPrecursor::from(&s_endorsement_1);
         let de_p_4 = DenunciationPrecursor::from(&s_endorsement_2);
-        let denunciation_4: Denunciation = (&de_p_3, &de_p_4).try_into().unwrap();
+        let denunciation_4: Denunciation = (&de_p_3, &de_p_4, Some(*CHAINID)).try_into().unwrap();
 
         assert_eq!(denunciation_3, denunciation_4);
     }
@@ -1520,13 +1652,15 @@ mod tests {
     fn test_denunciation_index_ser_der() {
         let (_, _, s_block_header_1, s_block_header_2, _) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation_1: Denunciation =
-            (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+        let denunciation_1: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+            .try_into()
+            .unwrap();
         let denunciation_index_1 = DenunciationIndex::from(&denunciation_1);
 
         let (_, _, s_endorsement_1, s_endorsement_2, _) =
             gen_endorsements_for_denunciation(None, None);
-        let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+        let denunciation_2 =
+            Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
         let denunciation_index_2 = DenunciationIndex::from(&denunciation_2);
 
         let mut buffer = Vec::new();
@@ -1550,5 +1684,144 @@ mod tests {
 
         assert!(rem.is_empty());
         assert_eq!(denunciation_index_2, de_idx_der_res);
+    }
+
+    /// F90 / PDF #11: cross-chain replay of endorsements as denunciations.
+    ///
+    /// Validators commonly run the same key on several chains (e.g. MAINNET + LABNET).
+    /// Pre-fix, the endorsement signed hash was chain-agnostic, so two legitimate
+    /// same-(slot, index) endorsements from two different chains could be combined
+    /// into a denunciation on either chain and slash the validator. Folding
+    /// `chain_id` into the signed hash (gated on MIP-0002 `Execution` v2) makes the
+    /// cross-chain combination fail to verify, while same-chain denunciations and
+    /// legacy (pre-activation) denunciations still work.
+    fn make_endorsement(
+        keypair: &KeyPair,
+        slot: Slot,
+        endorsed_block: &str,
+        chain_id: u64,
+        sig_chain_id: Option<u64>,
+    ) -> SecureShareEndorsement {
+        Endorsement::new_verifiable(
+            Endorsement {
+                slot,
+                index: 0,
+                endorsed_block: BlockId::generate_from_hash(Hash::compute_from(
+                    endorsed_block.as_bytes(),
+                )),
+            },
+            EndorsementSerializer::new(),
+            keypair,
+            chain_id,
+            sig_chain_id,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_endorsement_denunciation_cross_chain_rejected() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let slot = Slot::new(3, 7);
+        let chain_a: u64 = 77658377; // MAINNET
+        let chain_b: u64 = 77658376; // LABNET
+
+        // Two same-chain endorsements (signed with chain_a, chain-scoped layout).
+        let e_a1 = make_endorsement(&keypair, slot, "blk_a1", chain_a, Some(chain_a));
+        let e_a2 = make_endorsement(&keypair, slot, "blk_a2", chain_a, Some(chain_a));
+
+        // Same-chain denunciation still verifies with the chain-scoped layout.
+        let de_same =
+            Denunciation::try_from((&e_a1, &e_a2, Some(chain_a))).expect("same-chain denunciation");
+        assert!(de_same.is_valid_with_chain(Some(chain_a)));
+
+        // A second endorsement produced by the same key on a different chain.
+        let e_b2 = make_endorsement(&keypair, slot, "blk_b2", chain_b, Some(chain_b));
+
+        // Cross-chain combination no longer verifies on chain A: the second
+        // signature was produced over a hash folding in chain_b, not chain_a.
+        let de_cross = Denunciation::try_from((&e_a1, &e_b2, Some(chain_a)));
+        assert!(de_cross.is_err(), "cross-chain denunciation must not build");
+        // And it does not verify either.
+        assert!(!Denunciation::try_from((&e_a1, &e_b2, None))
+            .map(|d| d.is_valid_with_chain(Some(chain_a)))
+            .unwrap_or(false));
+    }
+
+    /// Migration / no-partition check across the activation boundary.
+    ///
+    /// Pre-activation endorsements are signed with the legacy (chain-agnostic)
+    /// layout (`sig_chain_id = None`); post-activation with the chain-scoped layout
+    /// (`sig_chain_id = Some(chain_id)`). A legacy denunciation must keep verifying
+    /// with the legacy layout, and a chain-scoped denunciation must verify with the
+    /// chain-scoped layout — so nodes flip layouts together at the deterministic
+    /// activation slot without partitioning on signature validity.
+    #[test]
+    fn test_endorsement_denunciation_migration_no_partition() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let slot = Slot::new(3, 7);
+        let chain: u64 = *CHAINID;
+
+        // Legacy (pre-activation) endorsements and denunciation.
+        let e_l1 = make_endorsement(&keypair, slot, "blk_l1", chain, None);
+        let e_l2 = make_endorsement(&keypair, slot, "blk_l2", chain, None);
+        let de_legacy = Denunciation::try_from((&e_l1, &e_l2, None)).expect("legacy denunciation");
+        assert!(de_legacy.is_valid_with_chain(None));
+        // A legacy denunciation does NOT verify under the chain-scoped layout: the
+        // signatures were produced over a chain-agnostic hash. This is expected and
+        // is why the layout is gated on the denounced slot's network version.
+        assert!(!de_legacy.is_valid_with_chain(Some(chain)));
+
+        // Post-activation endorsements and denunciation.
+        let e_n1 = make_endorsement(&keypair, slot, "blk_n1", chain, Some(chain));
+        let e_n2 = make_endorsement(&keypair, slot, "blk_n2", chain, Some(chain));
+        let de_scoped =
+            Denunciation::try_from((&e_n1, &e_n2, Some(chain))).expect("scoped denunciation");
+        assert!(de_scoped.is_valid_with_chain(Some(chain)));
+        assert!(!de_scoped.is_valid_with_chain(None));
+    }
+
+    fn make_header(
+        keypair: &KeyPair,
+        slot: Slot,
+        merkle: &str,
+        chain_id: u64,
+        sig_chain_id: Option<u64>,
+    ) -> crate::block_header::SecuredHeader {
+        crate::block_header::BlockHeader::new_verifiable(
+            crate::block_header::BlockHeader {
+                current_version: 0,
+                announced_version: None,
+                slot,
+                parents: Vec::new(),
+                operation_merkle_root: Hash::compute_from(merkle.as_bytes()),
+                endorsements: Vec::new(),
+                denunciations: Vec::new(),
+            },
+            crate::block_header::BlockHeaderSerializer::new(),
+            keypair,
+            chain_id,
+            sig_chain_id,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_block_header_denunciation_cross_chain_rejected() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let slot = Slot::new(3, 7);
+        let chain_a: u64 = 77658377;
+        let chain_b: u64 = 77658376;
+
+        let h_a1 = make_header(&keypair, slot, "hdr_a1", chain_a, Some(chain_a));
+        let h_a2 = make_header(&keypair, slot, "hdr_a2", chain_a, Some(chain_a));
+        let de_same =
+            Denunciation::try_from((&h_a1, &h_a2, Some(chain_a))).expect("same-chain header de");
+        assert!(de_same.is_valid_with_chain(Some(chain_a)));
+
+        let h_b2 = make_header(&keypair, slot, "hdr_b2", chain_b, Some(chain_b));
+        assert!(
+            Denunciation::try_from((&h_a1, &h_b2, Some(chain_a))).is_err(),
+            "cross-chain header denunciation must not build"
+        );
     }
 }
