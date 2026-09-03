@@ -217,8 +217,28 @@ impl AsyncMessage {
     }
 
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
+    ///
+    /// Uses `fee / max(max_gas, 1)`. Prefer [`Self::compute_priority_id`] when ranking must
+    /// match the gas actually charged at execution (`max_gas + async_msg_cst_gas_cost`) to avoid any pricing issue.
+    /// The pricing mismatch between the two functions is real, but small in practice: `send_message` rejects `max_gas` below
+    /// `gas_costs.max_instance_cost` (2.1M gas), so the skew `(max_gas + cst) / max_gas` is at
+    /// most `1 + 1M/2.1M ≈ 1.48×`. Emitting costs 40M gas of ABI per message (~107 per block
+    /// at most, by taking the whole block), so the priority advantage tops out around 48% for a
+    /// sender paying full blocks.
     pub fn compute_id(&self) -> AsyncMessageId {
-        let denom = if self.max_gas > 0 { self.max_gas } else { 1 };
+        self.compute_priority_id(0)
+    }
+
+    /// Priority key used for pool ordering / batch selection.
+    ///
+    /// Ranks by `fee / max(max_gas + extra_gas_cost, 1)`, then `emission_slot`, then
+    /// `emission_index`. Pass the fixed per-message gas surcharge as `extra_gas_cost` so
+    /// priority matches the budget consumed in `take_batch_to_execute`.
+    pub fn compute_priority_id(&self, extra_gas_cost: u64) -> AsyncMessageId {
+        let denom = match self.max_gas.saturating_add(extra_gas_cost) {
+            0 => 1,
+            d => d,
+        };
         (
             std::cmp::Reverse(Ratio::new(self.fee.to_raw(), denom)),
             self.emission_slot,
