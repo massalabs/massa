@@ -231,6 +231,20 @@
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -244,6 +258,8 @@
 };
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning::consensus_signature::sig_chain_id_for_slot;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{sync::Arc, thread, time::Instant};
@@ -255,6 +271,7 @@
     wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
     channels: FactoryChannels,
     factory_receiver: MassaReceiver&lt;()&gt;,
+    mip_store: MipStore,
     half_t0: MassaTime,
     endorsement_serializer: EndorsementSerializer,
 }
@@ -267,6 +284,7 @@
         wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
         channels: FactoryChannels,
         factory_receiver: MassaReceiver&lt;()&gt;,
+        mip_store: MipStore,
     ) -&gt; thread::JoinHandle&lt;()&gt; {
         thread::Builder::new()
             .name(<span class="string">"endorsement-factory"</span>.into())
@@ -280,6 +298,7 @@
                     wallet,
                     channels,
                     factory_receiver,
+                    mip_store,
                     endorsement_serializer: EndorsementSerializer::new(),
                 };
                 this.run();
@@ -410,6 +429,14 @@
         <span class="comment">// produce endorsements
         </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements: Vec&lt;SecureShareEndorsement&gt; =
             Vec::with_capacity(producers_indices.len());
+        <span class="kw">let </span>slot_ts = get_block_slot_timestamp(
+            <span class="self">self</span>.cfg.thread_count,
+            <span class="self">self</span>.cfg.t0,
+            <span class="self">self</span>.cfg.genesis_timestamp,
+            slot,
+        )
+        .expect(<span class="string">"could not get block slot timestamp"</span>);
+        <span class="kw">let </span>sig_chain_id = sig_chain_id_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>.mip_store, <span class="self">self</span>.cfg.chain_id, slot_ts);
         <span class="kw">for </span>(keypair, index) <span class="kw">in </span>producers_indices {
             <span class="kw">let </span>endorsement = Endorsement::new_verifiable(
                 Endorsement {
@@ -420,6 +447,7 @@
                 <span class="self">self</span>.endorsement_serializer.clone(),
                 <span class="kw-2">&amp;</span>keypair,
                 <span class="self">self</span>.cfg.chain_id,
+                sig_chain_id,
             )
             .expect(<span class="string">"could not create endorsement"</span>);
 

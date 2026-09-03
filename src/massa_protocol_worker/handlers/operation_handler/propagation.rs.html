@@ -1208,7 +1208,7 @@
             },
             expire_period: index,
         };
-        Operation::new_verifiable(content, OperationSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="number">0</span>).unwrap()
+        Operation::new_verifiable(content, OperationSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="number">0</span>, <span class="prelude-val">None</span>).unwrap()
     }
 
     <span class="doccomment">/// A failed announcement must not mark the peer as knowing the operations, and the
