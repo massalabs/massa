@@ -100,6 +100,10 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::AsyncPool;
 <span class="kw">use </span>massa_db_exports::{DBBatch, ShareableMassaDBController};
 <span class="kw">use </span>massa_deferred_calls::DeferredCallRegistry;
@@ -107,7 +111,7 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerController;
 <span class="kw">use </span>massa_models::{operation::OperationId, slot::Slot};
-<span class="kw">use </span>massa_pos_exports::PoSFinalState;
+<span class="kw">use </span>massa_pos_exports::{PoSFinalState, PosError};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 
 <span class="kw">use crate</span>::{FinalStateError, StateChanges};
@@ -168,6 +172,10 @@
 
     <span class="doccomment">/// Get pos state mut
     </span><span class="kw">fn </span>get_pos_state_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>PoSFinalState;
+
+    <span class="doccomment">/// Load initial deferred credits from file, using the ledger to skip credits
+    /// that could not be applied at execution time.
+    </span><span class="kw">fn </span>load_initial_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch) -&gt; <span class="prelude-ty">Result</span>&lt;(), PosError&gt;;
 
     <span class="doccomment">/// check if an operation is in the executed ops
     </span><span class="kw">fn </span>executed_ops_contains(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; bool;
