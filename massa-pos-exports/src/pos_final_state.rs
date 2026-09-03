@@ -11,7 +11,9 @@ use massa_db_exports::{
     DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
 };
 use massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
+use massa_ledger_exports::LedgerController;
 use massa_models::amount::Amount;
+use massa_models::config::LEDGER_ENTRY_BASE_COST;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{
     buf_to_array_ctr, DeserializeError, Deserializer, Serializer, U64VarIntSerializer,
@@ -21,7 +23,7 @@ use std::collections::VecDeque;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::{collections::BTreeMap, path::PathBuf};
-use tracing::debug;
+use tracing::{debug, warn};
 
 // General cycle info idents
 const COMPLETE_IDENT: u8 = 0u8;
@@ -206,7 +208,16 @@ impl PoSFinalState {
     }
 
     /// Try load initial deferred credits from file
-    pub fn load_initial_deferred_credits(&mut self, batch: &mut DBBatch) -> Result<(), PosError> {
+    ///
+    /// Credits that would fail at execution time (same rules as `transfer_coins` when
+    /// crediting with `from_addr = None`) are skipped:
+    /// * non-existing SC address
+    /// * non-existing user address with `amount` below the ledger entry base cost
+    pub fn load_initial_deferred_credits(
+        &mut self,
+        batch: &mut DBBatch,
+        ledger: &dyn LedgerController,
+    ) -> Result<(), PosError> {
         let Some(initial_deferred_credits_path) = &self.config.initial_deferred_credits_path else {
             return Ok(());
         };
@@ -237,7 +248,23 @@ impl PoSFinalState {
             })?;
 
         for (address, deferred_credits) in initial_deferred_credits {
+            let address_is_sc = matches!(address, Address::SC(..));
+            let address_exists = ledger.entry_exists(&address);
             for AddressInitialDeferredCredits { slot, amount } in deferred_credits {
+                if address_is_sc {
+                    warn!(
+                        "deferred credits for address {} with amount {} will not execute because it is a SC address",
+                        address, amount
+                    );
+                } else if !address_exists && amount < LEDGER_ENTRY_BASE_COST {
+                    warn!(
+                        "deferred credits for address {} with amount {} will likely not execute because the address does not exist in the ledger and the amount is below the ledger entry base cost",
+                        address, amount
+                    );
+                }
+
+                // Note that we still put the deferred credits in the database even if they are likely to fail at execution time.
+                // It's for instance possible the address is created before the execution slot of the deferred credits.
                 self.put_deferred_credits_entry(&slot, &address, &amount, batch);
             }
         }
@@ -1749,8 +1776,10 @@ mod tests {
         };
         let mut batch = DBBatch::new();
         // load initial deferred credits
+        let mut ledger = massa_ledger_exports::MockLedgerController::new();
+        ledger.expect_entry_exists().returning(|_| false);
         pos_state
-            .load_initial_deferred_credits(&mut batch)
+            .load_initial_deferred_credits(&mut batch, &ledger)
             .expect("error while loading initial deferred credits");
         db.write().write_batch(batch, DBBatch::new(), None);
         let deferred_credits = pos_state.get_deferred_credits().credits;

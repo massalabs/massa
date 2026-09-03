@@ -3602,6 +3602,7 @@ dependencies = [
  "massa_db_exports",
  "massa_db_worker",
  "massa_hash",
+ "massa_ledger_exports",
  "massa_models",
  "massa_serialization",
  "massa_signature",
