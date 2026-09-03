@@ -102,7 +102,6 @@ impl DeferredCallRegistry {
 
         to_return.slot_base_fee = self.get_slot_base_fee(&slot);
         to_return.effective_slot_gas = self.get_slot_gas(&slot);
-        to_return.effective_total_gas = self.get_total_gas();
 
         to_return
     }
@@ -564,8 +563,11 @@ pub type DeferredRegistryCallChange = SetOrDelete<DeferredCall>;
 pub type DeferredRegistryGasChange<V> = SetOrKeep<V>;
 pub type DeferredRegistryBaseFeeChange = SetOrKeep<Amount>;
 
-/// A structure that lists slot calls for a given slot,
-/// as well as global gas usage statistics.
+/// Per-slot deferred-call view (calls, slot gas, base fee).
+///
+/// Registry-wide booked gas is not stored here — use
+/// DeferredCallRegistry::get_total_gas /
+/// SpeculativeDeferredCallRegistry::get_effective_total_gas.
 #[derive(Debug, Clone)]
 pub struct DeferredSlotCalls {
     pub slot: Slot,
@@ -576,10 +578,6 @@ pub struct DeferredSlotCalls {
     pub effective_slot_gas: u64,
 
     pub slot_base_fee: Amount,
-
-    // total gas booked + gas_alloc_cost
-    // effective_total_gas doesn't include gas of cancelled calls
-    pub effective_total_gas: u128,
 }
 
 impl DeferredSlotCalls {
@@ -589,10 +587,14 @@ impl DeferredSlotCalls {
             slot_calls: BTreeMap::new(),
             effective_slot_gas: 0,
             slot_base_fee: Amount::zero(),
-            effective_total_gas: 0,
         }
     }
 
+    /// Apply slot-local registry changes onto this in-memory view.
+    ///
+    /// Only fields for [Self::slot] are applied. Registry-wide ffective_total_gas
+    /// is intentionally ignored; callers that need the global total must read it from
+    /// the registry / speculative layer (F33: avoid a second, desyncable copy here).
     pub fn apply_changes(&mut self, changes: &DeferredCallRegistryChanges) {
         let Some(slot_changes) = changes.slots_change.get(&self.slot) else {
             return;
@@ -615,9 +617,49 @@ impl DeferredSlotCalls {
             DeferredRegistryGasChange::Set(v) => self.slot_base_fee = v,
             DeferredRegistryGasChange::Keep => {}
         }
-        match changes.effective_total_gas {
-            DeferredRegistryGasChange::Set(v) => self.effective_total_gas = v,
-            DeferredRegistryGasChange::Keep => {}
-        }
+    }
+}
+
+#[cfg(test)]
+mod deferred_slot_calls_tests {
+    use super::*;
+    use massa_models::amount::Amount;
+
+    /// A change set with only registry-wide total gas (and/or another slot) must not
+    /// disturb this slot's local fields.
+    #[test]
+    fn apply_changes_ignores_standalone_effective_total_gas() {
+        let slot = Slot::new(1, 0);
+        let other_slot = Slot::new(2, 0);
+
+        let mut view = DeferredSlotCalls::new(slot);
+        view.effective_slot_gas = 3;
+        view.slot_base_fee = Amount::from_raw(7);
+
+        let mut changes = DeferredCallRegistryChanges::default();
+        changes.set_effective_total_gas(42);
+        changes.set_effective_slot_gas(other_slot, 99);
+
+        view.apply_changes(&changes);
+
+        assert_eq!(view.effective_slot_gas, 3);
+        assert_eq!(view.slot_base_fee, Amount::from_raw(7));
+        assert!(view.slot_calls.is_empty());
+    }
+
+    #[test]
+    fn apply_changes_applies_slot_local_fields() {
+        let slot = Slot::new(1, 0);
+        let mut view = DeferredSlotCalls::new(slot);
+
+        let mut changes = DeferredCallRegistryChanges::default();
+        changes.set_effective_slot_gas(slot, 55);
+        changes.set_slot_base_fee(slot, Amount::from_raw(9));
+        changes.set_effective_total_gas(100); // global: ignored on this view
+
+        view.apply_changes(&changes);
+
+        assert_eq!(view.effective_slot_gas, 55);
+        assert_eq!(view.slot_base_fee, Amount::from_raw(9));
     }
 }

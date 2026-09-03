@@ -147,7 +147,7 @@ impl SpeculativeDeferredCallRegistry {
     /// and returns the calls that need to be executed in the current slot
     pub fn advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
         // get the state of the current slot
-        let mut slot_calls = self.get_calls_by_slot(current_slot);
+        let slot_calls = self.get_calls_by_slot(current_slot);
         let total_booked_gas_before = self.get_effective_total_gas();
 
         // get the previous average booking rate per slot
@@ -214,8 +214,6 @@ impl SpeculativeDeferredCallRegistry {
             self.deferred_calls_changes
                 .set_effective_total_gas(total_gas_after);
         }
-
-        slot_calls.effective_total_gas = total_gas_after;
 
         // delete call in the current slot
         for id in slot_calls.slot_calls.keys() {

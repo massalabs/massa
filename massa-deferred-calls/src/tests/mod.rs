@@ -135,7 +135,7 @@ fn call_registry_get_slot_calls() {
     assert!(result.slot_calls.len() == 2);
     assert!(result.slot_calls.contains_key(&id));
     assert!(result.slot_calls.contains_key(&id2));
-    assert_eq!(result.effective_total_gas, 100);
+    assert_eq!(registry.get_total_gas(), 100);
     assert_eq!(result.slot_base_fee, Amount::from_raw(10000000));
     assert_eq!(result.effective_slot_gas, 100_000);
 }
