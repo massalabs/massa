@@ -1379,6 +1379,9 @@
 <a href="#1379" id="1379">1379</a>
 <a href="#1380" id="1380">1380</a>
 <a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -2373,7 +2376,8 @@
         bytecode::Bytecode,
         config::{
             DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-            MAX_ASYNC_POOL_LENGTH, MAX_BYTECODE_LENGTH, MAX_DATASTORE_KEY_LENGTH,
+            MAX_ASYNC_POOL_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
+            MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_BYTECODE_LENGTH, MAX_DATASTORE_KEY_LENGTH,
             MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
             MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
             MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
@@ -2464,6 +2468,8 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT <span class="kw">as </span>usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT <span class="kw">as </span>usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
             enable_metrics: <span class="bool-val">false</span>,
