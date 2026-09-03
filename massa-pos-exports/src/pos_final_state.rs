@@ -2833,4 +2833,116 @@ mod tests {
         assert!(cycle_info.complete);
         assert_eq!(cycle_info.rng_seed.len(), 4);
     }
+
+    #[test]
+    fn test_create_new_cycle_from_last_production_stats() {
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2, // slots_per_cycle = 4
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
+        };
+
+        let tempdir = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: 2,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let selector_controller = Box::new(MockSelectorController::new());
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
+        let cycle_info_deserializer = CycleHistoryDeserializer::new(
+            pos_config.cycle_history_length as u64,
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
+
+        let mut pos_state = PoSFinalState {
+            config: pos_config,
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: selector_controller,
+            initial_rolls: Default::default(),
+            initial_seeds,
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            deferred_credits_deserializer,
+            cycle_info_serializer: CycleHistorySerializer::new(),
+            cycle_info_deserializer,
+        };
+
+        // Snapshot cycle 0 with non-empty production stats and a partial seed.
+        let stats_addr =
+            Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa").unwrap();
+        let mut snapshot_stats = PreHashMap::default();
+        snapshot_stats.insert(
+            stats_addr,
+            ProductionStats {
+                block_success_count: 3,
+                block_failure_count: 1,
+            },
+        );
+        let snapshot = CycleInfo::new(
+            0,
+            false,
+            BTreeMap::default(),
+            bitvec![u8, Lsb0; 0, 0],
+            snapshot_stats,
+        );
+
+        // Filling the gap in the SAME incomplete cycle keeps the production stats.
+        let mut batch = DBBatch::new();
+        pos_state
+            .create_new_cycle_from_last(
+                &snapshot,
+                Slot::new(0, 1), // internal slot of cycle 0 (not first)
+                Slot::new(0, 1),
+                &mut batch,
+            )
+            .expect("same-cycle interpolation should succeed");
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(0, 1)));
+
+        let cycle_0 = pos_state.get_cycle_info(0).expect("cycle 0 should exist");
+        let kept = cycle_0
+            .production_stats
+            .get(&stats_addr)
+            .expect("continuing the same incomplete cycle must keep production stats");
+        assert_eq!(kept.block_success_count, 3);
+        assert_eq!(kept.block_failure_count, 1);
+
+        // F65: interpolating a new cycle must NOT inherit the snapshot's production stats.
+        let mut batch = DBBatch::new();
+        pos_state
+            .create_new_cycle_from_last(
+                &snapshot,
+                Slot::new(2, 0), // first slot of cycle 1
+                Slot::new(3, 1), // last slot of cycle 1
+                &mut batch,
+            )
+            .expect("new cycle interpolation should succeed");
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(3, 1)));
+
+        let cycle_1 = pos_state.get_cycle_info(1).expect("cycle 1 should exist");
+        assert!(
+            cycle_1.production_stats.is_empty(),
+            "interpolated new cycle must have empty production stats, got {:?}",
+            cycle_1.production_stats
+        );
+    }
 }
