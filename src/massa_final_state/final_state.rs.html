@@ -1382,8 +1382,6 @@
 <a href="#1382" id="1382">1382</a>
 <a href="#1383" id="1383">1383</a>
 <a href="#1384" id="1384">1384</a>
-<a href="#1385" id="1385">1385</a>
-<a href="#1386" id="1386">1386</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1628,13 +1626,6 @@
             .db
             .write()
             .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(end_slot));
-
-        <span class="kw">if </span>end_slot.is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count) {
-            <span class="comment">// Feed final_state_hash to the completed cycle
-            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(
-                end_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle),
-            )<span class="question-mark">?</span>;
-        }
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -2161,10 +2152,14 @@
                     e
                 ))
             })<span class="question-mark">?</span>;
-        <span class="comment">// Include the entire last_start_period as downtime: interpolation attaches at
-        // Slot(last_start_period, thread_count - 1) and block production resumes only
-        // at Slot(last_start_period + 1, 0).
-        </span><span class="kw">let </span>shutdown_end = Slot::new(last_start_period, config.thread_count.saturating_sub(<span class="number">1</span>));
+        <span class="kw">let </span>shutdown_end = Slot::new(last_start_period, <span class="number">0</span>)
+            .get_prev_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(<span class="macro">format!</span>(
+                    <span class="string">"Unable to compute prev slot from last start period: {:?}"</span>,
+                    e
+                ))
+            })<span class="question-mark">?</span>;
         <span class="macro">debug!</span>(
             <span class="string">"Checking if MIP store is consistent against shutdown period: {} - {}"</span>,
             shutdown_start, shutdown_end
@@ -2269,16 +2264,17 @@
 
     <span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span>slot = Slot::new(<span class="number">0</span>, <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>));
-        <span class="self">self</span>.db.write().reset_slot_and_history(slot);
+        <span class="self">self</span>.db.write().reset(slot);
         <span class="self">self</span>.ledger.reset();
         <span class="self">self</span>.async_pool.reset();
         <span class="self">self</span>.pos_state.reset();
         <span class="self">self</span>.executed_ops.reset();
         <span class="self">self</span>.executed_denunciations.reset();
         <span class="self">self</span>.mip_store.reset_db(<span class="self">self</span>.db.clone());
-        <span class="comment">// delete all remaining data from the database (execution trail hash, deferred calls, etc.)
-        </span><span class="self">self</span>.db.write().delete_prefix(<span class="string">""</span>, STATE_CF, <span class="prelude-val">None</span>);
-        <span class="self">self</span>.db.write().delete_prefix(<span class="string">""</span>, VERSIONING_CF, <span class="prelude-val">None</span>);
+        <span class="comment">// delete the execution trail hash
+        </span><span class="self">self</span>.db
+            .write()
+            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
     }
 
     <span class="kw">fn </span>get_ledger(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>LedgerController&gt; {

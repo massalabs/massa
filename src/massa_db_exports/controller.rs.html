@@ -115,7 +115,6 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{DBBatch, Key, MassaDBError, StreamBatch, Value};
 <span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
@@ -153,8 +152,7 @@
     </span><span class="kw">fn </span>delete_prefix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, prefix: <span class="kw-2">&amp;</span>str, handle_str: <span class="kw-2">&amp;</span>str, change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;);
 
     <span class="doccomment">/// Reset the database, and attach it to the given slot.
-    /// Note that this does not clear the db's content, only the change_id and the history.
-    </span><span class="kw">fn </span>reset_slot_and_history(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot);
+    </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot);
 
     <span class="doccomment">/// Exposes RocksDB's "get_cf" function
     </span><span class="kw">fn </span>get_cf(<span class="kw-2">&amp;</span><span class="self">self</span>, handle_cf: <span class="kw-2">&amp;</span>str, key: Key) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, MassaDBError&gt;;
