@@ -888,6 +888,14 @@ impl FinalStateController for FinalState {
         &mut self.pos_state
     }
 
+    fn load_initial_deferred_credits(
+        &mut self,
+        batch: &mut DBBatch,
+    ) -> Result<(), massa_pos_exports::PosError> {
+        self.pos_state
+            .load_initial_deferred_credits(batch, self.ledger.as_ref())
+    }
+
     fn executed_ops_contains(&self, op_id: &OperationId) -> bool {
         self.executed_ops.contains(op_id)
     }

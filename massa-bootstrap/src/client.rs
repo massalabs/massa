@@ -572,7 +572,6 @@ pub fn get_state(
 
             // load initial deferred credits
             final_state_guard
-                .get_pos_state_mut()
                 .load_initial_deferred_credits(&mut batch)
                 .map_err(|err| {
                     BootstrapError::GeneralError(format!(
