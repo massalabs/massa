@@ -97,7 +97,10 @@ impl InterfaceImpl {
         use massa_db_worker::MassaDB;
         use massa_final_state::test_exports::get_sample_state;
         use massa_ledger_exports::LedgerEntry;
-        use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT};
+        use massa_models::config::{
+            MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+            MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT,
+        };
         use massa_models::types::SetUpdateOrDelete;
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         use massa_pos_exports::SelectorConfig;
@@ -123,6 +126,8 @@ impl InterfaceImpl {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,

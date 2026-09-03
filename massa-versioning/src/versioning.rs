@@ -1599,7 +1599,10 @@ mod test {
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
-    use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, T0, THREAD_COUNT};
+    use massa_models::config::{
+        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+        MIP_STORE_STATS_BLOCK_CONSIDERED, T0, THREAD_COUNT,
+    };
     use massa_models::timeslots::get_closest_slot_to_timestamp;
 
     // Only for unit tests
@@ -2576,6 +2579,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,

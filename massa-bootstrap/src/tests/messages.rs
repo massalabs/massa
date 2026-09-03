@@ -1,8 +1,13 @@
 use std::time::Duration;
 
+use std::collections::BTreeMap;
+
 use crate::settings::BootstrapClientConfig;
 use crate::tests::tools::{
-    parametric_test, BootstrapClientMessageFaultyPart, BootstrapServerMessageFaultyPart,
+    indexed_kv_map, minimal_bootstrap_part_message, parametric_test,
+    serialize_minimal_bootstrap_part_with_crafted_state_new_elements,
+    serialize_state_new_elements_section, BootstrapClientMessageFaultyPart,
+    BootstrapServerMessageFaultyPart,
 };
 use crate::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
@@ -25,6 +30,8 @@ fn test_serialize_bootstrap_server_message() {
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
+        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -145,6 +152,75 @@ fn test_serialize_error_cases_clientmsg() {
     }
 }
 
+fn bootstrap_client_config_with_new_elements_limit(max: u32) -> BootstrapClientConfig {
+    BootstrapClientConfig {
+        rate_limit: u64::MAX,
+        max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_advertise_length: MAX_ADVERTISE_LENGTH,
+        max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        thread_count: THREAD_COUNT,
+        randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+        max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
+        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+        max_final_state_elements_count: max,
+        max_versioning_elements_count: max,
+        max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
+        max_changes_slot_count: 1000,
+        max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+        max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+        max_credits_length: MAX_DEFERRED_CREDITS_LENGTH,
+        max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
+        max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
+        mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        chain_id: *CHAINID,
+    }
+}
+
+fn assert_too_many_new_elements_error(bytes: &[u8], config: &BootstrapClientConfig) {
+    let deser = BootstrapServerMessageDeserializer::with_last_start_period(config.into(), None);
+    let res = deser.deserialize::<DeserializeError>(bytes);
+    assert!(res.is_err(), "expected deserialization to fail");
+    let err_msg = format!("{:?}", res.unwrap_err());
+    assert!(
+        err_msg.contains("too many new_elements entries"),
+        "unexpected error: {err_msg}"
+    );
+}
+
+#[test]
+fn test_reject_too_many_new_elements_entries() {
+    const MAX_ENTRIES: u32 = 3;
+    let config = bootstrap_client_config_with_new_elements_limit(MAX_ENTRIES);
+    let ser = BootstrapServerMessageSerializer::new();
+    let over_limit = (MAX_ENTRIES + 1) as usize;
+
+    // State `new_elements`: distinct keys (BTreeMap-safe path).
+    let mut bytes = Vec::new();
+    let msg = minimal_bootstrap_part_message(indexed_kv_map(over_limit), BTreeMap::new());
+    ser.serialize(&msg, &mut bytes).unwrap();
+    assert_too_many_new_elements_error(&bytes, &config);
+
+    // Versioning `new_elements`: distinct keys.
+    let mut bytes = Vec::new();
+    let msg = minimal_bootstrap_part_message(BTreeMap::new(), indexed_kv_map(over_limit));
+    ser.serialize(&msg, &mut bytes).unwrap();
+    assert_too_many_new_elements_error(&bytes, &config);
+
+    // State `new_elements`: duplicate empty keys (F9-style wire flood).
+    let bytes = serialize_minimal_bootstrap_part_with_crafted_state_new_elements(
+        serialize_state_new_elements_section(over_limit, true),
+    );
+    assert_too_many_new_elements_error(&bytes, &config);
+}
+
 #[test]
 fn test_serialize_error_cases_servermsg() {
     let config = BootstrapClientConfig {
@@ -159,6 +235,8 @@ fn test_serialize_error_cases_servermsg() {
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
+        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,

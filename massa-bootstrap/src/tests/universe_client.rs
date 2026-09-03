@@ -8,7 +8,9 @@ use massa_db_worker::MassaDB;
 use massa_final_state::MockFinalStateController;
 use massa_models::{
     config::{
-        MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, THREAD_COUNT,
+        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+        THREAD_COUNT,
     },
     node::NodeId,
     streaming_step::StreamingStep,
@@ -58,6 +60,8 @@ impl TestUniverse for BootstrapClientTestUniverse {
             max_history_length: 100,
             max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
             max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
