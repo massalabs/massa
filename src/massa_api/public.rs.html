@@ -1661,6 +1661,14 @@
 <a href="#1661" id="1661">1661</a>
 <a href="#1662" id="1662">1662</a>
 <a href="#1663" id="1663">1663</a>
+<a href="#1664" id="1664">1664</a>
+<a href="#1665" id="1665">1665</a>
+<a href="#1666" id="1666">1666</a>
+<a href="#1667" id="1667">1667</a>
+<a href="#1668" id="1668">1668</a>
+<a href="#1669" id="1669">1669</a>
+<a href="#1670" id="1670">1670</a>
+<a href="#1671" id="1671">1671</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1691,7 +1699,7 @@
 <span class="kw">use </span>massa_consensus_exports::block_status::DiscardReason;
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_execution_exports::{
-    ExecutionController, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
+    ExecutionController, ExecutionQueryRequest, ExecutionQueryRequestItem,
     ExecutionQueryResponseItem, ExecutionStackElement, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget,
 };
@@ -1758,15 +1766,6 @@
             storage,
             keypair_factory: KeyPairFactory { mip_store },
         })
-    }
-
-    <span class="kw">fn </span>exec_query(<span class="kw-2">&amp;</span><span class="self">self</span>, requests: Vec&lt;ExecutionQueryRequestItem&gt;) -&gt; ExecutionQueryResponse {
-        <span class="self">self</span>.<span class="number">0
-            </span>.execution_controller
-            .query_state(ExecutionQueryRequest {
-                requests,
-                max_response_size: <span class="self">self</span>.<span class="number">0</span>.api_settings.max_response_body_size <span class="kw">as </span>usize,
-            })
     }
 }
 
@@ -2706,7 +2705,10 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>result: Vec&lt;GetAddressDatastoreKeysResponse&gt; = Vec::with_capacity(requests.len());
 
-        <span class="kw">let </span>response = <span class="self">self</span>.exec_query(requests);
+        <span class="kw">let </span>response = <span class="self">self
+            </span>.<span class="number">0
+            </span>.execution_controller
+            .query_state(ExecutionQueryRequest { requests });
 
         <span class="kw">for </span>response_item <span class="kw">in </span>response.responses {
             <span class="kw">match </span>response_item {
@@ -2922,7 +2924,11 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="macro">format!</span>(<span class="string">"too many arguments received. Only a maximum of {} arguments are accepted per request"</span>, <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments)).into());
         }
 
-        <span class="kw">let </span>responses = <span class="self">self</span>.exec_query(queries).responses;
+        <span class="kw">let </span>responses = <span class="self">self
+            </span>.<span class="number">0
+            </span>.execution_controller
+            .query_state(ExecutionQueryRequest { requests: queries })
+            .responses;
 
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;, ApiError&gt; = responses
             .into_iter()
@@ -2958,7 +2964,9 @@
             .collect();
 
         <span class="kw">let </span>result = <span class="self">self
-            </span>.exec_query(queries)
+            </span>.<span class="number">0
+            </span>.execution_controller
+            .query_state(ExecutionQueryRequest { requests: queries })
             .responses
             .into_iter()
             .map(|response| <span class="kw">match </span>response {
@@ -3001,7 +3009,9 @@
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>result: Vec&lt;DeferredCallResponse&gt; = <span class="self">self
-            </span>.exec_query(requests)
+            </span>.<span class="number">0
+            </span>.execution_controller
+            .query_state(ExecutionQueryRequest { requests })
             .responses
             .into_iter()
             .map(|exec| <span class="kw">match </span>exec {
@@ -3036,7 +3046,13 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>slot_calls = Vec::new();
 
-        <span class="kw">for </span>exec <span class="kw">in </span><span class="self">self</span>.exec_query(requests).responses.into_iter() {
+        <span class="kw">for </span>exec <span class="kw">in </span><span class="self">self
+            </span>.<span class="number">0
+            </span>.execution_controller
+            .query_state(ExecutionQueryRequest { requests })
+            .responses
+            .into_iter()
+        {
             <span class="kw">match </span>exec {
                 <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, result)) =&gt; {
                     <span class="kw">let </span>call_ids = result.into_iter().map(|id| id.to_string()).collect();

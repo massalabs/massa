@@ -393,11 +393,6 @@
 <a href="#393" id="393">393</a>
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -442,11 +437,6 @@
 </span><span class="kw">pub struct </span>ExecutionQueryRequest {
     <span class="doccomment">/// List of requests
     </span><span class="kw">pub </span>requests: Vec&lt;ExecutionQueryRequestItem&gt;,
-    <span class="doccomment">/// Maximum aggregate size (bytes) of large payload items (`Bytecode`, `DatastoreValue`)
-    /// allowed in the response. Callers should pass their transport limit
-    /// (e.g. JSON-RPC `max_response_body_size` or gRPC `max_encoding_message_size`).
-    /// Other response variants are treated as zero-cost for this budget.
-    </span><span class="kw">pub </span>max_response_size: usize,
 }
 
 <span class="doccomment">/// Response to a list of execution queries
