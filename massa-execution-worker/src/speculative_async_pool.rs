@@ -14,6 +14,12 @@ use massa_models::types::{Applicable, SetUpdateOrDelete};
 use parking_lot::RwLock;
 use std::{collections::BTreeMap, sync::Arc};
 
+/// Execution component version (MIP-0002-BugFix) from which async-message batch selection
+/// and pool eviction rank by `fee / (max_gas + async_msg_cst_gas_cost)` instead of
+/// `fee / max_gas`, matching the gas actually charged per message in
+/// [`SpeculativeAsyncPool::take_batch_to_execute`].
+pub const ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION: u32 = 2;
+
 pub(crate) struct SpeculativeAsyncPool {
     /// Async pool max length
     async_pool_max_length: u64,
@@ -107,9 +113,16 @@ impl SpeculativeAsyncPool {
     /// rejects those at emission from execution component version 2 on, but messages emitted
     /// before that activation can still be sitting in the pool, and they expire unexecuted.
     ///
+    /// When `rank_by_effective_gas` is true (MIP-0002 / execution component version
+    /// [`ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION`]), candidates are ordered by
+    /// `fee / (max_gas + async_msg_cst_gas_cost)` so priority matches the budget charge.
+    /// Otherwise ordering follows the stored [`AsyncMessageId`] (`fee / max_gas`).
+    ///
     /// # Arguments
     /// * `slot`: slot at which the batch is taken (allows filtering by validity interval)
     /// * `max_gas`: maximum amount of gas available
+    /// * `async_msg_cst_gas_cost`: fixed per-message gas surcharge charged on execution
+    /// * `rank_by_effective_gas`: use effective gas in the fee/gas ranking
     ///
     /// # Returns
     /// A vector of `AsyncMessage` to execute
@@ -118,28 +131,39 @@ impl SpeculativeAsyncPool {
         slot: Slot,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
+        rank_by_effective_gas: bool,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let mut available_gas = max_gas;
 
         // Choose which messages to take based on the message_cache
         // (all messages are considered: finals, in active_history and in speculative)
-
-        let mut wanted_ids = Vec::new();
-        for (message_id, message) in self.message_cache.iter() {
-            let corrected_max_gas = message.max_gas.saturating_add(async_msg_cst_gas_cost);
-            // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
-            //       so to be consistent here, use >= & <= checks
-            if available_gas >= corrected_max_gas
-                && Self::is_message_ready_to_execute(
+        let mut candidates: Vec<(AsyncMessageId, &AsyncMessage)> = self
+            .message_cache
+            .iter()
+            .filter(|(_, message)| {
+                Self::is_message_ready_to_execute(
                     &slot,
                     &message.validity_start,
                     &message.validity_end,
-                )
-                && message.can_be_executed
-            {
-                available_gas -= corrected_max_gas;
+                ) && message.can_be_executed
+            })
+            .map(|(id, message)| (*id, message))
+            .collect();
 
-                wanted_ids.push(*message_id);
+        if rank_by_effective_gas {
+            candidates
+                .sort_by_key(|(_, message)| message.compute_priority_id(async_msg_cst_gas_cost));
+        }
+        // else: BTreeMap iteration already yields stored AsyncMessageId order
+
+        let mut wanted_ids = Vec::new();
+        for (message_id, message) in candidates {
+            let corrected_max_gas = message.max_gas.saturating_add(async_msg_cst_gas_cost);
+            // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
+            //       so to be consistent here, use >= & <= checks
+            if available_gas >= corrected_max_gas {
+                available_gas -= corrected_max_gas;
+                wanted_ids.push(message_id);
             }
         }
 
@@ -162,6 +186,8 @@ impl SpeculativeAsyncPool {
     /// # Arguments
     /// * slot: slot that is being settled
     /// * ledger_changes: ledger changes for that slot, used to see if we can activate some messages
+    /// * async_msg_cst_gas_cost: fixed per-message gas surcharge (used when ranking for eviction)
+    /// * rank_by_effective_gas: when true, truncate by effective fee/gas (MIP-0002)
     ///
     /// # Returns
     /// the list of deleted `(message_id, message)`, used for reimbursement
@@ -169,6 +195,8 @@ impl SpeculativeAsyncPool {
         &mut self,
         slot: &Slot,
         ledger_changes: &LedgerChanges,
+        async_msg_cst_gas_cost: u64,
+        rank_by_effective_gas: bool,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         // Update eliminated_msgs: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
@@ -212,8 +240,26 @@ impl SpeculativeAsyncPool {
             .saturating_sub(self.async_pool_max_length as usize);
 
         eliminated_msgs.reserve_exact(excess_count);
-        for _ in 0..excess_count {
-            eliminated_msgs.push(self.message_cache.pop_last().unwrap()); // will not panic (checked at excess_count computation)
+        if rank_by_effective_gas {
+            // Same ordering key as take_batch_to_execute: lowest effective priority last
+            let mut ranked: Vec<_> = self
+                .message_cache
+                .iter()
+                .map(|(id, msg)| (*id, msg.compute_priority_id(async_msg_cst_gas_cost)))
+                .collect();
+            ranked.sort_by_key(|(_, prio)| *prio);
+            for (id, _) in ranked.into_iter().rev().take(excess_count) {
+                eliminated_msgs.push((
+                    id,
+                    self.message_cache
+                        .remove(&id)
+                        .expect("message listed for eviction must be in cache"),
+                ));
+            }
+        } else {
+            for _ in 0..excess_count {
+                eliminated_msgs.push(self.message_cache.pop_last().unwrap()); // will not panic (checked at excess_count computation)
+            }
         }
 
         // Activate the messages that can be activated (triggered)
@@ -288,6 +334,10 @@ fn is_triggered(filter: &AsyncMessageTrigger, ledger_changes: &LedgerChanges) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use massa_models::address::Address;
+    use massa_models::amount::Amount;
+    use std::str::FromStr;
+
     // Test if is_message_expired & is_message_ready_to_execute are consistent
     #[test]
     fn test_validity() {
@@ -335,5 +385,114 @@ mod tests {
             &slot_validity_start,
             &slot_validity_end,
         ));
+    }
+
+    fn test_pool() -> SpeculativeAsyncPool {
+        SpeculativeAsyncPool {
+            async_pool_max_length: 100,
+            pool_changes: Default::default(),
+            message_cache: Default::default(),
+        }
+    }
+
+    fn test_message(emission_index: u64, max_gas: u64, fee_raw: u64) -> AsyncMessage {
+        let addr =
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+        AsyncMessage::new(
+            Slot::new(1, 0),
+            emission_index,
+            addr,
+            addr,
+            String::from("recv"),
+            max_gas,
+            Amount::from_raw(fee_raw),
+            Amount::from_raw(0),
+            Slot::new(0, 0),
+            Slot::new(10, 0),
+            vec![],
+            None,
+            Some(true),
+        )
+    }
+
+    // Low-max_gas messages look better under fee/max_gas, but worse once the fixed
+    // async_msg_cst_gas_cost is included — the MIP-0002 ranking must prefer the latter.
+    //
+    // Values are ABI-reachable: `send_message` rejects `max_gas < max_instance_cost` (2.1M).
+    // Old ratio 25_000/2.1M ≈ 0.0119 vs 1_000_000/100M = 0.0100 (attacker first);
+    // new ratio 25_000/3.1M ≈ 0.00806 vs 1_000_000/101M ≈ 0.0099 (honest first).
+    const MAX_INSTANCE_COST: u64 = 2_100_000;
+    const ATTACKER_MAX_GAS: u64 = MAX_INSTANCE_COST;
+    const ATTACKER_FEE: u64 = 25_000;
+    const HONEST_MAX_GAS: u64 = 100_000_000;
+    const HONEST_FEE: u64 = 1_000_000;
+
+    #[test]
+    fn test_take_batch_effective_gas_priority() {
+        let cst = 1_000_000u64;
+        let cheap_looking = test_message(0, ATTACKER_MAX_GAS, ATTACKER_FEE);
+        let honest = test_message(1, HONEST_MAX_GAS, HONEST_FEE);
+
+        assert!(
+            cheap_looking.compute_id() < honest.compute_id(),
+            "without the surcharge, the low-max_gas message ranks first"
+        );
+        assert!(
+            honest.compute_priority_id(cst) < cheap_looking.compute_priority_id(cst),
+            "with the surcharge, the honest message ranks first"
+        );
+
+        let slot = Slot::new(1, 0);
+        // Budget fits only one of the two once the fixed cost is added to each
+        let budget = honest.max_gas.saturating_add(cst);
+
+        let mut pool_legacy = test_pool();
+        pool_legacy
+            .message_cache
+            .insert(cheap_looking.compute_id(), cheap_looking.clone());
+        pool_legacy
+            .message_cache
+            .insert(honest.compute_id(), honest.clone());
+        let taken_legacy = pool_legacy.take_batch_to_execute(slot, budget, cst, false);
+        assert_eq!(taken_legacy.len(), 1);
+        assert_eq!(
+            taken_legacy[0].1.emission_index, 0,
+            "pre-MIP ranking prefers the low-max_gas message"
+        );
+
+        let mut pool_mip = test_pool();
+        pool_mip
+            .message_cache
+            .insert(cheap_looking.compute_id(), cheap_looking);
+        pool_mip.message_cache.insert(honest.compute_id(), honest);
+        let taken_mip = pool_mip.take_batch_to_execute(slot, budget, cst, true);
+        assert_eq!(taken_mip.len(), 1);
+        assert_eq!(
+            taken_mip[0].1.emission_index, 1,
+            "MIP-0002 ranking prefers the better effective fee/gas"
+        );
+    }
+
+    #[test]
+    fn test_settle_slot_effective_gas_eviction() {
+        let cst = 1_000_000u64;
+        let cheap_looking = test_message(0, ATTACKER_MAX_GAS, ATTACKER_FEE);
+        let honest = test_message(1, HONEST_MAX_GAS, HONEST_FEE);
+
+        let mut pool = test_pool();
+        pool.async_pool_max_length = 1;
+        pool.message_cache
+            .insert(cheap_looking.compute_id(), cheap_looking.clone());
+        pool.message_cache
+            .insert(honest.compute_id(), honest.clone());
+
+        let eliminated = pool.settle_slot(&Slot::new(1, 0), &LedgerChanges::default(), cst, true);
+        assert_eq!(eliminated.len(), 1);
+        assert_eq!(
+            eliminated[0].1.emission_index, 0,
+            "MIP-0002 eviction drops the worse effective fee/gas message"
+        );
+        assert_eq!(pool.message_cache.len(), 1);
+        assert!(pool.message_cache.contains_key(&honest.compute_id()));
     }
 }
