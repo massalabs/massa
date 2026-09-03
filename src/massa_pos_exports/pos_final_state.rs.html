@@ -2763,35 +2763,6 @@
 <a href="#2763" id="2763">2763</a>
 <a href="#2764" id="2764">2764</a>
 <a href="#2765" id="2765">2765</a>
-<a href="#2766" id="2766">2766</a>
-<a href="#2767" id="2767">2767</a>
-<a href="#2768" id="2768">2768</a>
-<a href="#2769" id="2769">2769</a>
-<a href="#2770" id="2770">2770</a>
-<a href="#2771" id="2771">2771</a>
-<a href="#2772" id="2772">2772</a>
-<a href="#2773" id="2773">2773</a>
-<a href="#2774" id="2774">2774</a>
-<a href="#2775" id="2775">2775</a>
-<a href="#2776" id="2776">2776</a>
-<a href="#2777" id="2777">2777</a>
-<a href="#2778" id="2778">2778</a>
-<a href="#2779" id="2779">2779</a>
-<a href="#2780" id="2780">2780</a>
-<a href="#2781" id="2781">2781</a>
-<a href="#2782" id="2782">2782</a>
-<a href="#2783" id="2783">2783</a>
-<a href="#2784" id="2784">2784</a>
-<a href="#2785" id="2785">2785</a>
-<a href="#2786" id="2786">2786</a>
-<a href="#2787" id="2787">2787</a>
-<a href="#2788" id="2788">2788</a>
-<a href="#2789" id="2789">2789</a>
-<a href="#2790" id="2790">2790</a>
-<a href="#2791" id="2791">2791</a>
-<a href="#2792" id="2792">2792</a>
-<a href="#2793" id="2793">2793</a>
-<a href="#2794" id="2794">2794</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2805,9 +2776,7 @@
     DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
 };
 <span class="kw">use </span>massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
-<span class="kw">use </span>massa_ledger_exports::LedgerController;
 <span class="kw">use </span>massa_models::amount::Amount;
-<span class="kw">use </span>massa_models::config::LEDGER_ENTRY_BASE_COST;
 <span class="kw">use </span>massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 <span class="kw">use </span>massa_serialization::{
     buf_to_array_ctr, DeserializeError, Deserializer, Serializer, U64VarIntSerializer,
@@ -2817,7 +2786,7 @@
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included, Unbounded};
 <span class="kw">use </span>std::ops::RangeBounds;
 <span class="kw">use </span>std::{collections::BTreeMap, path::PathBuf};
-<span class="kw">use </span>tracing::{debug, warn};
+<span class="kw">use </span>tracing::debug;
 
 <span class="comment">// General cycle info idents
 </span><span class="kw">const </span>COMPLETE_IDENT: u8 = <span class="number">0u8</span>;
@@ -3002,16 +2971,7 @@
     }
 
     <span class="doccomment">/// Try load initial deferred credits from file
-    ///
-    /// Credits that would fail at execution time (same rules as `transfer_coins` when
-    /// crediting with `from_addr = None`) are skipped:
-    /// * non-existing SC address
-    /// * non-existing user address with `amount` below the ledger entry base cost
-    </span><span class="kw">pub fn </span>load_initial_deferred_credits(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        batch: <span class="kw-2">&amp;mut </span>DBBatch,
-        ledger: <span class="kw-2">&amp;</span><span class="kw">dyn </span>LedgerController,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PosError&gt; {
+    </span><span class="kw">pub fn </span>load_initial_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch) -&gt; <span class="prelude-ty">Result</span>&lt;(), PosError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(initial_deferred_credits_path) = <span class="kw-2">&amp;</span><span class="self">self</span>.config.initial_deferred_credits_path <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         };
@@ -3042,24 +3002,8 @@
             })<span class="question-mark">?</span>;
 
         <span class="kw">for </span>(address, deferred_credits) <span class="kw">in </span>initial_deferred_credits {
-            <span class="kw">let </span>address_is_sc = <span class="macro">matches!</span>(address, Address::SC(..));
-            <span class="kw">let </span>address_exists = ledger.entry_exists(<span class="kw-2">&amp;</span>address);
             <span class="kw">for </span>AddressInitialDeferredCredits { slot, amount } <span class="kw">in </span>deferred_credits {
-                <span class="kw">if </span>address_is_sc {
-                    <span class="macro">warn!</span>(
-                        <span class="string">"deferred credits for address {} with amount {} will not execute because it is a SC address"</span>,
-                        address, amount
-                    );
-                } <span class="kw">else if </span>!address_exists &amp;&amp; amount &lt; LEDGER_ENTRY_BASE_COST {
-                    <span class="macro">warn!</span>(
-                        <span class="string">"deferred credits for address {} with amount {} will likely not execute because the address does not exist in the ledger and the amount is below the ledger entry base cost"</span>,
-                        address, amount
-                    );
-                }
-
-                <span class="comment">// Note that we still put the deferred credits in the database even if they are likely to fail at execution time.
-                // It's for instance possible the address is created before the execution slot of the deferred credits.
-                </span><span class="self">self</span>.put_deferred_credits_entry(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>amount, batch);
+                <span class="self">self</span>.put_deferred_credits_entry(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>amount, batch);
             }
         }
 
@@ -4570,10 +4514,8 @@
         };
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
         <span class="comment">// load initial deferred credits
-        </span><span class="kw">let </span><span class="kw-2">mut </span>ledger = massa_ledger_exports::MockLedgerController::new();
-        ledger.expect_entry_exists().returning(|<span class="kw">_</span>| <span class="bool-val">false</span>);
-        pos_state
-            .load_initial_deferred_credits(<span class="kw-2">&amp;mut </span>batch, <span class="kw-2">&amp;</span>ledger)
+        </span>pos_state
+            .load_initial_deferred_credits(<span class="kw-2">&amp;mut </span>batch)
             .expect(<span class="string">"error while loading initial deferred credits"</span>);
         db.write().write_batch(batch, DBBatch::new(), <span class="prelude-val">None</span>);
         <span class="kw">let </span>deferred_credits = pos_state.get_deferred_credits().credits;
