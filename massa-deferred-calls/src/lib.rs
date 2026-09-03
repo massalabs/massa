@@ -67,7 +67,7 @@ impl DeferredCallRegistry {
             call_deserializer: DeferredCallDeserializer::new(config),
             call_id_deserializer: DeferredCallIdDeserializer::new(),
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(config),
-            registry_changes_serializer: DeferredRegistryChangesSerializer::new(),
+            registry_changes_serializer: DeferredRegistryChangesSerializer::new(config),
         }
     }
 

@@ -37,6 +37,29 @@ impl DeferredRegistrySlotChanges {
         self.calls.len()
     }
 
+    /// Validates that this structure stays within the same bounds enforced by
+    /// [`DeferredRegistrySlotChangesDeserializer`] under `config`.
+    pub fn check_bounds(&self, config: &DeferredCallsConfig) -> Result<(), SerializeError> {
+        let calls_len: u64 = self.calls.len().try_into().map_err(|_| {
+            SerializeError::GeneralError("Fail to transform usize to u64".to_string())
+        })?;
+        if calls_len > config.max_pool_changes {
+            return Err(SerializeError::NumberTooBig(format!(
+                "DeferredRegistrySlotChanges calls length {} exceeds max_pool_changes {}",
+                calls_len, config.max_pool_changes
+            )));
+        }
+        if let DeferredRegistryGasChange::Set(gas) = self.effective_slot_gas {
+            if gas > config.max_gas {
+                return Err(SerializeError::NumberTooBig(format!(
+                    "DeferredRegistrySlotChanges effective_slot_gas {} exceeds max_gas {}",
+                    gas, config.max_gas
+                )));
+            }
+        }
+        Ok(())
+    }
+
     /// add Delete changes will delete the call from the db registry when the slot is finalized
     pub fn delete_call(&mut self, id: &DeferredCallId) {
         match self.calls.entry(id.clone()) {
@@ -90,10 +113,12 @@ pub struct DeferredRegistrySlotChangesSerializer {
     calls_set_or_delete_serializer: SetOrDeleteSerializer<DeferredCall, DeferredCallSerializer>,
     gas_serializer: SetOrKeepSerializer<u64, U64VarIntSerializer>,
     base_fee_serializer: SetOrKeepSerializer<Amount, AmountSerializer>,
+    /// Same bounds as [`DeferredRegistrySlotChangesDeserializer`].
+    config: DeferredCallsConfig,
 }
 
 impl DeferredRegistrySlotChangesSerializer {
-    pub fn new() -> Self {
+    pub fn new(config: DeferredCallsConfig) -> Self {
         Self {
             deferred_registry_slot_changes_length: U64VarIntSerializer::new(),
             call_id_serializer: DeferredCallIdSerializer::new(),
@@ -102,13 +127,14 @@ impl DeferredRegistrySlotChangesSerializer {
             ),
             gas_serializer: SetOrKeepSerializer::new(U64VarIntSerializer::new()),
             base_fee_serializer: SetOrKeepSerializer::new(AmountSerializer::new()),
+            config,
         }
     }
 }
 
 impl Default for DeferredRegistrySlotChangesSerializer {
     fn default() -> Self {
-        Self::new()
+        Self::new(DeferredCallsConfig::default())
     }
 }
 
@@ -118,6 +144,8 @@ impl Serializer<DeferredRegistrySlotChanges> for DeferredRegistrySlotChangesSeri
         value: &DeferredRegistrySlotChanges,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
+        // Enforce the same bounds as DeferredRegistrySlotChangesDeserializer.
+        value.check_bounds(&self.config)?;
         self.deferred_registry_slot_changes_length.serialize(
             &(value.calls.len().try_into().map_err(|_| {
                 SerializeError::GeneralError("Fail to transform usize to u64".to_string())
@@ -229,24 +257,15 @@ mod tests {
     };
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
-    use crate::{config::DeferredCallsConfig, DeferredCall};
+    use crate::{config::DeferredCallsConfig, DeferredCall, DeferredRegistryGasChange};
 
     use super::{
         DeferredRegistrySlotChanges, DeferredRegistrySlotChangesDeserializer,
         DeferredRegistrySlotChangesSerializer,
     };
 
-    #[test]
-    fn test_slot_changes_ser_deser() {
-        let mut registry_slot_changes = DeferredRegistrySlotChanges::default();
-        registry_slot_changes.set_base_fee(Amount::from_str("100").unwrap());
-        registry_slot_changes.set_effective_slot_gas(100_000);
-        let target_slot = Slot {
-            thread: 5,
-            period: 1,
-        };
-
-        let call = DeferredCall::new(
+    fn sample_call(target_slot: Slot) -> DeferredCall {
+        DeferredCall::new(
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
             target_slot,
             Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
@@ -256,7 +275,21 @@ mod tests {
             3000000,
             Amount::from_raw(1),
             false,
-        );
+        )
+    }
+
+    #[test]
+    fn test_slot_changes_ser_deser() {
+        let config = DeferredCallsConfig::default();
+        let mut registry_slot_changes = DeferredRegistrySlotChanges::default();
+        registry_slot_changes.set_base_fee(Amount::from_str("100").unwrap());
+        registry_slot_changes.set_effective_slot_gas(100_000);
+        let target_slot = Slot {
+            thread: 5,
+            period: 1,
+        };
+
+        let call = sample_call(target_slot);
         let id = DeferredCallId::new(
             0,
             Slot {
@@ -271,17 +304,104 @@ mod tests {
         registry_slot_changes.set_call(id, call);
 
         let mut buffer = Vec::new();
-        let serializer = DeferredRegistrySlotChangesSerializer::new();
+        let serializer = DeferredRegistrySlotChangesSerializer::new(config);
         serializer
             .serialize(&registry_slot_changes, &mut buffer)
             .unwrap();
 
-        let deserializer =
-            DeferredRegistrySlotChangesDeserializer::new(DeferredCallsConfig::default());
+        let deserializer = DeferredRegistrySlotChangesDeserializer::new(config);
         let (rest, changes_deser) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();
         assert!(rest.is_empty());
         assert_eq!(changes_deser.calls, registry_slot_changes.calls);
+        assert_eq!(
+            changes_deser.effective_slot_gas,
+            registry_slot_changes.effective_slot_gas
+        );
+    }
+
+    #[test]
+    fn test_slot_changes_serialize_rejects_gas_above_max() {
+        let config = DeferredCallsConfig {
+            max_gas: 1_000,
+            ..DeferredCallsConfig::default()
+        };
+        let mut changes = DeferredRegistrySlotChanges::default();
+        // Mutator still accepts any u64; serializer must reject above max_gas.
+        changes.set_effective_slot_gas(config.max_gas + 1);
+
+        let serializer = DeferredRegistrySlotChangesSerializer::new(config);
+        let err = serializer
+            .serialize(&changes, &mut Vec::new())
+            .expect_err("gas above max_gas must fail serialization");
+        assert!(
+            matches!(err, massa_serialization::SerializeError::NumberTooBig(_)),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_slot_changes_serialize_rejects_too_many_calls() {
+        let config = DeferredCallsConfig {
+            max_pool_changes: 1,
+            ..DeferredCallsConfig::default()
+        };
+        let target_slot = Slot {
+            thread: 0,
+            period: 1,
+        };
+        let mut changes = DeferredRegistrySlotChanges::default();
+        changes.set_call(
+            DeferredCallId::new(0, target_slot, 0, &[]).unwrap(),
+            sample_call(target_slot),
+        );
+        changes.set_call(
+            DeferredCallId::new(0, target_slot, 1, &[]).unwrap(),
+            sample_call(target_slot),
+        );
+
+        let serializer = DeferredRegistrySlotChangesSerializer::new(config);
+        let err = serializer
+            .serialize(&changes, &mut Vec::new())
+            .expect_err("calls above max_pool_changes must fail serialization");
+        assert!(
+            matches!(err, massa_serialization::SerializeError::NumberTooBig(_)),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_slot_changes_ser_deser_at_max_bounds() {
+        let config = DeferredCallsConfig {
+            max_gas: 42,
+            max_pool_changes: 1,
+            ..DeferredCallsConfig::default()
+        };
+        let target_slot = Slot {
+            thread: 0,
+            period: 1,
+        };
+        let mut changes = DeferredRegistrySlotChanges::default();
+        changes.set_effective_slot_gas(config.max_gas);
+        changes.set_call(
+            DeferredCallId::new(0, target_slot, 0, &[]).unwrap(),
+            sample_call(target_slot),
+        );
+
+        let mut buffer = Vec::new();
+        DeferredRegistrySlotChangesSerializer::new(config)
+            .serialize(&changes, &mut buffer)
+            .expect("values at exact bounds must serialize");
+
+        let (rest, decoded) = DeferredRegistrySlotChangesDeserializer::new(config)
+            .deserialize::<DeserializeError>(&buffer)
+            .expect("values at exact bounds must deserialize");
+        assert!(rest.is_empty());
+        assert_eq!(decoded.calls.len(), 1);
+        assert_eq!(
+            decoded.effective_slot_gas,
+            DeferredRegistryGasChange::Set(config.max_gas)
+        );
     }
 }
