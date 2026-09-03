@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use massa_consensus_exports::{error::ConsensusError, events::ConsensusEvent};
+use massa_consensus_exports::error::ConsensusError;
 use massa_models::{
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
@@ -110,28 +110,12 @@ impl ConsensusWorker {
         (next_slot, next_instant)
     }
 
-    /// Performs all per-slot maintenance: episode-end check, cycle logging,
-    /// `slot_tick`, pruning, and advancing to the next slot.
+    /// Performs all per-slot maintenance: cycle logging, `slot_tick`, pruning,
+    /// and advancing to the next slot.
     ///
     /// # Arguments
     /// * `last_prune`: instant when the block DB was last pruned
-    ///
-    /// # Returns
-    /// `true` if the worker should keep running, `false` if the episode ended.
-    fn process_slot_tick(&mut self, last_prune: &mut Instant) -> bool {
-        if let Some(end) = self.config.end_timestamp {
-            // The testnet has ended. Will be removed for mainnet.
-            if self.next_instant > end.estimate_instant().unwrap() {
-                info!("This episode has come to an end, please get the latest testnet node version to continue");
-                let _ = self
-                    .shared_state
-                    .read()
-                    .channels
-                    .controller_event_tx
-                    .send(ConsensusEvent::Stop);
-                return false;
-            }
-        }
+    fn process_slot_tick(&mut self, last_prune: &mut Instant) {
         let previous_cycle = self
             .previous_slot
             .map(|s| s.get_cycle(self.config.periods_per_cycle));
@@ -161,7 +145,6 @@ impl ConsensusWorker {
         }
         self.previous_slot = Some(self.next_slot);
         (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
-        true
     }
 
     /// Runs in loop forever. This loop must stop every slot to perform operations on stats and graph
@@ -172,9 +155,7 @@ impl ConsensusWorker {
             match self.wait_slot_or_command(self.next_instant) {
                 // When we reached the instant of the next slot
                 WaitingStatus::Ended => {
-                    if !self.process_slot_tick(&mut last_prune) {
-                        break;
-                    }
+                    self.process_slot_tick(&mut last_prune);
                 }
                 WaitingStatus::Disconnected => {
                     break;
@@ -183,10 +164,8 @@ impl ConsensusWorker {
                     // A command was processed. If the slot deadline has already passed,
                     // run the overdue slot maintenance before waiting again so that a
                     // sustained flood of commands cannot starve time-driven work.
-                    if Instant::now() >= self.next_instant
-                        && !self.process_slot_tick(&mut last_prune)
-                    {
-                        break;
+                    if Instant::now() >= self.next_instant {
+                        self.process_slot_tick(&mut last_prune);
                     }
                 }
             };

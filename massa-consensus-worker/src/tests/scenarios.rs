@@ -516,8 +516,7 @@ fn test_slot_maintenance_not_starved_by_command_flood() {
     let poll_start = std::time::Instant::now();
     while poll_start.elapsed() < Duration::from_millis(600) {
         std::thread::sleep(Duration::from_millis(25));
-        if &controller.get_block_statuses(&[future_block.id])[0]
-            != &BlockGraphStatus::WaitingForSlot
+        if controller.get_block_statuses(&[future_block.id])[0] != BlockGraphStatus::WaitingForSlot
         {
             processed_during_flood = true;
             break;
