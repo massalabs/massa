@@ -116,6 +116,9 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -126,6 +129,7 @@
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
 
@@ -198,6 +202,7 @@
         local_receiver: MassaReceiver&lt;EndorsementHandlerPropagationCommand&gt;,
         sender_peer_cmd: MassaSender&lt;PeerManagementCmd&gt;,
         massa_metrics: MassaMetrics,
+        mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>endorsement_retrieval_thread = start_retrieval_thread(
             receiver,
@@ -210,6 +215,7 @@
             config.clone(),
             storage.clone_without_refs(),
             massa_metrics,
+            mip_store,
         );
 
         <span class="kw">let </span>endorsement_propagation_thread =
