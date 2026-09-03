@@ -59,7 +59,7 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use tracing::{debug, warn};
+use tracing::warn;
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
@@ -848,8 +848,8 @@ impl ExecutionContext {
             }),
         );
         if let Err(e) = transfer_result.as_ref() {
-            debug!(
-                "async message cancel: reimbursement of {} failed: {}",
+            warn!(
+                "async message cancel: reimbursement of {} failed (burning coins): {}",
                 msg.sender, e
             );
         }
@@ -1016,8 +1016,8 @@ impl ExecutionContext {
                 );
 
                 if let Err(e) = transfer_result.as_ref() {
-                    debug!(
-                        "could not credit {} deferred coins to {} at slot {}: {}",
+                    warn!(
+                        "could not credit {} deferred coins to {} at slot {} (burning coins): {}",
                         amount, address, slot, e
                     );
                 }
@@ -1347,8 +1347,8 @@ impl ExecutionContext {
             }),
         );
         if let Err(e) = transfer_result.as_ref() {
-            debug!(
-                "deferred call {} fail: reimbursement of {} to {} failed: {}",
+            warn!(
+                "deferred call {} fail: reimbursement of {} to {} failed (burning coins): {}",
                 id, call.coins, call.sender_address, e
             );
         }
@@ -1398,8 +1398,8 @@ impl ExecutionContext {
                     }),
                 );
                 if let Err(e) = transfer_result.as_ref() {
-                    debug!(
-                        "deferred call cancel: reimbursement of {} failed: {}",
+                    warn!(
+                        "deferred call cancel: reimbursement of {} failed (burning coins): {}",
                         address, e
                     );
                 }
