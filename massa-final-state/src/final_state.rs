@@ -768,14 +768,10 @@ impl FinalState {
                     e
                 ))
             })?;
-        let shutdown_end = Slot::new(last_start_period, 0)
-            .get_prev_slot(config.thread_count)
-            .map_err(|e| {
-                FinalStateError::InvalidSlot(format!(
-                    "Unable to compute prev slot from last start period: {:?}",
-                    e
-                ))
-            })?;
+        // Include the entire last_start_period as downtime: interpolation attaches at
+        // Slot(last_start_period, thread_count - 1) and block production resumes only
+        // at Slot(last_start_period + 1, 0).
+        let shutdown_end = Slot::new(last_start_period, config.thread_count.saturating_sub(1));
         debug!(
             "Checking if MIP store is consistent against shutdown period: {} - {}",
             shutdown_start, shutdown_end
