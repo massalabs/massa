@@ -209,7 +209,8 @@ pub const POS_SAVED_CYCLES: usize = 7;
 pub const SELECTOR_DRAW_CACHE_SIZE: usize = 6;
 /// Maximum number of consensus blocks in a bootstrap batch
 pub const CONSENSUS_BOOTSTRAP_PART_SIZE: u64 = 50;
-/// Maximum number of consensus block ids when sending a bootstrap cursor from the client
+/// Max block ids in the client consensus reconnect ask. Larger local graphs are fine in-session;
+/// only the ask is capped (newest finals), and the graph is pruned to match on reconnect.
 pub const MAX_CONSENSUS_BLOCKS_IDS: u64 = 300;
 /// Maximum size of proof-of-stake rolls
 pub const MAX_ROLLS_COUNT_LENGTH: u64 = 10_000;
