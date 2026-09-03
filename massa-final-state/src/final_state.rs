@@ -880,17 +880,16 @@ impl FinalStateController for FinalState {
 
     fn reset(&mut self) {
         let slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
-        self.db.write().reset(slot);
+        self.db.write().reset_slot_and_history(slot);
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();
         self.executed_ops.reset();
         self.executed_denunciations.reset();
         self.mip_store.reset_db(self.db.clone());
-        // delete the execution trail hash
-        self.db
-            .write()
-            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
+        // delete all remaining data from the database (execution trail hash, deferred calls, etc.)
+        self.db.write().delete_prefix("", STATE_CF, None);
+        self.db.write().delete_prefix("", VERSIONING_CF, None);
     }
 
     fn get_ledger(&self) -> &Box<dyn LedgerController> {
