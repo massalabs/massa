@@ -380,9 +380,6 @@
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -444,19 +441,15 @@
     execution_trail_hash_change_serializer: SetOrKeepSerializer&lt;massa_hash::Hash, HashSerializer&gt;,
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>StateChangesSerializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
-}
-
 <span class="kw">impl </span>StateChangesSerializer {
     <span class="doccomment">/// Creates a `StateChangesSerializer`
-    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(deferred_calls_config: DeferredCallsConfig) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
-            deferred_call_changes_serializer: DeferredRegistryChangesSerializer::new(),
+            deferred_call_changes_serializer: DeferredRegistryChangesSerializer::new(
+                deferred_calls_config,
+            ),
             pos_changes_serializer: PoSChangesSerializer::new(),
             ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
             de_changes_serializer: ExecutedDenunciationsChangesSerializer::new(),
@@ -692,8 +685,9 @@
             SetUpdateOrDelete::Update(ledger_entry),
         );
         state_changes.ledger_changes = ledger_changes;
+        <span class="kw">let </span>deferred_calls_config = DeferredCallsConfig::default();
         <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
-        StateChangesSerializer::new()
+        StateChangesSerializer::new(deferred_calls_config)
             .serialize(<span class="kw-2">&amp;</span>state_changes, <span class="kw-2">&amp;mut </span>serialized)
             .unwrap();
 
@@ -713,7 +707,7 @@
             MAX_EXECUTED_OPS_CHANGES_LENGTH,
             ENDORSEMENT_COUNT,
             MAX_DENUNCIATION_CHANGES_LENGTH,
-            DeferredCallsConfig::default(),
+            deferred_calls_config,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
         .unwrap();

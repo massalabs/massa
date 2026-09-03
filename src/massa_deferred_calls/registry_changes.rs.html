@@ -418,6 +418,7 @@
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::BTreeMap, ops::Bound};
 
 <span class="kw">use </span>massa_models::{
@@ -543,10 +544,10 @@
 }
 
 <span class="kw">impl </span>DeferredRegistryChangesSerializer {
-    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(config: DeferredCallsConfig) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u64_serializer: U64VarIntSerializer::new(),
-            slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(),
+            slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(config),
             slot_serializer: SlotSerializer::new(),
             effective_total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
         }
@@ -555,7 +556,7 @@
 
 <span class="kw">impl </span>Default <span class="kw">for </span>DeferredRegistryChangesSerializer {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
+        <span class="self">Self</span>::new(DeferredCallsConfig::default())
     }
 }
 
@@ -770,7 +771,7 @@
         changes.set_effective_total_gas(<span class="number">100_000</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
-        <span class="kw">let </span>serializer = DeferredRegistryChangesSerializer::new();
+        <span class="kw">let </span>serializer = DeferredRegistryChangesSerializer::new(DeferredCallsConfig::default());
         serializer.serialize(<span class="kw-2">&amp;</span>changes, <span class="kw-2">&amp;mut </span>buffer).unwrap();
 
         <span class="kw">let </span>deserializer = DeferredRegistryChangesDeserializer::new(DeferredCallsConfig::default());
@@ -827,12 +828,13 @@
         };
         changes.set_effective_total_gas(<span class="number">100_000</span>);
 
+        <span class="kw">let </span>deferred_calls_config = DeferredCallsConfig::default();
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
-        DeferredRegistryChangesSerializer::new()
+        DeferredRegistryChangesSerializer::new(deferred_calls_config)
             .serialize(<span class="kw-2">&amp;</span>changes, <span class="kw-2">&amp;mut </span>buffer)
             .unwrap();
 
-        <span class="kw">let </span>deserializer = DeferredRegistryChangesDeserializer::new(DeferredCallsConfig::default());
+        <span class="kw">let </span>deserializer = DeferredRegistryChangesDeserializer::new(deferred_calls_config);
         <span class="macro">assert!</span>(deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
             .is_err());
