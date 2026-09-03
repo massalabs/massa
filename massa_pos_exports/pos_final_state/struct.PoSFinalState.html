@@ -33,7 +33,7 @@
 </div></details><details class="toggle method-toggle" open><summary><section id="method.load_initial_deferred_credits" class="method"><a class="src rightside" href="../../src/massa_pos_exports/pos_final_state.rs.html#216-273">source</a><h4 class="code-header">pub fn <a href="#method.load_initial_deferred_credits" class="fn">load_initial_deferred_credits</a>(
     &amp;mut self,
     batch: &amp;mut <a class="type" href="../../massa_db_exports/db_batch/type.DBBatch.html" title="type massa_db_exports::db_batch::DBBatch">DBBatch</a>,
-    ledger: &amp;dyn LedgerController,
+    ledger: &amp;dyn <a class="trait" href="../../massa_ledger_exports/controller/trait.LedgerController.html" title="trait massa_ledger_exports::controller::LedgerController">LedgerController</a>,
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.unit.html">()</a>, <a class="enum" href="../error/enum.PosError.html" title="enum massa_pos_exports::error::PosError">PosError</a>&gt;</h4></section></summary><div class="docblock"><p>Try load initial deferred credits from file</p>
 <p>Credits that would fail at execution time (same rules as <code>transfer_coins</code> when
 crediting with <code>from_addr = None</code>) are skipped:</p>

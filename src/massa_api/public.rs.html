@@ -3093,7 +3093,7 @@
                         .into());
                     }
 
-                    <span class="kw">let </span>_verify_signature = <span class="kw">match </span>operation.verify_signature(<span class="prelude-val">None</span>) {
+                    <span class="kw">let </span>_verify_signature = <span class="kw">match </span>operation.verify_signature() {
                         <span class="prelude-val">Ok</span>(()) =&gt; (),
                         <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
                     };
