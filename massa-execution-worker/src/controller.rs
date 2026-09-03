@@ -138,6 +138,11 @@ impl ExecutionController for ExecutionControllerImpl {
 
     /// Atomically query the execution state with multiple requests.
     ///
+    /// INVARIANT: all items MUST be computed under the single `execution_state` read lock taken below,
+    /// because the returned cursors and fingerprint describe the whole batch and clients rely on this
+    /// to read a consistent state. Never release the lock between items to reduce contention:
+    /// bound the cost of a batch via budgets (per-item errors) instead.
+    ///
     /// Large payload responses (`Bytecode`, `DatastoreValue`) are counted toward
     /// `req.max_response_size`. Other response variants are treated as 0 bytes.
     /// When appending a large payload would exceed the budget, that item is returned
