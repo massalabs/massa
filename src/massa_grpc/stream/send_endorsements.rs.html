@@ -263,6 +263,20 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -270,10 +284,12 @@
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_models::endorsement::{EndorsementDeserializer, SecureShareEndorsement};
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
+<span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
 <span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
+<span class="kw">use </span>massa_versioning::consensus_signature::sig_chain_id_for_slot;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
@@ -300,6 +316,7 @@
     <span class="kw">let </span>selector_controller = grpc.selector_controller.clone();
     <span class="kw">let </span>config = grpc.grpc_config.clone();
     <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
+    <span class="kw">let </span>mip_store = grpc.keypair_factory.mip_store.clone();
 
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
@@ -346,7 +363,18 @@
                                             <span class="comment">// Deserialize the endorsement and verify its signature
                                             </span><span class="kw">let </span>(rest, res_endorsement): (<span class="kw-2">&amp;</span>[u8], SecureShareEndorsement) = tuple;
                                             <span class="kw">if </span>rest.is_empty() {
-                                                res_endorsement.verify_signature()
+                                                <span class="kw">let </span>slot_ts = get_block_slot_timestamp(
+                                                    config.thread_count,
+                                                    config.t0,
+                                                    config.genesis_timestamp,
+                                                    res_endorsement.content.slot,
+                                                )<span class="question-mark">?</span>;
+                                                <span class="kw">let </span>sig_chain_id = sig_chain_id_for_slot(
+                                                    <span class="kw-2">&amp;</span>mip_store,
+                                                    config.chain_id,
+                                                    slot_ts,
+                                                );
+                                                res_endorsement.verify_signature(sig_chain_id)
                                                     .map(|<span class="kw">_</span>| (res_endorsement.id.to_string(), res_endorsement))
                                                     .map_err(|e| e.into())
                                             } <span class="kw">else </span>{
