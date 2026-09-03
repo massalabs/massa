@@ -7,6 +7,7 @@ use massa_consensus_exports::bootstrapable_graph::{
 
 use massa_db_exports::StreamBatch;
 
+use massa_models::block::BlockDeserializerArgs;
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 
 use massa_models::config::MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE;
@@ -336,8 +337,16 @@ pub struct BootstrapServerMessageDeserializer {
 }
 
 impl BootstrapServerMessageDeserializer {
-    /// Creates a new `BootstrapServerMessageDeserializer`
-    pub fn new(args: BootstrapServerMessageDeserializerArgs) -> Self {
+    /// Builds a deserializer that applies `last_start_period` to bootstrap block header
+    /// deserialization so genesis vs non-genesis parent-count rules are enforced while
+    /// parsing. Pass `None` for the first part; the server sends restart metadata once on
+    /// that part (empty consensus graph), then the client reuses the cached value.
+    pub fn with_last_start_period(
+        args: BootstrapServerMessageDeserializerArgs,
+        last_start_period: Option<u64>,
+    ) -> Self {
+        let mut block_args: BlockDeserializerArgs = (&args).into();
+        block_args.last_start_period = last_start_period;
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -362,7 +371,7 @@ impl BootstrapServerMessageDeserializer {
                 Included(args.max_datastore_value_length),
             )),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
-                (&args).into(),
+                block_args,
                 args.max_bootstrap_blocks_length,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(
@@ -434,7 +443,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,
     ///     chain_id: *CHAINID
     /// };
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::with_last_start_period(args, None);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from_millis(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),

@@ -34,7 +34,6 @@ use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
-use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     address::Address,
     block_id::BlockId,
@@ -283,11 +282,6 @@ impl ExecutionState {
             );
         }
 
-        // Update versioning stats
-        // This will update the MIP store and must be called before final state write
-        // as it will also write the MIP store on disk
-        self.update_versioning_stats(&exec_out.block_info, &exec_out.slot);
-
         let exec_out_2 = exec_out.clone();
         #[cfg(feature = "slot-replayer")]
         {
@@ -296,9 +290,13 @@ impl ExecutionState {
             println!("<<<");
         }
         // apply state changes to the final ledger
+        let network_versions = exec_out
+            .block_info
+            .as_ref()
+            .map(|i| (i.current_version, i.announced_version));
         self.final_state
             .write()
-            .finalize(exec_out.slot, exec_out.state_changes);
+            .finalize(exec_out.slot, exec_out.state_changes, network_versions);
 
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
@@ -2695,24 +2693,6 @@ impl ExecutionState {
                 }
             })
             .collect()
-    }
-
-    /// Update MipStore with block header stats
-    pub fn update_versioning_stats(&mut self, block_info: &Option<ExecutedBlockInfo>, slot: &Slot) {
-        let slot_ts = get_block_slot_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            *slot,
-        )
-        .expect("Cannot get timestamp from slot");
-
-        self.mip_store.update_network_version_stats(
-            slot_ts,
-            block_info
-                .as_ref()
-                .map(|i| (i.current_version, i.announced_version)),
-        );
     }
 
     pub fn deferred_call_quote(
