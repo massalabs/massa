@@ -884,7 +884,6 @@
 <a href="#884" id="884">884</a>
 <a href="#885" id="885">885</a>
 <a href="#886" id="886">886</a>
-<a href="#887" id="887">887</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_db_exports::DBBatch;
 <span class="kw">use </span>massa_final_state::{FinalStateController, FinalStateError};
@@ -1486,7 +1485,6 @@
 
             <span class="comment">// load initial deferred credits
             </span>final_state_guard
-                .get_pos_state_mut()
                 .load_initial_deferred_credits(<span class="kw-2">&amp;mut </span>batch)
                 .map_err(|err| {
                     BootstrapError::GeneralError(<span class="macro">format!</span>(

@@ -1469,6 +1469,18 @@
 <a href="#1469" id="1469">1469</a>
 <a href="#1470" id="1470">1470</a>
 <a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1530,7 +1542,7 @@
 <span class="kw">use </span>rand_xoshiro::Xoshiro256PlusPlus;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>tracing::{debug, warn};
+<span class="kw">use </span>tracing::warn;
 
 <span class="doccomment">/// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
@@ -2299,6 +2311,9 @@
     ///
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
+    ///
+    /// Note that if the sender address is missing in the ledger (either from a network restart with an edited ledger or from a potential future delete address feature),
+    /// the transfer will fail and the message coins will be burned. We still want to cancel the message, to avoid clogging the pool with a message that will be cancelled again.
     </span><span class="kw">pub fn </span>cancel_async_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         msg: <span class="kw-2">&amp;</span>AsyncMessage,
@@ -2316,8 +2331,8 @@
             }),
         );
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
-            <span class="macro">debug!</span>(
-                <span class="string">"async message cancel: reimbursement of {} failed: {}"</span>,
+            <span class="macro">warn!</span>(
+                <span class="string">"async message cancel: reimbursement of {} failed (burning coins): {}"</span>,
                 msg.sender, e
             );
         }
@@ -2457,6 +2472,9 @@
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
+    ///  
+    /// Note that if the deferred credits's receiver address is missing in the ledger (either from a network restart with an edited ledger or from a potential future delete address feature),
+    /// the transfer will fail and the coins of the deferred credits will be burned. We still want to consume the deferred credit, to avoid clogging the system with deferred credits that fail to execute.
     </span><span class="kw">pub fn </span>execute_deferred_credits(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
@@ -2481,8 +2499,8 @@
                 );
 
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
-                    <span class="macro">debug!</span>(
-                        <span class="string">"could not credit {} deferred coins to {} at slot {}: {}"</span>,
+                    <span class="macro">warn!</span>(
+                        <span class="string">"could not credit {} deferred coins to {} at slot {} (burning coins): {}"</span>,
                         amount, address, slot, e
                     );
                 }
@@ -2787,7 +2805,10 @@
         <span class="self">self</span>.speculative_deferred_calls.get_call(call_id)
     }
 
-    <span class="doccomment">/// when a deferred call execution fails we need to refund the coins to the caller
+    <span class="doccomment">/// when a deferred call execution fails we need to refund the coins to the caller.
+    ///
+    /// Note that if the sender address is missing in the ledger (either from a network restart with an edited ledger or from a potential future delete address feature),
+    /// the transfer will fail and the coins of the deferred call will be burned. We still want to consume the deferred call, to avoid clogging the registry with failed deferred calls.
     </span><span class="kw">pub fn </span>deferred_call_fail_exec(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         id: <span class="kw-2">&amp;</span>DeferredCallId,
@@ -2809,8 +2830,8 @@
             }),
         );
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
-            <span class="macro">debug!</span>(
-                <span class="string">"deferred call {} fail: reimbursement of {} to {} failed: {}"</span>,
+            <span class="macro">warn!</span>(
+                <span class="string">"deferred call {} fail: reimbursement of {} to {} failed (burning coins): {}"</span>,
                 id, call.coins, call.sender_address, e
             );
         }
@@ -2826,6 +2847,9 @@
     }
 
     <span class="doccomment">/// when a deferred call is cancelled we need to refund the coins to the caller
+    ///
+    /// Note that if the sender address is missing in the ledger (either from a network restart with an edited ledger or from a potential future delete address feature),
+    /// the transfer will fail and the coins of the deferred call will be burned. We still want to cancel the deferred call, to avoid clogging the registry with cancelled deferred calls.
     </span><span class="kw">pub fn </span>deferred_call_cancel(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         call_id: <span class="kw-2">&amp;</span>DeferredCallId,
@@ -2857,8 +2881,8 @@
                     }),
                 );
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
-                    <span class="macro">debug!</span>(
-                        <span class="string">"deferred call cancel: reimbursement of {} failed: {}"</span>,
+                    <span class="macro">warn!</span>(
+                        <span class="string">"deferred call cancel: reimbursement of {} failed (burning coins): {}"</span>,
                         address, e
                     );
                 }
