@@ -1377,6 +1377,17 @@
 <a href="#1377" id="1377">1377</a>
 <a href="#1378" id="1378">1378</a>
 <a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1425,6 +1436,7 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::TimeError;
+<span class="kw">use </span>massa_versioning::consensus_signature::sig_chain_id_for_slot;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>rand::thread_rng;
 <span class="kw">use </span>rand::{seq::SliceRandom, Rng};
@@ -1978,8 +1990,17 @@
         }
 
         <span class="comment">// Authenticate the header before processing embedded endorsements so an
-        // invalid block signature cannot trigger endorsement verification or side effects.
-        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = header.verify_signature() {
+        // invalid block signature cannot trigger endorsement verification or side effects
+        // (signature layout gated on the header's own slot).
+        </span><span class="kw">let </span>header_slot_ts = get_block_slot_timestamp(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.t0,
+            <span class="self">self</span>.config.genesis_timestamp,
+            header.content.slot,
+        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>header_sig_chain_id =
+            sig_chain_id_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>.mip_store, <span class="self">self</span>.config.chain_id, header_slot_ts);
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = header.verify_signature(header_sig_chain_id) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
                 <span class="string">"invalid header signature: {}"</span>,
                 err
@@ -1996,6 +2017,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.config,
             <span class="kw-2">&amp;</span><span class="self">self</span>.sender_propagation_endorsements,
             <span class="self">self</span>.pool_controller.as_mut(),
+            <span class="kw-2">&amp;</span><span class="self">self</span>.mip_store,
         ) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
                 <span class="string">"invalid endorsements: {}"</span>,
