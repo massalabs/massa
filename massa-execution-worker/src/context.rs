@@ -8,7 +8,9 @@
 //! and does not write anything persistent to the consensus state.
 
 use crate::active_history::HistorySearchResult;
-use crate::speculative_async_pool::SpeculativeAsyncPool;
+use crate::speculative_async_pool::{
+    SpeculativeAsyncPool, ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
+};
 use crate::speculative_deferred_calls::{
     SpeculativeDeferredCallRegistry, DEFERRED_CALL_INDEX_FIX_EXEC_VERSION,
 };
@@ -485,6 +487,9 @@ impl ExecutionContext {
             self.slot,
             max_gas,
             async_msg_cst_gas_cost,
+            self.is_execution_component_version_at_least(
+                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
+            ),
         )
     }
 
@@ -1069,9 +1074,14 @@ impl ExecutionContext {
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
 
         // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages = self
-            .speculative_async_pool
-            .settle_slot(&slot, &self.speculative_ledger.added_changes);
+        let deleted_messages = self.speculative_async_pool.settle_slot(
+            &slot,
+            &self.speculative_ledger.added_changes,
+            self.config.async_msg_cst_gas_cost,
+            self.is_execution_component_version_at_least(
+                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
+            ),
+        );
 
         let mut cancel_async_message_transfers = vec![];
         for (_msg_id, msg) in deleted_messages {

@@ -16,6 +16,11 @@ const ASYNC_MESSAGE_ID_PREFIX: &str = "ASC";
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
 /// `(rev(Ratio(msg.fee, max(msg.max_gas,1))), emission_slot, emission_index)`
+///
+/// From `MipComponent::Execution` version 2 (MIP-0002), batch selection and pool eviction
+/// re-rank with `fee / max(max_gas + async_msg_cst_gas_cost, 1)` via
+/// [`crate::async_msg::AsyncMessage::compute_priority_id`]; stored ids keep the historical
+/// formula so identity of already-emitted messages is unchanged.
 pub type AsyncMessageId = (std::cmp::Reverse<Ratio<u64>>, Slot, u64);
 
 #[derive(Clone)]
