@@ -165,14 +165,8 @@ impl SpeculativeDeferredCallRegistry {
             .get_prev_slot(self.config.thread_count)
             .expect("cannot get prev slot");
 
-        let prev_slot_base_fee = {
-            let temp_slot_fee = self.get_slot_base_fee(&prev_slot);
-            if temp_slot_fee.eq(&Amount::zero()) {
-                Amount::from_raw(self.config.min_gas_cost)
-            } else {
-                temp_slot_fee
-            }
-        };
+        // uninitialized slots fall back to `min_gas_cost`, so we can use the `get_slot_base_fee` method directly
+        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot);
 
         let new_slot_base_fee = match avg_booked_gas.cmp(&TARGET_BOOKING) {
             // the previous booking rate was exactly the expected one: do not adjust the base fee
