@@ -1377,9 +1377,6 @@
 <a href="#1377" id="1377">1377</a>
 <a href="#1378" id="1378">1378</a>
 <a href="#1379" id="1379">1379</a>
-<a href="#1380" id="1380">1380</a>
-<a href="#1381" id="1381">1381</a>
-<a href="#1382" id="1382">1382</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1701,14 +1698,11 @@
             (<span class="prelude-val">Some</span>((<span class="kw">_</span>, block_op_ids)), AskForBlockInfo::Operations(<span class="kw-2">mut </span>asked_ops)) =&gt; {
                 <span class="comment">// the peer asked for a list of full operations from the block
 
-                // Retain only unique operations that belong to the block. Request vectors may
-                // contain duplicate IDs, but returning a full operation for every occurrence
-                // would allow a peer to amplify a small request into a much larger response.
+                // retain only ops that belong to the block
                 </span>{
                     <span class="kw">let </span>block_op_ids_set: PreHashSet&lt;OperationId&gt; =
                         block_op_ids.iter().copied().collect();
-                    <span class="kw">let </span><span class="kw-2">mut </span>seen = PreHashSet::default();
-                    asked_ops.retain(|id| block_op_ids_set.contains(id) &amp;&amp; seen.insert(<span class="kw-2">*</span>id));
+                    asked_ops.retain(|id| block_op_ids_set.contains(id));
                 }
 
                 <span class="comment">// Send the operations that are available in storage
