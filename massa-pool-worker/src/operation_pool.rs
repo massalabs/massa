@@ -115,7 +115,14 @@ impl OperationPool {
         pos_draws
     }
 
-    /// Returns the list of executed ops with a boolean indicating whether they are executed as final.
+    /// Returns execution markers for ops currently in the pool.
+    ///
+    /// Map value semantics:
+    /// - `true`: executed in final history (durable; safe to evict from the pool)
+    /// - `false`: executed only in speculative/candidate history (can disappear on rollback;
+    ///   must not drive pool eviction)
+    ///
+    /// Ops with no execution record are omitted.
     fn get_execution_statuses(&self) -> PreHashMap<OperationId, bool> {
         let op_ids: Vec<OperationId> = self.sorted_ops.iter().map(|op_info| op_info.id).collect();
         self.channels
@@ -125,7 +132,9 @@ impl OperationPool {
             .zip(op_ids)
             .filter_map(
                 |((spec_status, final_status), op_id)| match (spec_status, final_status) {
-                    (Some(_), Some(_)) => Some((op_id, true)),
+                    // Final execution is durable (execution layer also surfaces it as speculative).
+                    (_, Some(_)) => Some((op_id, true)),
+                    // Candidate-history only: keep as non-final for optional scoring, never as eviction.
                     (Some(_), None) => Some((op_id, false)),
                     _ => None,
                 },
@@ -179,10 +188,11 @@ impl OperationPool {
                 retain = op_info.fee.checked_sub(self.config.minimal_fees).is_some();
             }
 
-            // filter out ops that have been executed in final or candidate slots
-            // TODO: in the re-execution followup, we should only filter out final-executed ops here (exec_status == Some(true))
+            // Filter out ops whose execution is final/durable only.
+            // Speculative/candidate-only markers (exec_status == false) must not evict:
+            // they can vanish on rollback, and there is no reinsertion path after drop.
             if retain {
-                retain = !exec_statuses.contains_key(&op_info.id);
+                retain = exec_statuses.get(&op_info.id) != Some(&true);
             }
 
             // filter out ops that spend more than the sender's balance
@@ -253,7 +263,7 @@ impl OperationPool {
     /// Score the operations
     fn score_operations(
         &self,
-        _exec_statuses: &PreHashMap<OperationId, bool>,
+        exec_statuses: &PreHashMap<OperationId, bool>,
         pos_draws: &BTreeSet<Slot>,
     ) -> PreHashMap<OperationId, f32> {
         let now = MassaTime::now();
@@ -315,23 +325,19 @@ impl OperationPool {
                     0.0
                 };
 
-            /* TODO: re-execution followup
-            // If the op was executed previously, there is still an exponentially decaying chance of its block being cancelled
-            // so that it can be reincluded.
-            // We approximate it with a constant factor for simplicity since we don't have the inclusion slot for now.
-            let reexecution_penalty = 1.0 / 1000.0; // re-execution penalty factor
+            // If the op was executed previously, there is still a chance of its block being
+            // cancelled so that it can be reincluded. Keep it in the pool (for rollback recovery)
+            // but score it far below non-executed ops. Block production also skips currently
+            // executed ops to avoid wasting gas while the mark is live.
+            let reexecution_penalty = 1.0 / 1000.0;
             let reexecution_factor = if exec_statuses.contains_key(&op_info.id) {
-                // executed previously
                 reexecution_penalty
             } else {
-                // not executed previously => score 1
                 1.0
             };
-            */
 
             // compute the score as being the product of all the factors and the fee
-            let score = fee_factor * resource_factor * inclusion_factor;
-            //  * reexecution_factor; // TODO: re-execution followup
+            let score = fee_factor * resource_factor * inclusion_factor * reexecution_factor;
 
             // store the score
             scores.insert(op_info.id, score);
@@ -470,7 +476,13 @@ impl OperationPool {
     /// Searches the available operations, and selects the sub-set of operations that:
     /// - fit inside the block
     /// - is the most profitable for block producer
+    /// - are not currently marked executed (speculative or final)
     pub fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
+        // Live execution marks: skip while present so we do not waste block gas/space.
+        // Speculative marks can disappear on rollback; those ops stay in the pool and
+        // become selectable again once the mark is gone (without needing reinsertion).
+        let exec_statuses = self.get_execution_statuses();
+
         // init list of selected operation IDs
         let mut op_ids = Vec::new();
 
@@ -498,13 +510,18 @@ impl OperationPool {
                 continue;
             }
 
-            // exclude ops that are too large
+            // exclude ops that use too much resources for remaining capacity
             if op_info.size > remaining_space {
                 continue;
             }
 
             // exclude ops that require too much gas
             if op_info.max_gas_usage > remaining_gas {
+                continue;
+            }
+
+            // exclude ops currently executed (candidate or final)
+            if exec_statuses.contains_key(&op_info.id) {
                 continue;
             }
 
