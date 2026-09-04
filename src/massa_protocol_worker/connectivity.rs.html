@@ -850,7 +850,7 @@
     <span class="kw">let </span>conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
     {
         <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
-        peer_db_write.set_try_connect_success_or_insert(<span class="kw-2">&amp;</span>addr);
+        peer_db_write.set_try_connect_or_insert(<span class="kw-2">&amp;</span>addr);
         <span class="kw">if let </span><span class="prelude-val">Err</span>(<span class="kw-2">ref </span>err) = conn_res {
             <span class="macro">debug!</span>(<span class="string">"Failed to connect to peer {:?}: {:?}"</span>, addr, err);
             peer_db_write.set_try_connect_failure_or_insert(<span class="kw-2">&amp;</span>addr);

@@ -415,6 +415,36 @@
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -728,7 +758,11 @@
             .unwrap_or(ConnectionMetadata::default())
     }
 
-    <span class="kw">fn </span>set_try_connect_success_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
+    <span class="kw">fn </span>set_success_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
+        <span class="self">self</span>.try_connect_history.entry(<span class="kw-2">*</span>addr).or_default().success();
+    }
+
+    <span class="kw">fn </span>set_try_connect_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
         <span class="self">self</span>.try_connect_history
             .entry(<span class="kw-2">*</span>addr)
             .or_default()
@@ -781,10 +815,36 @@
     <span class="kw">use </span>massa_time::MassaTime;
     <span class="kw">use </span>peernet::transports::TransportType;
     <span class="kw">use </span>std::collections::HashMap;
+    <span class="kw">use </span>std::net::SocketAddr;
 
     <span class="kw">use </span><span class="kw">super</span>::<span class="kw">super</span>::announcement::{Announcement, MAX_ANNOUNCEMENT_CLOCK_SKEW_MS};
-    <span class="kw">use super</span>::{PeerDB, PeerInfo, PeerState, THREE_DAYS_MS};
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::wrap_peer_db::PeerDBTrait;
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>set_success_records_last_success_for_priority_comparator() {
+        <span class="kw">let </span>addr: SocketAddr = <span class="string">"127.0.0.1:1234"</span>.parse().unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>db = PeerDB::default();
+
+        <span class="comment">// Recording only a connection *attempt* must not populate `last_success`:
+        // that field is what feeds the peer-priority comparator.
+        </span>db.set_try_connect_or_insert(<span class="kw-2">&amp;</span>addr);
+        <span class="kw">let </span>meta = db.get_connection_metadata_or_default(<span class="kw-2">&amp;</span>addr);
+        <span class="macro">assert!</span>(
+            meta.last_success.is_none(),
+            <span class="string">"a mere connect attempt should not count as a success"
+        </span>);
+        <span class="macro">assert!</span>(meta.last_try_connect.is_some());
+
+        <span class="comment">// Recording an actual success (as the handshake-success path now does)
+        // must populate `last_success`.
+        </span>db.set_success_or_insert(<span class="kw-2">&amp;</span>addr);
+        <span class="kw">let </span>meta = db.get_connection_metadata_or_default(<span class="kw-2">&amp;</span>addr);
+        <span class="macro">assert!</span>(
+            meta.last_success.is_some(),
+            <span class="string">"a successful connection must be recorded in last_success"
+        </span>);
+    }
 
     <span class="doccomment">/// Build a peer announcing one listener, with its announcement timestamp forced to `timestamp`.
     </span><span class="kw">fn </span>peer_announcing_at(timestamp: u64) -&gt; (PeerId, PeerInfo) {
