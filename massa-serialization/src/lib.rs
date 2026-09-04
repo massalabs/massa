@@ -465,7 +465,7 @@ where
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Ratio<T>, E> {
-        let mut parser = context(
+        context(
             "Ratio<_> deserializer failed",
             map_opt(
                 tuple((
@@ -487,8 +487,8 @@ where
                     }
                 },
             ),
-        );
-        parser.parse(buffer)
+        )
+        .parse(buffer)
     }
 }
 
