@@ -809,10 +809,31 @@
 <a href="#809" id="809">809</a>
 <a href="#810" id="810">810</a>
 <a href="#811" id="811">811</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{
-    collections::{BTreeSet, HashMap, VecDeque},
-    mem,
-};
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeSet, HashMap, VecDeque};
 
 <span class="kw">use </span>massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock, StorageOrBlock},
@@ -1511,64 +1532,91 @@
     /// 10. note new latest final periods (prune graph if changed)
     /// 11. add stale blocks to stats
     </span><span class="kw">pub fn </span>block_db_changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
-        <span class="kw">let </span>final_block_slots = {
-            <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed"</span>, {});
+        <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed"</span>, {});
 
-            <span class="comment">// Propagate new blocks
-            </span><span class="kw">for </span>(block_id, storage) <span class="kw">in </span>mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.to_propagate).into_iter() {
-                <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed.integrated"</span>, {
-                    <span class="string">"block_id"</span>: block_id
-                });
-                <span class="self">self</span>.channels
-                    .protocol_controller
-                    .integrated_block(block_id, storage)<span class="question-mark">?</span>;
+        <span class="comment">// Propagate new blocks incrementally. If a downstream call fails, restore
+        // the unprocessed items so they can be retried on the next call instead
+        // of being silently lost.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>to_propagate: Vec&lt;(BlockId, Storage)&gt; =
+            std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.to_propagate).into_iter().collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>propagate_error = <span class="prelude-val">None</span>;
+        <span class="kw">while let </span><span class="prelude-val">Some</span>((block_id, storage)) = to_propagate.pop() {
+            <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed.integrated"</span>, {
+                <span class="string">"block_id"</span>: block_id
+            });
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self
+                </span>.channels
+                .protocol_controller
+                .integrated_block(block_id, storage.clone())
+            {
+                <span class="self">self</span>.to_propagate.insert(block_id, storage);
+                propagate_error = <span class="prelude-val">Some</span>(e);
+                <span class="kw">break</span>;
             }
+        }
+        <span class="kw">for </span>(block_id, storage) <span class="kw">in </span>to_propagate {
+            <span class="self">self</span>.to_propagate.insert(block_id, storage);
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = propagate_error {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
+        }
 
-            <span class="comment">// Notify protocol of attack attempts.
-            </span><span class="kw">for </span>hash <span class="kw">in </span>mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.attack_attempts).into_iter() {
-                <span class="self">self</span>.channels
-                    .protocol_controller
-                    .notify_block_attack(hash)<span class="question-mark">?</span>;
-                <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed.attack"</span>, {
-                    <span class="string">"hash"</span>: hash
-                });
+        <span class="comment">// Notify protocol of attack attempts incrementally, preserving unprocessed
+        // items on failure so they are retried later.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>attack_attempts = std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.attack_attempts);
+        <span class="kw">let </span><span class="kw-2">mut </span>attack_error = <span class="prelude-val">None</span>;
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(hash) = attack_attempts.pop() {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.channels.protocol_controller.notify_block_attack(hash) {
+                attack_attempts.push(hash);
+                attack_error = <span class="prelude-val">Some</span>(e);
+                <span class="kw">break</span>;
             }
+            <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed.attack"</span>, {
+                <span class="string">"hash"</span>: hash
+            });
+        }
+        <span class="self">self</span>.attack_attempts.extend(attack_attempts);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = attack_error {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
+        }
 
-            <span class="comment">// manage finalized blocks
-            </span><span class="kw">let </span>timestamp = MassaTime::now();
-            <span class="kw">let </span>finalized_blocks = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.new_final_blocks);
-            <span class="kw">let </span><span class="kw-2">mut </span>final_block_slots = HashMap::with_capacity(finalized_blocks.len());
-            <span class="kw">let </span><span class="kw-2">mut </span>final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
-            <span class="kw">for </span>b_id <span class="kw">in </span>finalized_blocks {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>b_id) {
-                    <span class="comment">// add to final blocks to notify execution
-                    </span>final_block_slots.insert(a_block.slot, b_id);
+        <span class="comment">// manage finalized blocks
+        </span><span class="kw">let </span>timestamp = MassaTime::now();
+        <span class="kw">let </span><span class="kw-2">mut </span>final_block_slots = HashMap::with_capacity(<span class="self">self</span>.new_final_blocks.len());
+        <span class="kw">let </span><span class="kw-2">mut </span>final_block_stats = VecDeque::with_capacity(<span class="self">self</span>.new_final_blocks.len());
+        <span class="kw">for </span>b_id <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.new_final_blocks {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) = <span class="self">self</span>.blocks_state.get(b_id) {
+                <span class="comment">// add to final blocks to notify execution
+                </span>final_block_slots.insert(a_block.slot, <span class="kw-2">*</span>b_id);
 
-                    <span class="comment">// add to stats
-                    </span><span class="kw">let </span>block_is_from_protocol = <span class="self">self
-                        </span>.protocol_blocks
-                        .iter()
-                        .any(|(<span class="kw">_</span>, block_id)| block_id == <span class="kw-2">&amp;</span>b_id);
-                    final_block_stats.push_back((
-                        timestamp,
-                        a_block.creator_address,
-                        block_is_from_protocol,
-                    ));
-                }
+                <span class="comment">// add to stats
+                </span><span class="kw">let </span>block_is_from_protocol = <span class="self">self
+                    </span>.protocol_blocks
+                    .iter()
+                    .any(|(<span class="kw">_</span>, block_id)| block_id == b_id);
+                final_block_stats.push_back((
+                    timestamp,
+                    a_block.creator_address,
+                    block_is_from_protocol,
+                ));
             }
-            <span class="self">self</span>.final_block_stats.extend(final_block_stats);
-
-            <span class="comment">// add stale blocks to stats
-            </span><span class="kw">let </span>new_stale_block_ids_creators_slots = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.new_stale_blocks);
-            <span class="kw">let </span>timestamp = MassaTime::now();
-            <span class="kw">for </span>(_b_id, (_b_creator, _b_slot)) <span class="kw">in </span>new_stale_block_ids_creators_slots.into_iter() {
-                <span class="self">self</span>.stale_block_stats.push_back(timestamp);
-            }
-            final_block_slots
-        };
+        }
+        <span class="comment">// add stale blocks to stats
+        </span><span class="kw">let </span>timestamp = MassaTime::now();
+        <span class="kw">let </span><span class="kw-2">mut </span>stale_block_stats =
+            VecDeque::with_capacity(<span class="self">self</span>.new_stale_blocks.len());
+        <span class="kw">for _ in </span><span class="number">0</span>..<span class="self">self</span>.new_stale_blocks.len() {
+            stale_block_stats.push_back(timestamp);
+        }
 
         <span class="comment">// notify execution
         </span><span class="self">self</span>.notify_execution(final_block_slots);
+
+        <span class="comment">// Downstream delivery confirmed: drain notification queues and commit stats.
+        </span><span class="self">self</span>.new_final_blocks.clear();
+        <span class="self">self</span>.new_stale_blocks.clear();
+        <span class="self">self</span>.final_block_stats.extend(final_block_stats);
+        <span class="self">self</span>.stale_block_stats.extend(stale_block_stats);
 
         <span class="comment">// notify protocol of block wishlist
         </span><span class="kw">let </span>new_wishlist = <span class="self">self</span>.get_block_wishlist()<span class="question-mark">?</span>;
