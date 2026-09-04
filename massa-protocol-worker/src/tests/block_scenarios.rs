@@ -46,6 +46,25 @@ impl PeerIdMatchers {
     }
 }
 
+fn assert_block_info_reply_eq(actual: &BlockInfoReply, expected: &BlockInfoReply) {
+    match (actual, expected) {
+        (BlockInfoReply::Header(actual), BlockInfoReply::Header(expected)) => {
+            assert_eq!(actual.id, expected.id);
+        }
+        (BlockInfoReply::OperationIds(actual), BlockInfoReply::OperationIds(expected)) => {
+            assert_eq!(actual, expected);
+        }
+        (BlockInfoReply::Operations(actual), BlockInfoReply::Operations(expected)) => {
+            assert_eq!(
+                actual.iter().map(|op| op.id).collect::<Vec<_>>(),
+                expected.iter().map(|op| op.id).collect::<Vec<_>>()
+            );
+        }
+        (BlockInfoReply::NotFound, BlockInfoReply::NotFound) => {}
+        _ => panic!("Unexpected block info reply: {actual:?}"),
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 enum TestsStepMatch {
     // Match an ask asking for the block infos and match the block infos asked
@@ -103,7 +122,7 @@ fn block_retrieval_mock(
                     }
                 });
             }
-            TestsStepMatch::SendData((node_peer_id, sent_block_id, _sent_infos)) => {
+            TestsStepMatch::SendData((node_peer_id, sent_block_id, sent_infos)) => {
                 node_peer_id.extend(&mut peer_ids);
                 shared_active_connections.set_expectations({
                     |active_connections| {
@@ -116,9 +135,12 @@ fn block_retrieval_mock(
                                 assert!(node_peer_id.matches(peer_id));
                                 match message {
                                     Message::Block(message) => match *message {
-                                        BlockMessage::DataResponse { block_id, .. } => {
+                                        BlockMessage::DataResponse {
+                                            block_id,
+                                            block_info,
+                                        } => {
                                             assert_eq!(block_id, sent_block_id);
-                                            //TODO: CHeck block info, difficult because doesn't implement Eq.
+                                            assert_block_info_reply_eq(&block_info, &sent_infos);
                                         }
                                         _ => panic!("Node didn't receive the infos block message"),
                                     },
@@ -214,6 +236,57 @@ fn block_retrieval_mock(
         .network_controller
         .expect_get_active_connections()
         .returning(move || Box::new(shared_active_connections.clone()));
+}
+
+#[test]
+fn test_duplicate_operation_ids_are_deduplicated_in_block_response() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+
+    let block_creator = KeyPair::generate(0).unwrap();
+    let operation = ProtocolTestUniverse::create_operation(&block_creator, 5, *CHAINID);
+    let block = ProtocolTestUniverse::create_block(
+        &block_creator,
+        Slot::new(
+            1,
+            operation
+                .content_creator_address
+                .get_thread(protocol_config.thread_count),
+        ),
+        vec![operation.clone()],
+        vec![],
+        vec![],
+    );
+    let peer_keypair = KeyPair::generate(0).unwrap();
+    let peer_id = PeerId::from_public_key(peer_keypair.get_public_key());
+
+    let waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    block_retrieval_mock(
+        vec![TestsStepMatch::SendData((
+            PeerIdMatchers::PeerId(peer_id),
+            block.id,
+            BlockInfoReply::Operations(vec![operation.clone()]),
+        ))],
+        &mut foreign_controllers,
+        waitpoint.get_trigger_handle(),
+    );
+
+    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    universe.storage.store_block(block.clone());
+    universe.storage.store_operations(vec![operation.clone()]);
+
+    universe.mock_message_receive(
+        &peer_id,
+        Message::Block(Box::new(BlockMessage::DataRequest {
+            block_id: block.id,
+            block_info: AskForBlockInfo::Operations(vec![operation.id, operation.id, operation.id]),
+        })),
+    );
+    waitpoint.wait();
 }
 
 #[test]
