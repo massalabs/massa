@@ -28,37 +28,54 @@ const THREAD_NAME: &str = "poh-tester";
 static_assertions::const_assert!(THREAD_NAME.len() < 16);
 
 /// Returns the subset of operation ids in `storage` whose serialized size is
-/// within `max_serialized_operations_size_per_block`.
+/// within `max_serialized_operations_size_per_block`, and releases `storage`'s
+/// references to the rejected operations.
 ///
 /// Operations exceeding the protocol size limit are excluded (and logged) so
 /// they are never marked checked, stored for propagation, or announced. This
 /// mirrors the size check already enforced on the peer-received (retrieval)
 /// path, and protects locally submitted operations (JSON-RPC / gRPC), which are
 /// not validated against this limit on submission.
-fn operations_within_size_limit(
-    storage: &Storage,
+///
+/// The rejected references must not be merged into the propagation storage:
+/// only queued operations are ever pruned from it, so kept-alive refs of
+/// filtered-out operations would pin their content until shutdown.
+fn filter_propagatable_ops(
+    storage: &mut Storage,
     max_serialized_operations_size_per_block: usize,
 ) -> PreHashSet<OperationId> {
-    let ops_read = storage.read_operations();
-    storage
+    let kept: PreHashSet<OperationId> = {
+        let ops_read = storage.read_operations();
+        storage
+            .get_op_refs()
+            .iter()
+            .copied()
+            .filter(|op_id| match ops_read.get(op_id) {
+                Some(op) => {
+                    let size = op.serialized_size();
+                    let ok = size <= max_serialized_operations_size_per_block;
+                    if !ok {
+                        warn!(
+                            "not propagating operation {}: serialized size {} exceeds max {} bytes",
+                            op_id, size, max_serialized_operations_size_per_block
+                        );
+                    }
+                    ok
+                }
+                None => false,
+            })
+            .collect()
+    };
+
+    let rejected: PreHashSet<OperationId> = storage
         .get_op_refs()
         .iter()
         .copied()
-        .filter(|op_id| match ops_read.get(op_id) {
-            Some(op) => {
-                let size = op.serialized_size();
-                let ok = size <= max_serialized_operations_size_per_block;
-                if !ok {
-                    warn!(
-                        "not propagating operation {}: serialized size {} exceeds max {} bytes",
-                        op_id, size, max_serialized_operations_size_per_block
-                    );
-                }
-                ok
-            }
-            None => false,
-        })
-        .collect()
+        .filter(|op_id| !kept.contains(op_id))
+        .collect();
+    storage.drop_operation_refs(&rejected);
+
+    kept
 }
 
 struct PropagationThread {
@@ -93,7 +110,7 @@ impl PropagationThread {
             match self.internal_receiver.recv_deadline(batch_deadline) {
                 Ok(internal_message) => {
                     match internal_message {
-                        OperationHandlerPropagationCommand::PropagateOperations(operations) => {
+                        OperationHandlerPropagationCommand::PropagateOperations(mut operations) => {
                             // Re-validate the protocol size limit before propagating.
                             // Locally submitted operations (JSON-RPC / gRPC) are not
                             // checked against `max_serialized_operations_size_per_block`
@@ -101,9 +118,11 @@ impl PropagationThread {
                             // operation could be marked checked, stored and announced,
                             // making honest peers ban us for advertising invalid data.
                             // This mirrors the check already enforced on the retrieval
-                            // (peer-received) path.
-                            let new_ops = operations_within_size_limit(
-                                &operations,
+                            // (peer-received) path. The rejected operations' references
+                            // are released here too, so they are never merged into
+                            // `op_storage` (which only prunes operations it queued).
+                            let new_ops = filter_propagatable_ops(
+                                &mut operations,
                                 self.config.max_serialized_operations_size_per_block,
                             );
 
@@ -691,18 +710,31 @@ mod tests {
         let op_size = op.serialized_size();
 
         let mut storage = Storage::create_root();
-        storage.store_operations(vec![op]);
+        storage.store_operations(vec![op.clone()]);
 
-        // With a generous limit the operation is kept for propagation.
-        let kept = operations_within_size_limit(&storage, op_size);
+        // With a generous limit the operation is kept for propagation,
+        // and its reference is retained.
+        let kept = filter_propagatable_ops(&mut storage, op_size);
         assert!(kept.contains(&op_id), "op within the limit must be kept");
+        assert!(storage.get_op_refs().contains(&op_id));
 
         // With a limit below its size the operation is excluded, so it is never
         // marked checked, stored, or announced.
-        let dropped = operations_within_size_limit(&storage, op_size - 1);
+        let dropped = filter_propagatable_ops(&mut storage, op_size - 1);
         assert!(
             dropped.is_empty(),
             "oversized op must be filtered out of propagation"
+        );
+
+        // The rejected operation's reference must be released, so that merging
+        // the input storage into the propagation storage does not pin it.
+        assert!(!storage.get_op_refs().contains(&op_id));
+
+        // The submission owned the only reference, so the rejection also
+        // orphaned the content: it must no longer be present in shared storage.
+        assert!(
+            storage.read_operations().get(&op_id).is_none(),
+            "rejected op must not stay pinned in shared storage"
         );
     }
 }
