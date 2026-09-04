@@ -111,6 +111,46 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -121,6 +161,7 @@
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
+<span class="kw">use </span>tracing::warn;
 
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
 
@@ -214,14 +255,53 @@
     }
 
     <span class="kw">pub fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((tx, thread)) = <span class="self">self</span>.block_retrieval_thread.take() {
+        <span class="comment">// Signal both threads to stop *before* joining any of them, so a panic
+        // in (or a failed join of) one thread cannot prevent the other from
+        // being told to stop and joined.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((tx, <span class="kw">_</span>)) = <span class="self">self</span>.block_retrieval_thread.as_ref() {
             <span class="kw">let _ </span>= tx.send(BlockHandlerRetrievalCommand::Stop);
-            thread.join().unwrap();
         }
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((tx, thread)) = <span class="self">self</span>.block_propagation_thread.take() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((tx, <span class="kw">_</span>)) = <span class="self">self</span>.block_propagation_thread.as_ref() {
             <span class="kw">let _ </span>= tx.send(BlockHandlerPropagationCommand::Stop);
-            thread.join().unwrap();
         }
+
+        <span class="comment">// Join both, tolerating an already-panicked thread (`join()` returns
+        // `Err`) so shutdown of the other thread still completes instead of
+        // aborting `stop()` via `unwrap()`.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, thread)) = <span class="self">self</span>.block_retrieval_thread.take() {
+            join_logging_panic(thread, <span class="string">"block retrieval"</span>);
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, thread)) = <span class="self">self</span>.block_propagation_thread.take() {
+            join_logging_panic(thread, <span class="string">"block propagation"</span>);
+        }
+    }
+}
+
+<span class="doccomment">/// Join a handler thread, logging (instead of propagating) the case where the
+/// thread had already panicked, so one panicked thread does not abort the
+/// shutdown of the others.
+</span><span class="kw">fn </span>join_logging_panic(thread: JoinHandle&lt;()&gt;, name: <span class="kw-2">&amp;</span>str) {
+    <span class="kw">if </span>thread.join().is_err() {
+        <span class="macro">warn!</span>(<span class="string">"{} thread panicked before/at shutdown"</span>, name);
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">super</span>::join_logging_panic;
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>join_logging_panic_tolerates_a_panicked_thread() {
+        <span class="comment">// A thread that panics must not make `join_logging_panic` itself panic,
+        // so a sibling thread's shutdown can still proceed.
+        </span><span class="kw">let </span>panicker = std::thread::Builder::new()
+            .name(<span class="string">"test-panicker"</span>.into())
+            .spawn(|| <span class="macro">panic!</span>(<span class="string">"intentional test panic"</span>))
+            .unwrap();
+        join_logging_panic(panicker, <span class="string">"test-panicker"</span>);
+
+        <span class="kw">let </span>normal = std::thread::spawn(|| {});
+        join_logging_panic(normal, <span class="string">"test-normal"</span>);
     }
 }
 </code></pre></div></section></main></body></html>
