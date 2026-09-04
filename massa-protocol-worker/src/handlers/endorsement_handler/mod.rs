@@ -8,6 +8,7 @@ use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_versioning::versioning::MipStore;
 
 use crate::wrap_network::ActiveConnectionsTrait;
 
@@ -80,6 +81,7 @@ impl EndorsementHandler {
         local_receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
         sender_peer_cmd: MassaSender<PeerManagementCmd>,
         massa_metrics: MassaMetrics,
+        mip_store: MipStore,
     ) -> Self {
         let endorsement_retrieval_thread = start_retrieval_thread(
             receiver,
@@ -92,6 +94,7 @@ impl EndorsementHandler {
             config.clone(),
             storage.clone_without_refs(),
             massa_metrics,
+            mip_store,
         );
 
         let endorsement_propagation_thread =

@@ -555,9 +555,14 @@ mod tests {
             },
             expire_period: 50,
         };
-        let operation: SecureShareOperation =
-            Operation::new_verifiable(content, OperationSerializer::new(), &keypair, *CHAINID)
-                .unwrap();
+        let operation: SecureShareOperation = Operation::new_verifiable(
+            content,
+            OperationSerializer::new(),
+            &keypair,
+            *CHAINID,
+            None,
+        )
+        .unwrap();
         let operations = vec![operation.clone(), operation];
         let total_operations_size: usize = operations.iter().map(|op| op.serialized_size()).sum();
 

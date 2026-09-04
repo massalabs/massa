@@ -34,6 +34,7 @@ use crate::{
     wrap_peer_db::MockPeerDBTrait,
 };
 use massa_metrics::MassaMetrics;
+use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use num::rational::Ratio;
 use std::ops::Bound::Included;
@@ -246,7 +247,7 @@ pub fn start_protocol_controller_with_mock_network(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
-    let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config)).unwrap();
 
     let connectivity_thread_handle = start_connectivity_thread(
         PeerId::from_public_key(keypair.get_public_key()),

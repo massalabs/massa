@@ -15,6 +15,7 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 #[cfg(feature = "dump-block")]
 use crate::storage_backend::StorageBackend;
+use crate::wmas_patch;
 use massa_deferred_calls::DeferredCall;
 use massa_event_cache::controller::EventCacheController;
 use massa_execution_exports::{
@@ -34,6 +35,7 @@ use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     address::Address,
     block_id::BlockId,
@@ -716,7 +718,33 @@ impl ExecutionState {
         }
 
         // ignore denunciation if not valid
-        if !denunciation.is_valid() {
+        //
+        // The signature reconstruction is chain-scoped once MIP-0002's `Execution`
+        // component v2 is active for the denounced slot: the signed hash then folds
+        // in the local chain id. This prevents an attacker from combining two
+        // legitimate same-(slot, index) endorsements / block headers produced by
+        // the same validator on two different chains into a denunciation on either
+        // chain (F90 / PDF #11). Pre-activation `sig_chain_id` is `None` and the
+        // legacy (chain-agnostic) layout is used, so existing denunciations keep
+        // verifying. The layout is decided by the network-agreed active version for
+        // the denounced slot, not any self-claimed header field.
+        let de_slot_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            *de_slot,
+        )
+        .map_err(|e| {
+            ExecutionError::IncludeDenunciationError(format!(
+                "cannot compute denounced slot timestamp: {e}"
+            ))
+        })?;
+        let sig_chain_id = massa_versioning::consensus_signature::sig_chain_id_for_slot(
+            &self.mip_store,
+            self.config.chain_id,
+            de_slot_ts,
+        );
+        if !denunciation.is_valid_with_chain(sig_chain_id) {
             return Err(ExecutionError::IncludeDenunciationError(
                 "denunciation is not valid".to_string(),
             ));
@@ -1568,6 +1596,42 @@ impl ExecutionState {
         let calls = execution_context.deferred_calls_advance_slot(*slot);
 
         let deferred_calls_slot_gas = calls.effective_slot_gas;
+
+        // One-time, versioning-gated WMAS bytecode patch (see `wmas_patch`).
+        // Applied here so it is part of the slot's ledger changes and shared by
+        // both candidate and final execution (this function is called by both).
+        if execution_context
+            .is_execution_component_version_activation(wmas_patch::WMAS_PATCH_EXEC_VERSION)
+        {
+            match wmas_patch::wmas_address(self.config.chain_id) {
+                Some(addr) => {
+                    // Existence guard: only overwrite an already-deployed WMAS
+                    // contract, never create a new entry. Keeps the patch a
+                    // no-op on networks that share a known chain_id but do not
+                    // actually have WMAS deployed (e.g. a private fork or a
+                    // sandbox misconfigured with a mainnet/buildnet chain_id).
+                    if execution_context.get_bytecode(&addr).is_some() {
+                        execution_context
+                            .override_bytecode(&addr, wmas_patch::patched_wmas_bytecode());
+                        info!("applied WMAS bytecode patch at slot {}", slot);
+                    } else {
+                        warn!(
+                            "WMAS bytecode patch activation slot {} reached but no contract exists at {}; skipping",
+                            slot, addr
+                        );
+                    }
+                }
+                None => {
+                    // Fail-safe: the patch is not applicable on this network
+                    // (unknown chain_id). Leave WMAS untouched rather than abort
+                    // consensus.
+                    warn!(
+                        "WMAS bytecode patch activation slot {} reached but no address for chain_id {}; skipping",
+                        slot, self.config.chain_id
+                    );
+                }
+            }
+        }
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;

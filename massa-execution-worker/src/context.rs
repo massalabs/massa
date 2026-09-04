@@ -8,12 +8,19 @@
 //! and does not write anything persistent to the consensus state.
 
 use crate::active_history::HistorySearchResult;
-use crate::speculative_async_pool::SpeculativeAsyncPool;
-use crate::speculative_deferred_calls::SpeculativeDeferredCallRegistry;
+use crate::speculative_async_pool::{
+    SpeculativeAsyncPool, ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
+};
+use crate::speculative_deferred_calls::{
+    SpeculativeDeferredCallRegistry, DEFERRED_CALL_INDEX_FIX_EXEC_VERSION,
+};
 use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
+use crate::{
+    active_history::ActiveHistory,
+    speculative_roll_state::{SpeculativeRollState, SETTLE_ACTIVE_ROLLS_EXEC_VERSION},
+};
 use massa_async_pool::AsyncPoolChanges;
 
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
@@ -51,6 +58,7 @@ use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
 use massa_sc_runtime::CondomLimits;
 use massa_serialization::Serializer;
+use massa_time::MassaTime;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
 use massa_versioning::versioning::{MipComponent, MipStore};
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
@@ -118,6 +126,12 @@ pub struct ExecutionContextSnapshot {
 
     /// Transfer history count
     pub transfer_history_len: usize,
+
+    /// The version of the execution component
+    pub execution_component_version: u32,
+
+    /// True if this slot activates a new execution component version vs the previous slot
+    pub execution_component_version_upgraded: bool,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -210,9 +224,11 @@ pub struct ExecutionContext {
     /// so *excluding* the gas used by the last sc call.
     pub gas_remaining_before_subexecution: Option<u64>,
 
-    #[allow(unused)]
     /// The version of the execution component
     pub execution_component_version: u32,
+
+    /// True if this slot activates a new execution component version vs the previous slot
+    pub execution_component_version_upgraded: bool,
 
     /// recursion counter, incremented for each new nested call
     pub recursion_counter: u16,
@@ -252,15 +268,16 @@ impl ExecutionContext {
         execution_trail_hash: massa_hash::Hash,
     ) -> Self {
         let slot = Slot::new(0, 0);
-        let ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect("Time overflow when getting block slot timestamp for MIP");
-
         let transfers_history = Arc::new(RwLock::new(Vec::new()));
+
+        let (execution_component_version, execution_component_version_upgraded) =
+            execution_component_version_info(
+                &mip_store,
+                &slot,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            );
 
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -313,8 +330,8 @@ impl ExecutionContext {
             },
             execution_trail_hash,
             gas_remaining_before_subexecution: None,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(&MipComponent::Execution, ts),
+            execution_component_version,
+            execution_component_version_upgraded,
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
             transfers_history,
@@ -345,6 +362,8 @@ impl ExecutionContext {
             recursion_counter: self.recursion_counter,
             user_event_count_in_current_exec: self.user_event_count_in_current_exec,
             transfer_history_len: self.transfers_history.read().len(),
+            execution_component_version: self.execution_component_version,
+            execution_component_version_upgraded: self.execution_component_version_upgraded,
         }
     }
 
@@ -389,6 +408,8 @@ impl ExecutionContext {
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
         self.recursion_counter = snapshot.recursion_counter;
         self.user_event_count_in_current_exec = snapshot.user_event_count_in_current_exec;
+        self.execution_component_version = snapshot.execution_component_version;
+        self.execution_component_version_upgraded = snapshot.execution_component_version_upgraded;
 
         {
             let mut transfers_history = self.transfers_history.write();
@@ -430,21 +451,22 @@ impl ExecutionContext {
         let execution_trail_hash =
             generate_execution_trail_hash(&prev_execution_trail_hash, &slot, None, true);
 
-        let ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect("Time overflow when getting block slot timestamp for MIP");
+        let (execution_component_version, execution_component_version_upgraded) =
+            execution_component_version_info(
+                &mip_store,
+                &slot,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            );
 
         // return readonly context
         ExecutionContext {
             slot,
             stack: call_stack,
             read_only: true,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(&MipComponent::Execution, ts),
+            execution_component_version,
+            execution_component_version_upgraded,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -465,6 +487,9 @@ impl ExecutionContext {
             self.slot,
             max_gas,
             async_msg_cst_gas_cost,
+            self.is_execution_component_version_at_least(
+                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
+            ),
         )
     }
 
@@ -501,20 +526,21 @@ impl ExecutionContext {
             false,
         );
 
-        let ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect("Time overflow when getting block slot timestamp for MIP");
+        let (execution_component_version, execution_component_version_upgraded) =
+            execution_component_version_info(
+                &mip_store,
+                &slot,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            );
 
         // return active slot execution context
         ExecutionContext {
             slot,
             opt_block_id,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(&MipComponent::Execution, ts),
+            execution_component_version,
+            execution_component_version_upgraded,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -1048,9 +1074,14 @@ impl ExecutionContext {
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
 
         // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages = self
-            .speculative_async_pool
-            .settle_slot(&slot, &self.speculative_ledger.added_changes);
+        let deleted_messages = self.speculative_async_pool.settle_slot(
+            &slot,
+            &self.speculative_ledger.added_changes,
+            self.config.async_msg_cst_gas_cost,
+            self.is_execution_component_version_at_least(
+                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
+            ),
+        );
 
         let mut cancel_async_message_transfers = vec![];
         for (_msg_id, msg) in deleted_messages {
@@ -1083,6 +1114,7 @@ impl ExecutionContext {
                 self.config.thread_count,
                 self.config.roll_price,
                 self.config.max_miss_ratio,
+                self.is_execution_component_version_at_least(SETTLE_ACTIVE_ROLLS_EXEC_VERSION),
             )
         } else {
             vec![]
@@ -1150,6 +1182,16 @@ impl ExecutionContext {
         // set data entry
         self.speculative_ledger
             .set_bytecode(&self.get_current_address()?, address, bytecode)
+    }
+
+    /// Overwrites the bytecode of `address` without charging storage costs or
+    /// checking write rights.
+    ///
+    /// Reserved for protocol-level irregular state changes applied
+    /// deterministically at a versioning activation (see `wmas_patch`). Do not
+    /// use from ABI / user execution paths.
+    pub fn override_bytecode(&mut self, address: &Address, bytecode: Bytecode) {
+        self.speculative_ledger.set_bytecode_raw(address, bytecode);
     }
 
     /// Creates a new event but does not emit it.
@@ -1303,8 +1345,11 @@ impl ExecutionContext {
         &mut self,
         call: DeferredCall,
     ) -> Result<DeferredCallId, ExecutionError> {
-        self.speculative_deferred_calls
-            .register_call(call, self.execution_trail_hash)
+        self.speculative_deferred_calls.register_call(
+            call,
+            self.execution_trail_hash,
+            self.is_execution_component_version_at_least(DEFERRED_CALL_INDEX_FIX_EXEC_VERSION),
+        )
     }
 
     /// Check if a deferred call exists
@@ -1424,6 +1469,66 @@ impl ExecutionContext {
     pub fn get_condom_limits(&self) -> CondomLimits {
         self.config.condom_limits.clone()
     }
+
+    /// Returns `true` if the execution component version is at least `version`.
+    pub fn is_execution_component_version_at_least(&self, version: u32) -> bool {
+        self.execution_component_version >= version
+    }
+
+    /// Returns `true` if this slot is the activation slot of execution component
+    /// version `target`: the version just upgraded and landed exactly on `target`.
+    ///
+    /// Use this for one-shot irregular state changes (e.g. WMAS). Prefer
+    /// [`Self::is_execution_component_version_at_least`] for sticky behaviour
+    /// that should apply on every slot from `target` onward.
+    ///
+    /// Note: this assumes MIP bumps land on `target` exactly (no single-slot
+    /// jump past it). That matches how Massa MIPs set component versions.
+    pub fn is_execution_component_version_activation(&self, target: u32) -> bool {
+        self.execution_component_version_upgraded && self.execution_component_version == target
+    }
+}
+
+/// Execution component version active at `slot`, and whether that version is
+/// strictly greater than at the previous slot (any bump). Genesis counts as an
+/// upgrade when the version is greater than 0.
+///
+/// Returns `(version, upgraded)`.
+pub(crate) fn execution_component_version_info(
+    mip_store: &MipStore,
+    slot: &Slot,
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+) -> (u32, bool) {
+    let version =
+        execution_component_version_at(mip_store, slot, thread_count, t0, genesis_timestamp);
+    let upgraded = match slot.get_prev_slot(thread_count) {
+        Ok(prev) => {
+            version
+                > execution_component_version_at(
+                    mip_store,
+                    &prev,
+                    thread_count,
+                    t0,
+                    genesis_timestamp,
+                )
+        }
+        Err(_) => version > 0,
+    };
+    (version, upgraded)
+}
+
+fn execution_component_version_at(
+    mip_store: &MipStore,
+    slot: &Slot,
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+) -> u32 {
+    let ts = get_block_slot_timestamp(thread_count, t0, genesis_timestamp, *slot)
+        .unwrap_or(genesis_timestamp);
+    mip_store.get_latest_component_version_at(&MipComponent::Execution, ts)
 }
 
 /// Generate the execution trail hash
