@@ -16,7 +16,72 @@ use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::time::Instant;
 use std::{sync::Arc, thread, thread::JoinHandle};
-use tracing::warn;
+
+/// Process commands already queued behind a `Stop` before shutting down.
+fn drain_commands_after_stop<F>(receiver: &MassaReceiver<Command>, process: &mut F)
+where
+    F: FnMut(Command),
+{
+    while let Ok(cmd) = receiver.try_recv() {
+        if !matches!(cmd, Command::Stop) {
+            process(cmd);
+        }
+    }
+}
+
+fn process_endorsement_pool_command(
+    cmd: Command,
+    buffer: &mut EndorsementPool,
+    modified: &mut bool,
+) {
+    match cmd {
+        Command::AddItems(endorsements) => {
+            buffer.add_endorsements(endorsements);
+            *modified = true;
+        }
+        Command::NotifyFinalCsPeriods(final_cs_periods) => {
+            buffer.notify_final_cs_periods(&final_cs_periods);
+            *modified = true;
+        }
+        Command::Stop | Command::AddDenunciationPrecursor(_) => {}
+    }
+}
+
+fn process_operation_pool_command(cmd: Command, buffer: &mut OperationPool, modified: &mut bool) {
+    match cmd {
+        Command::AddItems(operations) => {
+            buffer.add_operations(operations);
+            *modified = true;
+        }
+        Command::NotifyFinalCsPeriods(final_cs_periods) => {
+            buffer.notify_final_cs_periods(&final_cs_periods);
+            *modified = true;
+        }
+        Command::Stop | Command::AddDenunciationPrecursor(_) => {}
+    }
+}
+
+fn process_denunciation_pool_command(
+    cmd: Command,
+    buffer: &mut DenunciationPool,
+    modified: &mut bool,
+) {
+    match cmd {
+        Command::AddDenunciationPrecursor(de_p) => {
+            buffer.add_denunciation_precursor(de_p);
+            *modified = true;
+        }
+        Command::AddItems(endorsements) => {
+            buffer.add_endorsements(endorsements);
+            *modified = true;
+        }
+        Command::NotifyFinalCsPeriods(final_cs_periods) => {
+            buffer.notify_final_cs_periods(&final_cs_periods);
+            *modified = true;
+        }
+        Command::Stop => {}
+    }
+}
 
 /// Endorsement pool write thread instance
 pub(crate) struct EndorsementPoolThread {
@@ -56,7 +121,16 @@ impl EndorsementPoolThread {
             let mut cmd = match self.receiver.try_recv() {
                 Err(TryRecvError::Disconnected) => break,
                 Err(TryRecvError::Empty) => None,
-                Ok(Command::Stop) => break,
+                Ok(Command::Stop) => {
+                    drain_commands_after_stop(&self.receiver, &mut |cmd| {
+                        process_endorsement_pool_command(
+                            cmd,
+                            &mut endorsement_pool_buffer,
+                            &mut modified,
+                        );
+                    });
+                    break;
+                }
                 Ok(c) => Some(c),
             };
 
@@ -77,24 +151,22 @@ impl EndorsementPoolThread {
                 cmd = match self.receiver.recv_timeout(buffer_swap_interval) {
                     Err(RecvTimeoutError::Disconnected) => break,
                     Err(RecvTimeoutError::Timeout) => None,
-                    Ok(Command::Stop) => break,
+                    Ok(Command::Stop) => {
+                        drain_commands_after_stop(&self.receiver, &mut |cmd| {
+                            process_endorsement_pool_command(
+                                cmd,
+                                &mut endorsement_pool_buffer,
+                                &mut modified,
+                            );
+                        });
+                        break;
+                    }
                     Ok(c) => Some(c),
                 }
             }
 
-            match cmd {
-                Some(Command::AddItems(endorsements)) => {
-                    endorsement_pool_buffer.add_endorsements(endorsements);
-                    modified = true;
-                }
-                Some(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
-                    endorsement_pool_buffer.notify_final_cs_periods(&final_cs_periods);
-                    modified = true;
-                }
-                Some(_) => {
-                    warn!("EndorsementPoolThread received an unexpected command");
-                }
-                None => {}
+            if let Some(cmd) = cmd {
+                process_endorsement_pool_command(cmd, &mut endorsement_pool_buffer, &mut modified);
             }
 
             // On a regular basis, swap buffers if we haven't for a while.
@@ -108,6 +180,11 @@ impl EndorsementPoolThread {
                 }
                 last_buffer_swap = Instant::now();
             }
+        }
+        if modified {
+            self.endorsement_pool
+                .write()
+                .replace_with(&endorsement_pool_buffer);
         }
     }
 }
@@ -160,7 +237,16 @@ impl OperationPoolThread {
             let mut cmd = match self.receiver.try_recv() {
                 Err(TryRecvError::Disconnected) => break,
                 Err(TryRecvError::Empty) => None,
-                Ok(Command::Stop) => break,
+                Ok(Command::Stop) => {
+                    drain_commands_after_stop(&self.receiver, &mut |cmd| {
+                        process_operation_pool_command(
+                            cmd,
+                            &mut operation_pool_buffer,
+                            &mut modified,
+                        );
+                    });
+                    break;
+                }
                 Ok(c) => Some(c),
             };
 
@@ -183,25 +269,23 @@ impl OperationPoolThread {
                 {
                     Err(RecvTimeoutError::Disconnected) => break,
                     Err(RecvTimeoutError::Timeout) => None,
-                    Ok(Command::Stop) => break,
+                    Ok(Command::Stop) => {
+                        drain_commands_after_stop(&self.receiver, &mut |cmd| {
+                            process_operation_pool_command(
+                                cmd,
+                                &mut operation_pool_buffer,
+                                &mut modified,
+                            );
+                        });
+                        break;
+                    }
                     Ok(c) => Some(c),
                 };
             }
 
-            match cmd {
-                Some(Command::AddItems(operations)) => {
-                    operation_pool_buffer.add_operations(operations);
-                    modified = true;
-                }
-                Some(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
-                    operation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
-                    modified = true;
-                }
-                Some(_) => {
-                    warn!("OperationPoolThread received an unexpected command");
-                }
-                None => {}
-            };
+            if let Some(cmd) = cmd {
+                process_operation_pool_command(cmd, &mut operation_pool_buffer, &mut modified);
+            }
 
             // On a regular basis, swap buffers if we haven't for a while.
             // This is useful under heavy congestion. Otherwise we swap as soon as the queue is empty.
@@ -214,6 +298,11 @@ impl OperationPoolThread {
                 }
                 last_buffer_swap = Instant::now();
             }
+        }
+        if modified {
+            self.operation_pool
+                .write()
+                .replace_with(&operation_pool_buffer);
         }
     }
 }
@@ -266,7 +355,16 @@ impl DenunciationPoolThread {
             let mut cmd = match self.receiver.try_recv() {
                 Err(TryRecvError::Disconnected) => break,
                 Err(TryRecvError::Empty) => None,
-                Ok(Command::Stop) => break,
+                Ok(Command::Stop) => {
+                    drain_commands_after_stop(&self.receiver, &mut |cmd| {
+                        process_denunciation_pool_command(
+                            cmd,
+                            &mut denunciation_pool_buffer,
+                            &mut modified,
+                        );
+                    });
+                    break;
+                }
                 Ok(c) => Some(c),
             };
 
@@ -290,28 +388,26 @@ impl DenunciationPoolThread {
                 {
                     Err(RecvTimeoutError::Disconnected) => break,
                     Err(RecvTimeoutError::Timeout) => None,
-                    Ok(Command::Stop) => break,
+                    Ok(Command::Stop) => {
+                        drain_commands_after_stop(&self.receiver, &mut |cmd| {
+                            process_denunciation_pool_command(
+                                cmd,
+                                &mut denunciation_pool_buffer,
+                                &mut modified,
+                            );
+                        });
+                        break;
+                    }
                     Ok(c) => Some(c),
                 };
             }
 
-            match cmd {
-                Some(Command::AddDenunciationPrecursor(de_p)) => {
-                    denunciation_pool_buffer.add_denunciation_precursor(de_p);
-                    modified = true;
-                }
-                Some(Command::AddItems(endorsements)) => {
-                    denunciation_pool_buffer.add_endorsements(endorsements);
-                    modified = true;
-                }
-                Some(Command::NotifyFinalCsPeriods(final_cs_periods)) => {
-                    denunciation_pool_buffer.notify_final_cs_periods(&final_cs_periods);
-                    modified = true;
-                }
-                Some(_) => {
-                    warn!("DenunciationPoolThread received an unexpected command");
-                }
-                None => {}
+            if let Some(cmd) = cmd {
+                process_denunciation_pool_command(
+                    cmd,
+                    &mut denunciation_pool_buffer,
+                    &mut modified,
+                );
             }
 
             // On a regular basis, swap buffers if we haven't for a while.
@@ -325,6 +421,11 @@ impl DenunciationPoolThread {
                 }
                 last_buffer_swap = Instant::now();
             }
+        }
+        if modified {
+            self.denunciation_pool
+                .write()
+                .replace_with(&denunciation_pool_buffer);
         }
     }
 }
@@ -389,4 +490,31 @@ pub fn start_pool_controller(
         denunciations_input_sender,
     };
     (Box::new(manager), Box::new(controller))
+}
+
+#[cfg(test)]
+mod shutdown_tests {
+    use super::*;
+    use crossbeam_channel::TryRecvError;
+
+    #[test]
+    fn drain_commands_after_stop_processes_queued_commands() {
+        let (tx, rx) = MassaChannel::new("test".into(), None);
+        let mut received = Vec::new();
+        let mut process = |cmd: Command| {
+            if let Command::NotifyFinalCsPeriods(periods) = cmd {
+                received.push(periods);
+            }
+        };
+
+        tx.send(Command::Stop).unwrap();
+        tx.send(Command::NotifyFinalCsPeriods(vec![1, 2])).unwrap();
+        tx.send(Command::NotifyFinalCsPeriods(vec![3])).unwrap();
+
+        assert!(matches!(rx.try_recv(), Ok(Command::Stop)));
+        drain_commands_after_stop(&rx, &mut process);
+
+        assert_eq!(received, vec![vec![1, 2], vec![3]]);
+        assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+    }
 }
