@@ -1593,6 +1593,16 @@ fn check_input_operation(
     let (rest, op): (&[u8], SecureShareOperation) = operation_deserializer
         .deserialize::<DeserializeError>(&op_serialized)
         .map_err(|err| ApiError::ModelsError(ModelsError::DeserializeError(err.to_string())))?;
+    // an operation bigger than the whole operations payload of a block can
+    // never be propagated by the protocol nor included in a block
+    let op_size = op.serialized_size();
+    if op_size > api_cfg.max_serialized_operation_size {
+        return Err(ApiError::BadRequest(format!(
+            "serialized operation size {} exceeds the maximum authorized size of {} bytes. Your operation will never be included in a block.",
+            op_size, api_cfg.max_serialized_operation_size
+        ))
+        .into());
+    }
     if let Err(err_msg) = op.check_gas_usage(
         api_cfg.max_gas_per_block,
         api_cfg.base_operation_gas_cost,
