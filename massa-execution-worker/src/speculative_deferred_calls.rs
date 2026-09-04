@@ -118,7 +118,9 @@ impl SpeculativeDeferredCallRegistry {
     pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
         // get slot base fee from current changes
         if let Some(v) = self.deferred_calls_changes.get_slot_base_fee(slot) {
-            return v;
+            if !v.is_zero() {
+                return v;
+            }
         }
 
         // check in history backwards
@@ -130,17 +132,18 @@ impl SpeculativeDeferredCallRegistry {
                     .deferred_call_changes
                     .get_slot_base_fee(slot)
                 {
-                    return v;
+                    if !v.is_zero() {
+                        return v;
+                    }
                 }
             }
         }
 
-        // check in final state
-        return self
-            .final_state
+        // check in final state (applies the min_gas_cost fallback for uninitialized slots)
+        self.final_state
             .read()
             .get_deferred_call_registry()
-            .get_slot_base_fee(slot);
+            .get_slot_base_fee(slot)
     }
 
     /// Consumes and deletes the current slot, prepares a new slot in the future
@@ -162,14 +165,8 @@ impl SpeculativeDeferredCallRegistry {
             .get_prev_slot(self.config.thread_count)
             .expect("cannot get prev slot");
 
-        let prev_slot_base_fee = {
-            let temp_slot_fee = self.get_slot_base_fee(&prev_slot);
-            if temp_slot_fee.eq(&Amount::zero()) {
-                Amount::from_raw(self.config.min_gas_cost)
-            } else {
-                temp_slot_fee
-            }
-        };
+        // uninitialized slots fall back to `min_gas_cost`, so we can use the `get_slot_base_fee` method directly
+        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot);
 
         let new_slot_base_fee = match avg_booked_gas.cmp(&TARGET_BOOKING) {
             // the previous booking rate was exactly the expected one: do not adjust the base fee
@@ -635,7 +632,7 @@ mod tests {
             )
             .is_err());
 
-        // no params
+        // no params: uninitialized slots must still charge the integral fee
         assert_eq!(
             speculative
                 .compute_call_fee(
@@ -648,7 +645,7 @@ mod tests {
                     0,
                 )
                 .unwrap(),
-            Amount::from_str("0.036600079").unwrap()
+            Amount::from_str("0.038600079").unwrap()
         );
 
         // 10Ko params size
@@ -664,7 +661,53 @@ mod tests {
                     10_000,
                 )
                 .unwrap(),
-            Amount::from_str("1.036600079").unwrap()
+            Amount::from_str("1.038600079").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_uninitialized_slot_base_fee_fallback() {
+        let disk_ledger = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: disk_ledger.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
+            thread_count: THREAD_COUNT,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let mock_final_state = Arc::new(RwLock::new(MockFinalStateController::new()));
+        let config = DeferredCallsConfig::default();
+
+        let deferred_call_registry =
+            DeferredCallRegistry::new(db.clone(), DeferredCallsConfig::default());
+
+        mock_final_state
+            .write()
+            .expect_get_deferred_call_registry()
+            .return_const(deferred_call_registry);
+
+        let speculative = SpeculativeDeferredCallRegistry::new(
+            mock_final_state,
+            Arc::new(Default::default()),
+            config,
+        );
+
+        let slot = Slot {
+            period: 10,
+            thread: 1,
+        };
+
+        assert_eq!(
+            speculative.get_slot_base_fee(&slot),
+            Amount::from_raw(config.min_gas_cost)
         );
     }
 }
