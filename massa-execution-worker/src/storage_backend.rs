@@ -5,7 +5,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use massa_models::slot::{Slot, SLOT_KEY_SIZE};
+use massa_models::{
+    config::THREAD_COUNT,
+    slot::{Slot, SLOT_KEY_SIZE},
+};
 use rocksdb::{DBCompressionType, Options};
 
 /// Parse a block-dump file name of the form `block_slot_{thread}_{period}.bin`
@@ -15,7 +18,11 @@ fn parse_block_dump_file_name(name: &str) -> Option<Slot> {
     let (thread_str, period_str) = rest.split_once('_')?;
     let thread: u8 = thread_str.parse().ok()?;
     let period: u64 = period_str.parse().ok()?;
-    Some(Slot::new(period, thread))
+    if thread >= THREAD_COUNT {
+        None
+    } else {
+        Some(Slot::new(period, thread))
+    }
 }
 
 /// Rebuild the retention queue (oldest first) from block dumps already present
@@ -41,7 +48,12 @@ fn load_saved_slots_from_db(db: &rocksdb::DB) -> VecDeque<Slot> {
         .filter_map(|res| res.ok())
         .filter_map(|(key, _)| {
             let key: [u8; SLOT_KEY_SIZE] = key.as_ref().try_into().ok()?;
-            Some(Slot::from_bytes_key(&key))
+            let slot = Slot::from_bytes_key(&key);
+            if slot.thread >= THREAD_COUNT {
+                None
+            } else {
+                Some(slot)
+            }
         })
         .collect();
     slots.sort_unstable();
