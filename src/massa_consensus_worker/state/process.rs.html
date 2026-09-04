@@ -832,7 +832,6 @@
 <a href="#832" id="832">832</a>
 <a href="#833" id="833">833</a>
 <a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeSet, HashMap, VecDeque};
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -1603,8 +1602,7 @@
         }
         <span class="comment">// add stale blocks to stats
         </span><span class="kw">let </span>timestamp = MassaTime::now();
-        <span class="kw">let </span><span class="kw-2">mut </span>stale_block_stats =
-            VecDeque::with_capacity(<span class="self">self</span>.new_stale_blocks.len());
+        <span class="kw">let </span><span class="kw-2">mut </span>stale_block_stats = VecDeque::with_capacity(<span class="self">self</span>.new_stale_blocks.len());
         <span class="kw">for _ in </span><span class="number">0</span>..<span class="self">self</span>.new_stale_blocks.len() {
             stale_block_stats.push_back(timestamp);
         }
