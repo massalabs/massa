@@ -420,7 +420,7 @@ fn try_connect_peer(
     let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
     {
         let mut peer_db_write = peer_db.write();
-        peer_db_write.set_try_connect_success_or_insert(&addr);
+        peer_db_write.set_try_connect_or_insert(&addr);
         if let Err(ref err) = conn_res {
             debug!("Failed to connect to peer {:?}: {:?}", addr, err);
             peer_db_write.set_try_connect_failure_or_insert(&addr);
