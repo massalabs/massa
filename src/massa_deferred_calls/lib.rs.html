@@ -663,6 +663,16 @@
 <a href="#663" id="663">663</a>
 <a href="#664" id="664">664</a>
 <a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>call::{DeferredCallDeserializer, DeferredCallSerializer};
 <span class="kw">use </span>config::DeferredCallsConfig;
 <span class="kw">use </span>macros::{
@@ -713,6 +723,7 @@
     call_id_deserializer: DeferredCallIdDeserializer,
     registry_changes_deserializer: DeferredRegistryChangesDeserializer,
     registry_changes_serializer: DeferredRegistryChangesSerializer,
+    min_gas_cost: u64,
 }
 
 <span class="kw">impl </span>DeferredCallRegistry {
@@ -733,6 +744,7 @@
             call_id_deserializer: DeferredCallIdDeserializer::new(),
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(config),
             registry_changes_serializer: DeferredRegistryChangesSerializer::new(config),
+            min_gas_cost: config.min_gas_cost,
         }
     }
 
@@ -816,10 +828,12 @@
         }
     }
 
-    <span class="doccomment">/// Returns the base fee for a slot
+    <span class="doccomment">/// Returns the base fee for a slot.
+    /// Uninitialized slots (missing from storage or set to zero) fall back to
+    /// `min_gas_cost` so bookable slots are never priced at zero.
     </span><span class="kw">pub fn </span>get_slot_base_fee(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; Amount {
         <span class="kw">let </span>key = <span class="macro">deferred_call_slot_base_fee_key!</span>(slot.to_bytes_key());
-        <span class="kw">match </span><span class="self">self</span>.db.read().get_cf(STATE_CF, key) {
+        <span class="kw">let </span>base_fee = <span class="kw">match </span><span class="self">self</span>.db.read().get_cf(STATE_CF, key) {
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(v)) =&gt; {
                 <span class="self">self</span>.call_deserializer
                     .amount_deserializer
@@ -828,6 +842,12 @@
                     .<span class="number">1
             </span>}
             <span class="kw">_ </span>=&gt; Amount::zero(),
+        };
+
+        <span class="kw">if </span>base_fee.is_zero() {
+            Amount::from_raw(<span class="self">self</span>.min_gas_cost)
+        } <span class="kw">else </span>{
+            base_fee
         }
     }
 
