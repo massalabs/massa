@@ -27,6 +27,57 @@ use super::{
 const THREAD_NAME: &str = "poh-tester";
 static_assertions::const_assert!(THREAD_NAME.len() < 16);
 
+/// Returns the subset of operation ids in `storage` whose serialized size is
+/// within `max_serialized_operations_size_per_block`, and releases `storage`'s
+/// references to the rejected operations.
+///
+/// Operations exceeding the protocol size limit are excluded (and logged) so
+/// they are never marked checked, stored for propagation, or announced. This
+/// mirrors the size check already enforced on the peer-received (retrieval)
+/// path, and protects locally submitted operations (JSON-RPC / gRPC), which are
+/// not validated against this limit on submission.
+///
+/// The rejected references must not be merged into the propagation storage:
+/// only queued operations are ever pruned from it, so kept-alive refs of
+/// filtered-out operations would pin their content until shutdown.
+fn filter_propagatable_ops(
+    storage: &mut Storage,
+    max_serialized_operations_size_per_block: usize,
+) -> PreHashSet<OperationId> {
+    let kept: PreHashSet<OperationId> = {
+        let ops_read = storage.read_operations();
+        storage
+            .get_op_refs()
+            .iter()
+            .copied()
+            .filter(|op_id| match ops_read.get(op_id) {
+                Some(op) => {
+                    let size = op.serialized_size();
+                    let ok = size <= max_serialized_operations_size_per_block;
+                    if !ok {
+                        warn!(
+                            "not propagating operation {}: serialized size {} exceeds max {} bytes",
+                            op_id, size, max_serialized_operations_size_per_block
+                        );
+                    }
+                    ok
+                }
+                None => false,
+            })
+            .collect()
+    };
+
+    let rejected: PreHashSet<OperationId> = storage
+        .get_op_refs()
+        .iter()
+        .copied()
+        .filter(|op_id| !kept.contains(op_id))
+        .collect();
+    storage.drop_operation_refs(&rejected);
+
+    kept
+}
+
 struct PropagationThread {
     internal_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -59,17 +110,30 @@ impl PropagationThread {
             match self.internal_receiver.recv_deadline(batch_deadline) {
                 Ok(internal_message) => {
                     match internal_message {
-                        OperationHandlerPropagationCommand::PropagateOperations(operations) => {
-                            // Note operations as checked.
+                        OperationHandlerPropagationCommand::PropagateOperations(mut operations) => {
+                            // Re-validate the protocol size limit before propagating.
+                            // Locally submitted operations (JSON-RPC / gRPC) are not
+                            // checked against `max_serialized_operations_size_per_block`
+                            // on submission, so an oversized-but-otherwise-valid
+                            // operation could be marked checked, stored and announced,
+                            // making honest peers ban us for advertising invalid data.
+                            // This mirrors the check already enforced on the retrieval
+                            // (peer-received) path. The rejected operations' references
+                            // are released here too, so they are never merged into
+                            // `op_storage` (which only prunes operations it queued).
+                            let new_ops = filter_propagatable_ops(
+                                &mut operations,
+                                self.config.max_serialized_operations_size_per_block,
+                            );
+
+                            // Note valid operations as checked.
                             {
                                 let mut cache_write = self.cache.write();
-                                for op_id in operations.get_op_refs().iter().copied() {
+                                for op_id in new_ops.iter().copied() {
                                     cache_write.insert_checked_operation(op_id);
                                 }
                             }
 
-                            // add to propagation storage
-                            let new_ops = operations.get_op_refs().clone();
                             // an operation can be propagated again while it is still
                             // queued: only queue the ones that are not already tracked, so
                             // that queue membership stays aligned with the `op_storage`
@@ -80,6 +144,7 @@ impl PropagationThread {
                                 .copied()
                                 .collect();
                             if !newly_tracked.is_empty() {
+                                // add to propagation storage
                                 self.stored_for_propagation
                                     .push_back((std::time::Instant::now(), newly_tracked));
                             }
@@ -323,8 +388,10 @@ mod tests {
     use massa_models::operation::{Operation, OperationSerializer, OperationType};
     use massa_models::secure_share::Id;
     use massa_models::secure_share::SecureShareContent;
+    use massa_protocol_exports::test_exports::tools::create_operation_with_expire_period;
     use massa_protocol_exports::ProtocolError;
     use massa_signature::KeyPair;
+    use massa_storage::Storage;
     use parking_lot::RwLock;
     use std::collections::HashSet;
     use std::sync::Arc;
@@ -633,5 +700,41 @@ mod tests {
         drop(cache_read);
 
         assert!(propagation_thread.next_batch.is_empty());
+    }
+
+    #[test]
+    fn oversized_operations_are_filtered_out_of_propagation() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let op = create_operation_with_expire_period(&keypair, 1);
+        let op_id = op.id;
+        let op_size = op.serialized_size();
+
+        let mut storage = Storage::create_root();
+        storage.store_operations(vec![op.clone()]);
+
+        // With a generous limit the operation is kept for propagation,
+        // and its reference is retained.
+        let kept = filter_propagatable_ops(&mut storage, op_size);
+        assert!(kept.contains(&op_id), "op within the limit must be kept");
+        assert!(storage.get_op_refs().contains(&op_id));
+
+        // With a limit below its size the operation is excluded, so it is never
+        // marked checked, stored, or announced.
+        let dropped = filter_propagatable_ops(&mut storage, op_size - 1);
+        assert!(
+            dropped.is_empty(),
+            "oversized op must be filtered out of propagation"
+        );
+
+        // The rejected operation's reference must be released, so that merging
+        // the input storage into the propagation storage does not pin it.
+        assert!(!storage.get_op_refs().contains(&op_id));
+
+        // The submission owned the only reference, so the rejection also
+        // orphaned the content: it must no longer be present in shared storage.
+        assert!(
+            storage.read_operations().get(&op_id).is_none(),
+            "rejected op must not stay pinned in shared storage"
+        );
     }
 }
