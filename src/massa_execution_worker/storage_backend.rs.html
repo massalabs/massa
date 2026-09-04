@@ -272,6 +272,9 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::VecDeque,
     fs::File,
@@ -279,7 +282,10 @@
     path::{Path, PathBuf},
 };
 
-<span class="kw">use </span>massa_models::{config::THREAD_COUNT, slot::{SLOT_KEY_SIZE, Slot}};
+<span class="kw">use </span>massa_models::{
+    config::THREAD_COUNT,
+    slot::{Slot, SLOT_KEY_SIZE},
+};
 <span class="kw">use </span>rocksdb::{DBCompressionType, Options};
 
 <span class="doccomment">/// Parse a block-dump file name of the form `block_slot_{thread}_{period}.bin`
