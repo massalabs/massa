@@ -30,6 +30,7 @@ use massa_proto_rs::massa::model::v1::{
 use massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, Result, RuntimeModule};
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
+use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
@@ -54,11 +55,6 @@ use tracing::warn;
     test
 ))]
 use massa_models::datastore::Datastore;
-
-/// Execution component version at which `send_message` starts rejecting messages whose
-/// `max_gas` is too large to ever be scheduled (see [`InterfaceImpl::send_message`]).
-/// Bundled into the same MIP as the WMAS patch (`MIP-0002-BugFix`).
-const ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION: u32 = 2;
 
 /// helper for locking the context mutex
 macro_rules! context_guard {
@@ -1438,7 +1434,7 @@ impl Interface for InterfaceImpl {
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
     /// * `max_gas`: Maximum gas for the message execution.
     ///   Bounded below by `max_instance_cost`, and — from execution component version
-    ///   [`ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION`] on — above by the largest budget any slot
+    ///   [`MIP_0002_EXECUTION_VERSION`] on — above by the largest budget any slot
     ///   can ever offer. `take_batch_to_execute` only schedules a message when
     ///   `max_gas + async_msg_cst_gas_cost` fits the slot's async gas budget, which never
     ///   exceeds `max_async_gas + max_gas_per_block` (see `execute_slot`). Before that
@@ -1490,9 +1486,7 @@ impl Interface for InterfaceImpl {
         }
         // Reject messages that no slot could ever schedule. Gated: rejecting here changes
         // execution results, so it only applies once the MIP has activated.
-        if execution_context
-            .is_execution_component_version_at_least(ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION)
-        {
+        if execution_context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
             let max_schedulable_gas = self
                 .config
                 .max_async_gas
@@ -2206,7 +2200,7 @@ mod tests {
     use massa_signature::KeyPair;
 
     // An async message asking for more gas than any slot can ever schedule is admitted
-    // before the MIP activates, and rejected from ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION on.
+    // before the MIP activates, and rejected from MIP_0002_EXECUTION_VERSION on.
     #[test]
     fn test_send_message_max_gas_ceiling() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
@@ -2224,12 +2218,11 @@ mod tests {
         };
 
         // pre-activation: the oversized message is accepted, which is the bug being fixed
-        interface.context.lock().execution_component_version =
-            ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION - 1;
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
         send(ceiling + 1).expect("oversized message should be admitted before activation");
 
         // post-activation: rejected, while a message exactly at the ceiling still passes
-        interface.context.lock().execution_component_version = ASYNC_MSG_MAX_GAS_CHECK_EXEC_VERSION;
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
         assert!(
             send(ceiling + 1).is_err(),
             "oversized message should be rejected after activation"

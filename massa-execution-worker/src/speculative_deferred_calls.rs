@@ -19,11 +19,6 @@ use std::{
 
 const TARGET_BOOKING: u128 = (MAX_ASYNC_GAS / 2) as u128;
 
-/// Execution component version at which deferred-call per-slot index allocation
-/// uses the full effective set (final state + active history + speculative changes).
-/// Bundled into the same MIP as the WMAS patch (`MIP-0002-BugFix`).
-pub(crate) const DEFERRED_CALL_INDEX_FIX_EXEC_VERSION: u32 = 2;
-
 pub(crate) struct SpeculativeDeferredCallRegistry {
     final_state: Arc<RwLock<dyn FinalStateController>>,
     active_history: Arc<RwLock<ActiveHistory>>,
