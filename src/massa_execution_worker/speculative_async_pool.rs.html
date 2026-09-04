@@ -490,12 +490,6 @@
 <a href="#490" id="490">490</a>
 <a href="#491" id="491">491</a>
 <a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -511,12 +505,6 @@
 <span class="kw">use </span>massa_models::types::{Applicable, SetUpdateOrDelete};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{collections::BTreeMap, sync::Arc};
-
-<span class="doccomment">/// Execution component version (MIP-0002-BugFix) from which async-message batch selection
-/// and pool eviction rank by `fee / (max_gas + async_msg_cst_gas_cost)` instead of
-/// `fee / max_gas`, matching the gas actually charged per message in
-/// [`SpeculativeAsyncPool::take_batch_to_execute`].
-</span><span class="kw">pub const </span>ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION: u32 = <span class="number">2</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SpeculativeAsyncPool {
     <span class="doccomment">/// Async pool max length
@@ -612,7 +600,7 @@
     /// before that activation can still be sitting in the pool, and they expire unexecuted.
     ///
     /// When `rank_by_effective_gas` is true (MIP-0002 / execution component version
-    /// [`ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION`]), candidates are ordered by
+    /// `MIP_0002_EXECUTION_VERSION`), candidates are ordered by
     /// `fee / (max_gas + async_msg_cst_gas_cost)` so priority matches the budget charge.
     /// Otherwise ordering follows the stored [`AsyncMessageId`] (`fee / max_gas`).
     ///

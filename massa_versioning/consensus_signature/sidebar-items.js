@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["EXEC_SIGNATURES_CHAIN_ID_VERSION"],"fn":["sig_chain_id_for_slot"]};
+window.SIDEBAR_ITEMS = {"fn":["sig_chain_id_for_slot"]};
