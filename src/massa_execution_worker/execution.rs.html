@@ -2791,7 +2791,6 @@
 <a href="#2791" id="2791">2791</a>
 <a href="#2792" id="2792">2792</a>
 <a href="#2793" id="2793">2793</a>
-<a href="#2794" id="2794">2794</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2840,6 +2839,7 @@
 <span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, VMError};
+<span class="kw">use </span>massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
@@ -4394,9 +4394,7 @@
         <span class="comment">// One-time, versioning-gated WMAS bytecode patch (see `wmas_patch`).
         // Applied here so it is part of the slot's ledger changes and shared by
         // both candidate and final execution (this function is called by both).
-        </span><span class="kw">if </span>execution_context
-            .is_execution_component_version_activation(wmas_patch::WMAS_PATCH_EXEC_VERSION)
-        {
+        </span><span class="kw">if </span>execution_context.is_execution_component_version_activation(MIP_0002_EXECUTION_VERSION) {
             <span class="kw">match </span>wmas_patch::wmas_address(<span class="self">self</span>.config.chain_id) {
                 <span class="prelude-val">Some</span>(addr) =&gt; {
                     <span class="comment">// Existence guard: only overwrite an already-deployed WMAS

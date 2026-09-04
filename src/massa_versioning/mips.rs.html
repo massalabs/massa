@@ -94,6 +94,13 @@
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
 </pre></div><pre class="rust"><code><span class="attr">#[allow(unused_imports)]
 </span><span class="kw">use </span>std::collections::BTreeMap;
 
@@ -102,6 +109,10 @@
 
 <span class="attr">#[allow(unused_imports)]
 </span><span class="kw">use </span><span class="kw">crate</span>::versioning::{MipComponent, MipInfo, MipState};
+
+<span class="doccomment">/// `Execution` component version introduced by `MIP-0002-BugFix`.
+/// Single source of truth for gating features bundled into that MIP.
+</span><span class="kw">pub const </span>MIP_0002_EXECUTION_VERSION: u32 = <span class="number">2</span>;
 
 <span class="attr">#[cfg(not(feature = <span class="string">"test-exports"</span>))]
 </span><span class="kw">pub fn </span>get_mip_list() -&gt; [(MipInfo, MipState); <span class="number">2</span>] {
@@ -129,7 +140,7 @@
                 name: <span class="string">"MIP-0002-BugFix"</span>.to_string(),
                 version: <span class="number">2</span>,
                 components: BTreeMap::from([
-                    (MipComponent::Execution, <span class="number">2</span>),
+                    (MipComponent::Execution, MIP_0002_EXECUTION_VERSION),
                     (MipComponent::FinalState, <span class="number">2</span>),
                 ]),
                 start: MassaTime::from_utc_ymd_hms(<span class="number">2026</span>, <span class="number">8</span>, <span class="number">10</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Monday 10th August 2026 10:00:00 UTC
@@ -172,7 +183,10 @@
     <span class="kw">let </span>mip_info_2 = MipInfo {
         name: <span class="string">"MIP-0002-BugFix"</span>.to_string(),
         version: <span class="number">2</span>,
-        components: BTreeMap::from([(MipComponent::Execution, <span class="number">2</span>), (MipComponent::FinalState, <span class="number">2</span>)]),
+        components: BTreeMap::from([
+            (MipComponent::Execution, MIP_0002_EXECUTION_VERSION),
+            (MipComponent::FinalState, <span class="number">2</span>),
+        ]),
         start: MassaTime::from_millis(<span class="number">12</span>),
         timeout: MassaTime::from_millis(<span class="number">20</span>),
         activation_delay: MassaTime::from_millis(<span class="number">2</span>),

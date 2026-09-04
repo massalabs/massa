@@ -877,13 +877,6 @@
 <a href="#877" id="877">877</a>
 <a href="#878" id="878">878</a>
 <a href="#879" id="879">879</a>
-<a href="#880" id="880">880</a>
-<a href="#881" id="881">881</a>
-<a href="#882" id="882">882</a>
-<a href="#883" id="883">883</a>
-<a href="#884" id="884">884</a>
-<a href="#885" id="885">885</a>
-<a href="#886" id="886">886</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -906,13 +899,6 @@
 <span class="kw">use </span>std::cmp::min;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::sync::Arc;
-
-<span class="doccomment">/// Execution component version from which missed-production auto-sell
-/// liquidates only the rolls that were active for the penalized cycle
-/// (the delayed cycle − 3 snapshot), not the address's entire current balance.
-///
-/// Rides on `MIP-0002-BugFix`, which bumps `MipComponent::Execution` to 2.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>SETTLE_ACTIVE_ROLLS_EXEC_VERSION: u32 = <span class="number">2</span>;
 
 <span class="doccomment">/// Speculative state of the rolls
 </span><span class="attr">#[allow(dead_code)]
@@ -1222,7 +1208,7 @@
     /// # Arguments:
     /// * `slot`: the final slot of the cycle to compute
     /// * `limit_liquidation_to_active_rolls`: when true (execution component
-    ///   version ≥ [`SETTLE_ACTIVE_ROLLS_EXEC_VERSION`]), only the rolls that
+    ///   version ≥ `MIP_0002_EXECUTION_VERSION`), only the rolls that
     ///   were active for this cycle are auto-sold. When false, the pre-MIP
     ///   behavior applies: the address's entire current roll balance is zeroed.
     </span><span class="kw">pub fn </span>settle_production_stats(

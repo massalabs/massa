@@ -1576,16 +1576,6 @@
 <a href="#1576" id="1576">1576</a>
 <a href="#1577" id="1577">1577</a>
 <a href="#1578" id="1578">1578</a>
-<a href="#1579" id="1579">1579</a>
-<a href="#1580" id="1580">1580</a>
-<a href="#1581" id="1581">1581</a>
-<a href="#1582" id="1582">1582</a>
-<a href="#1583" id="1583">1583</a>
-<a href="#1584" id="1584">1584</a>
-<a href="#1585" id="1585">1585</a>
-<a href="#1586" id="1586">1586</a>
-<a href="#1587" id="1587">1587</a>
-<a href="#1588" id="1588">1588</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1596,19 +1586,12 @@
 //! and does not write anything persistent to the consensus state.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::HistorySearchResult;
-<span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::{
-    SpeculativeAsyncPool, ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
-};
-<span class="kw">use </span><span class="kw">crate</span>::speculative_deferred_calls::{
-    SpeculativeDeferredCallRegistry, DEFERRED_CALL_INDEX_FIX_EXEC_VERSION,
-};
+<span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
+<span class="kw">use </span><span class="kw">crate</span>::speculative_deferred_calls::SpeculativeDeferredCallRegistry;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
-<span class="kw">use crate</span>::{
-    active_history::ActiveHistory,
-    speculative_roll_state::{SpeculativeRollState, SETTLE_ACTIVE_ROLLS_EXEC_VERSION},
-};
+<span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 <span class="kw">use </span>massa_async_pool::AsyncPoolChanges;
 
 <span class="kw">use </span>massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
@@ -1648,6 +1631,7 @@
 <span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::address_factory::{AddressArgs, AddressFactory};
+<span class="kw">use </span>massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 <span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipStore};
 <span class="kw">use </span>massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 <span class="kw">use </span>parking_lot::RwLock;
@@ -2075,9 +2059,7 @@
             <span class="self">self</span>.slot,
             max_gas,
             async_msg_cst_gas_cost,
-            <span class="self">self</span>.is_execution_component_version_at_least(
-                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
-            ),
+            <span class="self">self</span>.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         )
     }
 
@@ -2666,9 +2648,7 @@
             <span class="kw-2">&amp;</span>slot,
             <span class="kw-2">&amp;</span><span class="self">self</span>.speculative_ledger.added_changes,
             <span class="self">self</span>.config.async_msg_cst_gas_cost,
-            <span class="self">self</span>.is_execution_component_version_at_least(
-                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
-            ),
+            <span class="self">self</span>.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         );
 
         <span class="kw">let </span><span class="kw-2">mut </span>cancel_async_message_transfers = <span class="macro">vec!</span>[];
@@ -2702,7 +2682,7 @@
                 <span class="self">self</span>.config.thread_count,
                 <span class="self">self</span>.config.roll_price,
                 <span class="self">self</span>.config.max_miss_ratio,
-                <span class="self">self</span>.is_execution_component_version_at_least(SETTLE_ACTIVE_ROLLS_EXEC_VERSION),
+                <span class="self">self</span>.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
             )
         } <span class="kw">else </span>{
             <span class="macro">vec!</span>[]
@@ -2936,7 +2916,7 @@
         <span class="self">self</span>.speculative_deferred_calls.register_call(
             call,
             <span class="self">self</span>.execution_trail_hash,
-            <span class="self">self</span>.is_execution_component_version_at_least(DEFERRED_CALL_INDEX_FIX_EXEC_VERSION),
+            <span class="self">self</span>.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         )
     }
 

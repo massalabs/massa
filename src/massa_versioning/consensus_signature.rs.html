@@ -212,12 +212,6 @@
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Consensus signature layout gating (F90 / PDF #11).
 //!
 //! Endorsements and block headers used to be signed with a chain-agnostic
@@ -229,7 +223,7 @@
 //!
 //! The fix folds the chain id into the signed hash, deployed through the
 //! existing MIP-0002 network-versioning mechanism (the release that bumps
-//! `MipComponent::Execution` to `EXEC_SIGNATURES_CHAIN_ID_VERSION`), so
+//! `MipComponent::Execution` to `MIP_0002_EXECUTION_VERSION`), so
 //! upgraded and un-upgraded nodes keep agreeing on signature validity
 //! across the activation boundary - no flag-day change.
 //!
@@ -248,21 +242,15 @@
 
 </span><span class="kw">use </span>massa_time::MassaTime;
 
+<span class="kw">use </span><span class="kw">crate</span>::mips::MIP_0002_EXECUTION_VERSION;
 <span class="kw">use </span><span class="kw">crate</span>::versioning::{MipComponent, MipStore};
-
-<span class="doccomment">/// `Execution` component version at which the chain-scoped consensus
-/// signature layout activates (i.e. `chain_id` is folded into the signed
-/// hash of endorsements and block headers). Must match MIP-0002's
-/// `Execution` component version
-/// (`massa_execution_worker::wmas_patch::WMAS_PATCH_EXEC_VERSION`).
-</span><span class="kw">pub const </span>EXEC_SIGNATURES_CHAIN_ID_VERSION: u32 = <span class="number">2</span>;
 
 <span class="doccomment">/// Returns the `sig_chain_id` to use for signing / verifying an endorsement
 /// or block header whose slot timestamp is `slot_ts` on the local chain
 /// identified by `chain_id`.
 ///
 /// Returns `Some(chain_id)` once the `Execution` component is active at
-/// version &gt;= [`EXEC_SIGNATURES_CHAIN_ID_VERSION`] for that slot, `None`
+/// version &gt;= [`MIP_0002_EXECUTION_VERSION`] for that slot, `None`
 /// otherwise (legacy layout).
 ///
 /// Every signing / verification / denunciation-reconstruction site must
@@ -274,7 +262,7 @@
     slot_ts: MassaTime,
 ) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
     <span class="kw">if </span>mip_store.get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, slot_ts)
-        &gt;= EXEC_SIGNATURES_CHAIN_ID_VERSION
+        &gt;= MIP_0002_EXECUTION_VERSION
     {
         <span class="prelude-val">Some</span>(chain_id)
     } <span class="kw">else </span>{
@@ -310,7 +298,7 @@
         <span class="kw">let </span>mi = MipInfo {
             name: <span class="string">"MIP-0002-BugFix"</span>.to_string(),
             version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Execution, <span class="number">2</span>)]),
+            components: BTreeMap::from([(MipComponent::Execution, MIP_0002_EXECUTION_VERSION)]),
             start,
             timeout,
             activation_delay,
@@ -327,7 +315,7 @@
             .map(|i| start.saturating_add(MassaTime::from_millis(i * <span class="number">100</span>)))
             .find(|ts| {
                 store.get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, <span class="kw-2">*</span>ts)
-                    &gt;= EXEC_SIGNATURES_CHAIN_ID_VERSION
+                    &gt;= MIP_0002_EXECUTION_VERSION
             })
             .expect(<span class="string">"Execution v2 should become Active after start"</span>);
         (store, before, active_at)

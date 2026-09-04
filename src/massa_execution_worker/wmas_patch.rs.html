@@ -82,9 +82,6 @@
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! One-time, versioning-gated patch that replaces the bytecode of the deployed
 //! WMAS contract to fix the storage-cost drain (a `transfer`/`increaseAllowance`
 //! to a fresh address makes WMAS pay, from its own locked MAS, for the new
@@ -92,7 +89,7 @@
 //!
 //! WMAS is a widely-used singleton that cannot be redeployed without forcing
 //! every holder and integration to migrate. Instead, at the activation of
-//! [`MipComponent::Execution`] version [`WMAS_PATCH_EXEC_VERSION`], every node
+//! [`MipComponent::Execution`] version `MIP_0002_EXECUTION_VERSION`, every node
 //! deterministically overwrites the WMAS bytecode with an audited fixed build.
 //!
 //! Safety of the approach:
@@ -112,7 +109,7 @@
 //! selected per network via `chain_id` (see [`wmas_address`]).
 //!
 //! Activation: this patch rides on the release's `MIP-0002-BugFix`, which already
-//! bumps `MipComponent::Execution` to `2` (= [`WMAS_PATCH_EXEC_VERSION`]) in
+//! bumps `MipComponent::Execution` to `MIP_0002_EXECUTION_VERSION` in
 //! `massa-versioning/src/mips.rs`. It therefore applies at that MIP's activation
 //! slot, together with the rest of the next release's breaking changes — there
 //! is no separate WMAS MIP.
@@ -127,9 +124,6 @@
 
 </span><span class="kw">use </span>massa_models::{address::Address, bytecode::Bytecode};
 <span class="kw">use </span>std::str::FromStr;
-
-<span class="doccomment">/// Execution component version at which the WMAS bytecode patch activates.
-</span><span class="kw">pub const </span>WMAS_PATCH_EXEC_VERSION: u32 = <span class="number">2</span>;
 
 <span class="doccomment">/// Chain ids of the networks where WMAS is deployed (see
 /// `massa_models::config::CHAINID`).
