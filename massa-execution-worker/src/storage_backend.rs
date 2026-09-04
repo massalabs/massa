@@ -2,11 +2,63 @@ use std::{
     collections::VecDeque,
     fs::File,
     io::{Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
-use massa_models::slot::Slot;
+use massa_models::{
+    config::THREAD_COUNT,
+    slot::{Slot, SLOT_KEY_SIZE},
+};
 use rocksdb::{DBCompressionType, Options};
+
+/// Parse a block-dump file name of the form `block_slot_{thread}_{period}.bin`
+/// back into its [`Slot`]. Returns `None` for names that don't match.
+fn parse_block_dump_file_name(name: &str) -> Option<Slot> {
+    let rest = name.strip_prefix("block_slot_")?.strip_suffix(".bin")?;
+    let (thread_str, period_str) = rest.split_once('_')?;
+    let thread: u8 = thread_str.parse().ok()?;
+    let period: u64 = period_str.parse().ok()?;
+    if thread >= THREAD_COUNT {
+        None
+    } else {
+        Some(Slot::new(period, thread))
+    }
+}
+
+/// Rebuild the retention queue (oldest first) from block dumps already present
+/// on disk, so that the `max_blocks` cap keeps accounting for pre-restart entries.
+fn load_saved_slots_from_folder(folder: &Path) -> VecDeque<Slot> {
+    let mut slots: Vec<Slot> = match std::fs::read_dir(folder) {
+        Ok(entries) => entries
+            .flatten()
+            .filter_map(|entry| parse_block_dump_file_name(entry.file_name().to_str()?))
+            .collect(),
+        // Folder missing/unreadable (e.g. fresh start): nothing persisted yet.
+        Err(_) => Vec::new(),
+    };
+    slots.sort_unstable();
+    VecDeque::from(slots)
+}
+
+/// Rebuild the retention queue (oldest first) from block dumps already present
+/// in the RocksDB store, so that the `max_blocks` cap survives restarts.
+fn load_saved_slots_from_db(db: &rocksdb::DB) -> VecDeque<Slot> {
+    let mut slots: Vec<Slot> = db
+        .iterator(rocksdb::IteratorMode::Start)
+        .filter_map(|res| res.ok())
+        .filter_map(|(key, _)| {
+            let key: [u8; SLOT_KEY_SIZE] = key.as_ref().try_into().ok()?;
+            let slot = Slot::from_bytes_key(&key);
+            if slot.thread >= THREAD_COUNT {
+                None
+            } else {
+                Some(slot)
+            }
+        })
+        .collect();
+    slots.sort_unstable();
+    VecDeque::from(slots)
+}
 
 /// A trait that defines the interface for a storage backend for the dump-block
 /// feature.
@@ -29,9 +81,10 @@ pub struct FileStorageBackend {
 impl FileStorageBackend {
     /// Creates a new instance of `FileStorageBackend` with the given path.
     pub fn new(path: PathBuf, max_blocks: u64) -> Self {
+        let slots_saved = load_saved_slots_from_folder(&path);
         Self {
             folder: path,
-            slots_saved: VecDeque::new(),
+            slots_saved,
             max_blocks,
         }
     }
@@ -93,9 +146,10 @@ impl RocksDBStorageBackend {
         let db = rocksdb::DB::open(&opts, path.clone())
             .unwrap_or_else(|_| panic!("Failed to create storage db at {:?}", path));
 
+        let slots_saved = load_saved_slots_from_db(&db);
         Self {
             db,
-            slots_saved: VecDeque::new(),
+            slots_saved,
             max_blocks,
         }
     }
@@ -144,6 +198,50 @@ mod tests {
         let storage = FileStorageBackend::new(PathBuf::from(""), 100);
         let data = storage.read(&slot);
         assert_eq!(data, Some(value));
+    }
+
+    #[test]
+    fn file_backend_retention_survives_restart() {
+        // Regression test for F59: after a restart the retention cap must keep
+        // accounting for block dumps already present on disk.
+        let dir = std::env::temp_dir().join(format!("massa_f59_test_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // start from a clean folder
+        for entry in std::fs::read_dir(&dir).unwrap().flatten() {
+            let _ = std::fs::remove_file(entry.path());
+        }
+
+        let value = vec![1, 2, 3];
+        let s1 = Slot::new(1, 0);
+        let s2 = Slot::new(2, 0);
+        let s3 = Slot::new(3, 0);
+
+        // First run: persist two dumps (cap = 2, so both are kept).
+        {
+            let mut storage = FileStorageBackend::new(dir.clone(), 2);
+            storage.write(&s1, &value);
+            storage.write(&s2, &value);
+        }
+
+        // Simulated restart: the queue must be rebuilt from the two files on disk,
+        // so writing a third dump evicts the oldest one instead of bypassing the cap.
+        {
+            let mut storage = FileStorageBackend::new(dir.clone(), 2);
+            storage.write(&s3, &value);
+        }
+
+        assert!(
+            !dir.join("block_slot_0_1.bin").exists(),
+            "oldest dump should have been evicted after restart"
+        );
+        assert!(dir.join("block_slot_0_2.bin").exists());
+        assert!(dir.join("block_slot_0_3.bin").exists());
+
+        // cleanup
+        for entry in std::fs::read_dir(&dir).unwrap().flatten() {
+            let _ = std::fs::remove_file(entry.path());
+        }
+        let _ = std::fs::remove_dir(&dir);
     }
 
     #[test]
