@@ -5,7 +5,7 @@
 //!
 //! WMAS is a widely-used singleton that cannot be redeployed without forcing
 //! every holder and integration to migrate. Instead, at the activation of
-//! [`MipComponent::Execution`] version [`WMAS_PATCH_EXEC_VERSION`], every node
+//! [`MipComponent::Execution`] version `MIP_0002_EXECUTION_VERSION`, every node
 //! deterministically overwrites the WMAS bytecode with an audited fixed build.
 //!
 //! Safety of the approach:
@@ -25,7 +25,7 @@
 //! selected per network via `chain_id` (see [`wmas_address`]).
 //!
 //! Activation: this patch rides on the release's `MIP-0002-BugFix`, which already
-//! bumps `MipComponent::Execution` to `2` (= [`WMAS_PATCH_EXEC_VERSION`]) in
+//! bumps `MipComponent::Execution` to `MIP_0002_EXECUTION_VERSION` in
 //! `massa-versioning/src/mips.rs`. It therefore applies at that MIP's activation
 //! slot, together with the rest of the next release's breaking changes — there
 //! is no separate WMAS MIP.
@@ -40,9 +40,6 @@
 
 use massa_models::{address::Address, bytecode::Bytecode};
 use std::str::FromStr;
-
-/// Execution component version at which the WMAS bytecode patch activates.
-pub const WMAS_PATCH_EXEC_VERSION: u32 = 2;
 
 /// Chain ids of the networks where WMAS is deployed (see
 /// `massa_models::config::CHAINID`).
