@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["report_error","send_blocks"],"type":["SendBlocksStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["report_error","send_blocks","verify_received_block"],"type":["SendBlocksStreamType"]};
