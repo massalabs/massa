@@ -6,7 +6,6 @@ use massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
 use rust_decimal::prelude::*;
-use serde::de::Unexpected;
 use std::fmt;
 use std::ops::Bound;
 use std::str::FromStr;
@@ -414,10 +413,14 @@ impl<'de> serde::de::Visitor<'de> for AmountVisitor {
     where
         E: serde::de::Error,
     {
-        // Do not reflect the (attacker-controlled, possibly large) input back into the
-        // error message: use a generic descriptor instead of `Unexpected::Str(value)` so
-        // error-path allocation does not scale with the rejected field length.
-        Amount::from_str(value).map_err(|_| E::invalid_value(Unexpected::Other("string"), &self))
+        // The parse error is propagated instead of reflecting the (attacker-controlled,
+        // possibly large) input via `Unexpected::Str(value)`: every message reachable from
+        // `Amount::from_str` is a fixed static string (rust_decimal's parse errors are
+        // `&'static str` literals, and the sign/precision/range checks use constant
+        // messages), so error-path allocation does not scale with the rejected field length.
+        // Matches the `map_err(E::custom)` pattern used by the other string-based
+        // deserializers (Address, Hash, PublicKey, Signature).
+        Amount::from_str(value).map_err(E::custom)
     }
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -449,17 +452,53 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_amount_error_does_not_reflect_input() {
-        // A rejected Amount string must not be embedded in the error message,
-        // to avoid error-path allocation scaling with the input length.
+    fn test_invalid_amount_error_is_bounded_and_explanatory() {
+        // The parse error is propagated (short static description from the parser),
+        // but the rejected Amount string itself must never be embedded in the error
+        // message, to avoid error-path allocation scaling with the input length.
         let bogus = "z".repeat(4096);
         let json = format!("\"{}\"", bogus);
         let err = serde_json::from_str::<Amount>(&json)
             .expect_err("invalid amount must fail to deserialize");
         let msg = err.to_string();
         assert!(
-            !msg.contains(&bogus),
+            !msg.contains('z'),
             "error message must not reflect the rejected input"
+        );
+        assert!(msg.len() < 128, "error message should stay short: {msg}");
+        assert!(
+            msg.contains("Invalid decimal: unknown character"),
+            "error message should explain the failure: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_amount_error_messages_are_propagated() {
+        // Negative amounts surface the Amount-level explanation.
+        let err = serde_json::from_str::<Amount>("\"-1.5\"")
+            .expect_err("negative amount must fail to deserialize")
+            .to_string();
+        assert!(
+            err.contains("amounts cannot be strictly negative"),
+            "unexpected error: {err}"
+        );
+
+        // Over-precise amounts surface the Amount-level explanation.
+        let err = serde_json::from_str::<Amount>("\"1.1234567891\"")
+            .expect_err("over-precise amount must fail to deserialize")
+            .to_string();
+        assert!(
+            err.contains("amounts cannot be more precise than"),
+            "unexpected error: {err}"
+        );
+
+        // Syntactically invalid decimals surface the rust_decimal explanation.
+        let err = serde_json::from_str::<Amount>("\"1.2.3\"")
+            .expect_err("invalid decimal must fail to deserialize")
+            .to_string();
+        assert!(
+            err.contains("Invalid decimal: two decimal points"),
+            "unexpected error: {err}"
         );
     }
 }
