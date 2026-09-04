@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeSet, HashMap, VecDeque},
-    mem,
-};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 
 use massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock, StorageOrBlock},
@@ -700,64 +697,90 @@ impl ConsensusState {
     /// 10. note new latest final periods (prune graph if changed)
     /// 11. add stale blocks to stats
     pub fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
-        let final_block_slots = {
-            massa_trace!("consensus.consensus_worker.block_db_changed", {});
+        massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
-            // Propagate new blocks
-            for (block_id, storage) in mem::take(&mut self.to_propagate).into_iter() {
-                massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
-                    "block_id": block_id
-                });
-                self.channels
-                    .protocol_controller
-                    .integrated_block(block_id, storage)?;
+        // Propagate new blocks incrementally. If a downstream call fails, restore
+        // the unprocessed items so they can be retried on the next call instead
+        // of being silently lost.
+        let mut to_propagate: Vec<(BlockId, Storage)> =
+            std::mem::take(&mut self.to_propagate).into_iter().collect();
+        let mut propagate_error = None;
+        while let Some((block_id, storage)) = to_propagate.pop() {
+            massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
+                "block_id": block_id
+            });
+            if let Err(e) = self
+                .channels
+                .protocol_controller
+                .integrated_block(block_id, storage.clone())
+            {
+                self.to_propagate.insert(block_id, storage);
+                propagate_error = Some(e);
+                break;
             }
+        }
+        for (block_id, storage) in to_propagate {
+            self.to_propagate.insert(block_id, storage);
+        }
+        if let Some(e) = propagate_error {
+            return Err(e.into());
+        }
 
-            // Notify protocol of attack attempts.
-            for hash in mem::take(&mut self.attack_attempts).into_iter() {
-                self.channels
-                    .protocol_controller
-                    .notify_block_attack(hash)?;
-                massa_trace!("consensus.consensus_worker.block_db_changed.attack", {
-                    "hash": hash
-                });
+        // Notify protocol of attack attempts incrementally, preserving unprocessed
+        // items on failure so they are retried later.
+        let mut attack_attempts = std::mem::take(&mut self.attack_attempts);
+        let mut attack_error = None;
+        while let Some(hash) = attack_attempts.pop() {
+            if let Err(e) = self.channels.protocol_controller.notify_block_attack(hash) {
+                attack_attempts.push(hash);
+                attack_error = Some(e);
+                break;
             }
+            massa_trace!("consensus.consensus_worker.block_db_changed.attack", {
+                "hash": hash
+            });
+        }
+        self.attack_attempts.extend(attack_attempts);
+        if let Some(e) = attack_error {
+            return Err(e.into());
+        }
 
-            // manage finalized blocks
-            let timestamp = MassaTime::now();
-            let finalized_blocks = mem::take(&mut self.new_final_blocks);
-            let mut final_block_slots = HashMap::with_capacity(finalized_blocks.len());
-            let mut final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
-            for b_id in finalized_blocks {
-                if let Some(BlockStatus::Active { a_block, .. }) = self.blocks_state.get(&b_id) {
-                    // add to final blocks to notify execution
-                    final_block_slots.insert(a_block.slot, b_id);
+        // manage finalized blocks
+        let timestamp = MassaTime::now();
+        let mut final_block_slots = HashMap::with_capacity(self.new_final_blocks.len());
+        let mut final_block_stats = VecDeque::with_capacity(self.new_final_blocks.len());
+        for b_id in &self.new_final_blocks {
+            if let Some(BlockStatus::Active { a_block, .. }) = self.blocks_state.get(b_id) {
+                // add to final blocks to notify execution
+                final_block_slots.insert(a_block.slot, *b_id);
 
-                    // add to stats
-                    let block_is_from_protocol = self
-                        .protocol_blocks
-                        .iter()
-                        .any(|(_, block_id)| block_id == &b_id);
-                    final_block_stats.push_back((
-                        timestamp,
-                        a_block.creator_address,
-                        block_is_from_protocol,
-                    ));
-                }
+                // add to stats
+                let block_is_from_protocol = self
+                    .protocol_blocks
+                    .iter()
+                    .any(|(_, block_id)| block_id == b_id);
+                final_block_stats.push_back((
+                    timestamp,
+                    a_block.creator_address,
+                    block_is_from_protocol,
+                ));
             }
-            self.final_block_stats.extend(final_block_stats);
-
-            // add stale blocks to stats
-            let new_stale_block_ids_creators_slots = mem::take(&mut self.new_stale_blocks);
-            let timestamp = MassaTime::now();
-            for (_b_id, (_b_creator, _b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
-                self.stale_block_stats.push_back(timestamp);
-            }
-            final_block_slots
-        };
+        }
+        // add stale blocks to stats
+        let timestamp = MassaTime::now();
+        let mut stale_block_stats = VecDeque::with_capacity(self.new_stale_blocks.len());
+        for _ in 0..self.new_stale_blocks.len() {
+            stale_block_stats.push_back(timestamp);
+        }
 
         // notify execution
         self.notify_execution(final_block_slots);
+
+        // Downstream delivery confirmed: drain notification queues and commit stats.
+        self.new_final_blocks.clear();
+        self.new_stale_blocks.clear();
+        self.final_block_stats.extend(final_block_stats);
+        self.stale_block_stats.extend(stale_block_stats);
 
         // notify protocol of block wishlist
         let new_wishlist = self.get_block_wishlist()?;
