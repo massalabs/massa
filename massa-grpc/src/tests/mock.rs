@@ -38,7 +38,18 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = Box::new(MockSelectorController::new());
     let pool_ctrl = Box::new(MockPoolController::new());
-    let execution_ctrl = Box::new(MockExecutionController::new());
+    #[allow(unused_mut)]
+    let mut execution_ctrl = MockExecutionController::new();
+    // The new_slot_transfers stream (execution-trace feature) clones the controller and queries
+    // transfers for each processed slot; stub both so streaming tests don't panic on an un-mocked
+    // call.
+    #[cfg(feature = "execution-trace")]
+    execution_ctrl.expect_clone_box().returning(|| {
+        let mut cloned = Box::new(MockExecutionController::new());
+        cloned.expect_get_transfers_for_slot().returning(|_| None);
+        cloned
+    });
+    let execution_ctrl = Box::new(execution_ctrl);
     let protocol_ctrl = Box::new(MockProtocolController::new());
 
     let endorsement_sender = tokio::sync::broadcast::channel(2000).0;
