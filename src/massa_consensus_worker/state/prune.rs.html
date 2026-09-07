@@ -360,6 +360,28 @@
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -466,7 +488,8 @@
     }
 
     <span class="comment">// Keep only a certain (`config.max_future_processing_blocks`) number of blocks that have slots in the future
-    // to avoid high memory consumption
+    // to avoid high memory consumption. Over-limit entries are preserved as `Discarded` rather than
+    // silently removed, so protocol-side `checked_headers` stays aligned with consensus state.
     </span><span class="kw">fn </span>prune_slot_waiting(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if </span><span class="self">self</span>.blocks_state.waiting_for_slot_blocks().len()
             &lt;= <span class="self">self</span>.config.max_future_processing_blocks
@@ -490,7 +513,32 @@
         <span class="kw">let </span>len_slot_waiting = slot_waiting.len();
         (<span class="self">self</span>.config.max_future_processing_blocks..len_slot_waiting).for_each(|idx| {
             <span class="kw">let </span>(_slot, block_id) = <span class="kw-2">&amp;</span>slot_waiting[idx];
-            <span class="self">self</span>.blocks_state.transition_map(block_id, |<span class="kw">_</span>, <span class="kw">_</span>| <span class="prelude-val">None</span>);
+            <span class="kw">let </span>sequence_number = <span class="self">self</span>.blocks_state.sequence_counter();
+            <span class="self">self</span>.blocks_state
+                .transition_map(block_id, |block_status, <span class="kw">_</span>| {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForSlot(header_or_block)) = block_status {
+                        <span class="kw">let </span>header = <span class="kw">match </span>header_or_block {
+                            HeaderOrBlock::Header(h) =&gt; h,
+                            HeaderOrBlock::Block { id, .. } =&gt; <span class="self">self
+                                </span>.storage
+                                .read_blocks()
+                                .get(<span class="kw-2">&amp;</span>id)
+                                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">"block {} should be in storage"</span>, id))
+                                .content
+                                .header
+                                .clone(),
+                        };
+                        <span class="prelude-val">Some</span>(BlockStatus::Discarded {
+                            slot: header.content.slot,
+                            creator: header.content_creator_address,
+                            parents: header.content.parents,
+                            reason: DiscardReason::Stale,
+                            sequence_number,
+                        })
+                    } <span class="kw">else </span>{
+                        <span class="macro">panic!</span>(<span class="string">"block {} should be in WaitingForSlot state"</span>, block_id);
+                    }
+                });
         });
     }
 
@@ -525,7 +573,7 @@
     }
 
     <span class="kw">fn </span>prune_waiting_for_dependencies(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>to_discard: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;DiscardReason&gt;&gt; = PreHashMap::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>to_discard: PreHashMap&lt;BlockId, DiscardReason&gt; = PreHashMap::default();
         <span class="kw">let </span><span class="kw-2">mut </span>to_keep: PreHashMap&lt;BlockId, (u64, Slot)&gt; = PreHashMap::default();
 
         <span class="comment">// list items that are older than the latest final blocks in their threads or have deps that are discarded
@@ -556,14 +604,17 @@
                         }
                     }
                     <span class="kw">if </span>discarded_dep_found {
-                        to_discard.insert(<span class="kw-2">*</span>block_id, discard_reason);
+                        <span class="comment">// A discarded dependency always yields a reason (Invalid or Stale).
+                        </span><span class="kw">let </span>reason = discard_reason
+                            .expect(<span class="string">"discarded dependency should produce a discard reason"</span>);
+                        to_discard.insert(<span class="kw-2">*</span>block_id, reason);
                         <span class="kw">continue</span>;
                     }
 
                     <span class="comment">// is at least as old as the latest final block in its thread =&gt; discard as stale
                     </span><span class="kw">let </span>slot = header_or_block.get_slot();
                     <span class="kw">if </span>slot.period &lt;= <span class="self">self</span>.latest_final_blocks_periods[slot.thread <span class="kw">as </span>usize].<span class="number">1 </span>{
-                        to_discard.insert(<span class="kw-2">*</span>block_id, <span class="prelude-val">Some</span>(DiscardReason::Stale));
+                        to_discard.insert(<span class="kw-2">*</span>block_id, DiscardReason::Stale);
                         <span class="kw">continue</span>;
                     }
 
@@ -589,23 +640,21 @@
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(reason) = to_discard.get(dep) {
                             dep_to_discard_found = <span class="bool-val">true</span>;
                             <span class="kw">match </span>reason {
-                                <span class="prelude-val">Some</span>(DiscardReason::Invalid(reason)) =&gt; {
+                                DiscardReason::Invalid(reason) =&gt; {
                                     discard_reason = <span class="prelude-val">Some</span>(DiscardReason::Invalid(<span class="macro">format!</span>(<span class="string">"discarded because depend on block:{} that has discard reason:{}"</span>, hash, reason)));
                                     <span class="kw">break</span>;
                                 }
-                                <span class="prelude-val">Some</span>(DiscardReason::Stale) =&gt; {
-                                    discard_reason = <span class="prelude-val">Some</span>(DiscardReason::Stale)
-                                }
-                                <span class="prelude-val">Some</span>(DiscardReason::Final) =&gt; {
-                                    discard_reason = <span class="prelude-val">Some</span>(DiscardReason::Stale)
-                                }
-                                <span class="prelude-val">None </span>=&gt; {} <span class="comment">// leave as None
-                            </span>}
+                                DiscardReason::Stale =&gt; discard_reason = <span class="prelude-val">Some</span>(DiscardReason::Stale),
+                                DiscardReason::Final =&gt; discard_reason = <span class="prelude-val">Some</span>(DiscardReason::Stale),
+                            }
                         }
                     }
                     <span class="kw">if </span>dep_to_discard_found {
+                        <span class="comment">// A dependency queued for discard always has a reason.
+                        </span><span class="kw">let </span>reason = discard_reason
+                            .expect(<span class="string">"dependency queued for discard should have a reason"</span>);
                         to_keep.remove(<span class="kw-2">&amp;</span>hash);
-                        to_discard.insert(hash, discard_reason);
+                        to_discard.insert(hash, reason);
                         <span class="kw">continue</span>;
                     }
                 }
@@ -629,7 +678,8 @@
                     .min();
                 <span class="kw">if let </span><span class="prelude-val">Some</span>((_seq_num, _slot, hash)) = remove_elt {
                     to_keep.remove(<span class="kw-2">&amp;</span>hash);
-                    to_discard.insert(hash, <span class="prelude-val">None</span>);
+                    <span class="comment">// Preserve the over-limit entry as discarded instead of silently deleting it.
+                    </span>to_discard.insert(hash, DiscardReason::Stale);
                     <span class="kw">continue</span>;
                 }
             }
@@ -638,8 +688,8 @@
             </span><span class="kw">break</span>;
         }
 
-        <span class="comment">// transition states to Discarded if there is a reason, otherwise just drop
-        </span><span class="kw">for </span>(block_id, reason_opt) <span class="kw">in </span>to_discard.drain() {
+        <span class="comment">// transition states to Discarded (every entry in to_discard now has a reason)
+        </span><span class="kw">for </span>(block_id, reason) <span class="kw">in </span>to_discard.drain() {
             <span class="kw">let </span>sequence_number = <span class="self">self</span>.blocks_state.sequence_counter();
             <span class="self">self</span>.blocks_state.transition_map(<span class="kw-2">&amp;</span>block_id, |block_status, <span class="kw">_</span>| {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
@@ -656,27 +706,21 @@
                             .header
                             .clone()
                     };
-                    <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.prune_waiting_for_dependencies"</span>, {<span class="string">"hash"</span>: block_id, <span class="string">"reason"</span>: reason_opt});
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(reason) = reason_opt {
-                        <span class="comment">// add to stats if reason is Stale
-                        </span><span class="kw">if </span>reason == DiscardReason::Stale {
-                            <span class="self">self</span>.new_stale_blocks.insert(
-                                block_id,
-                                (header.content_creator_address, header.content.slot),
-                            );
-                        }
-                        <span class="comment">// transition to Discarded only if there is a reason
-                        </span><span class="prelude-val">Some</span>(BlockStatus::Discarded {
-                                slot: header.content.slot,
-                                creator: header.content_creator_address,
-                                parents: header.content.parents,
-                                reason,
-                                sequence_number,
-                            },
-                        )
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">None
-                    </span>}
+                    <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.prune_waiting_for_dependencies"</span>, {<span class="string">"hash"</span>: block_id, <span class="string">"reason"</span>: reason});
+                    <span class="comment">// add to stats if reason is Stale
+                    </span><span class="kw">if </span>reason == DiscardReason::Stale {
+                        <span class="self">self</span>.new_stale_blocks.insert(
+                            block_id,
+                            (header.content_creator_address, header.content.slot),
+                        );
+                    }
+                    <span class="prelude-val">Some</span>(BlockStatus::Discarded {
+                        slot: header.content.slot,
+                        creator: header.content_creator_address,
+                        parents: header.content.parents,
+                        reason,
+                        sequence_number,
+                    })
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"block {} should be in WaitingForDependencies state"</span>, block_id);
                 }
