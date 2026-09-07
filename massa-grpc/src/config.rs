@@ -90,6 +90,10 @@ pub struct GrpcConfig {
     pub max_operations_per_message: u32,
     /// max gas per block
     pub max_gas_per_block: u64,
+    /// maximum serialized size of a single operation: an operation bigger than
+    /// the whole operations payload of a block can never be propagated by the
+    /// protocol nor included in a block (`MAX_BLOCK_SIZE`)
+    pub max_serialized_operation_size: usize,
     /// gas cost of a basic operation
     pub base_operation_gas_cost: u64,
     /// gas cost of the smart contract compilation

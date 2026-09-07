@@ -98,6 +98,15 @@ pub(crate) async fn send_operations(
                                     let verified_op_res = match operation_deserializer.deserialize::<DeserializeError>(&proto_operation) {
                                         Ok(tuple) => {
                                             let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
+                                            // an operation bigger than the whole operations payload of a
+                                            // block can never be propagated nor included in a block
+                                            let op_size = res_operation.serialized_size();
+                                            if op_size > config.max_serialized_operation_size {
+                                                return Err(GrpcError::InvalidArgument(format!(
+                                                    "serialized operation size {} exceeds the maximum authorized size of {} bytes. Your operation will never be included in a block.",
+                                                    op_size, config.max_serialized_operation_size
+                                                )));
+                                            }
                                             if let Err(err_msg) = res_operation.check_gas_usage(
                                                 config.max_gas_per_block,
                                                 config.base_operation_gas_cost,

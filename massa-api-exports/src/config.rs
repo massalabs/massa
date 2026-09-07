@@ -65,6 +65,10 @@ pub struct APIConfig {
     pub max_parameter_size: u32,
     /// max gas in a block
     pub max_gas_per_block: u64,
+    /// maximum serialized size of a single operation: an operation bigger than
+    /// the whole operations payload of a block can never be propagated by the
+    /// protocol nor included in a block (`MAX_BLOCK_SIZE`)
+    pub max_serialized_operation_size: usize,
     /// base gas used by any operation
     pub base_operation_gas_cost: u64,
     /// Amount required for a SinglePass compilation (ExecuteSC operation)
