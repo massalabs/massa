@@ -136,7 +136,17 @@ impl ExecutionController for ExecutionControllerImpl {
         self.input_data.0.notify_one();
     }
 
-    /// Atomically query the execution state with multiple requests
+    /// Atomically query the execution state with multiple requests.
+    ///
+    /// INVARIANT: all items MUST be computed under the single `execution_state` read lock taken below,
+    /// because the returned cursors and fingerprint describe the whole batch and clients rely on this
+    /// to read a consistent state. Never release the lock between items to reduce contention:
+    /// bound the cost of a batch via budgets (per-item errors) instead.
+    ///
+    /// Large payload responses (`Bytecode`, `DatastoreValue`) are counted toward
+    /// `req.max_response_size`. Other response variants are treated as 0 bytes.
+    /// When appending a large payload would exceed the budget, that item is returned
+    /// as `ExecutionQueryError::TooLargeResponse` and its bytes are not retained.
     fn query_state(&self, req: ExecutionQueryRequest) -> ExecutionQueryResponse {
         let execution_lock = self.execution_state.read();
         let mut resp: ExecutionQueryResponse = ExecutionQueryResponse {
@@ -145,6 +155,8 @@ impl ExecutionController for ExecutionControllerImpl {
             final_cursor: execution_lock.final_cursor,
             final_state_fingerprint: execution_lock.get_final_state_fingerprint(),
         };
+        // Cumulative size of bytecode / datastore-value payloads kept in `resp`.
+        let mut response_payload_size: usize = 0;
         for req_item in req.requests {
             let resp_item = match req_item {
                 ExecutionQueryRequestItem::AddressExistsCandidate(addr) => {
@@ -183,7 +195,12 @@ impl ExecutionController for ExecutionControllerImpl {
                     let (_final_v, speculative_v) =
                         execution_lock.get_final_and_active_bytecode(&addr);
                     match speculative_v {
-                        Some(bytecode) => Ok(ExecutionQueryResponseItem::Bytecode(bytecode)),
+                        Some(bytecode) => account_large_payload(
+                            &mut response_payload_size,
+                            req.max_response_size,
+                            bytecode.0.len(),
+                        )
+                        .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
                     }
                 }
@@ -191,7 +208,12 @@ impl ExecutionController for ExecutionControllerImpl {
                     let (final_v, _speculative_v) =
                         execution_lock.get_final_and_active_bytecode(&addr);
                     match final_v {
-                        Some(bytecode) => Ok(ExecutionQueryResponseItem::Bytecode(bytecode)),
+                        Some(bytecode) => account_large_payload(
+                            &mut response_payload_size,
+                            req.max_response_size,
+                            bytecode.0.len(),
+                        )
+                        .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
                     }
                 }
@@ -239,7 +261,12 @@ impl ExecutionController for ExecutionControllerImpl {
                     let (_final_v, speculative_v) =
                         execution_lock.get_final_and_active_data_entry(&addr, &key);
                     match speculative_v {
-                        Some(value) => Ok(ExecutionQueryResponseItem::DatastoreValue(value)),
+                        Some(value) => account_large_payload(
+                            &mut response_payload_size,
+                            req.max_response_size,
+                            value.len(),
+                        )
+                        .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
                         None => Err(ExecutionQueryError::NotFound(format!(
                             "Account {} datastore entry {:?}",
                             addr, key
@@ -250,7 +277,12 @@ impl ExecutionController for ExecutionControllerImpl {
                     let (final_v, _speculative_v) =
                         execution_lock.get_final_and_active_data_entry(&addr, &key);
                     match final_v {
-                        Some(value) => Ok(ExecutionQueryResponseItem::DatastoreValue(value)),
+                        Some(value) => account_large_payload(
+                            &mut response_payload_size,
+                            req.max_response_size,
+                            value.len(),
+                        )
+                        .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
                         None => Err(ExecutionQueryError::NotFound(format!(
                             "Account {} datastore entry {:?}",
                             addr, key
@@ -616,6 +648,24 @@ impl ExecutionController for ExecutionControllerImpl {
     fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<(Option<bool>, Option<bool>)> {
         self.execution_state.read().get_ops_exec_status(batch)
     }
+}
+
+/// Account a large payload against the cumulative response budget.
+/// Only bytecode and datastore-value lengths are counted; other items are ignored.
+fn account_large_payload(
+    accumulated: &mut usize,
+    max_response_size: usize,
+    payload_len: usize,
+) -> Result<(), ExecutionQueryError> {
+    let new_size = accumulated.saturating_add(payload_len);
+    if new_size > max_response_size {
+        return Err(ExecutionQueryError::TooLargeResponse(format!(
+            "query response size would exceed limit of {} bytes (current {}, item {})",
+            max_response_size, accumulated, payload_len
+        )));
+    }
+    *accumulated = new_size;
+    Ok(())
 }
 
 /// Execution manager

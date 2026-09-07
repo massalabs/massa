@@ -966,7 +966,10 @@ pub(crate) fn get_status(
     };
     let next_cycle_time = current_cycle_time.checked_add(cycle_duration)?;
     //TODO to be enhanced
-    let empty_request = ExecutionQueryRequest { requests: vec![] };
+    let empty_request = ExecutionQueryRequest {
+        requests: vec![],
+        max_response_size: grpc.grpc_config.max_encoding_message_size,
+    };
     let state = grpc.execution_controller.query_state(empty_request);
 
     let current_mip_version = grpc.keypair_factory.mip_store.get_network_version_current();
@@ -1040,7 +1043,10 @@ pub(crate) fn query_state(
 
     let response = grpc
         .execution_controller
-        .query_state(ExecutionQueryRequest { requests: queries });
+        .query_state(ExecutionQueryRequest {
+            requests: queries,
+            max_response_size: grpc.grpc_config.max_encoding_message_size,
+        });
 
     Ok(grpc_api::QueryStateResponse {
         final_cursor: Some(response.final_cursor.into()),

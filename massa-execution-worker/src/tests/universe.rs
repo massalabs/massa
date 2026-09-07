@@ -24,14 +24,16 @@ use massa_execution_exports::{
 use massa_final_state::{FinalStateController, MockFinalStateController};
 use massa_ledger_exports::MockLedgerControllerWrapper;
 use massa_metrics::MassaMetrics;
-use massa_models::config::{CHAINID, GENESIS_KEY};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::{
     address::Address,
     amount::Amount,
     block::SecureShareBlock,
     block_id::BlockId,
-    config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT},
+    config::{
+        CHAINID, GENESIS_KEY, MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
+        MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT,
+    },
     datastore::Datastore,
     execution::EventFilter,
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
@@ -69,6 +71,8 @@ impl ExecutionForeignControllers {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,

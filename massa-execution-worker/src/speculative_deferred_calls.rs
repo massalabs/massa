@@ -147,7 +147,7 @@ impl SpeculativeDeferredCallRegistry {
     /// and returns the calls that need to be executed in the current slot
     pub fn advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
         // get the state of the current slot
-        let mut slot_calls = self.get_calls_by_slot(current_slot);
+        let slot_calls = self.get_calls_by_slot(current_slot);
         let total_booked_gas_before = self.get_effective_total_gas();
 
         // get the previous average booking rate per slot
@@ -214,8 +214,6 @@ impl SpeculativeDeferredCallRegistry {
             self.deferred_calls_changes
                 .set_effective_total_gas(total_gas_after);
         }
-
-        slot_calls.effective_total_gas = total_gas_after;
 
         // delete call in the current slot
         for id in slot_calls.slot_calls.keys() {
@@ -518,7 +516,14 @@ mod tests {
     use massa_db_worker::MassaDB;
     use massa_deferred_calls::{config::DeferredCallsConfig, DeferredCallRegistry};
     use massa_final_state::MockFinalStateController;
-    use massa_models::{amount::Amount, config::THREAD_COUNT, slot::Slot};
+    use massa_models::{
+        amount::Amount,
+        config::{
+            MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+            THREAD_COUNT,
+        },
+        slot::Slot,
+    };
     use parking_lot::RwLock;
     use tempfile::TempDir;
 
@@ -532,6 +537,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,

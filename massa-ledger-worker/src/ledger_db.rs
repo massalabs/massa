@@ -165,7 +165,11 @@ impl LedgerDB {
     ///
     /// # Arguments
     #[cfg_attr(not(feature = "test-exports"), allow(dead_code))]
-    pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
+    pub fn load_initial_ledger(
+        &mut self,
+        initial_ledger: HashMap<Address, LedgerEntry>,
+    ) -> Result<(), LedgerError> {
+        self.ensure_ledger_is_empty()?;
         let slot = Some(Slot::new(0, self.thread_count.saturating_sub(1)));
         let mut batch = DBBatch::new();
 
@@ -179,10 +183,12 @@ impl LedgerDB {
         if !batch.is_empty() {
             self.flush_initial_ledger_batch(batch, slot);
         }
+        Ok(())
     }
 
     /// Loads the initial disk ledger from a JSON file, one entry at a time.
     pub fn load_initial_ledger_from_path(&mut self, path: &Path) -> Result<(), LedgerError> {
+        self.ensure_ledger_is_empty()?;
         let file = File::open(path).map_err(|err| initial_ledger_file_error(path, err))?;
         let reader = BufReader::new(file);
         let mut deserializer = serde_json::Deserializer::from_reader(reader);
@@ -203,6 +209,22 @@ impl LedgerDB {
 
     fn flush_initial_ledger_batch(&self, batch: DBBatch, slot: Option<Slot>) {
         self.db.write().write_batch(batch, Default::default(), slot);
+    }
+
+    fn ensure_ledger_is_empty(&self) -> Result<(), LedgerError> {
+        let db = self.db.read();
+        let ledger_prefix = LEDGER_PREFIX.as_bytes();
+        let has_ledger_data = db
+            .prefix_iterator_cf(STATE_CF, ledger_prefix)
+            .take_while(|(key, _)| key.starts_with(ledger_prefix))
+            .next()
+            .is_some();
+        if has_ledger_data {
+            return Err(LedgerError::ContainerInconsistency(
+                "cannot load initial ledger: ledger database is not empty".into(),
+            ));
+        }
+        Ok(())
     }
 
     /// Allows applying `LedgerChanges` to the disk ledger
@@ -491,10 +513,19 @@ impl LedgerDB {
 
     /// Update the ledger entry of a given address.
     ///
+    /// If the address has no canonical entry yet (no VERSION marker), a default entry is
+    /// materialized first via [`Self::put_entry`], matching the contract documented on
+    /// [`Self::apply_changes_to_batch`] and the `LedgerChanges` Vacant helpers (F84).
+    ///
     /// # Arguments
     /// * `entry_update`: a descriptor of the entry updates to be applied
     /// * `batch`: the given operation batch to update
     fn update_entry(&self, addr: &Address, entry_update: LedgerEntryUpdate, batch: &mut DBBatch) {
+        // Existence is defined by the VERSION subkey (see FinalLedger::entry_exists).
+        if self.get_sub_entry(addr, LedgerSubEntry::Version).is_none() {
+            self.put_entry(addr, LedgerEntry::default(), batch);
+        }
+
         let db = self.db.read();
 
         // balance
@@ -730,6 +761,9 @@ mod tests {
     use massa_db_worker::MassaDB;
     use massa_hash::HashXof;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
+    use massa_models::config::{
+        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+    };
     use massa_models::types::SetOrKeep;
     use massa_models::{
         address::Address,
@@ -779,6 +813,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             max_ledger_backups: 10,
             thread_count: 32,
             enable_metrics: false,
@@ -1070,6 +1106,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             max_ledger_backups: 10,
             thread_count: 32,
             enable_metrics: false,
@@ -1101,5 +1139,83 @@ mod tests {
             .deserialize::<DeserializeError>(&balance2)
             .unwrap();
         assert_eq!(balance2, Amount::from_str("200").unwrap());
+    }
+
+    /// Updating a missing address must materialize a full canonical entry (VERSION + defaults)
+    /// before applying field updates — otherwise entry_exists stays false with partial state (F84).
+    #[test]
+    fn test_update_entry_materializes_missing_address() {
+        use massa_models::bytecode::Bytecode;
+        use massa_models::types::SetOrDelete;
+
+        let temp_dir = TempDir::new().unwrap();
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
+            max_ledger_backups: 10,
+            thread_count: 32,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let ledger_db = LedgerDB::new(db, 32, 255, 1000, 1000);
+        let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+
+        assert!(ledger_db
+            .get_sub_entry(&addr, LedgerSubEntry::Version)
+            .is_none());
+
+        let mut batch = DBBatch::new();
+        let mut datastore = BTreeMap::new();
+        datastore.insert(b"k".to_vec(), SetOrDelete::Set(b"v".to_vec()));
+        ledger_db.update_entry(
+            &addr,
+            LedgerEntryUpdate {
+                balance: SetOrKeep::Set(Amount::from_str("7").unwrap()),
+                bytecode: SetOrKeep::Set(Bytecode(vec![1, 2, 3])),
+                datastore,
+            },
+            &mut batch,
+        );
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
+
+        assert!(
+            ledger_db
+                .get_sub_entry(&addr, LedgerSubEntry::Version)
+                .is_some(),
+            "VERSION marker must be created for a previously missing address"
+        );
+        assert!(ledger_db
+            .get_sub_entry(&addr, LedgerSubEntry::Balance)
+            .is_some());
+        assert!(ledger_db
+            .get_sub_entry(&addr, LedgerSubEntry::Bytecode)
+            .is_some());
+        assert_eq!(
+            ledger_db.get_entire_datastore(&addr).get(b"k".as_slice()),
+            Some(&b"v".to_vec())
+        );
+
+        let amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
+        assert_eq!(
+            amount_deserializer
+                .deserialize::<DeserializeError>(
+                    &ledger_db
+                        .get_sub_entry(&addr, LedgerSubEntry::Balance)
+                        .unwrap()
+                )
+                .unwrap()
+                .1,
+            Amount::from_str("7").unwrap()
+        );
     }
 }

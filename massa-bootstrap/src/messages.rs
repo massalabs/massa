@@ -7,6 +7,7 @@ use massa_consensus_exports::bootstrapable_graph::{
 
 use massa_db_exports::StreamBatch;
 
+use massa_models::block::BlockDeserializerArgs;
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 
 use massa_models::config::MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE;
@@ -333,11 +334,21 @@ pub struct BootstrapServerMessageDeserializer {
     opt_last_start_period_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
     opt_last_slot_before_downtime_deserializer:
         OptionDeserializer<Option<Slot>, OptionDeserializer<Slot, SlotDeserializer>>,
+    max_final_state_elements_count: usize,
+    max_versioning_elements_count: usize,
 }
 
 impl BootstrapServerMessageDeserializer {
-    /// Creates a new `BootstrapServerMessageDeserializer`
-    pub fn new(args: BootstrapServerMessageDeserializerArgs) -> Self {
+    /// Builds a deserializer that applies `last_start_period` to bootstrap block header
+    /// deserialization so genesis vs non-genesis parent-count rules are enforced while
+    /// parsing. Pass `None` for the first part; the server sends restart metadata once on
+    /// that part (empty consensus graph), then the client reuses the cached value.
+    pub fn with_last_start_period(
+        args: BootstrapServerMessageDeserializerArgs,
+        last_start_period: Option<u64>,
+    ) -> Self {
+        let mut block_args: BlockDeserializerArgs = (&args).into();
+        block_args.last_start_period = last_start_period;
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -362,7 +373,7 @@ impl BootstrapServerMessageDeserializer {
                 Included(args.max_datastore_value_length),
             )),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
-                (&args).into(),
+                block_args,
                 args.max_bootstrap_blocks_length,
             ),
             block_id_set_deserializer: PreHashSetDeserializer::new(
@@ -403,7 +414,38 @@ impl BootstrapServerMessageDeserializer {
                     (Included(0), Excluded(args.thread_count)),
                 )),
             ),
+            max_final_state_elements_count: args.max_final_state_elements_count as usize,
+            max_versioning_elements_count: args.max_versioning_elements_count as usize,
         }
+    }
+
+    /// Deserialize a map of `(key, value)` pairs, rejecting more than `max_count` entries.
+    /// Counts parsed pairs (not unique keys after insert) so duplicate-key floods are capped too.
+    fn deserialize_kv_map<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        mut input: &'a [u8],
+        max_count: usize,
+    ) -> IResult<&'a [u8], BTreeMap<Vec<u8>, Vec<u8>>, E> {
+        let mut acc = BTreeMap::new();
+        let mut parsed = 0usize;
+        while !input.is_empty() {
+            if parsed >= max_count {
+                return Err(nom::Err::Failure(ContextError::add_context(
+                    input,
+                    "too many new_elements entries",
+                    ParseError::from_error_kind(input, nom::error::ErrorKind::Count),
+                )));
+            }
+            let (rest, (key, value)) = tuple((
+                |input| self.datastore_key_deserializer.deserialize(input),
+                |input| self.datastore_val_deserializer.deserialize(input),
+            ))
+            .parse(input)?;
+            parsed += 1;
+            acc.insert(key, value);
+            input = rest;
+        }
+        Ok((input, acc))
     }
 }
 
@@ -427,6 +469,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_ledger_changes_count: 1000, max_datastore_key_length: 255,
     ///     max_datastore_value_length: 1000,
     ///     max_final_state_elements_size: 1000,
+    ///     max_final_state_elements_count: 100000, max_versioning_elements_count: 100000,
     ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
     ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
@@ -434,7 +477,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,
     ///     chain_id: *CHAINID
     /// };
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::with_last_start_period(args, None);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from_millis(0),
     ///    version: Version::from_str("TEST.1.10").unwrap(),
@@ -506,25 +549,12 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.state_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    // Fold directly into the target `BTreeMap` instead of
-                                    // collecting into an intermediate `Vec` first: the new_elements
-                                    // section can be large, so avoiding the extra full-size
-                                    // allocation roughly halves the peak memory of parsing it.
-                                    fold_many0(
-                                        tuple((
-                                            |input| {
-                                                self.datastore_key_deserializer.deserialize(input)
-                                            },
-                                            |input| {
-                                                self.datastore_val_deserializer.deserialize(input)
-                                            },
-                                        )),
-                                        BTreeMap::new,
-                                        |mut acc, (key, value)| {
-                                            acc.insert(key, value);
-                                            acc
-                                        },
-                                    ),
+                                    |input| {
+                                        self.deserialize_kv_map(
+                                            input,
+                                            self.max_final_state_elements_count,
+                                        )
+                                    },
                                 ),
                             ),
                             context(
@@ -568,25 +598,12 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.versioning_part_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    // Fold directly into the target `BTreeMap` instead of
-                                    // collecting into an intermediate `Vec` first: the new_elements
-                                    // section can be large, so avoiding the extra full-size
-                                    // allocation roughly halves the peak memory of parsing it.
-                                    fold_many0(
-                                        tuple((
-                                            |input| {
-                                                self.datastore_key_deserializer.deserialize(input)
-                                            },
-                                            |input| {
-                                                self.datastore_val_deserializer.deserialize(input)
-                                            },
-                                        )),
-                                        BTreeMap::new,
-                                        |mut acc, (key, value)| {
-                                            acc.insert(key, value);
-                                            acc
-                                        },
-                                    ),
+                                    |input| {
+                                        self.deserialize_kv_map(
+                                            input,
+                                            self.max_versioning_elements_count,
+                                        )
+                                    },
                                 ),
                             ),
                             context(

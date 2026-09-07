@@ -64,7 +64,14 @@ impl SpeculativeExecutedDenunciations {
             return true;
         }
 
-        // check in the active history, backwards
+        // Lookup order is: current changes -> active history (backward walk) -> final state (disk).
+        // This is a pure lookup with OR semantics, the order does not affect the result,
+        // it only avoids a DB read in the common case (fresh denunciations are never in the final state).
+        // A block producer can replay up to MAX_DENUNCIATIONS_PER_BLOCK_HEADER already-finalized denunciations
+        // to force this many linear walks of the active history. This is intentional and harmless:
+        // the walk is one hash lookup per active history element, negligible compared to the two
+        // signature verifications already done in `is_valid()` before reaching this point,
+        // and replays are bounded by the denunciation expiry period.
         match self
             .active_history
             .read()

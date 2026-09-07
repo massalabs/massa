@@ -466,6 +466,10 @@ impl From<ExecutionQueryError> for grpc_model::Error {
                 code: 404,
                 message: error,
             },
+            ExecutionQueryError::TooLargeResponse(error) => grpc_model::Error {
+                code: 413,
+                message: error,
+            },
         }
     }
 }

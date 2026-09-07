@@ -5,7 +5,7 @@ use massa_executed_ops::ExecutedDenunciations;
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerController;
 use massa_models::{operation::OperationId, slot::Slot};
-use massa_pos_exports::PoSFinalState;
+use massa_pos_exports::{PoSFinalState, PosError};
 use massa_versioning::versioning::MipStore;
 
 use crate::{FinalStateError, StateChanges};
@@ -35,7 +35,12 @@ pub trait FinalStateController: Send + Sync {
     /// Once this is called, the state is attached at the output of the provided slot.
     ///
     /// Panics if the new slot is not the one coming just after the current one.
-    fn finalize(&mut self, slot: Slot, changes: StateChanges);
+    fn finalize(
+        &mut self,
+        slot: Slot,
+        changes: StateChanges,
+        network_versions: Option<(u32, Option<u32>)>,
+    );
 
     /// After bootstrap or load from disk, recompute all the caches.
     fn recompute_caches(&mut self);
@@ -61,6 +66,10 @@ pub trait FinalStateController: Send + Sync {
 
     /// Get pos state mut
     fn get_pos_state_mut(&mut self) -> &mut PoSFinalState;
+
+    /// Load initial deferred credits from file, using the ledger to skip credits
+    /// that could not be applied at execution time.
+    fn load_initial_deferred_credits(&mut self, batch: &mut DBBatch) -> Result<(), PosError>;
 
     /// check if an operation is in the executed ops
     fn executed_ops_contains(&self, op_id: &OperationId) -> bool;

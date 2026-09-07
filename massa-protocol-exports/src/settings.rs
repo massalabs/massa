@@ -74,6 +74,12 @@ pub struct ProtocolConfig {
     pub max_operations_per_block: u32,
     /// Maximum size in bytes of all serialized operations size in a block
     pub max_serialized_operations_size_per_block: usize,
+    /// Maximum gas allowed in a block
+    pub max_block_gas: u64,
+    /// Gas used by a base operation (transaction, roll buy, roll sell)
+    pub base_operation_gas_cost: u64,
+    /// Gas cost of smart contract compilation
+    pub sp_compilation_cost: u64,
     /// Controller channel size
     pub controller_channel_size: usize,
     /// Event channel size
@@ -184,8 +190,10 @@ impl ProtocolConfig {
     /// Whether the node is configured to deal with peers that do not have a
     /// globally routable address, i.e. local networks. Mirrors the
     /// `allow_local_peers` category setting: as soon as one category accepts
-    /// local peers, non global endpoints are kept in the peer management
-    /// pipeline, the per category check being done when connecting out.
+    /// local peers, non-global endpoints are kept in the peer management
+    /// pipeline and may be dialed. Per-category checks still apply when
+    /// selecting peers to connect out; `NetworkController::try_connect`
+    /// refuses non-global destinations when this returns false.
     pub fn allow_local_peers(&self) -> bool {
         self.default_category_info.allow_local_peers
             || self

@@ -68,6 +68,15 @@ pub struct PropagationThread {
 }
 
 impl PropagationThread {
+    /// Run one propagation tick: announce stored blocks to peers that need them
+    /// and advance the next tick deadline.
+    fn propagation_tick(&mut self, deadline: &mut Instant) {
+        self.perform_propagations();
+        *deadline = Instant::now()
+            .checked_add(self.config.block_propagation_tick.to_duration())
+            .expect("could not get time of next propagation tick");
+    }
+
     fn run(&mut self) {
         let tick_interval = self.config.block_propagation_tick.to_duration();
         let mut deadline = Instant::now()
@@ -93,6 +102,11 @@ impl PropagationThread {
                                         "claimed block {} absent from storage on propagation",
                                         block_id
                                     );
+                                    // Even on this error path, don't let a command flood
+                                    // starve the periodic propagation tick.
+                                    if Instant::now() >= deadline {
+                                        self.propagation_tick(&mut deadline);
+                                    }
                                     continue;
                                 }
                             };
@@ -142,12 +156,7 @@ impl PropagationThread {
                             );
 
                             // propagate everything that needs to be propagated
-                            self.perform_propagations();
-
-                            // renew tick because propagation propagations were updated
-                            deadline = Instant::now()
-                                .checked_add(tick_interval)
-                                .expect("could not get time of next propagation tick");
+                            self.propagation_tick(&mut deadline);
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) => {
                             debug!("received AttackBlockDetected({})", block_id);
@@ -165,6 +174,15 @@ impl PropagationThread {
                             } else {
                                 self.ban_peers(&peers_to_ban);
                             }
+
+                            // `recv_deadline` returns immediately whenever a message is ready,
+                            // so a continuously non-empty channel would never let the timeout
+                            // branch below fire. Enforce the deadline here as well to make sure
+                            // periodic re-propagation to newly connected nodes keeps happening
+                            // under a constant flow of commands.
+                            if Instant::now() >= deadline {
+                                self.propagation_tick(&mut deadline);
+                            }
                         }
                         BlockHandlerPropagationCommand::Stop => {
                             info!("Stop block propagation thread");
@@ -174,11 +192,7 @@ impl PropagationThread {
                 }
                 Err(RecvTimeoutError::Timeout) => {
                     // Propagation tick. This is useful to quickly propagate headers to newly connected nodes.
-                    self.perform_propagations();
-                    // renew deadline of next tick
-                    deadline = Instant::now()
-                        .checked_add(tick_interval)
-                        .expect("could not get time of next propagation tick");
+                    self.propagation_tick(&mut deadline);
                 }
                 Err(RecvTimeoutError::Disconnected) => {
                     info!("Stop block propagation thread");

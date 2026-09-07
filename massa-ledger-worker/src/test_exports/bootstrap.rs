@@ -22,7 +22,9 @@ pub fn create_final_ledger(
         config.max_datastore_value_length,
         config.max_bytecode_size,
     );
-    ledger_db.load_initial_ledger(initial_ledger);
+    ledger_db
+        .load_initial_ledger(initial_ledger)
+        .expect("could not load initial ledger");
     FinalLedger {
         config,
         sorted_ledger: ledger_db,

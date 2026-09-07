@@ -1,11 +1,12 @@
 use humantime::format_duration;
+use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_db_exports::DBBatch;
 use massa_final_state::{FinalStateController, FinalStateError};
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
 use massa_models::{
-    node::NodeId, slot::Slot, streaming_step::StreamingStep, timeslots::get_block_slot_timestamp,
-    version::Version,
+    block_id::BlockId, node::NodeId, prehash::PreHashSet, slot::Slot,
+    streaming_step::StreamingStep, timeslots::get_block_slot_timestamp, version::Version,
 };
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
@@ -68,12 +69,39 @@ impl BSConnector for DefaultConnector {
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
+///
+/// The consensus reconnect cursor is capped to `max_consensus_block_ids` (newest finals by slot).
+/// The full graph is kept while streaming; on the next attempt it is pruned to the ids we claim
+/// so dropped finals can be re-downloaded.
 pub(crate) fn stream_final_state_and_consensus(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
+    align_consensus_resume_state_before_ask(next_bootstrap_message, global_bootstrap_state);
+
+    if let BootstrapClientMessage::AskBootstrapPart {
+        send_last_start_period: false,
+        ..
+    } = &next_bootstrap_message
+    {
+        // Continuation / reconnect: metadata was received on the first part (empty
+        // consensus); seed the binder for block header validation while parsing.
+        client.set_last_start_period(Some(
+            global_bootstrap_state
+                .final_state
+                .read()
+                .get_last_start_period(),
+        ));
+    } else if let BootstrapClientMessage::AskBootstrapPart {
+        send_last_start_period: true,
+        ..
+    } = &next_bootstrap_message
+    {
+        client.set_last_start_period(None);
+    }
+
     if let BootstrapClientMessage::AskBootstrapPart { .. } = &next_bootstrap_message {
         client.send_timeout(
             next_bootstrap_message,
@@ -100,9 +128,9 @@ pub(crate) fn stream_final_state_and_consensus(
                     // successful bootstrap.
                     check_restart_metadata(cfg, &last_start_period, &last_slot_before_downtime)?;
 
-                    // We only need to receive the initial_state once
                     if let Some(last_start_period) = last_start_period {
                         write_final_state.set_last_start_period(last_start_period);
+                        client.set_last_start_period(Some(last_start_period));
                     }
                     if let Some(last_slot_before_downtime) = last_slot_before_downtime {
                         write_final_state.set_last_slot_before_downtime(last_slot_before_downtime);
@@ -130,16 +158,11 @@ pub(crate) fn stream_final_state_and_consensus(
                     } else {
                         global_bootstrap_state.graph = Some(consensus_part);
                     }
-                    let last_consensus_step = StreamingStep::Ongoing(
-                        // Note that this unwrap call is safe because of the above conditional statement
-                        global_bootstrap_state
-                            .graph
-                            .as_ref()
-                            .unwrap()
-                            .final_blocks
-                            .iter()
-                            .map(|b_export| b_export.block.id)
-                            .collect(),
+
+                    // Cap the reconnect ask only; keep the full in-session graph.
+                    let last_consensus_step = capped_consensus_resume_step(
+                        global_bootstrap_state.graph.as_ref(),
+                        cfg.max_consensus_block_ids as usize,
                     );
 
                     // Set new message in case of disconnection
@@ -215,7 +238,12 @@ pub(crate) fn stream_final_state_and_consensus(
                     };
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
+                    // `reset()` does not clear restart metadata; drop values from the
+                    // aborted server so the next one defines them from the wire again.
+                    write_final_state.set_last_start_period(0);
+                    write_final_state.set_last_slot_before_downtime(None);
                     drop(write_final_state);
+                    client.set_last_start_period(None);
                     // The cursor above restarts the consensus stream from `Started`, for which the
                     // server reports no outdated ids: blocks kept from the aborted attempt would
                     // never be pruned and would be merged into the next attempt's graph.
@@ -376,9 +404,10 @@ pub(crate) fn bootstrap_from_server(
 /// Checks the network restart metadata announced by a bootstrap server.
 ///
 /// The server sends `last_start_period` and `last_slot_before_downtime` together, and only once
-/// per stream. Startup then derives the network downtime range and its timestamps from them (see
-/// `massa-node`), assuming they describe a coherent interval, so anything else has to be rejected
-/// as a bootstrap failure rather than stored.
+/// per stream (on the first part, before any consensus blocks). Startup derives the network
+/// downtime range and its timestamps from them (see `massa-node`), assuming they describe a
+/// coherent interval, so anything else has to be rejected as a bootstrap failure rather than
+/// stored.
 fn check_restart_metadata(
     cfg: &BootstrapConfig,
     last_start_period: &Option<u64>,
@@ -439,14 +468,10 @@ fn shutdown_range(
                 last_slot_before_downtime, e
             ))
         })?;
-    let shutdown_end = Slot::new(last_start_period, 0)
-        .get_prev_slot(cfg.thread_count)
-        .map_err(|e| {
-            BootstrapError::GeneralError(format!(
-                "the server announced a downtime ending at period {}, which has no previous slot: {}",
-                last_start_period, e
-            ))
-        })?;
+    // Include the entire last_start_period as downtime: interpolation attaches at
+    // Slot(last_start_period, thread_count - 1) and block production resumes only
+    // at Slot(last_start_period + 1, 0).
+    let shutdown_end = Slot::new(last_start_period, cfg.thread_count.saturating_sub(1));
     Ok((shutdown_start, shutdown_end))
 }
 
@@ -572,7 +597,6 @@ pub fn get_state(
 
             // load initial deferred credits
             final_state_guard
-                .get_pos_state_mut()
                 .load_initial_deferred_credits(&mut batch)
                 .map_err(|err| {
                     BootstrapError::GeneralError(format!(
@@ -808,10 +832,95 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
     debug!("MIP store got {} MIP updated from bootstrap", updated.len());
 }
 
+fn align_consensus_resume_state_before_ask(
+    next_bootstrap_message: &mut BootstrapClientMessage,
+    global_bootstrap_state: &mut GlobalBootstrapState,
+) {
+    let mut must_restart_consensus = false;
+    if let BootstrapClientMessage::AskBootstrapPart {
+        last_consensus_step: StreamingStep::Ongoing(ids),
+        ..
+    } = next_bootstrap_message
+    {
+        if let Some(graph) = global_bootstrap_state.graph.as_mut() {
+            graph
+                .final_blocks
+                .retain(|block_export| ids.contains(&block_export.block.id));
+            ids.clear();
+            ids.extend(
+                graph
+                    .final_blocks
+                    .iter()
+                    .map(|block_export| block_export.block.id),
+            );
+            if graph.final_blocks.is_empty() {
+                global_bootstrap_state.graph = None;
+            }
+        } else {
+            ids.clear();
+        }
+        must_restart_consensus = ids.is_empty();
+    }
+    if must_restart_consensus {
+        if let BootstrapClientMessage::AskBootstrapPart {
+            last_consensus_step,
+            ..
+        } = next_bootstrap_message
+        {
+            *last_consensus_step = StreamingStep::Started;
+        }
+    }
+}
+
+fn capped_consensus_resume_step(
+    graph: Option<&BootstrapableGraph>,
+    max_ids: usize,
+) -> StreamingStep<PreHashSet<BlockId>> {
+    let Some(graph) = graph else {
+        return StreamingStep::Started;
+    };
+    let ids = capped_consensus_cursor_ids(graph, max_ids);
+    if ids.is_empty() {
+        StreamingStep::Started
+    } else {
+        StreamingStep::Ongoing(ids)
+    }
+}
+
+/// Ids for the reconnect ask: all finals if under the cap, otherwise the newest `max_ids` by slot.
+fn capped_consensus_cursor_ids(graph: &BootstrapableGraph, max_ids: usize) -> PreHashSet<BlockId> {
+    if max_ids == 0 || graph.final_blocks.is_empty() {
+        return PreHashSet::default();
+    }
+    if graph.final_blocks.len() <= max_ids {
+        return graph
+            .final_blocks
+            .iter()
+            .map(|block_export| block_export.block.id)
+            .collect();
+    }
+    let mut ordered: Vec<_> = graph
+        .final_blocks
+        .iter()
+        .map(|block_export| {
+            (
+                block_export.block.content.header.content.slot,
+                block_export.block.id,
+            )
+        })
+        .collect();
+    ordered.sort_unstable_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+    ordered[ordered.len() - max_ids..]
+        .iter()
+        .map(|(_, id)| *id)
+        .collect()
+}
+
 #[cfg(test)]
 mod restart_metadata_tests {
     use super::*;
-    use crate::tests::tools::get_bootstrap_config;
+    use crate::tests::tools::{gen_export_active_blocks, get_bootstrap_config};
+    use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
     use massa_signature::KeyPair;
 
     fn config() -> BootstrapConfig {
@@ -855,6 +964,78 @@ mod restart_metadata_tests {
                     "accepted {:?} / {:?}",
                     last_start_period, last_slot_before_downtime
                 ));
+        }
+    }
+
+    #[test]
+    fn capped_consensus_cursor_returns_started_when_empty() {
+        assert_eq!(
+            capped_consensus_resume_step(None, 10),
+            StreamingStep::Started
+        );
+        let graph = BootstrapableGraph {
+            final_blocks: vec![],
+        };
+        assert_eq!(
+            capped_consensus_resume_step(Some(&graph), 10),
+            StreamingStep::Started
+        );
+    }
+
+    #[test]
+    fn capped_consensus_cursor_is_bounded() {
+        let mut rng = rand::thread_rng();
+        let graph = BootstrapableGraph {
+            final_blocks: (0..10)
+                .map(|_| gen_export_active_blocks(&mut rng))
+                .collect(),
+        };
+        match capped_consensus_resume_step(Some(&graph), 3) {
+            StreamingStep::Ongoing(ids) => assert_eq!(ids.len(), 3),
+            other => panic!("expected Ongoing, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn align_reconnect_cursor_prunes_graph_to_claimed_ids() {
+        let mut rng = rand::thread_rng();
+        let blocks: Vec<_> = (0..8).map(|_| gen_export_active_blocks(&mut rng)).collect();
+        let claimed: PreHashSet<_> = blocks
+            .iter()
+            .take(3)
+            .map(|block_export| block_export.block.id)
+            .collect();
+
+        let mut state = GlobalBootstrapState {
+            final_state: Arc::new(RwLock::new(
+                massa_final_state::MockFinalStateController::new(),
+            )),
+            graph: Some(BootstrapableGraph {
+                final_blocks: blocks,
+            }),
+            peers: None,
+        };
+        let mut msg = BootstrapClientMessage::AskBootstrapPart {
+            last_slot: Some(Slot::new(1, 0)),
+            last_state_step: StreamingStep::Ongoing(vec![0]),
+            last_versioning_step: StreamingStep::Ongoing(vec![0]),
+            last_consensus_step: StreamingStep::Ongoing(claimed.clone()),
+            send_last_start_period: false,
+        };
+
+        align_consensus_resume_state_before_ask(&mut msg, &mut state);
+
+        let graph = state.graph.expect("graph should remain");
+        assert_eq!(graph.final_blocks.len(), claimed.len());
+        for b in &graph.final_blocks {
+            assert!(claimed.contains(&b.block.id));
+        }
+        match msg {
+            BootstrapClientMessage::AskBootstrapPart {
+                last_consensus_step: StreamingStep::Ongoing(ids),
+                ..
+            } => assert_eq!(ids, claimed),
+            other => panic!("unexpected message {other:?}"),
         }
     }
 }

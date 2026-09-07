@@ -221,6 +221,11 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
                 )),
             ),
         )
+        // Note: unsorted slots, and duplicate slots (last occurrence wins), on the wire still deserialize
+        // to a normalized BTreeMap. This deserializer is only reached through PoSChangesDeserializer /
+        // StateChangesDeserializer, which are test-only: production reads deferred credits per key from
+        // the DB and bootstrap streams DB batches. Massa is malleability-resistant by construction, this
+        // is not exploitable.
         .map(|elements| DeferredCredits {
             credits: elements.into_iter().collect(),
         })

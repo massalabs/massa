@@ -315,8 +315,25 @@ impl ConsensusState {
         }
     }
 
-    /// list_required_active_blocks algo:
+    /// Lists active block IDs that must be kept to preserve graph consistency
+    /// (latest finals, their descendants up to `end_slot`, and parents needed to fill holes).
     ///
+    /// # Arguments
+    /// * `end_slot`: optional inclusive upper bound on block slots considered.
+    ///   - `None`: use `self.latest_final_blocks_periods` as the per-thread finals baseline
+    ///     (e.g. graph pruning).
+    ///   - `Some(slot)`: compute the latest final block in each thread with `block.slot <= slot`
+    ///     (e.g. bootstrap, aligned with the final-state cursor).
+    ///
+    /// # Invariants for `Some(end_slot)`
+    /// Slot ordering is `(period, thread)`. Genesis blocks live at
+    /// `Slot(last_start_period, thread)` for every thread, so a global upper bound only admits a
+    /// latest final in *every* thread when:
+    /// `end_slot >= Slot(last_start_period, thread_count - 1)` (the last genesis slot).
+    /// Callers must reject earlier values; otherwise `list_latest_final_blocks_at` cannot find a
+    /// final in higher threads (e.g. `Some(Slot(0, 0))` misses genesis at `(0, thread > 0)`).
+    ///
+    /// # Algorithm
     /// if end_slot is None:
     ///      set effective_latest_finals to be the IDs of the self.latest_final_blocks
     /// else

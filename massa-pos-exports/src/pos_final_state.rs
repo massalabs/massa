@@ -11,7 +11,9 @@ use massa_db_exports::{
     DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
 };
 use massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
+use massa_ledger_exports::LedgerController;
 use massa_models::amount::Amount;
+use massa_models::config::LEDGER_ENTRY_BASE_COST;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{
     buf_to_array_ctr, DeserializeError, Deserializer, Serializer, U64VarIntSerializer,
@@ -21,7 +23,7 @@ use std::collections::VecDeque;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::{collections::BTreeMap, path::PathBuf};
-use tracing::debug;
+use tracing::{debug, warn};
 
 // General cycle info idents
 const COMPLETE_IDENT: u8 = 0u8;
@@ -206,7 +208,16 @@ impl PoSFinalState {
     }
 
     /// Try load initial deferred credits from file
-    pub fn load_initial_deferred_credits(&mut self, batch: &mut DBBatch) -> Result<(), PosError> {
+    ///
+    /// Credits that would fail at execution time (same rules as `transfer_coins` when
+    /// crediting with `from_addr = None`) are skipped:
+    /// * non-existing SC address
+    /// * non-existing user address with `amount` below the ledger entry base cost
+    pub fn load_initial_deferred_credits(
+        &mut self,
+        batch: &mut DBBatch,
+        ledger: &dyn LedgerController,
+    ) -> Result<(), PosError> {
         let Some(initial_deferred_credits_path) = &self.config.initial_deferred_credits_path else {
             return Ok(());
         };
@@ -237,7 +248,23 @@ impl PoSFinalState {
             })?;
 
         for (address, deferred_credits) in initial_deferred_credits {
+            let address_is_sc = matches!(address, Address::SC(..));
+            let address_exists = ledger.entry_exists(&address);
             for AddressInitialDeferredCredits { slot, amount } in deferred_credits {
+                if address_is_sc {
+                    warn!(
+                        "deferred credits for address {} with amount {} will not execute because it is a SC address",
+                        address, amount
+                    );
+                } else if !address_exists && amount < LEDGER_ENTRY_BASE_COST {
+                    warn!(
+                        "deferred credits for address {} with amount {} will likely not execute because the address does not exist in the ledger and the amount is below the ledger entry base cost",
+                        address, amount
+                    );
+                }
+
+                // Note that we still put the deferred credits in the database even if they are likely to fail at execution time.
+                // It's for instance possible the address is created before the execution slot of the deferred credits.
                 self.put_deferred_credits_entry(&slot, &address, &amount, batch);
             }
         }
@@ -250,14 +277,41 @@ impl PoSFinalState {
         self.cycle_history_cache = self.get_cycle_history_cycles().into();
 
         if let Some((cycle, _)) = self.cycle_history_cache.back() {
-            self.rng_seed_cache = Some((
-                *cycle,
-                self.get_cycle_history_rng_seed(*cycle)
-                    .expect("cycle RNG seed not found"),
-            ));
+            self.rng_seed_cache = self
+                .get_cycle_history_rng_seed(*cycle)
+                .map(|rng_seed| (*cycle, rng_seed));
         } else {
             self.rng_seed_cache = None;
         }
+    }
+
+    /// Ensures every complete cycle has the persisted fields required for selector feeding.
+    ///
+    /// A cycle marked complete must have an RNG seed and a non-empty
+    /// `final_state_hash_snapshot`. Used after load/bootstrap and during DB validation so
+    /// malformed history fails fast instead of panicking later in `feed_selector`.
+    pub fn validate_selector_history(&self) -> PosResult<()> {
+        for (cycle, complete) in self.get_cycle_history_cycles() {
+            if !complete {
+                continue;
+            }
+            if self.get_cycle_history_rng_seed(cycle).is_none() {
+                return Err(PosError::ContainerInconsistency(format!(
+                    "complete cycle {} is missing RNG seed required for selector feeding",
+                    cycle
+                )));
+            }
+            if self
+                .get_cycle_history_final_state_hash_snapshot(cycle)
+                .is_none()
+            {
+                return Err(PosError::ContainerInconsistency(format!(
+                    "complete cycle {} is missing final state hash snapshot required for selector feeding",
+                    cycle
+                )));
+            }
+        }
+        Ok(())
     }
 
     /// Reset the state of the PoS final state
@@ -290,9 +344,19 @@ impl PoSFinalState {
         );
     }
 
-    /// Create the a cycle based off of another cycle_info.
+    /// Create a cycle based off of another cycle_info.
     ///
     /// Used for downtime interpolation, when restarting from a snapshot.
+    /// Roll counts are always carried over from `last_cycle_info`.
+    ///
+    /// `rng_seed` and `production_stats` are kept only when continuing the same
+    /// incomplete cycle (`last_cycle_info.cycle` matches the target cycle and
+    /// `first_slot` is not the first slot of that cycle). Otherwise the seed
+    /// starts fresh and `production_stats` are empty, so interpolated future
+    /// cycles do not inherit stale production results from the snapshot.
+    ///
+    /// In all cases, `rng_seed` is then extended with `false` bits for every
+    /// interpolated slot in `[first_slot, last_slot]`.
     pub fn create_new_cycle_from_last(
         &mut self,
         last_cycle_info: &CycleInfo,
@@ -300,13 +364,25 @@ impl PoSFinalState {
         last_slot: Slot,
         batch: &mut DBBatch,
     ) -> Result<(), PosError> {
-        let mut rng_seed = if first_slot.is_first_of_cycle(self.config.periods_per_cycle) {
-            BitVec::with_capacity(self.slots_per_cycle())
-        } else {
-            last_cycle_info.rng_seed.clone()
-        };
-
         let cycle = last_slot.get_cycle(self.config.periods_per_cycle);
+
+        // Keep seed/stats only when filling the gap in the same incomplete cycle.
+        // Require both same cycle id and a non-first first_slot (defense in depth:
+        // callers may reuse a snapshot CycleInfo across several target cycles).
+        let continuing_same_cycle = last_cycle_info.cycle == cycle
+            && !first_slot.is_first_of_cycle(self.config.periods_per_cycle);
+
+        let (mut rng_seed, production_stats) = if continuing_same_cycle {
+            (
+                last_cycle_info.rng_seed.clone(),
+                last_cycle_info.production_stats.clone(),
+            )
+        } else {
+            (
+                BitVec::with_capacity(self.slots_per_cycle()),
+                PreHashMap::default(),
+            )
+        };
 
         let num_slots = match last_slot.slots_since(&first_slot, self.config.thread_count) {
             Ok(slots_since) => slots_since.saturating_add(1),
@@ -325,6 +401,7 @@ impl PoSFinalState {
                 slots_per_cycle
             )));
         }
+        // Pad downtime slots; not the same as leaving the seed empty.
         let to_add = (num_slots as usize).min(slots_per_cycle.saturating_sub(rng_seed.len()));
         rng_seed.extend(vec![false; to_add]);
 
@@ -346,7 +423,7 @@ impl PoSFinalState {
                 complete,
                 last_cycle_info.roll_counts.clone(),
                 rng_seed,
-                last_cycle_info.production_stats.clone(),
+                production_stats,
             ),
             batch,
         );
@@ -371,6 +448,9 @@ impl PoSFinalState {
     /// Sends the current draw inputs (initial or bootstrapped) to the selector.
     /// Waits for the initial draws to be performed.
     pub fn compute_initial_draws(&mut self) -> PosResult<()> {
+        // Reject incomplete selector inputs before recomputing draws from history.
+        self.validate_selector_history()?;
+
         // if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
         let history_starts_late = self
             .cycle_history_cache
@@ -452,6 +532,18 @@ impl PoSFinalState {
                 // extend the last incomplete cycle
             } else if info.0.checked_add(1) == Some(cycle) && info.1 {
                 // the previous cycle is complete, push a new incomplete/empty one to extend
+                // By now `_finalize` should already have written its final_state_hash_snapshot.
+                // Catch a missing snapshot here (first slot of the new cycle) instead of waiting
+                // until feed_selector needs it as a lookback (~1 cycle later).
+                if self
+                    .get_cycle_history_final_state_hash_snapshot(info.0)
+                    .is_none()
+                {
+                    return Err(PosError::ContainerInconsistency(format!(
+                        "complete cycle {} is missing final state hash snapshot before starting cycle {}",
+                        info.0, cycle
+                    )));
+                }
 
                 let roll_counts = self.get_all_roll_counts(info.0);
                 self.put_new_cycle_info(
@@ -484,6 +576,8 @@ impl PoSFinalState {
             slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
 
         // OPTIM: we could avoid reading the previous seed bits with a cache or with an update function
+        // Validate selector inputs before marking the cycle complete so a malformed seed cannot
+        // leave `complete=true` in the in-memory cache when we return an error.
         let mut rng_seed = self.get_cycle_history_rng_seed(cycle).ok_or_else(|| {
             PosError::ContainerInconsistency(format!("missing RNG seed for cycle {}", cycle))
         })?;
@@ -573,13 +667,15 @@ impl PoSFinalState {
                 // take the final_state_hash_snapshot at cycle - 3
                 // it will later be combined with rng_seed from cycle - 2 to determine the selection seed
                 // do this here to avoid a potential attacker manipulating the selections
-                let state_hash = self.get_cycle_history_final_state_hash_snapshot(cycle_info.0);
-                (
-                    self.get_all_roll_counts(cycle_info.0),
-                    Some(state_hash.expect(
-                        "critical: a complete cycle must contain a final state hash snapshot",
-                    )),
-                )
+                let state_hash = self
+                    .get_cycle_history_final_state_hash_snapshot(cycle_info.0)
+                    .ok_or_else(|| {
+                        PosError::ContainerInconsistency(format!(
+                            "complete cycle {} is missing final state hash snapshot required for selector feeding",
+                            c
+                        ))
+                    })?;
+                (self.get_all_roll_counts(cycle_info.0), Some(state_hash))
             }
             // looking back to negative cycles
             None => (self.initial_rolls.clone(), None),
@@ -599,11 +695,15 @@ impl PoSFinalState {
                 let u64_ser = U64VarIntSerializer::new();
                 let mut seed = Vec::new();
                 u64_ser.serialize(&c, &mut seed).unwrap();
-                seed.extend(
-                    self.get_cycle_history_rng_seed(cycle_info.0)
-                        .expect("missing RNG seed")
-                        .into_vec(),
-                );
+                let rng_seed = self
+                    .get_cycle_history_rng_seed(cycle_info.0)
+                    .ok_or_else(|| {
+                        PosError::ContainerInconsistency(format!(
+                            "complete cycle {} is missing RNG seed required for selector feeding",
+                            c
+                        ))
+                    })?;
+                seed.extend(rng_seed.into_vec());
                 if let Some(lookback_state_hash) = lookback_state_hash {
                     seed.extend(lookback_state_hash.to_bytes());
                 }
@@ -942,7 +1042,7 @@ impl PoSFinalState {
 
     /// Getter for the final_state_hash_snapshot of a given cycle.
     ///
-    /// Panics if the cycle is not in the history.
+    /// Returns `None` if the RocksDB key is absent or if the stored value is `None`.
     fn get_cycle_history_final_state_hash_snapshot(
         &self,
         cycle: u64,
@@ -954,8 +1054,7 @@ impl PoSFinalState {
                 STATE_CF,
                 final_state_hash_snapshot_key!(self.cycle_history_cycle_prefix(cycle)),
             )
-            .expect(CYCLE_HISTORY_DESER_ERROR)
-            .expect(CYCLE_HISTORY_DESER_ERROR);
+            .expect(CYCLE_HISTORY_DESER_ERROR)?;
         let (_, state_hash) = self
             .cycle_info_deserializer
             .cycle_info_deserializer
@@ -1610,6 +1709,7 @@ mod tests {
     use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_db_worker::MassaDB;
     use massa_models::config::constants::{
+        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,
     };
@@ -1668,6 +1768,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1700,8 +1802,10 @@ mod tests {
         };
         let mut batch = DBBatch::new();
         // load initial deferred credits
+        let mut ledger = massa_ledger_exports::MockLedgerController::new();
+        ledger.expect_entry_exists().returning(|_| false);
         pos_state
-            .load_initial_deferred_credits(&mut batch)
+            .load_initial_deferred_credits(&mut batch, &ledger)
             .expect("error while loading initial deferred credits");
         db.write().write_batch(batch, DBBatch::new(), None);
         let deferred_credits = pos_state.get_deferred_credits().credits;
@@ -1803,6 +1907,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1998,6 +2104,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -2100,6 +2208,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -2245,7 +2355,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_feed_selector() {
         let initial_deferred_credits_file =
             tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
@@ -2276,6 +2385,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -2347,8 +2458,15 @@ mod tests {
             Err(PosError::CycleUnfinished(4))
         );
 
-        // Will panic (no final state hash snapshot)
-        let _ = pos_state_0.feed_selector(4);
+        // F100: complete cycles without a final state hash snapshot must error, not panic
+        assert_matches!(
+            pos_state_0.feed_selector(4),
+            Err(PosError::ContainerInconsistency(_))
+        );
+        assert_matches!(
+            pos_state_0.validate_selector_history(),
+            Err(PosError::ContainerInconsistency(_))
+        );
     }
 
     #[test]
@@ -2383,6 +2501,8 @@ mod tests {
             thread_count: 2,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             max_ledger_backups: 10,
             enable_metrics: false,
         };
@@ -2474,6 +2594,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -2567,6 +2689,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -2650,6 +2774,8 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: 2,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -2706,5 +2832,119 @@ mod tests {
         let cycle_info = pos_state.get_cycle_info(0).expect("cycle 0 should exist");
         assert!(cycle_info.complete);
         assert_eq!(cycle_info.rng_seed.len(), 4);
+    }
+
+    #[test]
+    fn test_create_new_cycle_from_last_production_stats() {
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2, // slots_per_cycle = 4
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
+        };
+
+        let tempdir = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
+            thread_count: 2,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let selector_controller = Box::new(MockSelectorController::new());
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
+        let cycle_info_deserializer = CycleHistoryDeserializer::new(
+            pos_config.cycle_history_length as u64,
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
+
+        let mut pos_state = PoSFinalState {
+            config: pos_config,
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: selector_controller,
+            initial_rolls: Default::default(),
+            initial_seeds,
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            deferred_credits_deserializer,
+            cycle_info_serializer: CycleHistorySerializer::new(),
+            cycle_info_deserializer,
+        };
+
+        // Snapshot cycle 0 with non-empty production stats and a partial seed.
+        let stats_addr =
+            Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa").unwrap();
+        let mut snapshot_stats = PreHashMap::default();
+        snapshot_stats.insert(
+            stats_addr,
+            ProductionStats {
+                block_success_count: 3,
+                block_failure_count: 1,
+            },
+        );
+        let snapshot = CycleInfo::new(
+            0,
+            false,
+            BTreeMap::default(),
+            bitvec![u8, Lsb0; 0, 0],
+            snapshot_stats,
+        );
+
+        // Filling the gap in the SAME incomplete cycle keeps the production stats.
+        let mut batch = DBBatch::new();
+        pos_state
+            .create_new_cycle_from_last(
+                &snapshot,
+                Slot::new(0, 1), // internal slot of cycle 0 (not first)
+                Slot::new(0, 1),
+                &mut batch,
+            )
+            .expect("same-cycle interpolation should succeed");
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(0, 1)));
+
+        let cycle_0 = pos_state.get_cycle_info(0).expect("cycle 0 should exist");
+        let kept = cycle_0
+            .production_stats
+            .get(&stats_addr)
+            .expect("continuing the same incomplete cycle must keep production stats");
+        assert_eq!(kept.block_success_count, 3);
+        assert_eq!(kept.block_failure_count, 1);
+
+        // F65: interpolating a new cycle must NOT inherit the snapshot's production stats.
+        let mut batch = DBBatch::new();
+        pos_state
+            .create_new_cycle_from_last(
+                &snapshot,
+                Slot::new(2, 0), // first slot of cycle 1
+                Slot::new(3, 1), // last slot of cycle 1
+                &mut batch,
+            )
+            .expect("new cycle interpolation should succeed");
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(3, 1)));
+
+        let cycle_1 = pos_state.get_cycle_info(1).expect("cycle 1 should exist");
+        assert!(
+            cycle_1.production_stats.is_empty(),
+            "interpolated new cycle must have empty production stats, got {:?}",
+            cycle_1.production_stats
+        );
     }
 }

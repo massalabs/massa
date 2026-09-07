@@ -1040,8 +1040,9 @@ mod tests {
 
     use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_models::config::{
-        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-        MAX_PARAMETERS_SIZE, THREAD_COUNT,
+        MAX_ASYNC_POOL_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
+        MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_DATASTORE_KEY_LENGTH,
+        MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
     };
     use massa_models::{address::Address, amount::Amount, slot::Slot};
 
@@ -1093,6 +1094,8 @@ mod tests {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
             enable_metrics: false,
@@ -1146,6 +1149,8 @@ mod tests {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
             enable_metrics: false,
@@ -1219,6 +1224,8 @@ mod tests {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
             enable_metrics: false,
@@ -1288,6 +1295,8 @@ mod tests {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
             enable_metrics: false,
@@ -1348,6 +1357,8 @@ mod tests {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
             enable_metrics: false,
@@ -1399,6 +1410,8 @@ mod tests {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
             enable_metrics: false,

@@ -139,6 +139,12 @@ impl Deserializer<Datastore> for DatastoreDeserializer {
                 )),
             ),
         )
+        // Note: unsorted key/value pairs, and duplicate keys (last occurrence wins), on the wire
+        // still deserialize to the same normalized BTreeMap. So different raw bytes / OperationIds can
+        // encode the same logical action. Massa is malleability-resistant by construction: nothing
+        // relies on canonical encodings, and only the signer can produce such variants (who can already
+        // produce distinct ids for the same action anyway), so this is not exploitable.
+        // Rejecting non-canonical encodings would be a breaking change for no security gain.
         .map(|elements| elements.into_iter().collect())
         .parse(buffer)
     }

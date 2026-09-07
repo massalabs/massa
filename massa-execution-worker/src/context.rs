@@ -59,7 +59,7 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use tracing::{debug, warn};
+use tracing::warn;
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
 /// The `ExecutionContext` state can then be restored later from this snapshot.
@@ -828,6 +828,9 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
+    ///
+    /// Note that if the sender address is missing in the ledger (either from a network restart with an edited ledger or from a potential future delete address feature),
+    /// the transfer will fail and the message coins will be burned. We still want to cancel the message, to avoid clogging the pool with a message that will be cancelled again.
     pub fn cancel_async_message(
         &mut self,
         msg: &AsyncMessage,
@@ -845,8 +848,8 @@ impl ExecutionContext {
             }),
         );
         if let Err(e) = transfer_result.as_ref() {
-            debug!(
-                "async message cancel: reimbursement of {} failed: {}",
+            warn!(
+                "async message cancel: reimbursement of {} failed (burning coins): {}",
                 msg.sender, e
             );
         }
@@ -986,6 +989,9 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
+    ///  
+    /// Note that if the deferred credits's receiver address is missing in the ledger (either from a network restart with an edited ledger or from a potential future delete address feature),
+    /// the transfer will fail and the coins of the deferred credits will be burned. We still want to consume the deferred credit, to avoid clogging the system with deferred credits that fail to execute.
     pub fn execute_deferred_credits(
         &mut self,
         slot: &Slot,
@@ -1010,8 +1016,8 @@ impl ExecutionContext {
                 );
 
                 if let Err(e) = transfer_result.as_ref() {
-                    debug!(
-                        "could not credit {} deferred coins to {} at slot {}: {}",
+                    warn!(
+                        "could not credit {} deferred coins to {} at slot {} (burning coins): {}",
                         amount, address, slot, e
                     );
                 }
@@ -1316,7 +1322,10 @@ impl ExecutionContext {
         self.speculative_deferred_calls.get_call(call_id)
     }
 
-    /// when a deferred call execution fails we need to refund the coins to the caller
+    /// when a deferred call execution fails we need to refund the coins to the caller.
+    ///
+    /// Note that if the sender address is missing in the ledger (either from a network restart with an edited ledger or from a potential future delete address feature),
+    /// the transfer will fail and the coins of the deferred call will be burned. We still want to consume the deferred call, to avoid clogging the registry with failed deferred calls.
     pub fn deferred_call_fail_exec(
         &mut self,
         id: &DeferredCallId,
@@ -1338,8 +1347,8 @@ impl ExecutionContext {
             }),
         );
         if let Err(e) = transfer_result.as_ref() {
-            debug!(
-                "deferred call {} fail: reimbursement of {} to {} failed: {}",
+            warn!(
+                "deferred call {} fail: reimbursement of {} to {} failed (burning coins): {}",
                 id, call.coins, call.sender_address, e
             );
         }
@@ -1355,6 +1364,9 @@ impl ExecutionContext {
     }
 
     /// when a deferred call is cancelled we need to refund the coins to the caller
+    ///
+    /// Note that if the sender address is missing in the ledger (either from a network restart with an edited ledger or from a potential future delete address feature),
+    /// the transfer will fail and the coins of the deferred call will be burned. We still want to cancel the deferred call, to avoid clogging the registry with cancelled deferred calls.
     pub fn deferred_call_cancel(
         &mut self,
         call_id: &DeferredCallId,
@@ -1386,8 +1398,8 @@ impl ExecutionContext {
                     }),
                 );
                 if let Err(e) = transfer_result.as_ref() {
-                    debug!(
-                        "deferred call cancel: reimbursement of {} failed: {}",
+                    warn!(
+                        "deferred call cancel: reimbursement of {} failed (burning coins): {}",
                         address, e
                     );
                 }

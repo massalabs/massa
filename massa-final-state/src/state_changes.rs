@@ -59,19 +59,15 @@ pub struct StateChangesSerializer {
     execution_trail_hash_change_serializer: SetOrKeepSerializer<massa_hash::Hash, HashSerializer>,
 }
 
-impl Default for StateChangesSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl StateChangesSerializer {
     /// Creates a `StateChangesSerializer`
-    pub fn new() -> Self {
+    pub fn new(deferred_calls_config: DeferredCallsConfig) -> Self {
         Self {
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
-            deferred_call_changes_serializer: DeferredRegistryChangesSerializer::new(),
+            deferred_call_changes_serializer: DeferredRegistryChangesSerializer::new(
+                deferred_calls_config,
+            ),
             pos_changes_serializer: PoSChangesSerializer::new(),
             ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
             de_changes_serializer: ExecutedDenunciationsChangesSerializer::new(),
@@ -307,8 +303,9 @@ mod test {
             SetUpdateOrDelete::Update(ledger_entry),
         );
         state_changes.ledger_changes = ledger_changes;
+        let deferred_calls_config = DeferredCallsConfig::default();
         let mut serialized = Vec::new();
-        StateChangesSerializer::new()
+        StateChangesSerializer::new(deferred_calls_config)
             .serialize(&state_changes, &mut serialized)
             .unwrap();
 
@@ -328,7 +325,7 @@ mod test {
             MAX_EXECUTED_OPS_CHANGES_LENGTH,
             ENDORSEMENT_COUNT,
             MAX_DENUNCIATION_CHANGES_LENGTH,
-            DeferredCallsConfig::default(),
+            deferred_calls_config,
         )
         .deserialize::<DeserializeError>(&serialized)
         .unwrap();

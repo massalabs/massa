@@ -243,6 +243,13 @@ impl FinalState {
             .write()
             .write_batch(batch, Default::default(), Some(end_slot));
 
+        if end_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count) {
+            // Feed final_state_hash to the completed cycle
+            self.feed_cycle_hash_and_selector_for_interpolation(
+                end_slot.get_cycle(self.config.periods_per_cycle),
+            )?;
+        }
+
         Ok(())
     }
 
@@ -418,7 +425,12 @@ impl FinalState {
         Ok(())
     }
 
-    fn _finalize(&mut self, slot: Slot, changes: StateChanges) -> AnyResult<()> {
+    fn _finalize(
+        &mut self,
+        slot: Slot,
+        changes: StateChanges,
+        network_versions: Option<(u32, Option<u32>)>,
+    ) -> AnyResult<()> {
         let cur_slot = self.db.read().get_change_id()?;
         // check slot consistency
         let next_slot = cur_slot.get_next_slot(self.config.thread_count)?;
@@ -470,7 +482,12 @@ impl FinalState {
             slot.get_prev_slot(self.config.thread_count)?,
         )?;
 
-        self.mip_store.update_batches(
+        // Hold the MIP store write lock while updating versioning stats, serializing
+        // them to the DB batch, and committing the batch atomically. This prevents
+        // other threads from observing in-memory versioning state ahead of disk.
+        let mut mip_guard = self.mip_store.0.write();
+        mip_guard.update_network_version_stats(slot_ts, network_versions);
+        mip_guard.update_batches(
             &mut db_batch,
             &mut db_versioning_batch,
             Some((&slot_prev_ts, &slot_ts)),
@@ -487,6 +504,7 @@ impl FinalState {
         self.db
             .write()
             .write_batch(db_batch, db_versioning_batch, Some(slot));
+        drop(mip_guard);
 
         let final_state_hash = self.db.read().get_xof_db_hash();
 
@@ -697,6 +715,15 @@ impl FinalState {
             }
         }
 
+        // Cross-key PoS invariant: complete cycles must carry selector-feeding fields.
+        if let Err(err) = self.pos_state.validate_selector_history() {
+            warn!("Invalid PoS cycle history for selector feeding: {}", err);
+            return Err(anyhow!(
+                "Invalid PoS cycle history for selector feeding: {}",
+                err
+            ));
+        }
+
         Ok(())
     }
 
@@ -748,14 +775,10 @@ impl FinalState {
                     e
                 ))
             })?;
-        let shutdown_end = Slot::new(last_start_period, 0)
-            .get_prev_slot(config.thread_count)
-            .map_err(|e| {
-                FinalStateError::InvalidSlot(format!(
-                    "Unable to compute prev slot from last start period: {:?}",
-                    e
-                ))
-            })?;
+        // Include the entire last_start_period as downtime: interpolation attaches at
+        // Slot(last_start_period, thread_count - 1) and block production resumes only
+        // at Slot(last_start_period + 1, 0).
+        let shutdown_end = Slot::new(last_start_period, config.thread_count.saturating_sub(1));
         debug!(
             "Checking if MIP store is consistent against shutdown period: {} - {}",
             shutdown_start, shutdown_end
@@ -804,8 +827,13 @@ impl FinalStateController for FinalState {
             .map_err(|err| FinalStateError::PosError(err.to_string()))
     }
 
-    fn finalize(&mut self, slot: Slot, changes: StateChanges) {
-        self._finalize(slot, changes).unwrap()
+    fn finalize(
+        &mut self,
+        slot: Slot,
+        changes: StateChanges,
+        network_versions: Option<(u32, Option<u32>)>,
+    ) {
+        self._finalize(slot, changes, network_versions).unwrap()
     }
 
     fn get_execution_trail_hash(&self) -> Hash {
@@ -855,17 +883,16 @@ impl FinalStateController for FinalState {
 
     fn reset(&mut self) {
         let slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
-        self.db.write().reset(slot);
+        self.db.write().reset_slot_and_history(slot);
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();
         self.executed_ops.reset();
         self.executed_denunciations.reset();
         self.mip_store.reset_db(self.db.clone());
-        // delete the execution trail hash
-        self.db
-            .write()
-            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
+        // delete all remaining data from the database (execution trail hash, deferred calls, etc.)
+        self.db.write().delete_prefix("", STATE_CF, None);
+        self.db.write().delete_prefix("", VERSIONING_CF, None);
     }
 
     fn get_ledger(&self) -> &Box<dyn LedgerController> {
@@ -886,6 +913,14 @@ impl FinalStateController for FinalState {
 
     fn get_pos_state_mut(&mut self) -> &mut PoSFinalState {
         &mut self.pos_state
+    }
+
+    fn load_initial_deferred_credits(
+        &mut self,
+        batch: &mut DBBatch,
+    ) -> Result<(), massa_pos_exports::PosError> {
+        self.pos_state
+            .load_initial_deferred_credits(batch, self.ledger.as_ref())
     }
 
     fn executed_ops_contains(&self, op_id: &OperationId) -> bool {
@@ -959,7 +994,8 @@ mod test {
         bytecode::Bytecode,
         config::{
             DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-            MAX_ASYNC_POOL_LENGTH, MAX_BYTECODE_LENGTH, MAX_DATASTORE_KEY_LENGTH,
+            MAX_ASYNC_POOL_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
+            MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_BYTECODE_LENGTH, MAX_DATASTORE_KEY_LENGTH,
             MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
             MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
             MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
@@ -1050,6 +1086,8 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
+            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1140,7 +1178,7 @@ mod test {
         let ok_next_slot = Slot::new(0, 1);
         let changes = get_state_changes();
 
-        let res = fstate._finalize(wrong_next_slot, changes.clone());
+        let res = fstate._finalize(wrong_next_slot, changes.clone(), None);
         assert!(res
             .err()
             .unwrap()
@@ -1150,7 +1188,7 @@ mod test {
         assert_eq!(fstate.get_slot(), initial_slot);
 
         // This should also fail because there is no initial cycle (required by POS state)
-        let res = fstate._finalize(ok_next_slot, changes.clone());
+        let res = fstate._finalize(ok_next_slot, changes.clone(), None);
 
         assert!(res.is_err());
         match res {
@@ -1168,7 +1206,7 @@ mod test {
 
         let mut batch = DBBatch::new();
         fstate.pos_state.create_initial_cycle(&mut batch);
-        let res = fstate._finalize(ok_next_slot, changes);
+        let res = fstate._finalize(ok_next_slot, changes, None);
         assert!(res.is_ok());
         assert_eq!(fstate.get_slot(), ok_next_slot);
     }
@@ -1184,7 +1222,7 @@ mod test {
         let changes = get_state_changes();
         let mut batch = DBBatch::new();
         fstate.pos_state.create_initial_cycle(&mut batch);
-        let res = fstate._finalize(ok_next_slot, changes);
+        let res = fstate._finalize(ok_next_slot, changes, None);
         assert!(res.is_ok());
         assert_eq!(fstate.get_slot(), ok_next_slot);
 
@@ -1244,7 +1282,7 @@ mod test {
         let changes = get_state_changes();
         let mut batch = DBBatch::new();
         fstate.pos_state.create_initial_cycle(&mut batch);
-        let res = fstate._finalize(ok_next_slot, changes);
+        let res = fstate._finalize(ok_next_slot, changes, None);
         assert!(res.is_ok());
         assert_eq!(fstate.get_slot(), ok_next_slot);
 

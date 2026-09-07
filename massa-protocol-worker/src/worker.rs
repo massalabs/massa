@@ -314,9 +314,10 @@ pub fn start_protocol_controller(
     };
     peernet_config.max_in_connections = config.max_in_connections;
 
-    let network_controller = Box::new(NetworkControllerImpl::new(PeerNetManager::new(
-        peernet_config,
-    )));
+    let network_controller = Box::new(NetworkControllerImpl::new(
+        PeerNetManager::new(peernet_config),
+        config.allow_local_peers(),
+    ));
 
     let connectivity_thread_handle = start_connectivity_thread(
         PeerId::from_public_key(keypair.get_public_key()),

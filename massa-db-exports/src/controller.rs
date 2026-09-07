@@ -35,7 +35,8 @@ pub trait MassaDBController: Send + Sync + Debug {
     fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>);
 
     /// Reset the database, and attach it to the given slot.
-    fn reset(&mut self, slot: Slot);
+    /// Note that this does not clear the db's content, only the change_id and the history.
+    fn reset_slot_and_history(&mut self, slot: Slot);
 
     /// Exposes RocksDB's "get_cf" function
     fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError>;

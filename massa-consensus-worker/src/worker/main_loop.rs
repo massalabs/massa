@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use massa_consensus_exports::{error::ConsensusError, events::ConsensusEvent};
+use massa_consensus_exports::error::ConsensusError;
 use massa_models::{
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
@@ -110,6 +110,43 @@ impl ConsensusWorker {
         (next_slot, next_instant)
     }
 
+    /// Performs all per-slot maintenance: cycle logging, `slot_tick`, pruning,
+    /// and advancing to the next slot.
+    ///
+    /// # Arguments
+    /// * `last_prune`: instant when the block DB was last pruned
+    fn process_slot_tick(&mut self, last_prune: &mut Instant) {
+        let previous_cycle = self
+            .previous_slot
+            .map(|s| s.get_cycle(self.config.periods_per_cycle));
+        let observed_cycle = self.next_slot.get_cycle(self.config.periods_per_cycle);
+        if previous_cycle.is_none() {
+            // first cycle observed
+            info!("Massa network has started ! 🎉")
+        }
+        if previous_cycle < Some(observed_cycle) {
+            info!("Started cycle {}", observed_cycle);
+        }
+        // Execute all operations and checks that should be performed at each slot
+        {
+            let mut write_shared_state = self.shared_state.write();
+            if let Err(err) = write_shared_state.slot_tick(self.next_slot) {
+                warn!("Error while processing block tick: {}", err);
+            }
+        };
+        if last_prune.elapsed().as_millis()
+            > self.config.block_db_prune_interval.as_millis() as u128
+        {
+            self.shared_state
+                .write()
+                .prune()
+                .expect("Error while pruning");
+            *last_prune = Instant::now();
+        }
+        self.previous_slot = Some(self.next_slot);
+        (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
+    }
+
     /// Runs in loop forever. This loop must stop every slot to perform operations on stats and graph
     /// but can be stopped anytime by a command received.
     pub fn run(&mut self) {
@@ -118,54 +155,18 @@ impl ConsensusWorker {
             match self.wait_slot_or_command(self.next_instant) {
                 // When we reached the instant of the next slot
                 WaitingStatus::Ended => {
-                    if let Some(end) = self.config.end_timestamp {
-                        // The testnet has ended. Will be removed for mainnet.
-                        if self.next_instant > end.estimate_instant().unwrap() {
-                            info!("This episode has come to an end, please get the latest testnet node version to continue");
-                            let _ = self
-                                .shared_state
-                                .read()
-                                .channels
-                                .controller_event_tx
-                                .send(ConsensusEvent::Stop);
-                            break;
-                        }
-                    }
-                    let previous_cycle = self
-                        .previous_slot
-                        .map(|s| s.get_cycle(self.config.periods_per_cycle));
-                    let observed_cycle = self.next_slot.get_cycle(self.config.periods_per_cycle);
-                    if previous_cycle.is_none() {
-                        // first cycle observed
-                        info!("Massa network has started ! 🎉")
-                    }
-                    if previous_cycle < Some(observed_cycle) {
-                        info!("Started cycle {}", observed_cycle);
-                    }
-                    // Execute all operations and checks that should be performed at each slot
-                    {
-                        let mut write_shared_state = self.shared_state.write();
-                        if let Err(err) = write_shared_state.slot_tick(self.next_slot) {
-                            warn!("Error while processing block tick: {}", err);
-                        }
-                    };
-                    if last_prune.elapsed().as_millis()
-                        > self.config.block_db_prune_interval.as_millis() as u128
-                    {
-                        self.shared_state
-                            .write()
-                            .prune()
-                            .expect("Error while pruning");
-                        last_prune = Instant::now();
-                    }
-                    self.previous_slot = Some(self.next_slot);
-                    (self.next_slot, self.next_instant) = self.get_next_slot(Some(self.next_slot));
+                    self.process_slot_tick(&mut last_prune);
                 }
                 WaitingStatus::Disconnected => {
                     break;
                 }
                 WaitingStatus::Interrupted => {
-                    continue;
+                    // A command was processed. If the slot deadline has already passed,
+                    // run the overdue slot maintenance before waiting again so that a
+                    // sustained flood of commands cannot starve time-driven work.
+                    if Instant::now() >= self.next_instant {
+                        self.process_slot_tick(&mut last_prune);
+                    }
                 }
             };
         }

@@ -282,7 +282,10 @@ pub(crate) fn get_node_status(
             })?
     };
     let next_cycle_time = current_cycle_time.checked_add(cycle_duration)?;
-    let empty_request = ExecutionQueryRequest { requests: vec![] };
+    let empty_request = ExecutionQueryRequest {
+        requests: vec![],
+        max_response_size: grpc.grpc_config.max_encoding_message_size,
+    };
     let state = grpc.execution_controller.query_state(empty_request);
     let node_ip = grpc
         .protocol_config

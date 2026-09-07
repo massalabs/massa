@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    ip::{is_routable_peer_addr, to_canonical},
+    ip::{filter_routable_listeners, is_routable_peer_addr, to_canonical},
     messages::MessagesHandler,
 };
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
@@ -200,6 +200,12 @@ impl Tester {
                         }
                         //TODO: Check ip we are connected match one of the announced ips
                         {
+                            // Store only endpoints we are allowed to dial later.
+                            let mut announcement = announcement;
+                            announcement.listeners = filter_routable_listeners(
+                                announcement.listeners,
+                                config.allow_local_peers(),
+                            );
                             let mut peer_db_write = peer_db.write();
                             peer_db_write
                                 .get_peers_mut()

@@ -13,6 +13,7 @@ use peernet::{
 use crate::{
     context::Context,
     handlers::peer_handler::MassaHandshake,
+    ip::ensure_routable_peer_addr,
     messages::{Message, MessagesHandler, MessagesSerializer},
 };
 
@@ -151,13 +152,20 @@ pub trait NetworkController: Send + Sync {
 
 pub struct NetworkControllerImpl {
     peernet_manager: PeerNetManager<PeerId, Context, MassaHandshake, MessagesHandler>,
+    /// When false, refuse dials to non-global destinations (SSRF / port-scan).
+    /// Mirrors [`massa_protocol_exports::ProtocolConfig::allow_local_peers`].
+    allow_local_peers: bool,
 }
 
 impl NetworkControllerImpl {
     pub fn new(
         peernet_manager: PeerNetManager<PeerId, Context, MassaHandshake, MessagesHandler>,
+        allow_local_peers: bool,
     ) -> Self {
-        Self { peernet_manager }
+        Self {
+            peernet_manager,
+            allow_local_peers,
+        }
     }
 }
 
@@ -191,6 +199,11 @@ impl NetworkController for NetworkControllerImpl {
         addr: SocketAddr,
         timeout: std::time::Duration,
     ) -> Result<(), ProtocolError> {
+        // Last line of defense: peer-supplied SocketAddrs (bootstrap / peer
+        // exchange / announcements) must not make us dial loopback, private or
+        // otherwise non-routable endpoints unless the node is explicitly
+        // configured for local peers.
+        ensure_routable_peer_addr(&addr, self.allow_local_peers)?;
         //TODO: Change when we support multiple transports
         self.peernet_manager
             .try_connect(TransportType::Tcp, addr, timeout)

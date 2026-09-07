@@ -11,6 +11,10 @@ pub struct MassaDBConfig {
     pub max_versioning_elements_size: usize,
     /// max_new_elements for bootstrap in final_state stream batch
     pub max_final_state_elements_size: usize,
+    /// max entry count for bootstrap in versioning stream batch `new_elements`
+    pub max_versioning_elements_count: usize,
+    /// max entry count for bootstrap in final_state stream batch `new_elements`
+    pub max_final_state_elements_count: usize,
     /// Thread count for slot serialization
     pub thread_count: u8,
     /// Maximum number of ledger backups to keep

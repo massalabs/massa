@@ -123,10 +123,10 @@ pub struct DeferredRegistryChangesSerializer {
 }
 
 impl DeferredRegistryChangesSerializer {
-    pub fn new() -> Self {
+    pub fn new(config: DeferredCallsConfig) -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
-            slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(),
+            slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(config),
             slot_serializer: SlotSerializer::new(),
             effective_total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
         }
@@ -135,7 +135,7 @@ impl DeferredRegistryChangesSerializer {
 
 impl Default for DeferredRegistryChangesSerializer {
     fn default() -> Self {
-        Self::new()
+        Self::new(DeferredCallsConfig::default())
     }
 }
 
@@ -268,6 +268,10 @@ impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeseri
                 )),
             )),
         )
+        // Note: unsorted pairs, and duplicate keys (last occurrence wins), on the wire still deserialize
+        // to a normalized BTreeMap. This serializer/deserializer pair is only used in tests: production
+        // deferred-call processing reads per-key values from the DB and never parses these map blobs.
+        // Massa is malleability-resistant by construction, this is not exploitable.
         .map(
             |(changes, total_gas, exec_stats)| DeferredCallRegistryChanges {
                 slots_change: changes.into_iter().collect::<BTreeMap<_, _>>(),
@@ -346,7 +350,7 @@ mod tests {
         changes.set_effective_total_gas(100_000);
 
         let mut buffer = Vec::new();
-        let serializer = DeferredRegistryChangesSerializer::new();
+        let serializer = DeferredRegistryChangesSerializer::new(DeferredCallsConfig::default());
         serializer.serialize(&changes, &mut buffer).unwrap();
 
         let deserializer = DeferredRegistryChangesDeserializer::new(DeferredCallsConfig::default());
@@ -403,12 +407,13 @@ mod tests {
         };
         changes.set_effective_total_gas(100_000);
 
+        let deferred_calls_config = DeferredCallsConfig::default();
         let mut buffer = Vec::new();
-        DeferredRegistryChangesSerializer::new()
+        DeferredRegistryChangesSerializer::new(deferred_calls_config)
             .serialize(&changes, &mut buffer)
             .unwrap();
 
-        let deserializer = DeferredRegistryChangesDeserializer::new(DeferredCallsConfig::default());
+        let deserializer = DeferredRegistryChangesDeserializer::new(deferred_calls_config);
         assert!(deserializer
             .deserialize::<DeserializeError>(&buffer)
             .is_err());

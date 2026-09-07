@@ -143,6 +143,11 @@ impl SpeculativeLedger {
     /// No changes are retained in case of failure.
     /// The spending address, if defined, must exist.
     ///
+    /// Note that crediting to an address (with `from_addr` set to None) can only fail in three cases
+    /// * overflow (impossible with our supply),
+    /// * recipient is a non-existing SC address,
+    /// * recipient is a non-existing user address and `amount` is below the ledger entry base cost
+    ///
     /// # Parameters:
     /// * `from_addr`: optional spending address (use None for pure coin creation)
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
