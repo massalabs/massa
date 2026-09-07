@@ -199,15 +199,42 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
+<span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
+<span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
+<span class="kw">use </span>massa_versioning::consensus_signature::sig_chain_id_for_slot;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::sync::mpsc::Sender;
@@ -235,6 +262,7 @@
     <span class="kw">let </span>protocol_command_sender = grpc.protocol_controller.clone();
     <span class="kw">let </span>config = grpc.grpc_config.clone();
     <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
+    <span class="kw">let </span>mip_store = grpc.keypair_factory.mip_store.clone();
 
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
@@ -284,15 +312,7 @@
                                 .<span class="kw">await</span>;
                                 <span class="kw">continue</span>;
                             }
-                            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = res_block.verify_signature().and_then(|<span class="kw">_</span>| {
-                                res_block
-                                    .content
-                                    .header
-                                    .content
-                                    .endorsements
-                                    .iter()
-                                    .try_for_each(|endorsement| endorsement.verify_signature())
-                            }) {
+                            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = verify_received_block(<span class="kw-2">&amp;</span>res_block, <span class="kw-2">&amp;</span>config, <span class="kw-2">&amp;</span>mip_store) {
                                 report_error(
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
@@ -399,5 +419,31 @@
         <span class="comment">// If sending the message fails, log the error message
         </span><span class="macro">error!</span>(<span class="string">"failed to send back send_blocks error response: {}"</span>, e);
     }
+}
+
+<span class="kw">fn </span>verify_received_block(
+    block: <span class="kw-2">&amp;</span>SecureShareBlock,
+    config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::config::GrpcConfig,
+    mip_store: <span class="kw-2">&amp;</span>MipStore,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
+    <span class="comment">// Block::verify_signature delegates to the nested header signing domain (F87).
+    </span><span class="kw">let </span>header = <span class="kw-2">&amp;</span>block.content.header;
+    <span class="kw">let </span>header_ts = get_block_slot_timestamp(
+        config.thread_count,
+        config.t0,
+        config.genesis_timestamp,
+        header.content.slot,
+    )<span class="question-mark">?</span>;
+    block.verify_signature(sig_chain_id_for_slot(mip_store, config.chain_id, header_ts))<span class="question-mark">?</span>;
+    <span class="kw">for </span>endorsement <span class="kw">in </span>header.content.endorsements.iter() {
+        <span class="kw">let </span>slot_ts = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            endorsement.content.slot,
+        )<span class="question-mark">?</span>;
+        endorsement.verify_signature(sig_chain_id_for_slot(mip_store, config.chain_id, slot_ts))<span class="question-mark">?</span>;
+    }
+    <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div></section></main></body></html>

@@ -783,6 +783,32 @@
 <a href="#783" id="783">783</a>
 <a href="#784" id="784">784</a>
 <a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -797,6 +823,7 @@
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
     address::Address,
+    block_header::SecuredHeader,
     block_id::BlockId,
     clique::Clique,
     prehash::{PreHashMap, PreHashSet},
@@ -1543,11 +1570,36 @@
         <span class="comment">// notify execution
         </span><span class="self">self</span>.notify_execution(final_block_slots);
 
-        <span class="comment">// notify protocol of block wishlist.
-        // This runs after `add_block_to_graph`/`mark_final_blocks` have advanced
-        // `latest_final_blocks_periods`, so blocks that became stale or unreachable
-        // under the new finality floor no longer contribute wishlist entries.
-        </span><span class="self">self</span>.sync_wishlist()<span class="question-mark">?</span>;
+        <span class="comment">// notify protocol of block wishlist
+        </span><span class="kw">let </span>new_wishlist = <span class="self">self</span>.get_block_wishlist()<span class="question-mark">?</span>;
+        <span class="kw">let </span>new_blocks: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt; = new_wishlist
+            .iter()
+            .filter_map(|(id, header)| {
+                <span class="kw">if </span>!<span class="self">self</span>.wishlist.contains_key(id) {
+                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, header.clone()))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            })
+            .collect();
+        <span class="kw">let </span>remove_blocks: PreHashSet&lt;BlockId&gt; = <span class="self">self
+            </span>.wishlist
+            .iter()
+            .filter_map(|(id, <span class="kw">_</span>)| {
+                <span class="kw">if </span>!new_wishlist.contains_key(id) {
+                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>id)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            })
+            .collect();
+        <span class="kw">if </span>!new_blocks.is_empty() || !remove_blocks.is_empty() {
+            <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed.send_wishlist_delta"</span>, { <span class="string">"new"</span>: new_wishlist, <span class="string">"remove"</span>: remove_blocks });
+            <span class="self">self</span>.channels
+                .protocol_controller
+                .send_wishlist_delta(new_blocks, remove_blocks)<span class="question-mark">?</span>;
+            <span class="self">self</span>.wishlist = new_wishlist;
+        }
 
         <span class="comment">// note new latest final periods
         </span><span class="kw">let </span>latest_final_periods: Vec&lt;u64&gt; = <span class="self">self

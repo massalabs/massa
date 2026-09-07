@@ -694,6 +694,46 @@
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::block_id::{BlockIdDeserializer, BlockIdSerializer};
@@ -934,7 +974,7 @@
     <span class="comment">// TODO: gh-issue #3398
     </span><span class="doccomment">/// Used under testing conditions to validate an instance of Self
     </span><span class="kw">pub fn </span>check_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.verify_signature() {
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.verify_signature(<span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="kw">crate</span>::config::CHAINID)) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
         }
         <span class="kw">if </span><span class="self">self</span>.content.slot.thread &gt;= <span class="kw">crate</span>::config::THREAD_COUNT {
@@ -951,11 +991,24 @@
 </span><span class="kw">pub type </span>SecureShareEndorsement = SecureShare&lt;Endorsement, EndorsementId&gt;;
 
 <span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Endorsement {
-    <span class="doccomment">/// Compute the signed hash
-    </span><span class="kw">fn </span>compute_signed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key: <span class="kw-2">&amp;</span>PublicKey, content_hash: <span class="kw-2">&amp;</span>Hash) -&gt; Hash {
+    <span class="doccomment">/// Compute the signed hash. `sig_chain_id` selects the layout:
+    /// * `None` -&gt; legacy (chain-agnostic) layout, byte-for-byte identical to the
+    ///   pre-fix layout (used pre MIP-0002 activation).
+    /// * `Some(chain_id)` -&gt; chain-scoped layout: `chain_id` is folded into the
+    ///   signed hash so the same endorsement signed on two different chains
+    ///   produces two different signed hashes. This prevents cross-chain replay
+    ///   of endorsements as denunciations (F90 / PDF #11).
+    </span><span class="kw">fn </span>compute_signed_hash(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        public_key: <span class="kw-2">&amp;</span>PublicKey,
+        content_hash: <span class="kw-2">&amp;</span>Hash,
+        sig_chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    ) -&gt; Hash {
         <span class="kw">let </span><span class="kw-2">mut </span>signed_data: Vec&lt;u8&gt; = Vec::new();
         signed_data.extend(public_key.to_bytes());
-        signed_data.extend(EndorsementDenunciationData::new(<span class="self">self</span>.slot, <span class="self">self</span>.index).to_bytes());
+        signed_data.extend(
+            EndorsementDenunciationData::new(<span class="self">self</span>.slot, <span class="self">self</span>.index, sig_chain_id).to_bytes(),
+        );
         signed_data.extend(content_hash.to_bytes());
         Hash::compute_from(<span class="kw-2">&amp;</span>signed_data)
     }
@@ -1186,12 +1239,32 @@
 </span><span class="kw">pub struct </span>EndorsementDenunciationData {
     slot: Slot,
     index: u32,
+    <span class="doccomment">/// `None` for the legacy (chain-agnostic) signed-hash layout.
+    /// `Some(chain_id)` for the chain-scoped layout (post MIP-0002 `Execution` v2).
+    </span>chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 }
 
 <span class="kw">impl </span>EndorsementDenunciationData {
-    <span class="doccomment">/// Create a new denunciation data for endorsement
-    </span><span class="kw">pub fn </span>new(slot: Slot, index: u32) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ slot, index }
+    <span class="doccomment">/// Create a new denunciation data for endorsement. Pass `None` for the legacy
+    /// layout, `Some(chain_id)` for the chain-scoped layout.
+    </span><span class="kw">pub fn </span>new(slot: Slot, index: u32, chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            slot,
+            index,
+            chain_id,
+        }
+    }
+
+    <span class="doccomment">/// Legacy layout: bytes are byte-for-byte identical to the pre-fix layout, so
+    /// endorsements signed before MIP-0002 activation keep verifying.
+    /// Equivalent to `Self::new(slot, index, None)`.
+    </span><span class="attr">#[allow(dead_code)]
+    </span><span class="kw">pub fn </span>new_legacy(slot: Slot, index: u32) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            slot,
+            index,
+            chain_id: <span class="prelude-val">None</span>,
+        }
     }
 
     <span class="doccomment">/// Get byte array
@@ -1199,6 +1272,9 @@
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
         buf.extend(<span class="self">self</span>.slot.to_bytes_key());
         buf.extend(<span class="self">self</span>.index.to_le_bytes());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(chain_id) = <span class="self">self</span>.chain_id {
+            buf.extend(chain_id.to_be_bytes());
+        }
         buf
     }
 }
@@ -1229,6 +1305,7 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>sender_keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -1258,6 +1335,7 @@
             EndorsementSerializerLW::new(),
             <span class="kw-2">&amp;</span>sender_keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
@@ -1294,6 +1372,7 @@
             EndorsementSerializer::new(),
             <span class="kw-2">&amp;</span>sender_keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>serialized = <span class="macro">vec!</span>[];
@@ -1315,12 +1394,13 @@
             EndorsementSerializerLW::new(),
             <span class="kw-2">&amp;</span>sender_keypair,
             <span class="kw-2">*</span>CHAINID,
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID),
         )
         .unwrap();
 
         <span class="comment">// Test with batch len == 1 (no // verif)
         </span><span class="kw">let </span>batch_1 = [(
-            s_endorsement_1.compute_signed_hash(),
+            s_endorsement_1.compute_signed_hash(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)),
             s_endorsement_1.signature,
             s_endorsement_1.content_creator_pub_key,
         )];
@@ -1329,12 +1409,12 @@
         <span class="comment">// Test with batch len &gt; 1 (// verif)
         </span><span class="kw">let </span>batch_2 = [
             (
-                s_endorsement_1.compute_signed_hash(),
+                s_endorsement_1.compute_signed_hash(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)),
                 s_endorsement_1.signature,
                 s_endorsement_1.content_creator_pub_key,
             ),
             (
-                s_endorsement_2.compute_signed_hash(),
+                s_endorsement_2.compute_signed_hash(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)),
                 s_endorsement_2.signature,
                 s_endorsement_2.content_creator_pub_key,
             ),

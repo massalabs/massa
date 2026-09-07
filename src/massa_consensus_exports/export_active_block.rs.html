@@ -329,6 +329,9 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{block_status::StorageOrBlock, error::ConsensusError};
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
@@ -547,7 +550,8 @@
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
-    ///                 *CHAINID
+    ///                 *CHAINID,
+    ///                 None
     ///             )
     ///             .unwrap(),
     ///             Endorsement::new_verifiable(
@@ -558,14 +562,16 @@
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
-    ///                 *CHAINID
+    ///                 *CHAINID,
+    ///                 None
     ///             )
     ///             .unwrap(),
     ///         ],
     ///     denunciations: vec![],},
     ///     BlockHeaderSerializer::new(),
     ///     &amp;keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     /// )
     /// .unwrap();
     ///
@@ -575,7 +581,7 @@
     ///     operations: Vec::new(),
     /// };
     ///
-    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &amp;keypair, *CHAINID).unwrap();
+    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &amp;keypair, *CHAINID, None).unwrap();
     /// let export_parents = full_block
     ///     .content
     ///     .header

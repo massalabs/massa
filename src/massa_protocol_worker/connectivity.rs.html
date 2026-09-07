@@ -428,6 +428,7 @@
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
 <a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -594,6 +595,7 @@
                 protocol_channels.endorsement_handler_propagation.<span class="number">1</span>.clone(),
                 peer_management_handler.sender.command_sender.clone(),
                 massa_metrics.clone(),
+                mip_store.clone(),
             );
             <span class="kw">let </span><span class="kw-2">mut </span>block_handler = BlockHandler::new(
                 network_controller.get_active_connections(),

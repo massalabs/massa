@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["is_triggered"],"struct":["SpeculativeAsyncPool"]};
+window.SIDEBAR_ITEMS = {"constant":["ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION"],"fn":["is_triggered"],"struct":["SpeculativeAsyncPool"]};

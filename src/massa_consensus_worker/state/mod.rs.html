@@ -603,13 +603,6 @@
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -622,7 +615,6 @@
     ConsensusChannels, ConsensusConfig,
 };
 <span class="kw">use </span>massa_execution_exports::ExecutionBlockMetadata;
-<span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
@@ -633,9 +625,11 @@
     clique::Clique,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
+    timeslots::get_block_slot_timestamp,
 };
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipStore};
 <span class="kw">use </span>tracing::debug;
 
 <span class="kw">use </span><span class="self">self</span>::blocks_state::BlocksState;
@@ -705,6 +699,8 @@
     </span><span class="kw">pub </span>nonfinal_active_blocks_per_slot: HashMap&lt;Slot, PreHashSet&lt;BlockId&gt;&gt;,
     <span class="doccomment">/// massa metrics
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) massa_metrics: MassaMetrics,
+    <span class="doccomment">/// MIP store for versioning-gated behavior
+    </span><span class="kw">pub </span>mip_store: MipStore,
 }
 
 <span class="kw">impl </span>ConsensusState {
@@ -946,7 +942,30 @@
     /// Callers must reject earlier values; otherwise `list_latest_final_blocks_at` cannot find a
     /// final in higher threads (e.g. `Some(Slot(0, 0))` misses genesis at `(0, thread &gt; 0)`).
     ///
-    /// # Algorithm
+    /// Returns true if the fixpoint-based `list_required_active_blocks` algorithm
+    /// is active for the given reference slot (or the current time if None).
+    </span><span class="kw">fn </span>is_required_active_blocks_fixpoint_active(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        end_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ConsensusError&gt; {
+        <span class="kw">let </span>timestamp = <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot {
+            get_block_slot_timestamp(
+                <span class="self">self</span>.config.thread_count,
+                <span class="self">self</span>.config.t0,
+                <span class="self">self</span>.config.genesis_timestamp,
+                slot,
+            )
+            .map_err(ConsensusError::ModelsError)<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            MassaTime::now()
+        };
+        <span class="prelude-val">Ok</span>(<span class="self">self
+            </span>.mip_store
+            .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Block, timestamp)
+            &gt;= <span class="number">2</span>)
+    }
+
+    <span class="doccomment">/// # Algorithm
     /// if end_slot is None:
     ///      set effective_latest_finals to be the IDs of the self.latest_final_blocks
     /// else
@@ -955,7 +974,7 @@
     /// create a kept_blocks list of block IDs to keep
     /// initialize it with effective_latest_finals as well as all the active blocks that are after the effective_latest_finals of their thread (included) (but before end_slot (included) if it is Some)
     ///
-    /// do the following 2 times:
+    /// do the following 2 times (or until no new blocks are added once MIP-0002 is active):
     ///      extend kept_blocks with the parents of the current kept_blocks
     ///      fill holes by adding to kept_blocks all the active block IDs whose slot is after the earliest kept_blocks of their thread (included) (but before end_slot (included) if it is Some)
     ///
@@ -981,8 +1000,17 @@
         <span class="comment">// add all the active blocks that are after the effective_latest_finals of their thread
         </span><span class="self">self</span>.add_active_blocks_after(<span class="kw-2">&amp;mut </span>kept_blocks, <span class="kw-2">&amp;</span>effective_latest_finals, end_slot);
 
-        <span class="comment">// do the following 2 times
-        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
+        <span class="comment">// MIP-0002 gates the fixpoint version of the algorithm.
+        </span><span class="kw">let </span>fixpoint_active = <span class="self">self</span>.is_required_active_blocks_fixpoint_active(end_slot)<span class="question-mark">?</span>;
+
+        <span class="comment">// do the following 2 times, or until no new blocks are added if MIP-0002 is active
+        </span><span class="kw">for </span>iteration <span class="kw">in </span><span class="number">0</span>.. {
+            <span class="kw">if </span>!fixpoint_active &amp;&amp; iteration &gt;= <span class="number">2 </span>{
+                <span class="kw">break</span>;
+            }
+
+            <span class="kw">let </span>before_len = kept_blocks.len();
+
             <span class="comment">// extend kept_blocks with the parents of the current kept_blocks
             </span><span class="kw">let </span><span class="kw-2">mut </span>cumulated_parents: PreHashSet&lt;BlockId&gt; = PreHashSet::default();
             <span class="kw">for </span>id <span class="kw">in </span>kept_blocks.iter() {
@@ -998,6 +1026,10 @@
             <span class="comment">// add all the active blocks whose slot is after the earliest kept_blocks of their thread
             </span><span class="kw">let </span>earliest_blocks = <span class="self">self</span>.list_earliest_blocks_of(<span class="kw-2">&amp;</span>kept_blocks, end_slot)<span class="question-mark">?</span>;
             <span class="self">self</span>.add_active_blocks_after(<span class="kw-2">&amp;mut </span>kept_blocks, <span class="kw-2">&amp;</span>earliest_blocks, end_slot);
+
+            <span class="kw">if </span>fixpoint_active &amp;&amp; kept_blocks.len() == before_len {
+                <span class="kw">break</span>;
+            }
         }
 
         <span class="comment">// check that we have the full blocks for every id we are about to return
@@ -1151,52 +1183,6 @@
         }
 
         <span class="prelude-val">Ok</span>(wishlist)
-    }
-
-    <span class="doccomment">/// Recompute the block wishlist from the currently retained waiting blocks
-    /// and publish the delta (new and removed entries) to protocol.
-    ///
-    /// Invariant: the published wishlist is always derived exclusively from
-    /// currently retained, reachable waiting blocks. This must be called after
-    /// any operation that removes or invalidates waiting-for-dependency blocks
-    /// (e.g. `block_db_changed`, `prune_waiting_for_dependencies`) so that
-    /// protocol does not keep requesting blocks that consensus has already
-    /// discarded as unreachable.
-    ///
-    /// # Returns
-    /// Error if the wishlist could not be computed or sent.
-    </span><span class="kw">pub fn </span>sync_wishlist(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
-        <span class="comment">// compute the block wishlist from currently retained waiting blocks
-        </span><span class="kw">let </span>new_wishlist = <span class="self">self</span>.get_block_wishlist()<span class="question-mark">?</span>;
-        <span class="kw">let </span>new_blocks: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt; = new_wishlist
-            .iter()
-            .filter_map(|(id, header)| {
-                <span class="kw">if </span>!<span class="self">self</span>.wishlist.contains_key(id) {
-                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, header.clone()))
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            })
-            .collect();
-        <span class="kw">let </span>remove_blocks: PreHashSet&lt;BlockId&gt; = <span class="self">self
-            </span>.wishlist
-            .iter()
-            .filter_map(|(id, <span class="kw">_</span>)| {
-                <span class="kw">if </span>!new_wishlist.contains_key(id) {
-                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>id)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            })
-            .collect();
-        <span class="kw">if </span>!new_blocks.is_empty() || !remove_blocks.is_empty() {
-            <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.sync_wishlist.send_wishlist_delta"</span>, { <span class="string">"new"</span>: new_wishlist, <span class="string">"remove"</span>: remove_blocks });
-            <span class="self">self</span>.channels
-                .protocol_controller
-                .send_wishlist_delta(new_blocks, remove_blocks)<span class="question-mark">?</span>;
-            <span class="self">self</span>.wishlist = new_wishlist;
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Gets a block and all its descendants
