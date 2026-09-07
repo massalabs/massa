@@ -173,11 +173,6 @@
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -342,20 +337,15 @@
         <span class="self">self</span>.maybe_note_attack_attempt(<span class="kw-2">&amp;</span>reason, block_id);
         <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.invalid_block"</span>, {<span class="string">"block_id"</span>: block_id, <span class="string">"reason"</span>: reason});
         <span class="kw">let </span>sequence_number = <span class="self">self</span>.blocks_state.sequence_counter();
-        <span class="self">self</span>.blocks_state
-            .transition_map(block_id, |block_status, <span class="kw">_</span>| {
-                <span class="comment">// If the block has already been pruned from consensus, there is nothing
-                // left to mark invalid. Avoid a None -&gt; Discarded panic by treating it as
-                // a no-op; the attack attempt was already recorded above.
-                </span>block_status.as_ref()<span class="question-mark">?</span>;
-                <span class="prelude-val">Some</span>(BlockStatus::Discarded {
-                    slot: header.content.slot,
-                    creator: header.content_creator_address,
-                    parents: header.content.parents,
-                    reason,
-                    sequence_number,
-                })
-            });
+        <span class="self">self</span>.blocks_state.transition_map(block_id, |<span class="kw">_</span>, <span class="kw">_</span>| {
+            <span class="prelude-val">Some</span>(BlockStatus::Discarded {
+                slot: header.content.slot,
+                creator: header.content_creator_address,
+                parents: header.content.parents,
+                reason,
+                sequence_number,
+            })
+        });
     }
 }
 </code></pre></div></section></main></body></html>
