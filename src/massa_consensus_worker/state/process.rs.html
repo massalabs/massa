@@ -809,6 +809,16 @@
 <a href="#809" id="809">809</a>
 <a href="#810" id="810">810</a>
 <a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -826,6 +836,7 @@
     block_header::SecuredHeader,
     block_id::BlockId,
     clique::Clique,
+    denunciation::DenunciationPrecursor,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
     timeslots,
@@ -982,7 +993,16 @@
                             HeaderCheckOutcome::Discard(reason) =&gt; {
                                 <span class="self">self</span>.maybe_note_attack_attempt(reason, <span class="kw-2">&amp;</span>block_id)
                             }
+                            HeaderCheckOutcome::WaitForSlot =&gt; {
+                                <span class="comment">// The slot is not yet verifiable: defer denunciation and
+                                // multistake side effects until the block is reprocessed.
+                            </span>}
                             <span class="kw">_ </span>=&gt; {
+                                <span class="comment">// Slot is verifiable: forward denunciation precursor and apply
+                                // the multistake limit so only validated blocks compete.
+                                </span><span class="self">self</span>.channels.pool_controller.add_denunciation_precursor(
+                                    DenunciationPrecursor::from(<span class="kw-2">&amp;</span>stored_block.content.header),
+                                );
                                 <span class="comment">// Extra equivocation blocks must leave Incoming so Storage is
                                 // not retained indefinitely (Incoming is not pruned / slot-ticked).
                                 </span><span class="kw">if </span><span class="self">self</span>.detect_multistake(<span class="kw-2">&amp;</span>stored_block.content.header) {

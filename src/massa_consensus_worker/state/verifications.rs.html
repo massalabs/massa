@@ -500,11 +500,18 @@
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
 <a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{process::BlockInfos, ConsensusState};
 <span class="kw">use </span>massa_consensus_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
-    block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet, slot::Slot,
+    block_header::SecuredHeader, block_id::BlockId, denunciation::DenunciationPrecursor,
+    prehash::PreHashSet, slot::Slot,
 };
 <span class="kw">use </span>tracing::warn;
 
@@ -583,6 +590,9 @@
                 <span class="kw">if </span><span class="self">self</span>.detect_multistake(<span class="kw-2">&amp;</span>header) {
                     <span class="kw">return </span><span class="prelude-val">None</span>;
                 }
+                <span class="self">self</span>.channels
+                    .pool_controller
+                    .add_denunciation_precursor(DenunciationPrecursor::from(<span class="kw-2">&amp;</span>header));
                 <span class="comment">// set as waiting dependencies
                 </span><span class="kw">let </span><span class="kw-2">mut </span>dependencies = PreHashSet::&lt;BlockId&gt;::default();
                 dependencies.insert(block_id); <span class="comment">// add self as unsatisfied
@@ -600,6 +610,9 @@
                 <span class="kw">if </span><span class="self">self</span>.detect_multistake(<span class="kw-2">&amp;</span>header) {
                     <span class="kw">return </span><span class="prelude-val">None</span>;
                 }
+                <span class="self">self</span>.channels
+                    .pool_controller
+                    .add_denunciation_precursor(DenunciationPrecursor::from(<span class="kw-2">&amp;</span>header));
                 <span class="comment">// set as waiting dependencies
                 </span>dependencies.insert(block_id); <span class="comment">// add self as unsatisfied
                 </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
@@ -609,10 +622,9 @@
                 })
             }
             HeaderCheckOutcome::WaitForSlot =&gt; {
-                <span class="kw">if </span><span class="self">self</span>.detect_multistake(<span class="kw-2">&amp;</span>header) {
-                    <span class="kw">return </span><span class="prelude-val">None</span>;
-                }
-                <span class="prelude-val">Some</span>(BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)))
+                <span class="comment">// The slot is not yet verifiable: defer denunciation and
+                // multistake side effects until the block is reprocessed.
+                </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)))
             }
             HeaderCheckOutcome::Discard(reason) =&gt; {
                 <span class="prelude-val">Some</span>(<span class="self">self</span>.convert_to_discard_block_header(reason, block_id, header))
