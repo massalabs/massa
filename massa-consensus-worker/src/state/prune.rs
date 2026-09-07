@@ -189,7 +189,7 @@ impl ConsensusState {
     }
 
     fn prune_waiting_for_dependencies(&mut self) -> Result<(), ConsensusError> {
-        let mut to_discard: PreHashMap<BlockId, Option<DiscardReason>> = PreHashMap::default();
+        let mut to_discard: PreHashMap<BlockId, DiscardReason> = PreHashMap::default();
         let mut to_keep: PreHashMap<BlockId, (u64, Slot)> = PreHashMap::default();
 
         // list items that are older than the latest final blocks in their threads or have deps that are discarded
@@ -220,14 +220,17 @@ impl ConsensusState {
                         }
                     }
                     if discarded_dep_found {
-                        to_discard.insert(*block_id, discard_reason);
+                        // A discarded dependency always yields a reason (Invalid or Stale).
+                        let reason = discard_reason
+                            .expect("discarded dependency should produce a discard reason");
+                        to_discard.insert(*block_id, reason);
                         continue;
                     }
 
                     // is at least as old as the latest final block in its thread => discard as stale
                     let slot = header_or_block.get_slot();
                     if slot.period <= self.latest_final_blocks_periods[slot.thread as usize].1 {
-                        to_discard.insert(*block_id, Some(DiscardReason::Stale));
+                        to_discard.insert(*block_id, DiscardReason::Stale);
                         continue;
                     }
 
@@ -253,23 +256,21 @@ impl ConsensusState {
                         if let Some(reason) = to_discard.get(dep) {
                             dep_to_discard_found = true;
                             match reason {
-                                Some(DiscardReason::Invalid(reason)) => {
+                                DiscardReason::Invalid(reason) => {
                                     discard_reason = Some(DiscardReason::Invalid(format!("discarded because depend on block:{} that has discard reason:{}", hash, reason)));
                                     break;
                                 }
-                                Some(DiscardReason::Stale) => {
-                                    discard_reason = Some(DiscardReason::Stale)
-                                }
-                                Some(DiscardReason::Final) => {
-                                    discard_reason = Some(DiscardReason::Stale)
-                                }
-                                None => {} // leave as None
+                                DiscardReason::Stale => discard_reason = Some(DiscardReason::Stale),
+                                DiscardReason::Final => discard_reason = Some(DiscardReason::Stale),
                             }
                         }
                     }
                     if dep_to_discard_found {
+                        // A dependency queued for discard always has a reason.
+                        let reason = discard_reason
+                            .expect("dependency queued for discard should have a reason");
                         to_keep.remove(&hash);
-                        to_discard.insert(hash, discard_reason);
+                        to_discard.insert(hash, reason);
                         continue;
                     }
                 }
@@ -294,7 +295,7 @@ impl ConsensusState {
                 if let Some((_seq_num, _slot, hash)) = remove_elt {
                     to_keep.remove(&hash);
                     // Preserve the over-limit entry as discarded instead of silently deleting it.
-                    to_discard.insert(hash, Some(DiscardReason::Stale));
+                    to_discard.insert(hash, DiscardReason::Stale);
                     continue;
                 }
             }
@@ -303,8 +304,8 @@ impl ConsensusState {
             break;
         }
 
-        // transition states to Discarded if there is a reason, otherwise just drop
-        for (block_id, reason_opt) in to_discard.drain() {
+        // transition states to Discarded (every entry in to_discard now has a reason)
+        for (block_id, reason) in to_discard.drain() {
             let sequence_number = self.blocks_state.sequence_counter();
             self.blocks_state.transition_map(&block_id, |block_status, _| {
                 if let Some(BlockStatus::WaitingForDependencies {
@@ -321,27 +322,21 @@ impl ConsensusState {
                             .header
                             .clone()
                     };
-                    massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
-                    if let Some(reason) = reason_opt {
-                        // add to stats if reason is Stale
-                        if reason == DiscardReason::Stale {
-                            self.new_stale_blocks.insert(
-                                block_id,
-                                (header.content_creator_address, header.content.slot),
-                            );
-                        }
-                        // transition to Discarded only if there is a reason
-                        Some(BlockStatus::Discarded {
-                                slot: header.content.slot,
-                                creator: header.content_creator_address,
-                                parents: header.content.parents,
-                                reason,
-                                sequence_number,
-                            },
-                        )
-                    } else {
-                        None
+                    massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason});
+                    // add to stats if reason is Stale
+                    if reason == DiscardReason::Stale {
+                        self.new_stale_blocks.insert(
+                            block_id,
+                            (header.content_creator_address, header.content.slot),
+                        );
                     }
+                    Some(BlockStatus::Discarded {
+                        slot: header.content.slot,
+                        creator: header.content_creator_address,
+                        parents: header.content.parents,
+                        reason,
+                        sequence_number,
+                    })
                 } else {
                     panic!("block {} should be in WaitingForDependencies state", block_id);
                 }
