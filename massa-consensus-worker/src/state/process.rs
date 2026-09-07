@@ -170,7 +170,10 @@ impl ConsensusState {
                         );
                         match &res {
                             HeaderCheckOutcome::Discard(reason) => {
-                                self.maybe_note_attack_attempt(reason, &block_id)
+                                self.maybe_note_attack_attempt(reason, &block_id);
+                                self.channels.pool_controller.add_denunciation_precursor(
+                                    DenunciationPrecursor::from(&stored_block.content.header),
+                                );
                             }
                             HeaderCheckOutcome::WaitForSlot => {
                                 // The slot is not yet verifiable: defer denunciation and

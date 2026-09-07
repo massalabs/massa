@@ -119,6 +119,9 @@ impl ConsensusState {
                 Some(BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)))
             }
             HeaderCheckOutcome::Discard(reason) => {
+                self.channels
+                    .pool_controller
+                    .add_denunciation_precursor(DenunciationPrecursor::from(&header));
                 Some(self.convert_to_discard_block_header(reason, block_id, header))
             }
         }
