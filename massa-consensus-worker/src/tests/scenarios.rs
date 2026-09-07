@@ -1,5 +1,9 @@
 use std::{
     collections::{HashSet, VecDeque},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
     time::Duration,
 };
 
@@ -528,5 +532,123 @@ fn test_slot_maintenance_not_starved_by_command_flood() {
     assert!(
         processed_during_flood,
         "future block stayed in WaitingForSlot during command flood; slot maintenance was starved"
+    );
+}
+
+/// Regression test for F25: a future block header must not trigger denunciation
+/// precursor forwarding or multistake tracking while its slot is unverifiable.
+/// Those side effects should happen exactly once when the slot becomes current
+/// and the header is validated.
+#[test]
+fn test_future_header_side_effects_deferred() {
+    let staking_key: KeyPair = KeyPair::generate(0).unwrap();
+    let t0 = MassaTime::from_millis(100);
+    let cfg = ConsensusConfig {
+        t0,
+        thread_count: 2,
+        genesis_timestamp: MassaTime::now(),
+        force_keep_final_periods: 50,
+        force_keep_final_periods_without_ops: 128,
+        max_future_processing_blocks: 10,
+        genesis_key: staking_key.clone(),
+        ..ConsensusConfig::default()
+    };
+
+    let staking_address = Address::from_public_key(&staking_key.get_public_key());
+    let last_start_period = cfg.last_start_period;
+
+    let mut foreign_controllers = ConsensusForeignControllers::new_with_mocks();
+
+    foreign_controllers
+        .execution_controller
+        .expect_update_blockclique_status()
+        .returning(|_, _, _| {});
+    foreign_controllers
+        .pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+
+    let precursor_count = Arc::new(AtomicUsize::new(0));
+    let precursor_count_clone = Arc::clone(&precursor_count);
+    foreign_controllers
+        .pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(move |_| {
+            precursor_count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+    foreign_controllers
+        .selector_controller
+        .expect_get_producer()
+        .returning(move |_| Ok(staking_address));
+    foreign_controllers
+        .selector_controller
+        .expect_get_selection()
+        .returning(move |_| {
+            Ok(Selection {
+                producer: staking_address,
+                endorsements: vec![staking_address; ENDORSEMENT_COUNT as usize],
+            })
+        });
+
+    let universe = ConsensusTestUniverse::new(foreign_controllers, cfg);
+    let controller = universe.module_controller.clone();
+
+    let genesis_hashes = controller
+        .get_block_graph_status(None, None)
+        .expect("could not get block graph status")
+        .genesis_blocks;
+
+    // Register a header far enough in the future that it is queued as
+    // WaitingForSlot.
+    let future_slot = Slot::new(3 + last_start_period, 0);
+    let future_block = create_block(future_slot, genesis_hashes, &staking_key);
+    controller.register_block_header(future_block.id, future_block.content.header.clone());
+
+    // Wait until the header is known to be waiting for its slot.
+    let mut waited = 0u64;
+    loop {
+        std::thread::sleep(Duration::from_millis(10));
+        waited += 10;
+        let status = &controller.get_block_statuses(&[future_block.id])[0];
+        if *status == BlockGraphStatus::WaitingForSlot {
+            break;
+        }
+        assert!(
+            waited < 1000,
+            "future block never reached WaitingForSlot (status: {:?})",
+            status
+        );
+    }
+
+    // No side effects should have happened while the slot was unverifiable.
+    assert_eq!(
+        precursor_count.load(Ordering::SeqCst),
+        0,
+        "denunciation precursor forwarded before slot was verifiable"
+    );
+
+    // Wait for the slot to become current; processing should then forward the
+    // precursor and transition the block out of WaitingForSlot.
+    let mut waited = 0u64;
+    loop {
+        std::thread::sleep(Duration::from_millis(25));
+        waited += 25;
+        let status = &controller.get_block_statuses(&[future_block.id])[0];
+        if *status != BlockGraphStatus::WaitingForSlot {
+            break;
+        }
+        assert!(
+            waited < 3000,
+            "future block stayed in WaitingForSlot after slot passed (status: {:?})",
+            status
+        );
+    }
+
+    // The precursor must have been forwarded exactly once when the slot became
+    // verifiable.
+    assert_eq!(
+        precursor_count.load(Ordering::SeqCst),
+        1,
+        "denunciation precursor was not forwarded exactly once after slot became verifiable"
     );
 }

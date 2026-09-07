@@ -2,7 +2,8 @@ use super::{process::BlockInfos, ConsensusState};
 use massa_consensus_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
 use massa_logging::massa_trace;
 use massa_models::{
-    block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet, slot::Slot,
+    block_header::SecuredHeader, block_id::BlockId, denunciation::DenunciationPrecursor,
+    prehash::PreHashSet, slot::Slot,
 };
 use tracing::warn;
 
@@ -81,6 +82,9 @@ impl ConsensusState {
                 if self.detect_multistake(&header) {
                     return None;
                 }
+                self.channels
+                    .pool_controller
+                    .add_denunciation_precursor(DenunciationPrecursor::from(&header));
                 // set as waiting dependencies
                 let mut dependencies = PreHashSet::<BlockId>::default();
                 dependencies.insert(block_id); // add self as unsatisfied
@@ -98,6 +102,9 @@ impl ConsensusState {
                 if self.detect_multistake(&header) {
                     return None;
                 }
+                self.channels
+                    .pool_controller
+                    .add_denunciation_precursor(DenunciationPrecursor::from(&header));
                 // set as waiting dependencies
                 dependencies.insert(block_id); // add self as unsatisfied
                 Some(BlockStatus::WaitingForDependencies {
@@ -107,9 +114,8 @@ impl ConsensusState {
                 })
             }
             HeaderCheckOutcome::WaitForSlot => {
-                if self.detect_multistake(&header) {
-                    return None;
-                }
+                // The slot is not yet verifiable: defer denunciation and
+                // multistake side effects until the block is reprocessed.
                 Some(BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)))
             }
             HeaderCheckOutcome::Discard(reason) => {

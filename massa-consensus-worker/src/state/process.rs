@@ -15,6 +15,7 @@ use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
     clique::Clique,
+    denunciation::DenunciationPrecursor,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
     timeslots,
@@ -171,7 +172,16 @@ impl ConsensusState {
                             HeaderCheckOutcome::Discard(reason) => {
                                 self.maybe_note_attack_attempt(reason, &block_id)
                             }
+                            HeaderCheckOutcome::WaitForSlot => {
+                                // The slot is not yet verifiable: defer denunciation and
+                                // multistake side effects until the block is reprocessed.
+                            }
                             _ => {
+                                // Slot is verifiable: forward denunciation precursor and apply
+                                // the multistake limit so only validated blocks compete.
+                                self.channels.pool_controller.add_denunciation_precursor(
+                                    DenunciationPrecursor::from(&stored_block.content.header),
+                                );
                                 // Extra equivocation blocks must leave Incoming so Storage is
                                 // not retained indefinitely (Incoming is not pruned / slot-ticked).
                                 if self.detect_multistake(&stored_block.content.header) {
