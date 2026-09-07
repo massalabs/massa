@@ -148,10 +148,6 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::denunciation::{
@@ -263,9 +259,7 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">use </span>massa_models::config::{
-        CHAINID, ENDORSEMENT_COUNT, MAX_DENUNCIATION_CHANGES_LENGTH, THREAD_COUNT,
-    };
+    <span class="kw">use </span>massa_models::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATION_CHANGES_LENGTH, THREAD_COUNT};
     <span class="kw">use </span>massa_models::denunciation::Denunciation;
     <span class="kw">use </span>massa_models::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
@@ -276,15 +270,13 @@
     </span><span class="kw">fn </span>test_executed_denunciations_changes_ser_der() {
         <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
             gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-        <span class="kw">let </span>denunciation_1: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))
-            .try_into()
-            .unwrap();
+        <span class="kw">let </span>denunciation_1: Denunciation =
+            (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2).try_into().unwrap();
         <span class="kw">let </span>denunciation_index_1 = DenunciationIndex::from(<span class="kw-2">&amp;</span>denunciation_1);
 
         <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) =
             gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-        <span class="kw">let </span>denunciation_2 =
-            Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))).unwrap();
+        <span class="kw">let </span>denunciation_2 = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2)).unwrap();
         <span class="kw">let </span>denunciation_index_2 = DenunciationIndex::from(<span class="kw-2">&amp;</span>denunciation_2);
 
         <span class="kw">let </span>p_de_changes: ExecutedDenunciationsChanges =
