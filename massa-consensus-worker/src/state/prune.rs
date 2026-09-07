@@ -104,7 +104,8 @@ impl ConsensusState {
     }
 
     // Keep only a certain (`config.max_future_processing_blocks`) number of blocks that have slots in the future
-    // to avoid high memory consumption
+    // to avoid high memory consumption. Over-limit entries are preserved as `Discarded` rather than
+    // silently removed, so protocol-side `checked_headers` stays aligned with consensus state.
     fn prune_slot_waiting(&mut self) {
         if self.blocks_state.waiting_for_slot_blocks().len()
             <= self.config.max_future_processing_blocks
@@ -128,7 +129,32 @@ impl ConsensusState {
         let len_slot_waiting = slot_waiting.len();
         (self.config.max_future_processing_blocks..len_slot_waiting).for_each(|idx| {
             let (_slot, block_id) = &slot_waiting[idx];
-            self.blocks_state.transition_map(block_id, |_, _| None);
+            let sequence_number = self.blocks_state.sequence_counter();
+            self.blocks_state
+                .transition_map(block_id, |block_status, _| {
+                    if let Some(BlockStatus::WaitingForSlot(header_or_block)) = block_status {
+                        let header = match header_or_block {
+                            HeaderOrBlock::Header(h) => h,
+                            HeaderOrBlock::Block { id, .. } => self
+                                .storage
+                                .read_blocks()
+                                .get(&id)
+                                .unwrap_or_else(|| panic!("block {} should be in storage", id))
+                                .content
+                                .header
+                                .clone(),
+                        };
+                        Some(BlockStatus::Discarded {
+                            slot: header.content.slot,
+                            creator: header.content_creator_address,
+                            parents: header.content.parents,
+                            reason: DiscardReason::Stale,
+                            sequence_number,
+                        })
+                    } else {
+                        panic!("block {} should be in WaitingForSlot state", block_id);
+                    }
+                });
         });
     }
 
@@ -267,7 +293,8 @@ impl ConsensusState {
                     .min();
                 if let Some((_seq_num, _slot, hash)) = remove_elt {
                     to_keep.remove(&hash);
-                    to_discard.insert(hash, None);
+                    // Preserve the over-limit entry as discarded instead of silently deleting it.
+                    to_discard.insert(hash, Some(DiscardReason::Stale));
                     continue;
                 }
             }

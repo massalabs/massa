@@ -148,14 +148,19 @@ impl ConsensusState {
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
         let sequence_number = self.blocks_state.sequence_counter();
-        self.blocks_state.transition_map(block_id, |_, _| {
-            Some(BlockStatus::Discarded {
-                slot: header.content.slot,
-                creator: header.content_creator_address,
-                parents: header.content.parents,
-                reason,
-                sequence_number,
-            })
-        });
+        self.blocks_state
+            .transition_map(block_id, |block_status, _| {
+                // If the block has already been pruned from consensus, there is nothing
+                // left to mark invalid. Avoid a None -> Discarded panic by treating it as
+                // a no-op; the attack attempt was already recorded above.
+                block_status.as_ref()?;
+                Some(BlockStatus::Discarded {
+                    slot: header.content.slot,
+                    creator: header.content_creator_address,
+                    parents: header.content.parents,
+                    reason,
+                    sequence_number,
+                })
+            });
     }
 }

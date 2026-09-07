@@ -391,7 +391,10 @@ fn test_parent_in_the_future() {
 
     // Wait for blocks_db to be pruned
     std::thread::sleep(Duration::from_millis(1500));
-    // We only keep t0s2 and t1s1 because of max_future_processing_blocks set to 2
+    // We only keep t0s1 and t1s1 in WaitingForSlot because of
+    // max_future_processing_blocks set to 2. The evicted block (t0s2) is
+    // preserved as Discarded rather than silently removed, so valid reannounced
+    // headers are still recognized by protocol's checked_headers cache.
     let status = universe
         .module_controller
         .get_block_statuses(&[t0s1.id, t1s1.id, t0s2.id]);
@@ -400,7 +403,7 @@ fn test_parent_in_the_future() {
         vec![
             BlockGraphStatus::WaitingForSlot,
             BlockGraphStatus::WaitingForSlot,
-            BlockGraphStatus::NotFound
+            BlockGraphStatus::Discarded
         ],
         "wrong status"
     );
