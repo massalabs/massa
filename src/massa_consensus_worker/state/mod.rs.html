@@ -563,46 +563,6 @@
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
 <a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -625,11 +585,9 @@
     clique::Clique,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
-    timeslots::get_block_slot_timestamp,
 };
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipStore};
 <span class="kw">use </span>tracing::debug;
 
 <span class="kw">use </span><span class="self">self</span>::blocks_state::BlocksState;
@@ -699,8 +657,6 @@
     </span><span class="kw">pub </span>nonfinal_active_blocks_per_slot: HashMap&lt;Slot, PreHashSet&lt;BlockId&gt;&gt;,
     <span class="doccomment">/// massa metrics
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) massa_metrics: MassaMetrics,
-    <span class="doccomment">/// MIP store for versioning-gated behavior
-    </span><span class="kw">pub </span>mip_store: MipStore,
 }
 
 <span class="kw">impl </span>ConsensusState {
@@ -942,30 +898,7 @@
     /// Callers must reject earlier values; otherwise `list_latest_final_blocks_at` cannot find a
     /// final in higher threads (e.g. `Some(Slot(0, 0))` misses genesis at `(0, thread &gt; 0)`).
     ///
-    /// Returns true if the fixpoint-based `list_required_active_blocks` algorithm
-    /// is active for the given reference slot (or the current time if None).
-    </span><span class="kw">fn </span>is_required_active_blocks_fixpoint_active(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        end_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ConsensusError&gt; {
-        <span class="kw">let </span>timestamp = <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot {
-            get_block_slot_timestamp(
-                <span class="self">self</span>.config.thread_count,
-                <span class="self">self</span>.config.t0,
-                <span class="self">self</span>.config.genesis_timestamp,
-                slot,
-            )
-            .map_err(ConsensusError::ModelsError)<span class="question-mark">?
-        </span>} <span class="kw">else </span>{
-            MassaTime::now()
-        };
-        <span class="prelude-val">Ok</span>(<span class="self">self
-            </span>.mip_store
-            .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Block, timestamp)
-            &gt;= <span class="number">2</span>)
-    }
-
-    <span class="doccomment">/// # Algorithm
+    /// # Algorithm
     /// if end_slot is None:
     ///      set effective_latest_finals to be the IDs of the self.latest_final_blocks
     /// else
@@ -974,7 +907,7 @@
     /// create a kept_blocks list of block IDs to keep
     /// initialize it with effective_latest_finals as well as all the active blocks that are after the effective_latest_finals of their thread (included) (but before end_slot (included) if it is Some)
     ///
-    /// do the following 2 times (or until no new blocks are added once MIP-0002 is active):
+    /// do the following 2 times:
     ///      extend kept_blocks with the parents of the current kept_blocks
     ///      fill holes by adding to kept_blocks all the active block IDs whose slot is after the earliest kept_blocks of their thread (included) (but before end_slot (included) if it is Some)
     ///
@@ -1000,17 +933,8 @@
         <span class="comment">// add all the active blocks that are after the effective_latest_finals of their thread
         </span><span class="self">self</span>.add_active_blocks_after(<span class="kw-2">&amp;mut </span>kept_blocks, <span class="kw-2">&amp;</span>effective_latest_finals, end_slot);
 
-        <span class="comment">// MIP-0002 gates the fixpoint version of the algorithm.
-        </span><span class="kw">let </span>fixpoint_active = <span class="self">self</span>.is_required_active_blocks_fixpoint_active(end_slot)<span class="question-mark">?</span>;
-
-        <span class="comment">// do the following 2 times, or until no new blocks are added if MIP-0002 is active
-        </span><span class="kw">for </span>iteration <span class="kw">in </span><span class="number">0</span>.. {
-            <span class="kw">if </span>!fixpoint_active &amp;&amp; iteration &gt;= <span class="number">2 </span>{
-                <span class="kw">break</span>;
-            }
-
-            <span class="kw">let </span>before_len = kept_blocks.len();
-
+        <span class="comment">// do the following 2 times
+        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
             <span class="comment">// extend kept_blocks with the parents of the current kept_blocks
             </span><span class="kw">let </span><span class="kw-2">mut </span>cumulated_parents: PreHashSet&lt;BlockId&gt; = PreHashSet::default();
             <span class="kw">for </span>id <span class="kw">in </span>kept_blocks.iter() {
@@ -1026,10 +950,6 @@
             <span class="comment">// add all the active blocks whose slot is after the earliest kept_blocks of their thread
             </span><span class="kw">let </span>earliest_blocks = <span class="self">self</span>.list_earliest_blocks_of(<span class="kw-2">&amp;</span>kept_blocks, end_slot)<span class="question-mark">?</span>;
             <span class="self">self</span>.add_active_blocks_after(<span class="kw-2">&amp;mut </span>kept_blocks, <span class="kw-2">&amp;</span>earliest_blocks, end_slot);
-
-            <span class="kw">if </span>fixpoint_active &amp;&amp; kept_blocks.len() == before_len {
-                <span class="kw">break</span>;
-            }
         }
 
         <span class="comment">// check that we have the full blocks for every id we are about to return

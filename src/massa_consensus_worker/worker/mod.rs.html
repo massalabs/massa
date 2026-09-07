@@ -122,9 +122,6 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::{receiver::MassaReceiver, MassaChannel};
 <span class="kw">use </span>massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
@@ -138,7 +135,6 @@
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::thread;
@@ -185,7 +181,6 @@
     init_graph: <span class="prelude-ty">Option</span>&lt;BootstrapableGraph&gt;,
     storage: Storage,
     massa_metrics: MassaMetrics,
-    mip_store: MipStore,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>ConsensusController&gt;, Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;) {
     <span class="kw">let </span>(tx, rx) = MassaChannel::new(<span class="string">"consensus_command"</span>.to_string(), <span class="prelude-val">Some</span>(CHANNEL_SIZE));
     <span class="comment">// desync detection timespan
@@ -226,7 +221,6 @@
         prev_blockclique: Default::default(),
         nonfinal_active_blocks_per_slot: Default::default(),
         massa_metrics,
-        mip_store,
     }));
 
     <span class="kw">let </span>shared_state_cloned = shared_state.clone();
