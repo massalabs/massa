@@ -475,6 +475,24 @@ impl RetrievalThread {
                 // save the header
                 info.header = Some(header);
 
+                // SECURITY NOTE (see issue #5033): this header has only passed the protocol-level
+                // structural checks (signature, endorsements, format), not the consensus-level ones
+                // (producer draw, staleness, parent compatibility). We deliberately proceed to
+                // retrieve the block contents without waiting for consensus to validate the header:
+                //
+                // - Blocks only enter the wishlist headerless as missing dependencies of a header
+                //   that consensus already accepted, which includes the producer-draw check. The
+                //   parent IDs are committed in that accepted child header (block id = header hash),
+                //   so only the child's producer — a staker who won a real draw and burned that slot
+                //   on a block that can never become active — can make us fetch consensus-invalid
+                //   contents here, and the waste is bounded by the number of parents and max block size.
+                //
+                // - Gating content retrieval on a consensus round-trip would couple retrieval
+                //   liveness and latency to the consensus worker (busy during catch-up, bounded
+                //   command channel), which is a worse failure mode than the bounded bandwidth
+                //   waste it would prevent. Consensus still fully validates the header when the
+                //   assembled block is submitted via register_block.
+
                 // Clear the list of peers we asked that header for.
                 // This is done so that update_block_retrieval can prioritize asking the rest of the block data
                 // to that same peer that just gave us the header, and not exclude the peer
