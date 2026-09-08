@@ -14,12 +14,6 @@ use massa_models::types::{Applicable, SetUpdateOrDelete};
 use parking_lot::RwLock;
 use std::{collections::BTreeMap, sync::Arc};
 
-/// Execution component version (MIP-0002-BugFix) from which async-message batch selection
-/// and pool eviction rank by `fee / (max_gas + async_msg_cst_gas_cost)` instead of
-/// `fee / max_gas`, matching the gas actually charged per message in
-/// [`SpeculativeAsyncPool::take_batch_to_execute`].
-pub const ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION: u32 = 2;
-
 pub(crate) struct SpeculativeAsyncPool {
     /// Async pool max length
     async_pool_max_length: u64,
@@ -114,7 +108,7 @@ impl SpeculativeAsyncPool {
     /// before that activation can still be sitting in the pool, and they expire unexecuted.
     ///
     /// When `rank_by_effective_gas` is true (MIP-0002 / execution component version
-    /// [`ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION`]), candidates are ordered by
+    /// `MIP_0002_EXECUTION_VERSION`), candidates are ordered by
     /// `fee / (max_gas + async_msg_cst_gas_cost)` so priority matches the budget charge.
     /// Otherwise ordering follows the stored [`AsyncMessageId`] (`fee / max_gas`).
     ///

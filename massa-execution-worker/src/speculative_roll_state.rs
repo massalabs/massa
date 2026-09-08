@@ -21,13 +21,6 @@ use std::cmp::min;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
-/// Execution component version from which missed-production auto-sell
-/// liquidates only the rolls that were active for the penalized cycle
-/// (the delayed cycle − 3 snapshot), not the address's entire current balance.
-///
-/// Rides on `MIP-0002-BugFix`, which bumps `MipComponent::Execution` to 2.
-pub(crate) const SETTLE_ACTIVE_ROLLS_EXEC_VERSION: u32 = 2;
-
 /// Speculative state of the rolls
 #[allow(dead_code)]
 pub(crate) struct SpeculativeRollState {
@@ -336,7 +329,7 @@ impl SpeculativeRollState {
     /// # Arguments:
     /// * `slot`: the final slot of the cycle to compute
     /// * `limit_liquidation_to_active_rolls`: when true (execution component
-    ///   version ≥ [`SETTLE_ACTIVE_ROLLS_EXEC_VERSION`]), only the rolls that
+    ///   version ≥ `MIP_0002_EXECUTION_VERSION`), only the rolls that
     ///   were active for this cycle are auto-sold. When false, the pre-MIP
     ///   behavior applies: the address's entire current roll balance is zeroed.
     pub fn settle_production_stats(
