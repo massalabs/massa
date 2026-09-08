@@ -7,6 +7,10 @@ use massa_time::MassaTime;
 #[allow(unused_imports)]
 use crate::versioning::{MipComponent, MipInfo, MipState};
 
+/// `Execution` component version introduced by `MIP-0002-BugFix`.
+/// Single source of truth for gating features bundled into that MIP.
+pub const MIP_0002_EXECUTION_VERSION: u32 = 2;
+
 #[cfg(not(feature = "test-exports"))]
 pub fn get_mip_list() -> [(MipInfo, MipState); 2] {
     // When the MIPs becomes defined, e.g. when merged to main branch
@@ -33,7 +37,7 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 2] {
                 name: "MIP-0002-BugFix".to_string(),
                 version: 2,
                 components: BTreeMap::from([
-                    (MipComponent::Execution, 2),
+                    (MipComponent::Execution, MIP_0002_EXECUTION_VERSION),
                     (MipComponent::FinalState, 2),
                 ]),
                 start: MassaTime::from_utc_ymd_hms(2026, 8, 10, 10, 0, 0).unwrap(), // Monday 10th August 2026 10:00:00 UTC
@@ -76,7 +80,10 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 2] {
     let mip_info_2 = MipInfo {
         name: "MIP-0002-BugFix".to_string(),
         version: 2,
-        components: BTreeMap::from([(MipComponent::Execution, 2), (MipComponent::FinalState, 2)]),
+        components: BTreeMap::from([
+            (MipComponent::Execution, MIP_0002_EXECUTION_VERSION),
+            (MipComponent::FinalState, 2),
+        ]),
         start: MassaTime::from_millis(12),
         timeout: MassaTime::from_millis(20),
         activation_delay: MassaTime::from_millis(2),
