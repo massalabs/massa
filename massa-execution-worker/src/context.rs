@@ -8,19 +8,12 @@
 //! and does not write anything persistent to the consensus state.
 
 use crate::active_history::HistorySearchResult;
-use crate::speculative_async_pool::{
-    SpeculativeAsyncPool, ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
-};
-use crate::speculative_deferred_calls::{
-    SpeculativeDeferredCallRegistry, DEFERRED_CALL_INDEX_FIX_EXEC_VERSION,
-};
+use crate::speculative_async_pool::SpeculativeAsyncPool;
+use crate::speculative_deferred_calls::SpeculativeDeferredCallRegistry;
 use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::{
-    active_history::ActiveHistory,
-    speculative_roll_state::{SpeculativeRollState, SETTLE_ACTIVE_ROLLS_EXEC_VERSION},
-};
+use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::AsyncPoolChanges;
 
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
@@ -60,6 +53,7 @@ use massa_sc_runtime::CondomLimits;
 use massa_serialization::Serializer;
 use massa_time::MassaTime;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
+use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 use massa_versioning::versioning::{MipComponent, MipStore};
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use parking_lot::RwLock;
@@ -487,9 +481,7 @@ impl ExecutionContext {
             self.slot,
             max_gas,
             async_msg_cst_gas_cost,
-            self.is_execution_component_version_at_least(
-                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
-            ),
+            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         )
     }
 
@@ -1078,9 +1070,7 @@ impl ExecutionContext {
             &slot,
             &self.speculative_ledger.added_changes,
             self.config.async_msg_cst_gas_cost,
-            self.is_execution_component_version_at_least(
-                ASYNC_MSG_EFFECTIVE_GAS_PRIORITY_EXEC_VERSION,
-            ),
+            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         );
 
         let mut cancel_async_message_transfers = vec![];
@@ -1114,7 +1104,7 @@ impl ExecutionContext {
                 self.config.thread_count,
                 self.config.roll_price,
                 self.config.max_miss_ratio,
-                self.is_execution_component_version_at_least(SETTLE_ACTIVE_ROLLS_EXEC_VERSION),
+                self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
             )
         } else {
             vec![]
@@ -1348,7 +1338,7 @@ impl ExecutionContext {
         self.speculative_deferred_calls.register_call(
             call,
             self.execution_trail_hash,
-            self.is_execution_component_version_at_least(DEFERRED_CALL_INDEX_FIX_EXEC_VERSION),
+            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         )
     }
 

@@ -9,7 +9,7 @@
 //!
 //! The fix folds the chain id into the signed hash, deployed through the
 //! existing MIP-0002 network-versioning mechanism (the release that bumps
-//! `MipComponent::Execution` to `EXEC_SIGNATURES_CHAIN_ID_VERSION`), so
+//! `MipComponent::Execution` to `MIP_0002_EXECUTION_VERSION`), so
 //! upgraded and un-upgraded nodes keep agreeing on signature validity
 //! across the activation boundary - no flag-day change.
 //!
@@ -28,21 +28,15 @@
 
 use massa_time::MassaTime;
 
+use crate::mips::MIP_0002_EXECUTION_VERSION;
 use crate::versioning::{MipComponent, MipStore};
-
-/// `Execution` component version at which the chain-scoped consensus
-/// signature layout activates (i.e. `chain_id` is folded into the signed
-/// hash of endorsements and block headers). Must match MIP-0002's
-/// `Execution` component version
-/// (`massa_execution_worker::wmas_patch::WMAS_PATCH_EXEC_VERSION`).
-pub const EXEC_SIGNATURES_CHAIN_ID_VERSION: u32 = 2;
 
 /// Returns the `sig_chain_id` to use for signing / verifying an endorsement
 /// or block header whose slot timestamp is `slot_ts` on the local chain
 /// identified by `chain_id`.
 ///
 /// Returns `Some(chain_id)` once the `Execution` component is active at
-/// version >= [`EXEC_SIGNATURES_CHAIN_ID_VERSION`] for that slot, `None`
+/// version >= [`MIP_0002_EXECUTION_VERSION`] for that slot, `None`
 /// otherwise (legacy layout).
 ///
 /// Every signing / verification / denunciation-reconstruction site must
@@ -54,7 +48,7 @@ pub fn sig_chain_id_for_slot(
     slot_ts: MassaTime,
 ) -> Option<u64> {
     if mip_store.get_latest_component_version_at(&MipComponent::Execution, slot_ts)
-        >= EXEC_SIGNATURES_CHAIN_ID_VERSION
+        >= MIP_0002_EXECUTION_VERSION
     {
         Some(chain_id)
     } else {
@@ -90,7 +84,7 @@ mod tests {
         let mi = MipInfo {
             name: "MIP-0002-BugFix".to_string(),
             version: 2,
-            components: BTreeMap::from([(MipComponent::Execution, 2)]),
+            components: BTreeMap::from([(MipComponent::Execution, MIP_0002_EXECUTION_VERSION)]),
             start,
             timeout,
             activation_delay,
@@ -107,7 +101,7 @@ mod tests {
             .map(|i| start.saturating_add(MassaTime::from_millis(i * 100)))
             .find(|ts| {
                 store.get_latest_component_version_at(&MipComponent::Execution, *ts)
-                    >= EXEC_SIGNATURES_CHAIN_ID_VERSION
+                    >= MIP_0002_EXECUTION_VERSION
             })
             .expect("Execution v2 should become Active after start");
         (store, before, active_at)
