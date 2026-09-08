@@ -46,6 +46,7 @@ use massa_module_cache::config::ModuleCacheConfig;
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, VMError};
+use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
@@ -1600,9 +1601,7 @@ impl ExecutionState {
         // One-time, versioning-gated WMAS bytecode patch (see `wmas_patch`).
         // Applied here so it is part of the slot's ledger changes and shared by
         // both candidate and final execution (this function is called by both).
-        if execution_context
-            .is_execution_component_version_activation(wmas_patch::WMAS_PATCH_EXEC_VERSION)
-        {
+        if execution_context.is_execution_component_version_activation(MIP_0002_EXECUTION_VERSION) {
             match wmas_patch::wmas_address(self.config.chain_id) {
                 Some(addr) => {
                     // Existence guard: only overwrite an already-deployed WMAS
