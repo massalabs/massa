@@ -847,6 +847,21 @@
 <a href="#847" id="847">847</a>
 <a href="#848" id="848">848</a>
 <a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeSet, HashMap, VecDeque};
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -1546,13 +1561,26 @@
     /// 10. note new latest final periods (prune graph if changed)
     /// 11. add stale blocks to stats
     ///
-    /// Delivery to protocol (`integrated_block`, `notify_block_attack`) is best effort: the calls
-    /// are `try_send` on a bounded channel and fail when it is full. On failure we do NOT block and
-    /// we do NOT add a retry queue: the items simply stay in the existing pending sets
-    /// (`to_propagate`, `attack_attempts`) and are retried at the next `block_db_changed` (next
-    /// command or slot tick). The failure is channel-level, not per-item, so everything flushes
-    /// once protocol drains. Growth is bounded by the block integration rate while protocol is
-    /// saturated (`to_propagate` is keyed by block id and `Storage` is a refcounted handle).
+    /// Delivery to protocol (`integrated_block`, `notify_block_attack`) is best effort: both go
+    /// through `try_send` on the bounded block propagation channel and fail when it is full. On
+    /// failure we neither block nor add a retry queue, and this is deliberate:
+    ///
+    /// - blocking would stall the consensus worker on a saturated protocol, and the first casualty
+    ///   would be the propagation of the block we just produced ourselves, precisely when the node
+    ///   is already struggling;
+    /// - a dedicated retry queue would duplicate state that already exists: on failure the items
+    ///   simply stay in the pending sets they were drained from (`to_propagate`,
+    ///   `attack_attempts`) and are retried at the next `block_db_changed`, i.e. the next consensus
+    ///   command or slot tick.
+    ///
+    /// No per-item expiry is needed either, because the failure is channel-level rather than
+    /// per-item: it says nothing about the block being sent, so everything flushes as soon as
+    /// protocol drains. A closed channel means the block handler is gone and the node is shutting
+    /// down anyway. Growth while protocol stays saturated is bounded by the block integration
+    /// rate: `to_propagate` is keyed by block id, so re-inserting the same block is idempotent,
+    /// and `Storage` is a refcounted handle rather than a copy of the block. Channel saturation is
+    /// visible through the `blocks_propagation_ext_channel_actual_size` metric, and the size of
+    /// the pending sets is logged on each failure.
     </span><span class="kw">pub fn </span>block_db_changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed"</span>, {});
 
@@ -1571,7 +1599,8 @@
                 .protocol_controller
                 .integrated_block(block_id, storage.clone())
             {
-                <span class="self">self</span>.to_propagate.insert(block_id, storage);
+                <span class="comment">// keeping the undelivered items pending is intended, see the note on this method
+                </span><span class="self">self</span>.to_propagate.insert(block_id, storage);
                 propagate_error = <span class="prelude-val">Some</span>(e);
                 <span class="kw">break</span>;
             }
@@ -1594,7 +1623,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>attack_error = <span class="prelude-val">None</span>;
         <span class="kw">while let </span><span class="prelude-val">Some</span>(hash) = attack_attempts.pop() {
             <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.channels.protocol_controller.notify_block_attack(hash) {
-                attack_attempts.push(hash);
+                <span class="comment">// keeping the undelivered items pending is intended, see the note on this method
+                </span>attack_attempts.push(hash);
                 attack_error = <span class="prelude-val">Some</span>(e);
                 <span class="kw">break</span>;
             }
