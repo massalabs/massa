@@ -180,14 +180,11 @@ impl ConsensusState {
                                 // multistake side effects until the block is reprocessed.
                             }
                             _ => {
-                                // Slot is verifiable: forward denunciation precursor and apply
-                                // the multistake limit so only validated blocks compete.
-                                self.channels.pool_controller.add_denunciation_precursor(
-                                    DenunciationPrecursor::from(&stored_block.content.header),
-                                );
+                                // Slot is verifiable: forward the denunciation precursor and
+                                // apply the multistake limit so only validated blocks compete.
                                 // Extra equivocation blocks must leave Incoming so Storage is
                                 // not retained indefinitely (Incoming is not pruned / slot-ticked).
-                                if self.detect_multistake(&stored_block.content.header) {
+                                if self.note_verifiable_header(&stored_block.content.header) {
                                     res = HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                                         format!(
                                             "more than 2 blocks for slot {}",

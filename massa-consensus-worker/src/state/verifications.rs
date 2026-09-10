@@ -69,6 +69,22 @@ impl ConsensusState {
         false
     }
 
+    /// Handle the side effects of a header whose slot is verifiable: forward the
+    /// denunciation precursor to the pool, then apply the multi-stake limit.
+    ///
+    /// The precursor is forwarded unconditionally because the pool runs its own
+    /// eligibility checks (PoS draw, expiry, last start period) and keeps at most
+    /// one cache entry per slot: gating it on our local per-slot index could drop
+    /// evidence the pool never received.
+    ///
+    /// Returns `true` if the header is an extra equivocation block for its slot.
+    pub(crate) fn note_verifiable_header(&mut self, header: &SecuredHeader) -> bool {
+        self.channels
+            .pool_controller
+            .add_denunciation_precursor(DenunciationPrecursor::from(header));
+        self.detect_multistake(header)
+    }
+
     /// Check if the header is valid and if it could be processed when we will receive the full block
     pub(crate) fn convert_block_header(
         &mut self,
@@ -79,12 +95,9 @@ impl ConsensusState {
         let header_outcome = self.check_header(&block_id, &header, current_slot);
         match header_outcome {
             HeaderCheckOutcome::Proceed { .. } => {
-                if self.detect_multistake(&header) {
+                if self.note_verifiable_header(&header) {
                     return None;
                 }
-                self.channels
-                    .pool_controller
-                    .add_denunciation_precursor(DenunciationPrecursor::from(&header));
                 // set as waiting dependencies
                 let mut dependencies = PreHashSet::<BlockId>::default();
                 dependencies.insert(block_id); // add self as unsatisfied
@@ -99,12 +112,9 @@ impl ConsensusState {
                 })
             }
             HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
-                if self.detect_multistake(&header) {
+                if self.note_verifiable_header(&header) {
                     return None;
                 }
-                self.channels
-                    .pool_controller
-                    .add_denunciation_precursor(DenunciationPrecursor::from(&header));
                 // set as waiting dependencies
                 dependencies.insert(block_id); // add self as unsatisfied
                 Some(BlockStatus::WaitingForDependencies {

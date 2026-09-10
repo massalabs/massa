@@ -11,9 +11,10 @@ use super::{
     tools::{consensus_test, register_block},
     universe::{ConsensusForeignControllers, ConsensusTestUniverse},
 };
-use crate::tests::tools::create_block;
+use crate::tests::tools::{create_block, create_block_with_merkle_root};
 use massa_consensus_exports::ConsensusConfig;
 use massa_execution_exports::MockExecutionController;
+use massa_hash::Hash;
 use massa_models::{
     address::Address, block::BlockGraphStatus, block_id::BlockId, config::ENDORSEMENT_COUNT,
     slot::Slot,
@@ -650,5 +651,136 @@ fn test_future_header_side_effects_deferred() {
         precursor_count.load(Ordering::SeqCst),
         1,
         "denunciation precursor was not forwarded exactly once after slot became verifiable"
+    );
+}
+
+/// Extra equivocation blocks are dropped by the multistake limit, but their
+/// denunciation precursor must still reach the pool: the pool runs its own
+/// eligibility checks and may not hold the two precursors our per-slot index
+/// counted.
+#[test]
+fn test_multistake_still_forwards_denunciation_precursor() {
+    let staking_key: KeyPair = KeyPair::generate(0).unwrap();
+    let t0 = MassaTime::from_millis(100);
+    let cfg = ConsensusConfig {
+        t0,
+        thread_count: 2,
+        genesis_timestamp: MassaTime::now(),
+        force_keep_final_periods: 50,
+        force_keep_final_periods_without_ops: 128,
+        max_future_processing_blocks: 10,
+        genesis_key: staking_key.clone(),
+        ..ConsensusConfig::default()
+    };
+
+    let staking_address = Address::from_public_key(&staking_key.get_public_key());
+    let last_start_period = cfg.last_start_period;
+
+    let mut foreign_controllers = ConsensusForeignControllers::new_with_mocks();
+
+    foreign_controllers
+        .execution_controller
+        .expect_update_blockclique_status()
+        .returning(|_, _, _| {});
+    foreign_controllers
+        .pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+
+    let precursor_count = Arc::new(AtomicUsize::new(0));
+    let precursor_count_clone = Arc::clone(&precursor_count);
+    foreign_controllers
+        .pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(move |_| {
+            precursor_count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+    foreign_controllers
+        .selector_controller
+        .expect_get_producer()
+        .returning(move |_| Ok(staking_address));
+    foreign_controllers
+        .selector_controller
+        .expect_get_selection()
+        .returning(move |_| {
+            Ok(Selection {
+                producer: staking_address,
+                endorsements: vec![staking_address; ENDORSEMENT_COUNT as usize],
+            })
+        });
+
+    let universe = ConsensusTestUniverse::new(foreign_controllers, cfg);
+    let controller = universe.module_controller.clone();
+
+    let genesis_hashes = controller
+        .get_block_graph_status(None, None)
+        .expect("could not get block graph status")
+        .genesis_blocks;
+
+    // Three equivocating headers for the same future slot, same creator.
+    let slot = Slot::new(3 + last_start_period, 0);
+    let headers: Vec<_> = (0..3u8)
+        .map(|i| {
+            create_block_with_merkle_root(
+                Hash::compute_from(&[i]),
+                slot,
+                genesis_hashes.clone(),
+                &staking_key,
+            )
+        })
+        .collect();
+    let ids: Vec<BlockId> = headers.iter().map(|b| b.id).collect();
+    for block in &headers {
+        controller.register_block_header(block.id, block.content.header.clone());
+    }
+
+    // Nothing is forwarded while the slot is not verifiable.
+    let mut waited = 0u64;
+    loop {
+        std::thread::sleep(Duration::from_millis(10));
+        waited += 10;
+        let statuses = controller.get_block_statuses(&ids);
+        if statuses
+            .iter()
+            .all(|s| *s == BlockGraphStatus::WaitingForSlot)
+        {
+            break;
+        }
+        assert!(
+            waited < 1000,
+            "headers never all reached WaitingForSlot (statuses: {:?})",
+            statuses
+        );
+    }
+    assert_eq!(
+        precursor_count.load(Ordering::SeqCst),
+        0,
+        "denunciation precursor forwarded before slot was verifiable"
+    );
+
+    // Once the slot is reached, all three headers are processed. The third one is
+    // dropped by the multistake limit but its precursor must still be forwarded.
+    let mut waited = 0u64;
+    loop {
+        std::thread::sleep(Duration::from_millis(25));
+        waited += 25;
+        let statuses = controller.get_block_statuses(&ids);
+        if statuses
+            .iter()
+            .all(|s| *s != BlockGraphStatus::WaitingForSlot)
+        {
+            break;
+        }
+        assert!(
+            waited < 3000,
+            "headers stayed in WaitingForSlot after slot passed (statuses: {:?})",
+            statuses
+        );
+    }
+
+    assert_eq!(
+        precursor_count.load(Ordering::SeqCst),
+        3,
+        "extra equivocation block did not forward its denunciation precursor"
     );
 }
