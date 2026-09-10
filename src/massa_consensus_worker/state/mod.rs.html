@@ -551,6 +551,8 @@
 <a href="#551" id="551">551</a>
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -640,8 +642,10 @@
     </span><span class="kw">pub </span>wishlist: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;,
     <span class="doccomment">/// previous blockclique notified to Execution
     </span><span class="kw">pub </span>prev_blockclique: PreHashMap&lt;BlockId, Slot&gt;,
-    <span class="doccomment">/// Blocks indexed by slot (used for multi-stake limiting). Blocks
-    /// should be saved in this map when we receive the header or the full block directly.
+    <span class="doccomment">/// Blocks indexed by slot (used for multi-stake limiting). An entry is only
+    /// added once the header/block has passed validation for its slot, not when
+    /// it is first received. This prevents unvalidated future-slot headers from
+    /// polluting the per-slot index while they are still in `WaitingForSlot`.
     </span><span class="kw">pub </span>nonfinal_active_blocks_per_slot: HashMap&lt;Slot, PreHashSet&lt;BlockId&gt;&gt;,
     <span class="doccomment">/// massa metrics
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) massa_metrics: MassaMetrics,
