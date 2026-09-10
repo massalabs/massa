@@ -99,12 +99,12 @@
         wallet.clone(),
         channels.clone(),
         block_worker_rx,
-        mip_store.clone(),
+        mip_store,
     );
 
     <span class="comment">// start endorsement factory worker
     </span><span class="kw">let </span>endorsement_worker_handle =
-        EndorsementFactoryWorker::spawn(cfg, wallet, channels, endorsement_worker_rx, mip_store);
+        EndorsementFactoryWorker::spawn(cfg, wallet, channels, endorsement_worker_rx);
 
     <span class="comment">// create factory manager
     </span><span class="kw">let </span>manager = FactoryManagerImpl {

@@ -601,11 +601,6 @@
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
 <a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
     block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer},
@@ -1163,14 +1158,9 @@
             },
             expire_period: <span class="number">50</span>,
         };
-        <span class="kw">let </span>operation: SecureShareOperation = Operation::new_verifiable(
-            content,
-            OperationSerializer::new(),
-            <span class="kw-2">&amp;</span>keypair,
-            <span class="kw-2">*</span>CHAINID,
-            <span class="prelude-val">None</span>,
-        )
-        .unwrap();
+        <span class="kw">let </span>operation: SecureShareOperation =
+            Operation::new_verifiable(content, OperationSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID)
+                .unwrap();
         <span class="kw">let </span>operations = <span class="macro">vec!</span>[operation.clone(), operation];
         <span class="kw">let </span>total_operations_size: usize = operations.iter().map(|op| op.serialized_size()).sum();
 
