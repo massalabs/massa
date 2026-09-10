@@ -132,6 +132,10 @@ impl ConsensusWorker {
             let mut write_shared_state = self.shared_state.write();
             if let Err(err) = write_shared_state.slot_tick(self.next_slot) {
                 warn!("Error while processing block tick: {}", err);
+                // Side effects are preserved in `to_propagate`, `attack_attempts`,
+                // `new_final_blocks` and `new_stale_blocks`, so they will be
+                // retried on the next tick. Keep advancing slots to avoid
+                // halting consensus while downstream is under transient pressure.
             }
         };
         if last_prune.elapsed().as_millis()

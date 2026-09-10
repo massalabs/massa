@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeSet, HashMap, VecDeque},
-    mem,
-};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 
 use massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock, StorageOrBlock},
@@ -23,7 +20,7 @@ use massa_models::{
 use massa_signature::PublicKey;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::state::{
     clique_computation::compute_max_cliques,
@@ -712,65 +709,120 @@ impl ConsensusState {
     /// 9. notify protocol of block wish list
     /// 10. note new latest final periods (prune graph if changed)
     /// 11. add stale blocks to stats
+    ///
+    /// Delivery to protocol (`integrated_block`, `notify_block_attack`) is best effort: both go
+    /// through `try_send` on the bounded block propagation channel and fail when it is full. On
+    /// failure we neither block nor add a retry queue, and this is deliberate:
+    ///
+    /// - blocking would stall the consensus worker on a saturated protocol, and the first casualty
+    ///   would be the propagation of the block we just produced ourselves, precisely when the node
+    ///   is already struggling;
+    /// - a dedicated retry queue would duplicate state that already exists: on failure the items
+    ///   simply stay in the pending sets they were drained from (`to_propagate`,
+    ///   `attack_attempts`) and are retried at the next `block_db_changed`, i.e. the next consensus
+    ///   command or slot tick.
+    ///
+    /// No per-item expiry is needed either, because the failure is channel-level rather than
+    /// per-item: it says nothing about the block being sent, so everything flushes as soon as
+    /// protocol drains. A closed channel means the block handler is gone and the node is shutting
+    /// down anyway. Growth while protocol stays saturated is bounded by the block integration
+    /// rate: `to_propagate` is keyed by block id, so re-inserting the same block is idempotent,
+    /// and `Storage` is a refcounted handle rather than a copy of the block. Channel saturation is
+    /// visible through the `blocks_propagation_ext_channel_actual_size` metric, and the size of
+    /// the pending sets is logged on each failure.
     pub fn block_db_changed(&mut self) -> Result<(), ConsensusError> {
-        let final_block_slots = {
-            massa_trace!("consensus.consensus_worker.block_db_changed", {});
+        massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
-            // Propagate new blocks
-            for (block_id, storage) in mem::take(&mut self.to_propagate).into_iter() {
-                massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
-                    "block_id": block_id
-                });
-                self.channels
-                    .protocol_controller
-                    .integrated_block(block_id, storage)?;
+        // Propagate new blocks incrementally. If a downstream call fails, restore
+        // the unprocessed items so they can be retried on the next call instead
+        // of being silently lost.
+        let mut to_propagate: Vec<(BlockId, Storage)> =
+            std::mem::take(&mut self.to_propagate).into_iter().collect();
+        let mut propagate_error = None;
+        while let Some((block_id, storage)) = to_propagate.pop() {
+            massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
+                "block_id": block_id
+            });
+            if let Err(e) = self
+                .channels
+                .protocol_controller
+                .integrated_block(block_id, storage.clone())
+            {
+                // keeping the undelivered items pending is intended, see the note on this method
+                self.to_propagate.insert(block_id, storage);
+                propagate_error = Some(e);
+                break;
             }
+        }
+        for (block_id, storage) in to_propagate {
+            self.to_propagate.insert(block_id, storage);
+        }
+        if let Some(e) = propagate_error {
+            warn!(
+                "error propagating blocks to protocol: {}. {} block(s) kept pending for retry.",
+                e,
+                self.to_propagate.len()
+            );
+            return Err(e.into());
+        }
 
-            // Notify protocol of attack attempts.
-            for hash in mem::take(&mut self.attack_attempts).into_iter() {
-                self.channels
-                    .protocol_controller
-                    .notify_block_attack(hash)?;
-                massa_trace!("consensus.consensus_worker.block_db_changed.attack", {
-                    "hash": hash
-                });
+        // Notify protocol of attack attempts incrementally, preserving unprocessed
+        // items on failure so they are retried later.
+        let mut attack_attempts = std::mem::take(&mut self.attack_attempts);
+        let mut attack_error = None;
+        while let Some(hash) = attack_attempts.pop() {
+            if let Err(e) = self.channels.protocol_controller.notify_block_attack(hash) {
+                // keeping the undelivered items pending is intended, see the note on this method
+                attack_attempts.push(hash);
+                attack_error = Some(e);
+                break;
             }
+            massa_trace!("consensus.consensus_worker.block_db_changed.attack", {
+                "hash": hash
+            });
+        }
+        self.attack_attempts.extend(attack_attempts);
+        if let Some(e) = attack_error {
+            warn!(
+                "error notifying protocol of attack attempts: {}. {} attempt(s) kept pending for retry.",
+                e,
+                self.attack_attempts.len()
+            );
+            return Err(e.into());
+        }
 
-            // manage finalized blocks
-            let timestamp = MassaTime::now();
-            let finalized_blocks = mem::take(&mut self.new_final_blocks);
-            let mut final_block_slots = HashMap::with_capacity(finalized_blocks.len());
-            let mut final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
-            for b_id in finalized_blocks {
-                if let Some(BlockStatus::Active { a_block, .. }) = self.blocks_state.get(&b_id) {
-                    // add to final blocks to notify execution
-                    final_block_slots.insert(a_block.slot, b_id);
+        // manage finalized blocks
+        let timestamp = MassaTime::now();
+        let mut final_block_slots = HashMap::with_capacity(self.new_final_blocks.len());
+        let mut final_block_stats = VecDeque::with_capacity(self.new_final_blocks.len());
+        for b_id in &self.new_final_blocks {
+            if let Some(BlockStatus::Active { a_block, .. }) = self.blocks_state.get(b_id) {
+                // add to final blocks to notify execution
+                final_block_slots.insert(a_block.slot, *b_id);
 
-                    // add to stats
-                    let block_is_from_protocol = self
-                        .protocol_blocks
-                        .iter()
-                        .any(|(_, block_id)| block_id == &b_id);
-                    final_block_stats.push_back((
-                        timestamp,
-                        a_block.creator_address,
-                        block_is_from_protocol,
-                    ));
-                }
+                // add to stats
+                let block_is_from_protocol = self
+                    .protocol_blocks
+                    .iter()
+                    .any(|(_, block_id)| block_id == b_id);
+                final_block_stats.push_back((
+                    timestamp,
+                    a_block.creator_address,
+                    block_is_from_protocol,
+                ));
             }
-            self.final_block_stats.extend(final_block_stats);
-
-            // add stale blocks to stats
-            let new_stale_block_ids_creators_slots = mem::take(&mut self.new_stale_blocks);
-            let timestamp = MassaTime::now();
-            for (_b_id, (_b_creator, _b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
-                self.stale_block_stats.push_back(timestamp);
-            }
-            final_block_slots
-        };
+        }
 
         // notify execution
         self.notify_execution(final_block_slots);
+
+        // Downstream delivery confirmed: commit stats and drain notification queues.
+        self.final_block_stats.extend(final_block_stats);
+        // add stale blocks to stats
+        self.stale_block_stats
+            .extend((0..self.new_stale_blocks.len()).map(|_| timestamp));
+        self.new_final_blocks.clear();
+        self.new_stale_blocks.clear();
 
         // notify protocol of block wishlist
         let new_wishlist = self.get_block_wishlist()?;
