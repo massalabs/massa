@@ -315,38 +315,26 @@ impl ConsensusState {
         }
     }
 
-    /// Lists active block IDs that must be kept to preserve graph consistency
-    /// (latest finals, their descendants up to `end_slot`, and parents needed to fill holes).
+    /// Lists the active block IDs that must be kept: the latest finals of each thread, all active
+    /// blocks after them, and exactly 2 rounds of "add parents, then fill holes down to the
+    /// earliest kept block of each thread".
     ///
-    /// # Arguments
-    /// * `end_slot`: optional inclusive upper bound on block slots considered.
-    ///   - `None`: use `self.latest_final_blocks_periods` as the per-thread finals baseline
-    ///     (e.g. graph pruning).
-    ///   - `Some(slot)`: compute the latest final block in each thread with `block.slot <= slot`
-    ///     (e.g. bootstrap, aligned with the final-state cursor).
-    ///
-    /// # Invariants for `Some(end_slot)`
-    /// Slot ordering is `(period, thread)`. Genesis blocks live at
-    /// `Slot(last_start_period, thread)` for every thread, so a global upper bound only admits a
-    /// latest final in *every* thread when:
-    /// `end_slot >= Slot(last_start_period, thread_count - 1)` (the last genesis slot).
-    /// Callers must reject earlier values; otherwise `list_latest_final_blocks_at` cannot find a
-    /// final in higher threads (e.g. `Some(Slot(0, 0))` misses genesis at `(0, thread > 0)`).
-    ///
-    /// # Algorithm
-    /// if end_slot is None:
-    ///      set effective_latest_finals to be the IDs of the self.latest_final_blocks
-    /// else
-    ///      set effective_latest_finals to be the IDs of the Active Final blocks that have the highest period in each thread but are before end_slot (included)
-    ///
-    /// create a kept_blocks list of block IDs to keep
-    /// initialize it with effective_latest_finals as well as all the active blocks that are after the effective_latest_finals of their thread (included) (but before end_slot (included) if it is Some)
-    ///
-    /// do the following 2 times:
-    ///      extend kept_blocks with the parents of the current kept_blocks
-    ///      fill holes by adding to kept_blocks all the active block IDs whose slot is after the earliest kept_blocks of their thread (included) (but before end_slot (included) if it is Some)
-    ///
-    /// return kept_blocks
+    /// This is deliberately NOT a transitive closure over parents and must not become one:
+    /// - a fixpoint would walk back one ancestor per round until it hits a block already pruned
+    ///   (`Discarded { reason: Final }`), at which point `try_get_full_active_block` errors,
+    ///   `prune()` panics and `get_bootstrap_part` fails. Tests do not catch this because test
+    ///   graphs are never pruned.
+    /// - no consumer needs a closure:
+    ///   - `prune_active` uses this as a floor and additionally keeps
+    ///     `force_keep_final_periods_without_ops` periods of finals per thread. The set is
+    ///     self-sustaining (what it kept last time is still active next time), and a block whose
+    ///     parent was pruned can never become Active (the parent comes back Stale and the child
+    ///     is discarded), so no dangling parent can appear.
+    ///   - `get_bootstrap_part` exports only the final blocks of this set. A valid block compatible
+    ///     with final F_t can only reference F_t's own parent in thread t (grandpa rule), or one
+    ///     level deeper in thread-gap corner cases. Round 1 adds the parents of the finals, round 2
+    ///     covers the deeper case. Blocks validated after bootstrap are all after `end_slot` and
+    ///     are not in this set anyway, so a closure over blocks up to `end_slot` would not help.
     pub fn list_required_active_blocks(
         &self,
         end_slot: Option<Slot>,
