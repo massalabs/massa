@@ -812,18 +812,17 @@ impl ConsensusState {
                 ));
             }
         }
-        let stale_block_count = self.new_stale_blocks.len();
 
         // notify execution
         self.notify_execution(final_block_slots);
 
-        // Downstream delivery confirmed: drain notification queues and commit stats.
-        self.new_final_blocks.clear();
-        self.new_stale_blocks.clear();
+        // Downstream delivery confirmed: commit stats and drain notification queues.
         self.final_block_stats.extend(final_block_stats);
         // add stale blocks to stats
         self.stale_block_stats
-            .extend((0..stale_block_count).map(|_| timestamp));
+            .extend((0..self.new_stale_blocks.len()).map(|_| timestamp));
+        self.new_final_blocks.clear();
+        self.new_stale_blocks.clear();
 
         // notify protocol of block wishlist
         let new_wishlist = self.get_block_wishlist()?;
