@@ -551,6 +551,20 @@
 <a href="#551" id="551">551</a>
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -640,8 +654,10 @@
     </span><span class="kw">pub </span>wishlist: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;,
     <span class="doccomment">/// previous blockclique notified to Execution
     </span><span class="kw">pub </span>prev_blockclique: PreHashMap&lt;BlockId, Slot&gt;,
-    <span class="doccomment">/// Blocks indexed by slot (used for multi-stake limiting). Blocks
-    /// should be saved in this map when we receive the header or the full block directly.
+    <span class="doccomment">/// Blocks indexed by slot (used for multi-stake limiting). An entry is only
+    /// added once the header/block has passed validation for its slot, not when
+    /// it is first received. This prevents unvalidated future-slot headers from
+    /// polluting the per-slot index while they are still in `WaitingForSlot`.
     </span><span class="kw">pub </span>nonfinal_active_blocks_per_slot: HashMap&lt;Slot, PreHashSet&lt;BlockId&gt;&gt;,
     <span class="doccomment">/// massa metrics
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) massa_metrics: MassaMetrics,
@@ -868,26 +884,38 @@
         }
     }
 
-    <span class="doccomment">/// Lists the active block IDs that must be kept: the latest finals of each thread, all active
-    /// blocks after them, and exactly 2 rounds of "add parents, then fill holes down to the
-    /// earliest kept block of each thread".
+    <span class="doccomment">/// Lists active block IDs that must be kept to preserve graph consistency
+    /// (latest finals, their descendants up to `end_slot`, and parents needed to fill holes).
     ///
-    /// This is deliberately NOT a transitive closure over parents and must not become one:
-    /// - a fixpoint would walk back one ancestor per round until it hits a block already pruned
-    ///   (`Discarded { reason: Final }`), at which point `try_get_full_active_block` errors,
-    ///   `prune()` panics and `get_bootstrap_part` fails. Tests do not catch this because test
-    ///   graphs are never pruned.
-    /// - no consumer needs a closure:
-    ///   - `prune_active` uses this as a floor and additionally keeps
-    ///     `force_keep_final_periods_without_ops` periods of finals per thread. The set is
-    ///     self-sustaining (what it kept last time is still active next time), and a block whose
-    ///     parent was pruned can never become Active (the parent comes back Stale and the child
-    ///     is discarded), so no dangling parent can appear.
-    ///   - `get_bootstrap_part` exports only the final blocks of this set. A valid block compatible
-    ///     with final F_t can only reference F_t's own parent in thread t (grandpa rule), or one
-    ///     level deeper in thread-gap corner cases. Round 1 adds the parents of the finals, round 2
-    ///     covers the deeper case. Blocks validated after bootstrap are all after `end_slot` and
-    ///     are not in this set anyway, so a closure over blocks up to `end_slot` would not help.
+    /// # Arguments
+    /// * `end_slot`: optional inclusive upper bound on block slots considered.
+    ///   - `None`: use `self.latest_final_blocks_periods` as the per-thread finals baseline
+    ///     (e.g. graph pruning).
+    ///   - `Some(slot)`: compute the latest final block in each thread with `block.slot &lt;= slot`
+    ///     (e.g. bootstrap, aligned with the final-state cursor).
+    ///
+    /// # Invariants for `Some(end_slot)`
+    /// Slot ordering is `(period, thread)`. Genesis blocks live at
+    /// `Slot(last_start_period, thread)` for every thread, so a global upper bound only admits a
+    /// latest final in *every* thread when:
+    /// `end_slot &gt;= Slot(last_start_period, thread_count - 1)` (the last genesis slot).
+    /// Callers must reject earlier values; otherwise `list_latest_final_blocks_at` cannot find a
+    /// final in higher threads (e.g. `Some(Slot(0, 0))` misses genesis at `(0, thread &gt; 0)`).
+    ///
+    /// # Algorithm
+    /// if end_slot is None:
+    ///      set effective_latest_finals to be the IDs of the self.latest_final_blocks
+    /// else
+    ///      set effective_latest_finals to be the IDs of the Active Final blocks that have the highest period in each thread but are before end_slot (included)
+    ///
+    /// create a kept_blocks list of block IDs to keep
+    /// initialize it with effective_latest_finals as well as all the active blocks that are after the effective_latest_finals of their thread (included) (but before end_slot (included) if it is Some)
+    ///
+    /// do the following 2 times:
+    ///      extend kept_blocks with the parents of the current kept_blocks
+    ///      fill holes by adding to kept_blocks all the active block IDs whose slot is after the earliest kept_blocks of their thread (included) (but before end_slot (included) if it is Some)
+    ///
+    /// return kept_blocks
     </span><span class="kw">pub fn </span>list_required_active_blocks(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         end_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
