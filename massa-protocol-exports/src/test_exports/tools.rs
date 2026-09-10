@@ -23,10 +23,13 @@ use massa_signature::KeyPair;
 /// Creates a block for use in protocol,
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
+///
+/// `current_version` is 2 to match the latest Active MIP network version from
+/// `get_mip_list()` under `test-exports` (MIP-0002).
 pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            current_version: 0,
+            current_version: 2,
             announced_version: None,
             slot: Slot::new(1, 0),
             parents: vec![
@@ -40,6 +43,7 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
         BlockHeaderSerializer::new(),
         keypair,
         *CHAINID,
+        Some(*CHAINID),
     )
     .unwrap();
 
@@ -51,6 +55,7 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
         BlockSerializer::new(),
         keypair,
         *CHAINID,
+        None,
     )
     .unwrap()
 }
@@ -72,7 +77,7 @@ pub fn create_block_with_operations(
 
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            current_version: 0,
+            current_version: 2,
             announced_version: None,
             slot,
             parents: vec![
@@ -86,6 +91,7 @@ pub fn create_block_with_operations(
         BlockHeaderSerializer::new(),
         keypair,
         *CHAINID,
+        Some(*CHAINID),
     )
     .unwrap();
 
@@ -98,6 +104,7 @@ pub fn create_block_with_operations(
         BlockSerializer::new(),
         keypair,
         *CHAINID,
+        None,
     )
     .unwrap()
 }
@@ -114,7 +121,7 @@ pub fn create_block_with_endorsements(
 ) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            current_version: 0,
+            current_version: 2,
             announced_version: None,
             slot,
             parents: vec![
@@ -128,6 +135,7 @@ pub fn create_block_with_endorsements(
         BlockHeaderSerializer::new(),
         keypair,
         *CHAINID,
+        Some(*CHAINID),
     )
     .unwrap();
 
@@ -139,6 +147,7 @@ pub fn create_block_with_endorsements(
         BlockSerializer::new(),
         keypair,
         *CHAINID,
+        None,
     )
     .unwrap()
 }
@@ -153,7 +162,14 @@ pub fn create_endorsement() -> SecureShareEndorsement {
         index: 0,
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&[])),
     };
-    Endorsement::new_verifiable(content, EndorsementSerializer::new(), &keypair, *CHAINID).unwrap()
+    Endorsement::new_verifiable(
+        content,
+        EndorsementSerializer::new(),
+        &keypair,
+        *CHAINID,
+        Some(*CHAINID),
+    )
+    .unwrap()
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
@@ -172,7 +188,7 @@ pub fn create_operation_with_expire_period(
         op,
         expire_period,
     };
-    Operation::new_verifiable(content, OperationSerializer::new(), keypair, *CHAINID).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair, *CHAINID, None).unwrap()
 }
 
 /// Create an ExecuteSC operation with too much gas.
@@ -191,7 +207,7 @@ pub fn create_execute_sc_op_with_too_much_gas(
         op,
         expire_period,
     };
-    Operation::new_verifiable(content, OperationSerializer::new(), keypair, *CHAINID).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair, *CHAINID, None).unwrap()
 }
 
 /// Create a CallSC operation with too much gas.
@@ -215,5 +231,5 @@ pub fn create_call_sc_op_with_too_much_gas(
         op,
         expire_period,
     };
-    Operation::new_verifiable(content, OperationSerializer::new(), keypair, *CHAINID).unwrap()
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair, *CHAINID, None).unwrap()
 }

@@ -30,6 +30,7 @@ use massa_proto_rs::massa::model::v1::{
 use massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, Result, RuntimeModule};
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
+use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
@@ -117,7 +118,7 @@ impl InterfaceImpl {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config)).unwrap();
         let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
             .expect("could not start selector controller");
         let disk_ledger = TempDir::new().expect("cannot create temp directory");
@@ -1431,7 +1432,15 @@ impl Interface for InterfaceImpl {
     /// * `target_function`: Name of the message handling function
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
-    /// * `max_gas`: Maximum gas for the message execution
+    /// * `max_gas`: Maximum gas for the message execution.
+    ///   Bounded below by `max_instance_cost`, and — from execution component version
+    ///   [`MIP_0002_EXECUTION_VERSION`] on — above by the largest budget any slot
+    ///   can ever offer. `take_batch_to_execute` only schedules a message when
+    ///   `max_gas + async_msg_cst_gas_cost` fits the slot's async gas budget, which never
+    ///   exceeds `max_async_gas + max_gas_per_block` (see `execute_slot`). Before that
+    ///   version, a message above the ceiling was accepted but permanently unschedulable:
+    ///   it occupied async pool capacity until its validity end, and on expiry
+    ///   `cancel_async_message` refunded `raw_coins` but not `raw_fee`.
     /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
@@ -1474,6 +1483,21 @@ impl Interface for InterfaceImpl {
 
         if max_gas < self.config.gas_costs.max_instance_cost {
             bail!("max gas is lower than the minimum instance cost")
+        }
+        // Reject messages that no slot could ever schedule. Gated: rejecting here changes
+        // execution results, so it only applies once the MIP has activated.
+        if execution_context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
+            let max_schedulable_gas = self
+                .config
+                .max_async_gas
+                .saturating_add(self.config.max_gas_per_block)
+                .saturating_sub(self.config.async_msg_cst_gas_cost);
+            if max_gas > max_schedulable_gas {
+                bail!(
+                    "max gas is higher than the maximum schedulable async gas ({})",
+                    max_schedulable_gas
+                )
+            }
         }
         if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
         {
@@ -2174,6 +2198,37 @@ mod tests {
     use super::*;
     use massa_models::address::Address;
     use massa_signature::KeyPair;
+
+    // An async message asking for more gas than any slot can ever schedule is admitted
+    // before the MIP activates, and rejected from MIP_0002_EXECUTION_VERSION on.
+    #[test]
+    fn test_send_message_max_gas_ceiling() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let target = "AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy";
+
+        let config = ExecutionConfig::default();
+        let ceiling = config
+            .max_async_gas
+            .saturating_add(config.max_gas_per_block)
+            .saturating_sub(config.async_msg_cst_gas_cost);
+
+        let send = |max_gas: u64| {
+            interface.send_message(target, "receive", (0, 0), (10, 0), max_gas, 0, 0, &[], None)
+        };
+
+        // pre-activation: the oversized message is accepted, which is the bug being fixed
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        send(ceiling + 1).expect("oversized message should be admitted before activation");
+
+        // post-activation: rejected, while a message exactly at the ceiling still passes
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(
+            send(ceiling + 1).is_err(),
+            "oversized message should be rejected after activation"
+        );
+        send(ceiling).expect("a message exactly at the ceiling is still schedulable");
+    }
 
     // Tests the get_keys_wasmv1 interface method used by the updated get_keys abi.
     #[test]

@@ -216,7 +216,8 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
-    ///                 *CHAINID
+    ///                 *CHAINID,
+    ///                 None
     ///             )
     ///             .unwrap(),
     ///             Endorsement::new_verifiable(
@@ -227,14 +228,16 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
-    ///                 *CHAINID
+    ///                 *CHAINID,
+    ///                 None
     ///             )
     ///             .unwrap(),
     ///         ],
     ///     denunciations: vec![],},
     ///     BlockHeaderSerializer::new(),
     ///     &keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     /// )
     /// .unwrap();
     ///
@@ -244,7 +247,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///     operations: Vec::new(),
     /// };
     ///
-    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
+    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID, None).unwrap();
     /// let export_parents = full_block
     ///     .content
     ///     .header

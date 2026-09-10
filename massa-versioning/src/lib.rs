@@ -85,6 +85,7 @@
 //! Note that those tests might not be up to date with the latest module code.
 
 pub mod address_factory;
+pub mod consensus_signature;
 pub mod grpc_mapping;
 pub mod keypair_factory;
 pub mod mips;
