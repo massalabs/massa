@@ -235,7 +235,7 @@ Ignore if we are before the last_start_period</p>
 <li>endorser was selected for that (slot, index)</li>
 <li>endorsed slot is <code>parent_in_own_thread</code> slot</li>
 </ul>
-</div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-ConsensusState-7" class="impl"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#97-565">source</a><a href="#impl-ConsensusState-7" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.ConsensusState.html" title="struct massa_consensus_worker::state::ConsensusState">ConsensusState</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.get_full_active_block" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#99-110">source</a><h4 class="code-header">pub fn <a href="#method.get_full_active_block" class="fn">get_full_active_block</a>(
+</div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-ConsensusState-7" class="impl"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#97-553">source</a><a href="#impl-ConsensusState-7" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.ConsensusState.html" title="struct massa_consensus_worker::state::ConsensusState">ConsensusState</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.get_full_active_block" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#99-110">source</a><h4 class="code-header">pub fn <a href="#method.get_full_active_block" class="fn">get_full_active_block</a>(
     &amp;self,
     block_id: &amp;<a class="enum" href="../../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>,
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;(&amp;<a class="struct" href="../../massa_models/active_block/struct.ActiveBlock.html" title="struct massa_models::active_block::ActiveBlock">ActiveBlock</a>, &amp;<a class="enum" href="../../massa_consensus_exports/block_status/enum.StorageOrBlock.html" title="enum massa_consensus_exports::block_status::StorageOrBlock">StorageOrBlock</a>)&gt;</h4></section></summary><div class="docblock"><p>Get a full active block</p>
@@ -264,54 +264,47 @@ Ignore if we are before the last_start_period</p>
     end_slot: <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>&gt;,
 )</h4></section></summary><div class="docblock"><p>adds to the given container every active block coming after the lower bound</p>
 <p>exclusively used by <code>list_required_active_blocks</code></p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.list_required_active_blocks" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#350-400">source</a><h4 class="code-header">pub fn <a href="#method.list_required_active_blocks" class="fn">list_required_active_blocks</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.list_required_active_blocks" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#338-388">source</a><h4 class="code-header">pub fn <a href="#method.list_required_active_blocks" class="fn">list_required_active_blocks</a>(
     &amp;self,
     end_slot: <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>&gt;,
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="type" href="../../massa_models/prehash/type.PreHashSet.html" title="type massa_models::prehash::PreHashSet">PreHashSet</a>&lt;<a class="enum" href="../../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>&gt;, <a class="enum" href="../../massa_consensus_exports/error/enum.ConsensusError.html" title="enum massa_consensus_exports::error::ConsensusError">ConsensusError</a>&gt;</h4></section></summary><div class="docblock"><p>Lists active block IDs that must be kept to preserve graph consistency
-(latest finals, their descendants up to <code>end_slot</code>, and parents needed to fill holes).</p>
-<h5 id="arguments-9"><a class="doc-anchor" href="#arguments-9">§</a>Arguments</h5>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="type" href="../../massa_models/prehash/type.PreHashSet.html" title="type massa_models::prehash::PreHashSet">PreHashSet</a>&lt;<a class="enum" href="../../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>&gt;, <a class="enum" href="../../massa_consensus_exports/error/enum.ConsensusError.html" title="enum massa_consensus_exports::error::ConsensusError">ConsensusError</a>&gt;</h4></section></summary><div class="docblock"><p>Lists the active block IDs that must be kept: the latest finals of each thread, all active
+blocks after them, and exactly 2 rounds of “add parents, then fill holes down to the
+earliest kept block of each thread”.</p>
+<p>This is deliberately NOT a transitive closure over parents and must not become one:</p>
 <ul>
-<li><code>end_slot</code>: optional inclusive upper bound on block slots considered.
+<li>a fixpoint would walk back one ancestor per round until it hits a block already pruned
+(<code>Discarded { reason: Final }</code>), at which point <code>try_get_full_active_block</code> errors,
+<code>prune()</code> panics and <code>get_bootstrap_part</code> fails. Tests do not catch this because test
+graphs are never pruned.</li>
+<li>no consumer needs a closure:
 <ul>
-<li><code>None</code>: use <code>self.latest_final_blocks_periods</code> as the per-thread finals baseline
-(e.g. graph pruning).</li>
-<li><code>Some(slot)</code>: compute the latest final block in each thread with <code>block.slot &lt;= slot</code>
-(e.g. bootstrap, aligned with the final-state cursor).</li>
+<li><code>prune_active</code> uses this as a floor and additionally keeps
+<code>force_keep_final_periods_without_ops</code> periods of finals per thread. The set is
+self-sustaining (what it kept last time is still active next time), and a block whose
+parent was pruned can never become Active (the parent comes back Stale and the child
+is discarded), so no dangling parent can appear.</li>
+<li><code>get_bootstrap_part</code> exports only the final blocks of this set. A valid block compatible
+with final F_t can only reference F_t’s own parent in thread t (grandpa rule), or one
+level deeper in thread-gap corner cases. Round 1 adds the parents of the finals, round 2
+covers the deeper case. Blocks validated after bootstrap are all after <code>end_slot</code> and
+are not in this set anyway, so a closure over blocks up to <code>end_slot</code> would not help.</li>
 </ul>
 </li>
 </ul>
-<h5 id="invariants-for-someend_slot"><a class="doc-anchor" href="#invariants-for-someend_slot">§</a>Invariants for <code>Some(end_slot)</code></h5>
-<p>Slot ordering is <code>(period, thread)</code>. Genesis blocks live at
-<code>Slot(last_start_period, thread)</code> for every thread, so a global upper bound only admits a
-latest final in <em>every</em> thread when:
-<code>end_slot &gt;= Slot(last_start_period, thread_count - 1)</code> (the last genesis slot).
-Callers must reject earlier values; otherwise <code>list_latest_final_blocks_at</code> cannot find a
-final in higher threads (e.g. <code>Some(Slot(0, 0))</code> misses genesis at <code>(0, thread &gt; 0)</code>).</p>
-<h5 id="algorithm"><a class="doc-anchor" href="#algorithm">§</a>Algorithm</h5>
-<p>if end_slot is None:
-set effective_latest_finals to be the IDs of the self.latest_final_blocks
-else
-set effective_latest_finals to be the IDs of the Active Final blocks that have the highest period in each thread but are before end_slot (included)</p>
-<p>create a kept_blocks list of block IDs to keep
-initialize it with effective_latest_finals as well as all the active blocks that are after the effective_latest_finals of their thread (included) (but before end_slot (included) if it is Some)</p>
-<p>do the following 2 times:
-extend kept_blocks with the parents of the current kept_blocks
-fill holes by adding to kept_blocks all the active block IDs whose slot is after the earliest kept_blocks of their thread (included) (but before end_slot (included) if it is Some)</p>
-<p>return kept_blocks</p>
-</div></details><section id="method.extract_block_graph_part" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#402-473">source</a><h4 class="code-header">pub fn <a href="#method.extract_block_graph_part" class="fn">extract_block_graph_part</a>(
+</div></details><section id="method.extract_block_graph_part" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#390-461">source</a><h4 class="code-header">pub fn <a href="#method.extract_block_graph_part" class="fn">extract_block_graph_part</a>(
     &amp;self,
     slot_start: <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>&gt;,
     slot_end: <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>&gt;,
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../../massa_consensus_exports/block_graph_export/struct.BlockGraphExport.html" title="struct massa_consensus_exports::block_graph_export::BlockGraphExport">BlockGraphExport</a>, <a class="enum" href="../../massa_consensus_exports/error/enum.ConsensusError.html" title="enum massa_consensus_exports::error::ConsensusError">ConsensusError</a>&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.get_all_final_blocks" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#479-510">source</a><h4 class="code-header">pub fn <a href="#method.get_all_final_blocks" class="fn">get_all_final_blocks</a>(
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../../massa_consensus_exports/block_graph_export/struct.BlockGraphExport.html" title="struct massa_consensus_exports::block_graph_export::BlockGraphExport">BlockGraphExport</a>, <a class="enum" href="../../massa_consensus_exports/error/enum.ConsensusError.html" title="enum massa_consensus_exports::error::ConsensusError">ConsensusError</a>&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.get_all_final_blocks" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#467-498">source</a><h4 class="code-header">pub fn <a href="#method.get_all_final_blocks" class="fn">get_all_final_blocks</a>(
     &amp;self,
 ) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.81.0/std/collections/hash/map/struct.HashMap.html" title="struct std::collections::hash::map::HashMap">HashMap</a>&lt;<a class="enum" href="../../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>, (<a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>, <a class="struct" href="../../massa_execution_exports/types/struct.ExecutionBlockMetadata.html" title="struct massa_execution_exports::types::ExecutionBlockMetadata">ExecutionBlockMetadata</a>)&gt;</h4></section></summary><div class="docblock"><p>Gets all stored final blocks, not only the still-useful ones
 This is used when initializing Execution from Consensus.
 Since the Execution bootstrap snapshot is older than the Consensus snapshot,
 we might need to signal older final blocks for Execution to catch up.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_block_wishlist" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#513-541">source</a><h4 class="code-header">pub fn <a href="#method.get_block_wishlist" class="fn">get_block_wishlist</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_block_wishlist" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#501-529">source</a><h4 class="code-header">pub fn <a href="#method.get_block_wishlist" class="fn">get_block_wishlist</a>(
     &amp;self,
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="type" href="../../massa_models/prehash/type.PreHashMap.html" title="type massa_models::prehash::PreHashMap">PreHashMap</a>&lt;<a class="enum" href="../../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>, <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="../../massa_models/block_header/type.SecuredHeader.html" title="type massa_models::block_header::SecuredHeader">SecuredHeader</a>&gt;&gt;, <a class="enum" href="../../massa_consensus_exports/error/enum.ConsensusError.html" title="enum massa_consensus_exports::error::ConsensusError">ConsensusError</a>&gt;</h4></section></summary><div class="docblock"><p>get the current block wish list, including the operations hash.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_active_block_and_descendants" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#547-564">source</a><h4 class="code-header">pub fn <a href="#method.get_active_block_and_descendants" class="fn">get_active_block_and_descendants</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_active_block_and_descendants" class="method"><a class="src rightside" href="../../src/massa_consensus_worker/state/mod.rs.html#535-552">source</a><h4 class="code-header">pub fn <a href="#method.get_active_block_and_descendants" class="fn">get_active_block_and_descendants</a>(
     &amp;self,
     block_id: &amp;<a class="enum" href="../../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>,
 ) -&gt; <a class="type" href="../../massa_models/prehash/type.PreHashSet.html" title="type massa_models::prehash::PreHashSet">PreHashSet</a>&lt;<a class="enum" href="../../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>&gt;</h4></section></summary><div class="docblock"><p>Gets a block and all its descendants</p>
