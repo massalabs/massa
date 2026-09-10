@@ -2,7 +2,8 @@ use super::{process::BlockInfos, ConsensusState};
 use massa_consensus_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
 use massa_logging::massa_trace;
 use massa_models::{
-    block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet, slot::Slot,
+    block_header::SecuredHeader, block_id::BlockId, denunciation::DenunciationPrecursor,
+    prehash::PreHashSet, slot::Slot,
 };
 use tracing::warn;
 
@@ -68,6 +69,22 @@ impl ConsensusState {
         false
     }
 
+    /// Handle the side effects of a header whose slot is verifiable: forward the
+    /// denunciation precursor to the pool, then apply the multi-stake limit.
+    ///
+    /// The precursor is forwarded unconditionally because the pool runs its own
+    /// eligibility checks (PoS draw, expiry, last start period) and keeps at most
+    /// one cache entry per slot: gating it on our local per-slot index could drop
+    /// evidence the pool never received.
+    ///
+    /// Returns `true` if the header is an extra equivocation block for its slot.
+    pub(crate) fn note_verifiable_header(&mut self, header: &SecuredHeader) -> bool {
+        self.channels
+            .pool_controller
+            .add_denunciation_precursor(DenunciationPrecursor::from(header));
+        self.detect_multistake(header)
+    }
+
     /// Check if the header is valid and if it could be processed when we will receive the full block
     pub(crate) fn convert_block_header(
         &mut self,
@@ -78,7 +95,7 @@ impl ConsensusState {
         let header_outcome = self.check_header(&block_id, &header, current_slot);
         match header_outcome {
             HeaderCheckOutcome::Proceed { .. } => {
-                if self.detect_multistake(&header) {
+                if self.note_verifiable_header(&header) {
                     return None;
                 }
                 // set as waiting dependencies
@@ -95,7 +112,7 @@ impl ConsensusState {
                 })
             }
             HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
-                if self.detect_multistake(&header) {
+                if self.note_verifiable_header(&header) {
                     return None;
                 }
                 // set as waiting dependencies
@@ -107,12 +124,19 @@ impl ConsensusState {
                 })
             }
             HeaderCheckOutcome::WaitForSlot => {
-                if self.detect_multistake(&header) {
-                    return None;
-                }
+                // WaitForSlot covers two cases:
+                // 1. producer checked, slot just not reached yet (clock skew)
+                // 2. selector has no draw for this slot yet (> 2 cycles ahead): NOTHING is
+                //    validated, not even the producer. Anyone can forge these for free.
+                // => No side effects of any kind on this path: no precursor, no multistake
+                //    index, no attack note. Only store, capped by prune_slot_waiting.
+                //    Everything is redone when the slot is reprocessed.
                 Some(BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)))
             }
             HeaderCheckOutcome::Discard(reason) => {
+                self.channels
+                    .pool_controller
+                    .add_denunciation_precursor(DenunciationPrecursor::from(&header));
                 Some(self.convert_to_discard_block_header(reason, block_id, header))
             }
         }

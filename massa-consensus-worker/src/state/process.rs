@@ -15,6 +15,7 @@ use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
     clique::Clique,
+    denunciation::DenunciationPrecursor,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
     timeslots,
@@ -169,12 +170,24 @@ impl ConsensusState {
                         );
                         match &res {
                             HeaderCheckOutcome::Discard(reason) => {
-                                self.maybe_note_attack_attempt(reason, &block_id)
+                                self.maybe_note_attack_attempt(reason, &block_id);
+                                self.channels.pool_controller.add_denunciation_precursor(
+                                    DenunciationPrecursor::from(&stored_block.content.header),
+                                );
+                            }
+                            HeaderCheckOutcome::WaitForSlot => {
+                                // The slot is not verifiable yet: either the slot is simply
+                                // not reached, or the selector has no draw for it and not even
+                                // the producer was checked. No side effects on this path, they
+                                // are all redone when the slot is reprocessed. See
+                                // `convert_block_header` for the full rationale.
                             }
                             _ => {
+                                // Slot is verifiable: forward the denunciation precursor and
+                                // apply the multistake limit so only validated blocks compete.
                                 // Extra equivocation blocks must leave Incoming so Storage is
                                 // not retained indefinitely (Incoming is not pruned / slot-ticked).
-                                if self.detect_multistake(&stored_block.content.header) {
+                                if self.note_verifiable_header(&stored_block.content.header) {
                                     res = HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                                         format!(
                                             "more than 2 blocks for slot {}",
