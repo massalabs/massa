@@ -8,7 +8,7 @@ use std::{
 };
 
 use massa_final_state::FinalStateController;
-use massa_ledger_exports::LedgerChanges;
+use massa_ledger_exports::{LedgerChanges, LedgerEntry};
 use massa_models::{
     address::Address,
     datastore::{get_prefix_bounds, range_intersection},
@@ -68,6 +68,7 @@ pub fn scan_datastore(
     let mut key_updates = BTreeMap::new();
     {
         let mut update_indices = VecDeque::new();
+        let mut reset_entry: Option<&LedgerEntry> = None;
         let history_lock = active_history.read();
 
         let it = history_lock
@@ -84,13 +85,9 @@ pub fn scan_datastore(
 
                 // address ledger entry being reset to an absolute new list of keys
                 Some(SetUpdateOrDelete::Set(v)) => {
-                    if let Some(k_range) = key_range.as_ref() {
-                        key_updates = v
-                            .datastore
-                            .range(k_range.clone())
-                            .map(|(k, _v)| (k.clone(), true))
-                            .collect();
-                    }
+                    // the entry is only scanned once the newer updates are known, so that
+                    // the scan can be bounded instead of materializing the whole range
+                    reset_entry = Some(v);
                     speculative_reset = SpeculativeResetType::Set;
                     break;
                 }
@@ -144,6 +141,27 @@ pub fn scan_datastore(
                 }
             } else {
                 panic!("unexpected state change");
+            }
+        }
+
+        // Scan the keys of a reset entry, now that the newer updates are known.
+        // Only the first `count + key_updates.len()` keys of the entry can matter: the
+        // updates already gathered are the only thing that can delete a key from that
+        // range, so any key past that bound is guaranteed not to reach the final result.
+        // Updates are newer than the reset, so they take precedence over the entry.
+        if let (Some(entry), Some(k_range)) = (reset_entry, key_range.as_ref()) {
+            let base_it = entry.datastore.range(k_range.clone()).map(|(k, _v)| k);
+            match count.map(|cnt| (cnt as usize).saturating_add(key_updates.len())) {
+                Some(limit) => {
+                    for k in base_it.take(limit) {
+                        key_updates.entry(k.clone()).or_insert(true);
+                    }
+                }
+                None => {
+                    for k in base_it {
+                        key_updates.entry(k.clone()).or_insert(true);
+                    }
+                }
             }
         }
     }
@@ -264,6 +282,12 @@ pub fn scan_datastore(
         if final_keys_queue.is_empty() {
             if let Some(last_k) = last_final_batch_key.take() {
                 // the last final item was consumed: replenish the queue by querying more
+                // only the keys still missing to reach `count` are worth fetching
+                let remaining = count.map(|cnt| {
+                    (cnt as u64)
+                        .saturating_sub(speculative_keys.len() as u64)
+                        .max(1) as u32
+                });
                 final_keys_queue = final_state
                     .read()
                     .get_ledger()
@@ -272,7 +296,7 @@ pub fn scan_datastore(
                         prefix,
                         std::ops::Bound::Excluded(last_k),
                         end_key.clone(),
-                        count,
+                        remaining,
                     )
                     .expect("address expected to exist in final state")
                     .iter()

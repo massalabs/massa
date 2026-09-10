@@ -242,7 +242,10 @@ pub fn range_intersection<T: Ord>(
 }
 
 /// Checks and cleans up a datastore key range query
-/// Returns: (prefix, start_bound, end_bound) or error
+/// Returns: (prefix, start_bound, end_bound, count) or error
+/// The returned count is the effective item count limit: it falls back to the
+/// configured maximum when the caller did not provide one, so that callers can
+/// forward it to the datastore scan instead of running an unbounded enumeration.
 /// Note: only useful to cleanup user-supplied requests (API/ABI)
 #[allow(clippy::type_complexity)]
 pub fn cleanup_datastore_key_range_query(
@@ -252,7 +255,7 @@ pub fn cleanup_datastore_key_range_query(
     count: Option<u32>,
     max_datastore_key_length: u8,
     max_datastore_query_config: Option<u32>,
-) -> Result<(Vec<u8>, Bound<Vec<u8>>, Bound<Vec<u8>>), ModelsError> {
+) -> Result<(Vec<u8>, Bound<Vec<u8>>, Bound<Vec<u8>>, Option<u32>), ModelsError> {
     // check item count
     let count = count.or(max_datastore_query_config);
     if let (Some(cnt), Some(max_cnt)) = (count.as_ref(), max_datastore_query_config.as_ref()) {
@@ -271,6 +274,7 @@ pub fn cleanup_datastore_key_range_query(
             Vec::new(),
             std::ops::Bound::Excluded(Vec::new()),
             std::ops::Bound::Excluded(Vec::new()),
+            count,
         ));
     } else {
         prefix.to_vec()
@@ -314,7 +318,7 @@ pub fn cleanup_datastore_key_range_query(
         }
     };
 
-    Ok((prefix, start_bound, end_bound))
+    Ok((prefix, start_bound, end_bound, count))
 }
 
 #[cfg(test)]
@@ -503,10 +507,11 @@ mod tests {
             max_query_config,
         );
         assert!(result.is_ok());
-        let (res_prefix, res_start, res_end) = result.unwrap();
+        let (res_prefix, res_start, res_end, res_count) = result.unwrap();
         assert_eq!(res_prefix, prefix);
         assert_eq!(res_start, start_bound);
         assert_eq!(res_end, end_bound);
+        assert_eq!(res_count, count);
 
         // Case 2: Prefix length exceeds max length
         let long_prefix = vec![b'a'; 30];
@@ -519,8 +524,9 @@ mod tests {
             None,
         );
         assert!(result.is_ok());
-        let (res_prefix, res_start, res_end) = result.unwrap();
+        let (res_prefix, res_start, res_end, res_count) = result.unwrap();
         assert!(res_prefix.is_empty());
+        assert_eq!(res_count, None);
         assert_eq!(res_start, Bound::Excluded(Vec::new()));
         assert_eq!(res_end, Bound::Excluded(Vec::new()));
 
@@ -537,8 +543,9 @@ mod tests {
             None,
         );
         assert!(result.is_ok());
-        let (res_prefix, res_start, res_end) = result.unwrap();
+        let (res_prefix, res_start, res_end, res_count) = result.unwrap();
         assert_eq!(res_prefix, prefix);
+        assert_eq!(res_count, None);
         assert_eq!(
             res_start,
             Bound::Excluded(long_key[0..10].to_vec()) // Start key truncated
@@ -576,9 +583,25 @@ mod tests {
             None,
         );
         assert!(result.is_ok());
-        let (res_prefix, res_start, res_end) = result.unwrap();
+        let (res_prefix, res_start, res_end, res_count) = result.unwrap();
         assert_eq!(res_prefix, prefix);
         assert_eq!(res_start, Bound::Unbounded);
         assert_eq!(res_end, Bound::Unbounded);
+        assert_eq!(res_count, None);
+
+        // Case 6: No count provided but a max query config is set:
+        // the configured maximum is used as the effective count so that the
+        // datastore scan stays bounded.
+        let result = cleanup_datastore_key_range_query(
+            &prefix,
+            Bound::Unbounded,
+            Bound::Unbounded,
+            None,
+            10,
+            Some(50),
+        );
+        assert!(result.is_ok());
+        let (_res_prefix, _res_start, _res_end, res_count) = result.unwrap();
+        assert_eq!(res_count, Some(50));
     }
 }

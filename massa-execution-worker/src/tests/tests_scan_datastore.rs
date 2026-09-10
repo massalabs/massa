@@ -433,3 +433,141 @@ fn display_bound_human_readable(bound: Bound<Vec<u8>>) {
         Bound::Unbounded => dbg!("bound key Unbounded".to_string()),
     };
 }
+
+/// Bounding the speculative scan must not change what is returned: for any `count`,
+/// the result has to be exactly the first `count` keys of the unbounded result.
+///
+/// The reset (`Set`) path is the interesting one, because deletions applied on top of
+/// the reset entry mean the scan has to look past the first `count` entry keys to
+/// still produce `count` keys.
+#[test]
+fn test_scan_datastore_count_is_a_prefix_of_unbounded() {
+    let mut rng = thread_rng();
+    for _ in 0..20 {
+        scan_datastore_count_prefix_case(rng.gen_range(20..60));
+    }
+}
+
+fn scan_datastore_count_prefix_case(nb_keys: usize) {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_datastore_keys()
+                .returning(move |_, _, _, _, _| None);
+        });
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_ledger()
+        .return_const(Box::new(foreign_controllers.ledger_controller.clone()));
+
+    let mut rng = thread_rng();
+
+    // the reset entry
+    let mut data = BTreeMap::new();
+    for i in 0..nb_keys {
+        // fixed-width keys so that byte order matches the generation order
+        let key = format!("key{:04}", i).into_bytes();
+        let value: Vec<u8> = (0..rng.gen_range(1..10))
+            .map(|_| rng.sample(Alphanumeric) as u8)
+            .collect();
+        data.insert(key, value);
+    }
+    let existing_keys: Vec<_> = data.keys().cloned().collect();
+
+    let mut changes = PreHashMap::default();
+    changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Set(LedgerEntry {
+            datastore: data.clone(),
+            ..Default::default()
+        }),
+    );
+
+    // updates newer than the reset: deletions concentrated on the lowest keys, so a
+    // naive `take(count)` on the entry would come up short, plus a few added keys
+    let mut datastore_updates = BTreeMap::new();
+    for key in existing_keys.iter().take(nb_keys / 3) {
+        datastore_updates.insert(key.clone(), massa_models::types::SetOrDelete::Delete);
+    }
+    for i in 0..5 {
+        // "add" sorts before "key", so these land at the front of the range
+        datastore_updates.insert(
+            format!("add{:04}", i).into_bytes(),
+            massa_models::types::SetOrDelete::Set(vec![1, 2, 3]),
+        );
+    }
+
+    let mut update_changes = PreHashMap::default();
+    update_changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Update(LedgerEntryUpdate {
+            datastore: datastore_updates.clone(),
+            ..Default::default()
+        }),
+    );
+
+    let mk_output = |slot, ledger_changes| ExecutionOutput {
+        slot,
+        block_info: None,
+        state_changes: StateChanges {
+            ledger_changes,
+            async_pool_changes: Default::default(),
+            deferred_call_changes: Default::default(),
+            pos_changes: Default::default(),
+            executed_ops_changes: Default::default(),
+            executed_denunciations_changes: Default::default(),
+            execution_trail_hash_change: Default::default(),
+        },
+        events: Default::default(),
+        #[cfg(feature = "execution-trace")]
+        slot_trace: Default::default(),
+        #[cfg(feature = "dump-block")]
+        storage: None,
+        deferred_credits_execution: Default::default(),
+        cancel_async_message_execution: Default::default(),
+        auto_sell_execution: Default::default(),
+        transfers_history: Default::default(),
+        execution_info: None,
+    };
+
+    let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([
+        mk_output(Slot::new(1, 0), LedgerChanges(changes)),
+        mk_output(Slot::new(2, 0), LedgerChanges(update_changes)),
+    ]))));
+
+    let scan = |count| {
+        scan_datastore(
+            &addr,
+            &[],
+            Bound::Unbounded,
+            Bound::Unbounded,
+            count,
+            foreign_controllers.final_state.clone(),
+            active_history.clone(),
+            None,
+        )
+        .1
+        .expect("expected candidate keys")
+    };
+
+    let unbounded: Vec<_> = scan(None).into_iter().collect();
+
+    // sanity: the deletions really do force the scan past the first keys of the entry
+    assert!(unbounded.len() > nb_keys / 2);
+
+    for count in 0..=(unbounded.len() + 2) {
+        let bounded: Vec<_> = scan(Some(count as u32)).into_iter().collect();
+        let expected: Vec<_> = unbounded.iter().take(count).cloned().collect();
+        assert_eq!(
+            bounded, expected,
+            "count={} produced a different result than the unbounded scan",
+            count
+        );
+    }
+}
