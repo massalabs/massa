@@ -1,7 +1,7 @@
 use std::{
     collections::{HashSet, VecDeque},
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
     time::Duration,
@@ -20,7 +20,7 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pool_exports::MockPoolController;
-use massa_pos_exports::{MockSelectorController, Selection};
+use massa_pos_exports::{MockSelectorController, PosError, Selection};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_test_framework::TestUniverse;
@@ -783,4 +783,253 @@ fn test_multistake_still_forwards_denunciation_precursor() {
         3,
         "extra equivocation block did not forward its denunciation precursor"
     );
+}
+
+/// A header for a slot the selector cannot draw yet (`get_producer` returns
+/// `Err`) reaches `WaitForSlot` with nothing validated at all - not even the
+/// producer. It must therefore have no side effect: no denunciation precursor
+/// and no entry in the multistake index.
+#[test]
+fn test_undrawable_slot_header_has_no_side_effects() {
+    let staking_key: KeyPair = KeyPair::generate(0).unwrap();
+    let attacker_key: KeyPair = KeyPair::generate(0).unwrap();
+    let t0 = MassaTime::from_millis(200);
+    let cfg = ConsensusConfig {
+        t0,
+        thread_count: 2,
+        genesis_timestamp: MassaTime::now(),
+        force_keep_final_periods: 50,
+        force_keep_final_periods_without_ops: 128,
+        max_future_processing_blocks: 10,
+        genesis_key: staking_key.clone(),
+        ..ConsensusConfig::default()
+    };
+
+    let staking_address = Address::from_public_key(&staking_key.get_public_key());
+    let last_start_period = cfg.last_start_period;
+    let undrawable_slot = Slot::new(5 + last_start_period, 0);
+
+    let mut foreign_controllers = ConsensusForeignControllers::new_with_mocks();
+
+    foreign_controllers
+        .execution_controller
+        .expect_update_blockclique_status()
+        .returning(|_, _, _| {});
+    foreign_controllers
+        .pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+
+    let precursor_count = Arc::new(AtomicUsize::new(0));
+    let precursor_count_clone = Arc::clone(&precursor_count);
+    foreign_controllers
+        .pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(move |_| {
+            precursor_count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+
+    // The selector has no draw for `undrawable_slot`: it is beyond its horizon.
+    foreign_controllers
+        .selector_controller
+        .expect_get_producer()
+        .returning(move |slot| {
+            if slot == undrawable_slot {
+                Err(PosError::CycleUnavailable(slot.period))
+            } else {
+                Ok(staking_address)
+            }
+        });
+    foreign_controllers
+        .selector_controller
+        .expect_get_selection()
+        .returning(move |_| {
+            Ok(Selection {
+                producer: staking_address,
+                endorsements: vec![staking_address; ENDORSEMENT_COUNT as usize],
+            })
+        });
+
+    let universe = ConsensusTestUniverse::new(foreign_controllers, cfg);
+    let controller = universe.module_controller.clone();
+
+    let genesis_hashes = controller
+        .get_block_graph_status(None, None)
+        .expect("could not get block graph status")
+        .genesis_blocks;
+
+    // Forged by a key that was never drawn: only the signature is checked at this
+    // point, so registering it costs the attacker nothing.
+    let forged = create_block(undrawable_slot, genesis_hashes, &attacker_key);
+    controller.register_block_header(forged.id, forged.content.header.clone());
+
+    let mut waited = 0u64;
+    loop {
+        std::thread::sleep(Duration::from_millis(10));
+        waited += 10;
+        let status = &controller.get_block_statuses(&[forged.id])[0];
+        if *status == BlockGraphStatus::WaitingForSlot {
+            break;
+        }
+        assert!(
+            waited < 1000,
+            "undrawable-slot header never reached WaitingForSlot (status: {:?})",
+            status
+        );
+    }
+
+    assert_eq!(
+        precursor_count.load(Ordering::SeqCst),
+        0,
+        "denunciation precursor forwarded for a slot the selector cannot draw"
+    );
+}
+
+/// Regression test for the F25 poisoning: two headers forged by an undrawn key
+/// for a slot the selector cannot draw yet must not consume the multistake
+/// budget of that slot. Once the slot becomes drawable, the legit block from the
+/// drawn producer must still be accepted.
+#[test]
+fn test_undrawable_slot_headers_do_not_poison_multistake() {
+    let staking_key: KeyPair = KeyPair::generate(0).unwrap();
+    let attacker_key: KeyPair = KeyPair::generate(0).unwrap();
+    let t0 = MassaTime::from_millis(200);
+    let cfg = ConsensusConfig {
+        t0,
+        thread_count: 2,
+        genesis_timestamp: MassaTime::now(),
+        force_keep_final_periods: 50,
+        force_keep_final_periods_without_ops: 128,
+        max_future_processing_blocks: 10,
+        genesis_key: staking_key.clone(),
+        ..ConsensusConfig::default()
+    };
+
+    let staking_address = Address::from_public_key(&staking_key.get_public_key());
+    let last_start_period = cfg.last_start_period;
+    let target_slot = Slot::new(5 + last_start_period, 0);
+
+    let mut foreign_controllers = ConsensusForeignControllers::new_with_mocks();
+
+    foreign_controllers
+        .execution_controller
+        .expect_update_blockclique_status()
+        .returning(|_, _, _| {});
+    foreign_controllers
+        .pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+    foreign_controllers
+        .pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(|_| {});
+
+    // The selector cannot draw `target_slot` until `draws_ready` is set, which
+    // emulates the cycle becoming available as time passes.
+    let draws_ready = Arc::new(AtomicBool::new(false));
+    let draws_ready_clone = Arc::clone(&draws_ready);
+    foreign_controllers
+        .selector_controller
+        .expect_get_producer()
+        .returning(move |slot| {
+            if slot == target_slot && !draws_ready_clone.load(Ordering::SeqCst) {
+                Err(PosError::CycleUnavailable(slot.period))
+            } else {
+                Ok(staking_address)
+            }
+        });
+    foreign_controllers
+        .selector_controller
+        .expect_get_selection()
+        .returning(move |_| {
+            Ok(Selection {
+                producer: staking_address,
+                endorsements: vec![staking_address; ENDORSEMENT_COUNT as usize],
+            })
+        });
+
+    let storage = foreign_controllers.storage.clone();
+    let universe = ConsensusTestUniverse::new(foreign_controllers, cfg);
+    let controller = universe.module_controller.clone();
+
+    let genesis_hashes = controller
+        .get_block_graph_status(None, None)
+        .expect("could not get block graph status")
+        .genesis_blocks;
+
+    // Two headers forged by an undrawn key, sent while the slot is undrawable.
+    let forged: Vec<_> = (0..2u8)
+        .map(|i| {
+            create_block_with_merkle_root(
+                Hash::compute_from(&[i]),
+                target_slot,
+                genesis_hashes.clone(),
+                &attacker_key,
+            )
+        })
+        .collect();
+    let forged_ids: Vec<BlockId> = forged.iter().map(|b| b.id).collect();
+    for block in &forged {
+        controller.register_block_header(block.id, block.content.header.clone());
+    }
+
+    let mut waited = 0u64;
+    loop {
+        std::thread::sleep(Duration::from_millis(10));
+        waited += 10;
+        let statuses = controller.get_block_statuses(&forged_ids);
+        if statuses
+            .iter()
+            .all(|s| *s == BlockGraphStatus::WaitingForSlot)
+        {
+            break;
+        }
+        assert!(
+            waited < 1000,
+            "forged headers never all reached WaitingForSlot (statuses: {:?})",
+            statuses
+        );
+    }
+
+    // The cycle becomes available and the legit producer publishes its block.
+    draws_ready.store(true, Ordering::SeqCst);
+    let legit = create_block_with_merkle_root(
+        Hash::compute_from(b"legit"),
+        target_slot,
+        genesis_hashes,
+        &staking_key,
+    );
+    register_block(&controller, legit.clone(), storage.clone());
+
+    // The forged headers are discarded on reprocessing (bad creator turn) and the
+    // legit block is accepted: it never competed with them for the slot.
+    let mut waited = 0u64;
+    loop {
+        std::thread::sleep(Duration::from_millis(25));
+        waited += 25;
+        let legit_status = controller.get_block_statuses(&[legit.id]).remove(0);
+        if legit_status == BlockGraphStatus::ActiveInBlockclique
+            || legit_status == BlockGraphStatus::Final
+        {
+            break;
+        }
+        assert!(
+            waited < 3000,
+            "legit block for the poisoned slot was not accepted (status: {:?}, forged: {:?})",
+            legit_status,
+            controller.get_block_statuses(&forged_ids)
+        );
+    }
+
+    for (id, status) in forged_ids
+        .iter()
+        .zip(controller.get_block_statuses(&forged_ids))
+    {
+        assert_eq!(
+            status,
+            BlockGraphStatus::Discarded,
+            "forged header {} should have been discarded on reprocessing",
+            id
+        );
+    }
 }

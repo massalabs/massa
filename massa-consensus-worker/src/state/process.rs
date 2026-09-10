@@ -176,8 +176,11 @@ impl ConsensusState {
                                 );
                             }
                             HeaderCheckOutcome::WaitForSlot => {
-                                // The slot is not yet verifiable: defer denunciation and
-                                // multistake side effects until the block is reprocessed.
+                                // The slot is not verifiable yet: either the slot is simply
+                                // not reached, or the selector has no draw for it and not even
+                                // the producer was checked. No side effects on this path, they
+                                // are all redone when the slot is reprocessed. See
+                                // `convert_block_header` for the full rationale.
                             }
                             _ => {
                                 // Slot is verifiable: forward the denunciation precursor and

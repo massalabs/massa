@@ -124,8 +124,13 @@ impl ConsensusState {
                 })
             }
             HeaderCheckOutcome::WaitForSlot => {
-                // The slot is not yet verifiable: defer denunciation and
-                // multistake side effects until the block is reprocessed.
+                // WaitForSlot covers two cases:
+                // 1. producer checked, slot just not reached yet (clock skew)
+                // 2. selector has no draw for this slot yet (> 2 cycles ahead): NOTHING is
+                //    validated, not even the producer. Anyone can forge these for free.
+                // => No side effects of any kind on this path: no precursor, no multistake
+                //    index, no attack note. Only store, capped by prune_slot_waiting.
+                //    Everything is redone when the slot is reprocessed.
                 Some(BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)))
             }
             HeaderCheckOutcome::Discard(reason) => {
