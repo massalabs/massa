@@ -360,16 +360,6 @@
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -500,11 +490,7 @@
         <span class="kw">let </span>len_slot_waiting = slot_waiting.len();
         (<span class="self">self</span>.config.max_future_processing_blocks..len_slot_waiting).for_each(|idx| {
             <span class="kw">let </span>(_slot, block_id) = <span class="kw-2">&amp;</span>slot_waiting[idx];
-            <span class="comment">// Eviction for size is NOT a verdict on the block: forget it (None), do not mark it
-            // Discarded. Discarded is terminal (never reprocessed) and inherited by every child
-            // in check_header. A forgotten block is refetched through the wishlist as soon as a
-            // child references it, which is the recovery path we want.
-            </span><span class="self">self</span>.blocks_state.transition_map(block_id, |<span class="kw">_</span>, <span class="kw">_</span>| <span class="prelude-val">None</span>);
+            <span class="self">self</span>.blocks_state.transition_map(block_id, |<span class="kw">_</span>, <span class="kw">_</span>| <span class="prelude-val">None</span>);
         });
     }
 
@@ -643,13 +629,7 @@
                     .min();
                 <span class="kw">if let </span><span class="prelude-val">Some</span>((_seq_num, _slot, hash)) = remove_elt {
                     to_keep.remove(<span class="kw-2">&amp;</span>hash);
-                    <span class="comment">// Eviction for size is NOT a verdict on the block: forget it (None), do not mark
-                    // it Discarded. Discarded is terminal (never reprocessed) and inherited by every
-                    // child in check_header, and here it would also be propagated by the
-                    // discarded-dependency cascade above to every waiter built on this block. A
-                    // forgotten block is refetched through the wishlist as soon as a child
-                    // references it, which is the recovery path we want.
-                    </span>to_discard.insert(hash, <span class="prelude-val">None</span>);
+                    to_discard.insert(hash, <span class="prelude-val">None</span>);
                     <span class="kw">continue</span>;
                 }
             }

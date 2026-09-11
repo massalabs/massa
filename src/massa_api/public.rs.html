@@ -1671,6 +1671,7 @@
 <a href="#1671" id="1671">1671</a>
 <a href="#1672" id="1672">1672</a>
 <a href="#1673" id="1673">1673</a>
+<a href="#1674" id="1674">1674</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -2297,6 +2298,7 @@
             chain_id: <span class="self">self</span>.<span class="number">0</span>.api_settings.chain_id,
             minimal_fees: <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees,
             current_mip_version,
+            max_datastore_keys_query: <span class="self">self</span>.<span class="number">0</span>.api_settings.max_datastore_keys_queries,
         })
     }
 
