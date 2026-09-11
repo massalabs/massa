@@ -685,7 +685,9 @@ mod test {
 
     #[test]
     fn test_address_errors() {
-        let expected_error_0 = "address parsing error: UnexpectedAddress".to_string();
+        let expected_error_0 =
+            "address parsing error: Invalid address: Address prefix 'AU' or 'AS' not found"
+                .to_string();
         let actual_error_0 = Address::from_str("UnexpectedAddress")
             .unwrap_err()
             .to_string();
