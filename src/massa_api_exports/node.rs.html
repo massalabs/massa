@@ -96,15 +96,6 @@
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::amount::Amount;
@@ -155,8 +146,6 @@
     </span><span class="kw">pub </span>minimal_fees: Amount,
     <span class="doccomment">/// current mip version
     </span><span class="kw">pub </span>current_mip_version: u32,
-    <span class="doccomment">/// max number of datastore keys returned by a single datastore key query
-    </span><span class="kw">pub </span>max_datastore_keys_query: <span class="prelude-ty">Option</span>&lt;u32&gt;,
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>NodeStatus {
@@ -171,13 +160,6 @@
 
         <span class="macro">writeln!</span>(f, <span class="string">"Version: {}"</span>, <span class="self">self</span>.version)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(f, <span class="string">"Config:\n{}"</span>, <span class="self">self</span>.config)<span class="question-mark">?</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(max_datastore_keys_query) = <span class="self">self</span>.max_datastore_keys_query {
-            <span class="macro">writeln!</span>(
-                f,
-                <span class="string">"Max datastore keys per query: {}"</span>,
-                max_datastore_keys_query
-            )<span class="question-mark">?</span>;
-        }
         <span class="macro">writeln!</span>(f)<span class="question-mark">?</span>;
 
         <span class="macro">writeln!</span>(f, <span class="string">"Current time: {}"</span>, <span class="self">self</span>.current_time.format_instant())<span class="question-mark">?</span>;
