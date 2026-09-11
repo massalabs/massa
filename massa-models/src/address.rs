@@ -217,21 +217,23 @@ impl<'de> ::serde::Deserialize<'de> for Address {
 impl FromStr for Address {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let err = Err(ModelsError::AddressParseError(s.to_string()));
+        let prefix_err = Err(ModelsError::AddressParseError(
+            "Invalid address: Address prefix 'AU' or 'AS' not found".to_string(),
+        ));
 
         // Handle the prefix ("A{U|S}")
         let mut chars = s.chars();
         let Some(ADDRESS_PREFIX) = chars.next() else {
-            return err;
+            return prefix_err;
         };
         let Some(pref) = chars.next() else {
-            return err;
+            return prefix_err;
         };
 
         let res = match pref {
             'U' => Address::User(UserAddress::from_str_without_prefixed_type(chars.as_str())?),
             'S' => Address::SC(SCAddress::from_str_without_prefixed_type(chars.as_str())?),
-            _ => return err,
+            _ => return prefix_err,
         };
         Ok(res)
     }
