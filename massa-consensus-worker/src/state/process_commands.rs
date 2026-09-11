@@ -148,14 +148,21 @@ impl ConsensusState {
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
         let sequence_number = self.blocks_state.sequence_counter();
-        self.blocks_state.transition_map(block_id, |_, _| {
-            Some(BlockStatus::Discarded {
-                slot: header.content.slot,
-                creator: header.content_creator_address,
-                parents: header.content.parents,
-                reason,
-                sequence_number,
-            })
-        });
+        self.blocks_state
+            .transition_map(block_id, |block_status, _| {
+                // The block may be unknown to consensus: a wishlisted parent is never inserted in
+                // `blocks_state` until its full block arrives, but protocol can decide it is invalid
+                // before that (committed ops exceed the max block size). `None -> Discarded` is a
+                // forbidden transition (panic), so do nothing: the attack attempt is already noted
+                // above, and the waiters depending on it will be pruned as stale.
+                block_status.as_ref()?;
+                Some(BlockStatus::Discarded {
+                    slot: header.content.slot,
+                    creator: header.content_creator_address,
+                    parents: header.content.parents,
+                    reason,
+                    sequence_number,
+                })
+            });
     }
 }
