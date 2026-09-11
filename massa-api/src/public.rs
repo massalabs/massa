@@ -624,6 +624,7 @@ impl MassaRpcServer for API<Public> {
             chain_id: self.0.api_settings.chain_id,
             minimal_fees: self.0.api_settings.minimal_fees,
             current_mip_version,
+            max_datastore_keys_query: self.0.api_settings.max_datastore_keys_queries,
         })
     }
 
