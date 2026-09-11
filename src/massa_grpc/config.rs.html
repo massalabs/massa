@@ -169,6 +169,8 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::amount::Amount;
@@ -299,6 +301,8 @@
     </span><span class="kw">pub </span>max_filters_per_request: u32,
     <span class="doccomment">/// max number of query items that can be included in a single request
     </span><span class="kw">pub </span>max_query_items_per_request: u32,
+    <span class="doccomment">/// max events returned per query_state batch
+    </span><span class="kw">pub </span>max_events_per_query: u32,
     <span class="doccomment">/// certificate authority root path
     </span><span class="kw">pub </span>certificate_authority_root_path: PathBuf,
     <span class="doccomment">/// server certificate path

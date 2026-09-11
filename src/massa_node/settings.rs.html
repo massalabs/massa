@@ -436,6 +436,9 @@
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -582,6 +585,7 @@
     <span class="kw">pub </span>openrpc_spec_path: PathBuf,
     <span class="kw">pub </span>max_request_body_size: u32,
     <span class="kw">pub </span>max_response_body_size: u32,
+    <span class="kw">pub </span>max_events_per_query: u32,
     <span class="kw">pub </span>max_connections: u32,
     <span class="kw">pub </span>max_subscriptions_per_connection: u32,
     <span class="kw">pub </span>max_log_length: u32,
@@ -827,6 +831,8 @@
     </span><span class="kw">pub </span>max_filters_per_request: u32,
     <span class="doccomment">/// max number of query items that can be included in a single request
     </span><span class="kw">pub </span>max_query_items_per_request: u32,
+    <span class="doccomment">/// max events returned per query_state batch
+    </span><span class="kw">pub </span>max_events_per_query: u32,
     <span class="doccomment">/// certificate authority root path
     </span><span class="kw">pub </span>certificate_authority_root_path: PathBuf,
     <span class="doccomment">/// server certificate path

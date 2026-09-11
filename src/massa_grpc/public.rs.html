@@ -1567,6 +1567,8 @@
 <a href="#1567" id="1567">1567</a>
 <a href="#1568" id="1568">1568</a>
 <a href="#1569" id="1569">1569</a>
+<a href="#1570" id="1570">1570</a>
+<a href="#1571" id="1571">1571</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2538,6 +2540,7 @@
     </span><span class="kw">let </span>empty_request = ExecutionQueryRequest {
         requests: <span class="macro">vec!</span>[],
         max_response_size: grpc.grpc_config.max_encoding_message_size,
+        max_event_count: grpc.grpc_config.max_events_per_query <span class="kw">as </span>usize,
     };
     <span class="kw">let </span>state = grpc.execution_controller.query_state(empty_request);
 
@@ -2615,6 +2618,7 @@
         .query_state(ExecutionQueryRequest {
             requests: queries,
             max_response_size: grpc.grpc_config.max_encoding_message_size,
+            max_event_count: grpc.grpc_config.max_events_per_query <span class="kw">as </span>usize,
         });
 
     <span class="prelude-val">Ok</span>(grpc_api::QueryStateResponse {

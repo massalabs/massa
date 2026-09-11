@@ -398,6 +398,12 @@
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -442,11 +448,17 @@
 </span><span class="kw">pub struct </span>ExecutionQueryRequest {
     <span class="doccomment">/// List of requests
     </span><span class="kw">pub </span>requests: Vec&lt;ExecutionQueryRequestItem&gt;,
-    <span class="doccomment">/// Maximum aggregate size (bytes) of large payload items (`Bytecode`, `DatastoreValue`)
+    <span class="doccomment">/// Maximum aggregate size (bytes) of large payload items
+    /// (`Bytecode`, `DatastoreValue`, `Events`, datastore keys)
     /// allowed in the response. Callers should pass their transport limit
     /// (e.g. JSON-RPC `max_response_body_size` or gRPC `max_encoding_message_size`).
     /// Other response variants are treated as zero-cost for this budget.
     </span><span class="kw">pub </span>max_response_size: usize,
+    <span class="doccomment">/// Maximum number of `Events` items returnable by the whole batch.
+    /// Each `Events` item takes `min(remaining, per-item cap)` and decrements
+    /// what it returns; an `Events` item past zero gets a per-item
+    /// `TooLargeResponse` error instead of being fetched.
+    </span><span class="kw">pub </span>max_event_count: usize,
 }
 
 <span class="doccomment">/// Response to a list of execution queries
