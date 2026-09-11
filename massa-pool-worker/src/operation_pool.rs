@@ -354,6 +354,13 @@ impl OperationPool {
         // get execution statuses
         let exec_statuses = self.get_execution_statuses();
 
+        // Cache live execution marks on OperationInfo so get_block_operations (factory
+        // thread) can skip without touching execution. Staleness is bounded by the
+        // refresh interval; a rare duplicate is ignored by execution.
+        for op_info in &mut self.sorted_ops {
+            op_info.executed = exec_statuses.contains_key(&op_info.id);
+        }
+
         // get sender balances
         let sender_balances = self.get_sender_balances();
 
@@ -477,12 +484,10 @@ impl OperationPool {
     /// - fit inside the block
     /// - is the most profitable for block producer
     /// - are not currently marked executed (speculative or final)
+    ///
+    /// Must never query execution: runs on the factory thread under the pool read
+    /// guard at slot time. Uses the `executed` flag set by refresh() instead.
     pub fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
-        // Live execution marks: skip while present so we do not waste block gas/space.
-        // Speculative marks can disappear on rollback; those ops stay in the pool and
-        // become selectable again once the mark is gone (without needing reinsertion).
-        let exec_statuses = self.get_execution_statuses();
-
         // init list of selected operation IDs
         let mut op_ids = Vec::new();
 
@@ -520,8 +525,9 @@ impl OperationPool {
                 continue;
             }
 
-            // exclude ops currently executed (candidate or final)
-            if exec_statuses.contains_key(&op_info.id) {
+            // Skip while refresh() last saw a live execution mark (speculative or final).
+            // Zero cost on the production path; staleness is at most one refresh interval.
+            if op_info.executed {
                 continue;
             }
 
