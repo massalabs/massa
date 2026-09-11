@@ -154,8 +154,11 @@ impl DeferredCallRegistry {
     }
 
     /// Returns the base fee for a slot.
-    /// Uninitialized slots (missing from storage or set to zero) fall back to
-    /// `min_gas_cost` so bookable slots are never priced at zero.
+    /// Uninitialized slots (no entry, or zero) fall back to `min_gas_cost`: this is exactly
+    /// what `advance_slot` would have written for them from an empty registry (0 booked gas
+    /// puts the controller in its "decrease" branch, which floors at `min_gas_cost`), so the
+    /// fallback is the missing initialization, not a different pricing rule. On a registry
+    /// that has been advancing for more than `max_future_slots` this never fires.
     pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
         let key = deferred_call_slot_base_fee_key!(slot.to_bytes_key());
         let base_fee = match self.db.read().get_cf(STATE_CF, key) {
