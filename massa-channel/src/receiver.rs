@@ -45,7 +45,16 @@ impl<T> MassaReceiver<T> {
         self.received.inc();
     }
 
-    /// unregister metrics
+    /// Unregister the channel metrics.
+    ///
+    /// Called from every `recv*`/`try_recv` disconnect branch on purpose, even
+    /// though `MassaReceiver` is `Clone`: a crossbeam disconnect means all senders
+    /// are dropped and the buffer is empty, so the channel is dead for every clone
+    /// at once and the metrics are frozen. Unregistering right away also frees the
+    /// metric names for the relaunch (`NeedSync`) that re-creates the channels
+    /// with the same names; `MassaChannel::new` only logs registration failures
+    /// at debug level. Later calls (from other clones or from `Drop`) fail with
+    /// "not registered" and are swallowed at trace level.
     fn unregister_metrics(&self) {
         if let Err(e) = prometheus::unregister(Box::new(self.actual_len.clone())) {
             trace!(
