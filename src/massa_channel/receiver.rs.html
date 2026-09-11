@@ -134,15 +134,6 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     ops::{Deref, DerefMut},
     sync::Arc,
@@ -190,16 +181,7 @@
         <span class="self">self</span>.received.inc();
     }
 
-    <span class="doccomment">/// Unregister the channel metrics.
-    ///
-    /// Called from every `recv*`/`try_recv` disconnect branch on purpose, even
-    /// though `MassaReceiver` is `Clone`: a crossbeam disconnect means all senders
-    /// are dropped and the buffer is empty, so the channel is dead for every clone
-    /// at once and the metrics are frozen. Unregistering right away also frees the
-    /// metric names for the relaunch (`NeedSync`) that re-creates the channels
-    /// with the same names; `MassaChannel::new` only logs registration failures
-    /// at debug level. Later calls (from other clones or from `Drop`) fail with
-    /// "not registered" and are swallowed at trace level.
+    <span class="doccomment">/// unregister metrics
     </span><span class="kw">fn </span>unregister_metrics(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::unregister(Box::new(<span class="self">self</span>.actual_len.clone())) {
             <span class="macro">trace!</span>(
