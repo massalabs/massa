@@ -42,11 +42,17 @@ pub struct ExecutionBlockMetadata {
 pub struct ExecutionQueryRequest {
     /// List of requests
     pub requests: Vec<ExecutionQueryRequestItem>,
-    /// Maximum aggregate size (bytes) of large payload items (`Bytecode`, `DatastoreValue`)
+    /// Maximum aggregate size (bytes) of large payload items
+    /// (`Bytecode`, `DatastoreValue`, `Events`, datastore keys)
     /// allowed in the response. Callers should pass their transport limit
     /// (e.g. JSON-RPC `max_response_body_size` or gRPC `max_encoding_message_size`).
     /// Other response variants are treated as zero-cost for this budget.
     pub max_response_size: usize,
+    /// Maximum number of `Events` items returnable by the whole batch.
+    /// Each `Events` item takes `min(remaining, per-item cap)` and decrements
+    /// what it returns; an `Events` item past zero gets a per-item
+    /// `TooLargeResponse` error instead of being fetched.
+    pub max_event_count: usize,
 }
 
 /// Response to a list of execution queries

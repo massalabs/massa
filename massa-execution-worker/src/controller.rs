@@ -20,7 +20,7 @@ use massa_models::stats::ExecutionStats;
 use massa_models::{address::Address, amount::Amount, operation::OperationId};
 use massa_models::{block_id::BlockId, slot::Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Display;
 use std::sync::Arc;
 use tracing::info;
@@ -143,280 +143,37 @@ impl ExecutionController for ExecutionControllerImpl {
     /// to read a consistent state. Never release the lock between items to reduce contention:
     /// bound the cost of a batch via budgets (per-item errors) instead.
     ///
-    /// Large payload responses (`Bytecode`, `DatastoreValue`) are counted toward
-    /// `req.max_response_size`. Other response variants are treated as 0 bytes.
+    /// This invariant is enforced by borrowing: item reads go through `&ExecutionState`
+    /// borrowed from the guard, so releasing the guard mid-batch is a compile error.
+    ///
+    /// Large payload responses (`Bytecode`, `DatastoreValue`, `Events`, datastore keys)
+    /// are counted toward `req.max_response_size`. Other response variants are treated
+    /// as 0 bytes.
     /// When appending a large payload would exceed the budget, that item is returned
     /// as `ExecutionQueryError::TooLargeResponse` and its bytes are not retained.
     fn query_state(&self, req: ExecutionQueryRequest) -> ExecutionQueryResponse {
-        let execution_lock = self.execution_state.read();
+        let execution_guard = self.execution_state.read();
+        // `exec_state` borrows `execution_guard`: the guard cannot be released
+        // while batch reads go through it.
+        let exec_state: &ExecutionState = &execution_guard;
         let mut resp: ExecutionQueryResponse = ExecutionQueryResponse {
             responses: Vec::with_capacity(req.requests.len()),
-            candidate_cursor: execution_lock.active_cursor,
-            final_cursor: execution_lock.final_cursor,
-            final_state_fingerprint: execution_lock.get_final_state_fingerprint(),
+            candidate_cursor: exec_state.active_cursor,
+            final_cursor: exec_state.final_cursor,
+            final_state_fingerprint: exec_state.get_final_state_fingerprint(),
         };
         // Cumulative size of bytecode / datastore-value payloads kept in `resp`.
         let mut response_payload_size: usize = 0;
+        // Events still returnable by this batch; see `max_event_count`.
+        let mut remaining_events = req.max_event_count;
         for req_item in req.requests {
-            let resp_item = match req_item {
-                ExecutionQueryRequestItem::AddressExistsCandidate(addr) => {
-                    Ok(ExecutionQueryResponseItem::Boolean(
-                        execution_lock
-                            .get_final_and_candidate_balance(&addr)
-                            .1
-                            .is_some(),
-                    ))
-                }
-                ExecutionQueryRequestItem::AddressExistsFinal(addr) => {
-                    Ok(ExecutionQueryResponseItem::Boolean(
-                        execution_lock
-                            .get_final_and_candidate_balance(&addr)
-                            .0
-                            .is_some(),
-                    ))
-                }
-                ExecutionQueryRequestItem::AddressBalanceCandidate(addr) => {
-                    let (_final_v, speculative_v) =
-                        execution_lock.get_final_and_candidate_balance(&addr);
-                    match speculative_v {
-                        Some(balance) => Ok(ExecutionQueryResponseItem::Amount(balance)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressBalanceFinal(addr) => {
-                    let (final_v, _speculative_v) =
-                        execution_lock.get_final_and_candidate_balance(&addr);
-                    match final_v {
-                        Some(balance) => Ok(ExecutionQueryResponseItem::Amount(balance)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressBytecodeCandidate(addr) => {
-                    let (_final_v, speculative_v) =
-                        execution_lock.get_final_and_active_bytecode(&addr);
-                    match speculative_v {
-                        Some(bytecode) => account_large_payload(
-                            &mut response_payload_size,
-                            req.max_response_size,
-                            bytecode.0.len(),
-                        )
-                        .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressBytecodeFinal(addr) => {
-                    let (final_v, _speculative_v) =
-                        execution_lock.get_final_and_active_bytecode(&addr);
-                    match final_v {
-                        Some(bytecode) => account_large_payload(
-                            &mut response_payload_size,
-                            req.max_response_size,
-                            bytecode.0.len(),
-                        )
-                        .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    address,
-                    prefix,
-                    start_key,
-                    end_key,
-                    count,
-                } => {
-                    let (_final_v, speculative_v) = execution_lock
-                        .get_final_and_candidate_datastore_keys(
-                            &address, &prefix, start_key, end_key, count,
-                        );
-                    match speculative_v {
-                        Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
-                            keys, address, false,
-                        )),
-                        None => Err(ExecutionQueryError::NotFound(format!(
-                            "Account {}",
-                            address
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    address,
-                    prefix,
-                    start_key,
-                    end_key,
-                    count,
-                } => {
-                    let final_v = execution_lock
-                        .get_final_datastore_keys(&address, &prefix, start_key, end_key, count);
-                    match final_v {
-                        Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
-                            keys, address, true,
-                        )),
-                        None => Err(ExecutionQueryError::NotFound(format!(
-                            "Account {}",
-                            address
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } => {
-                    let (_final_v, speculative_v) =
-                        execution_lock.get_final_and_active_data_entry(&addr, &key);
-                    match speculative_v {
-                        Some(value) => account_large_payload(
-                            &mut response_payload_size,
-                            req.max_response_size,
-                            value.len(),
-                        )
-                        .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
-                        None => Err(ExecutionQueryError::NotFound(format!(
-                            "Account {} datastore entry {:?}",
-                            addr, key
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreValueFinal { addr, key } => {
-                    let (final_v, _speculative_v) =
-                        execution_lock.get_final_and_active_data_entry(&addr, &key);
-                    match final_v {
-                        Some(value) => account_large_payload(
-                            &mut response_payload_size,
-                            req.max_response_size,
-                            value.len(),
-                        )
-                        .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
-                        None => Err(ExecutionQueryError::NotFound(format!(
-                            "Account {} datastore entry {:?}",
-                            addr, key
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) => {
-                    let (speculative_v, _final_v) = execution_lock
-                        .get_ops_exec_status(&[id])
-                        .first()
-                        .map(|(s_v, f_v)| (*s_v, *f_v))
-                        .expect("expected one return value");
-                    match speculative_v {
-                        Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        Some(false) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
-                        )),
-                        None => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::OpExecutionStatusFinal(id) => {
-                    let (_speculative_v, final_v) = execution_lock
-                        .get_ops_exec_status(&[id])
-                        .first()
-                        .map(|(s_v, f_v)| (*s_v, *f_v))
-                        .expect("expected one return value");
-                    match final_v {
-                        Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        Some(false) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
-                        )),
-                        None => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(id) => {
-                    let (speculative_v, _final_v) =
-                        execution_lock.get_denunciation_execution_status(&id);
-                    match speculative_v {
-                        true => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        false => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(id) => {
-                    let (_speculative_v, final_v) =
-                        execution_lock.get_denunciation_execution_status(&id);
-                    match final_v {
-                        true => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        false => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressRollsCandidate(addr) => {
-                    let (_final_rolls, candidate_rolls) =
-                        execution_lock.get_final_and_candidate_rolls(&addr);
-                    Ok(ExecutionQueryResponseItem::RollCount(candidate_rolls))
-                }
-                ExecutionQueryRequestItem::AddressRollsFinal(addr) => {
-                    let (final_rolls, _candidate_rolls) =
-                        execution_lock.get_final_and_candidate_rolls(&addr);
-                    Ok(ExecutionQueryResponseItem::RollCount(final_rolls))
-                }
-                ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) => {
-                    let (candidate_v, _final_v) =
-                        execution_lock.get_address_deferred_credits(&addr);
-                    Ok(ExecutionQueryResponseItem::DeferredCredits(candidate_v))
-                }
-                ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) => {
-                    let (_candidate_v, final_v) =
-                        execution_lock.get_address_deferred_credits(&addr);
-                    Ok(ExecutionQueryResponseItem::DeferredCredits(final_v))
-                }
-                ExecutionQueryRequestItem::CycleInfos {
-                    cycle,
-                    restrict_to_addresses,
-                } => {
-                    let cycle_infos =
-                        execution_lock.get_cycle_infos(cycle, restrict_to_addresses.as_ref());
-                    match cycle_infos {
-                        Some(cycle_infos) => {
-                            Ok(ExecutionQueryResponseItem::CycleInfos(cycle_infos))
-                        }
-                        None => Err(ExecutionQueryError::NotFound(format!("Cycle {}", cycle))),
-                    }
-                }
-                ExecutionQueryRequestItem::Events(filter) => {
-                    Ok(ExecutionQueryResponseItem::Events(
-                        execution_lock.get_filtered_sc_output_event(filter),
-                    ))
-                }
-                ExecutionQueryRequestItem::DeferredCallQuote {
-                    target_slot,
-                    max_gas_request,
-                    params_size,
-                } => {
-                    let result = execution_lock.deferred_call_quote(
-                        target_slot,
-                        max_gas_request,
-                        params_size,
-                    );
-                    Ok(ExecutionQueryResponseItem::DeferredCallQuote(
-                        result.0, result.1, result.2, result.3,
-                    ))
-                }
-                ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) => execution_lock
-                    .deferred_call_info(&deferred_call_id)
-                    .ok_or_else(|| {
-                        ExecutionQueryError::NotFound(format!(
-                            "Deferred call id {}",
-                            deferred_call_id
-                        ))
-                    })
-                    .map(|call| {
-                        ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)
-                    }),
-                ExecutionQueryRequestItem::DeferredCallsBySlot(slot) => {
-                    let res = execution_lock.get_deferred_calls_by_slot(slot);
-                    Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
-                }
-            };
+            let resp_item = eval_query_item(
+                exec_state,
+                req_item,
+                &mut response_payload_size,
+                req.max_response_size,
+                &mut remaining_events,
+            );
             resp.responses.push(resp_item);
         }
         resp
@@ -428,10 +185,13 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * emitter address
     /// * original caller address
     /// * operation id
+    // ponytail: single-shot path uncapped (usize::MAX), one full active-history scan per call;
+    // thread a handler-provided limit like query_state does if this is abused
+    // (breaking-changes list, F42).
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         self.execution_state
             .read()
-            .get_filtered_sc_output_event(filter)
+            .get_filtered_sc_output_event(filter, usize::MAX)
     }
 
     /// Get the final and candidate values of balance.
@@ -442,15 +202,11 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
-        let execution_state_lock = self.execution_state.read();
-        let mut result = Vec::with_capacity(addresses.len());
-        for addr in addresses {
-            result.push(execution_state_lock.get_final_and_candidate_balance(addr));
-        }
-        result
+        let execution_guard = self.execution_state.read();
+        get_final_and_candidate_balance_under(&execution_guard, addresses)
     }
 
-    /// Get a copy of a single datastore entry with its final and active values
+    /// Get a copy of a single datastore entry with its final and active values.
     ///
     /// # Return value
     /// * `Vec<(final_data_entry, active_data_entry)>`
@@ -458,12 +214,8 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         input: Vec<(Address, Vec<u8>)>,
     ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        let mut result = Vec::with_capacity(input.len());
-        let execution_state_lock = self.execution_state.read();
-        for (addr, key) in input {
-            result.push(execution_state_lock.get_final_and_active_data_entry(&addr, &key));
-        }
-        result
+        let execution_guard = self.execution_state.read();
+        get_final_and_active_data_entry_under(&execution_guard, input)
     }
 
     /// Return the active rolls distribution for the given `cycle`
@@ -522,41 +274,14 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_denunciation_execution_status(denunciation_index)
     }
 
-    /// Gets information about a batch of addresses
+    /// Gets information about a batch of addresses.
     fn get_addresses_infos(
         &self,
         addresses: &[Address],
         deferred_credits_max_slot: std::ops::Bound<Slot>,
     ) -> Vec<ExecutionAddressInfo> {
-        let mut res = Vec::with_capacity(addresses.len());
-        let exec_state = self.execution_state.read();
-        for addr in addresses {
-            let (final_datastore_keys, candidate_datastore_keys) = exec_state
-                .get_final_and_candidate_datastore_keys(
-                    addr,
-                    &[],
-                    std::ops::Bound::Unbounded,
-                    std::ops::Bound::Unbounded,
-                    None,
-                );
-            let (final_balance, candidate_balance) =
-                exec_state.get_final_and_candidate_balance(addr);
-            let (final_roll_count, candidate_roll_count) =
-                exec_state.get_final_and_candidate_rolls(addr);
-            let future_deferred_credits =
-                exec_state.get_address_future_deferred_credits(addr, deferred_credits_max_slot);
-            res.push(ExecutionAddressInfo {
-                final_datastore_keys: final_datastore_keys.unwrap_or_default(),
-                candidate_datastore_keys: candidate_datastore_keys.unwrap_or_default(),
-                final_balance: final_balance.unwrap_or_default(),
-                candidate_balance: candidate_balance.unwrap_or_default(),
-                final_roll_count,
-                candidate_roll_count,
-                future_deferred_credits,
-                cycle_infos: exec_state.get_address_cycle_infos(addr),
-            });
-        }
-        res
+        let execution_guard = self.execution_state.read();
+        get_addresses_infos_under(&execution_guard, addresses, deferred_credits_max_slot)
     }
 
     /// Get execution statistics
@@ -648,6 +373,343 @@ impl ExecutionController for ExecutionControllerImpl {
     fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<(Option<bool>, Option<bool>)> {
         self.execution_state.read().get_ops_exec_status(batch)
     }
+}
+
+fn get_final_and_candidate_balance_under(
+    exec_state: &ExecutionState,
+    addresses: &[Address],
+) -> Vec<(Option<Amount>, Option<Amount>)> {
+    let mut result = Vec::with_capacity(addresses.len());
+    for addr in addresses {
+        result.push(exec_state.get_final_and_candidate_balance(addr));
+    }
+    result
+}
+
+#[allow(clippy::type_complexity)]
+fn get_final_and_active_data_entry_under(
+    exec_state: &ExecutionState,
+    input: Vec<(Address, Vec<u8>)>,
+) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+    let mut result = Vec::with_capacity(input.len());
+    for (addr, key) in input {
+        result.push(exec_state.get_final_and_active_data_entry(&addr, &key));
+    }
+    result
+}
+
+fn get_addresses_infos_under(
+    exec_state: &ExecutionState,
+    addresses: &[Address],
+    deferred_credits_max_slot: std::ops::Bound<Slot>,
+) -> Vec<ExecutionAddressInfo> {
+    let mut res = Vec::with_capacity(addresses.len());
+    for addr in addresses {
+        let (final_datastore_keys, candidate_datastore_keys) = exec_state
+            .get_final_and_candidate_datastore_keys(
+                addr,
+                &[],
+                std::ops::Bound::Unbounded,
+                std::ops::Bound::Unbounded,
+                None,
+            );
+        let (final_balance, candidate_balance) = exec_state.get_final_and_candidate_balance(addr);
+        let (final_roll_count, candidate_roll_count) =
+            exec_state.get_final_and_candidate_rolls(addr);
+        let future_deferred_credits =
+            exec_state.get_address_future_deferred_credits(addr, deferred_credits_max_slot);
+        res.push(ExecutionAddressInfo {
+            final_datastore_keys: final_datastore_keys.unwrap_or_default(),
+            candidate_datastore_keys: candidate_datastore_keys.unwrap_or_default(),
+            final_balance: final_balance.unwrap_or_default(),
+            candidate_balance: candidate_balance.unwrap_or_default(),
+            final_roll_count,
+            candidate_roll_count,
+            future_deferred_credits,
+            cycle_infos: exec_state.get_address_cycle_infos(addr),
+        });
+    }
+    res
+}
+
+fn eval_query_item(
+    exec_state: &ExecutionState,
+    req_item: ExecutionQueryRequestItem,
+    response_payload_size: &mut usize,
+    max_response_size: usize,
+    remaining_events: &mut usize,
+) -> Result<ExecutionQueryResponseItem, ExecutionQueryError> {
+    match req_item {
+        ExecutionQueryRequestItem::AddressExistsCandidate(addr) => {
+            Ok(ExecutionQueryResponseItem::Boolean(
+                exec_state
+                    .get_final_and_candidate_balance(&addr)
+                    .1
+                    .is_some(),
+            ))
+        }
+        ExecutionQueryRequestItem::AddressExistsFinal(addr) => {
+            Ok(ExecutionQueryResponseItem::Boolean(
+                exec_state
+                    .get_final_and_candidate_balance(&addr)
+                    .0
+                    .is_some(),
+            ))
+        }
+        ExecutionQueryRequestItem::AddressBalanceCandidate(addr) => {
+            let (_final_v, speculative_v) = exec_state.get_final_and_candidate_balance(&addr);
+            match speculative_v {
+                Some(balance) => Ok(ExecutionQueryResponseItem::Amount(balance)),
+                None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressBalanceFinal(addr) => {
+            let (final_v, _speculative_v) = exec_state.get_final_and_candidate_balance(&addr);
+            match final_v {
+                Some(balance) => Ok(ExecutionQueryResponseItem::Amount(balance)),
+                None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressBytecodeCandidate(addr) => {
+            let (_final_v, speculative_v) = exec_state.get_final_and_active_bytecode(&addr);
+            match speculative_v {
+                Some(bytecode) => account_large_payload(
+                    &mut *response_payload_size,
+                    max_response_size,
+                    bytecode.0.len(),
+                )
+                .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
+                None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressBytecodeFinal(addr) => {
+            let (final_v, _speculative_v) = exec_state.get_final_and_active_bytecode(&addr);
+            match final_v {
+                Some(bytecode) => account_large_payload(
+                    &mut *response_payload_size,
+                    max_response_size,
+                    bytecode.0.len(),
+                )
+                .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
+                None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+            address,
+            prefix,
+            start_key,
+            end_key,
+            count,
+        } => {
+            let (_final_v, speculative_v) = exec_state.get_final_and_candidate_datastore_keys(
+                &address, &prefix, start_key, end_key, count,
+            );
+            match speculative_v {
+                Some(keys) => {
+                    let bytes = datastore_keys_byte_len(&keys);
+                    account_large_payload(&mut *response_payload_size, max_response_size, bytes)
+                        .map(|()| {
+                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, false)
+                        })
+                }
+                None => Err(ExecutionQueryError::NotFound(format!(
+                    "Account {}",
+                    address
+                ))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+            address,
+            prefix,
+            start_key,
+            end_key,
+            count,
+        } => {
+            let final_v =
+                exec_state.get_final_datastore_keys(&address, &prefix, start_key, end_key, count);
+            match final_v {
+                Some(keys) => {
+                    let bytes = datastore_keys_byte_len(&keys);
+                    account_large_payload(&mut *response_payload_size, max_response_size, bytes)
+                        .map(|()| {
+                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, true)
+                        })
+                }
+                None => Err(ExecutionQueryError::NotFound(format!(
+                    "Account {}",
+                    address
+                ))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } => {
+            let (_final_v, speculative_v) = exec_state.get_final_and_active_data_entry(&addr, &key);
+            match speculative_v {
+                Some(value) => account_large_payload(
+                    &mut *response_payload_size,
+                    max_response_size,
+                    value.len(),
+                )
+                .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
+                None => Err(ExecutionQueryError::NotFound(format!(
+                    "Account {} datastore entry {:?}",
+                    addr, key
+                ))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressDatastoreValueFinal { addr, key } => {
+            let (final_v, _speculative_v) = exec_state.get_final_and_active_data_entry(&addr, &key);
+            match final_v {
+                Some(value) => account_large_payload(
+                    &mut *response_payload_size,
+                    max_response_size,
+                    value.len(),
+                )
+                .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
+                None => Err(ExecutionQueryError::NotFound(format!(
+                    "Account {} datastore entry {:?}",
+                    addr, key
+                ))),
+            }
+        }
+        ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) => {
+            let (speculative_v, _final_v) = exec_state
+                .get_ops_exec_status(&[id])
+                .first()
+                .map(|(s_v, f_v)| (*s_v, *f_v))
+                .expect("expected one return value");
+            match speculative_v {
+                Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                )),
+                Some(false) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
+                )),
+                None => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                )),
+            }
+        }
+        ExecutionQueryRequestItem::OpExecutionStatusFinal(id) => {
+            let (_speculative_v, final_v) = exec_state
+                .get_ops_exec_status(&[id])
+                .first()
+                .map(|(s_v, f_v)| (*s_v, *f_v))
+                .expect("expected one return value");
+            match final_v {
+                Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                )),
+                Some(false) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
+                )),
+                None => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                )),
+            }
+        }
+        ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(id) => {
+            let (speculative_v, _final_v) = exec_state.get_denunciation_execution_status(&id);
+            match speculative_v {
+                true => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                )),
+                false => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                )),
+            }
+        }
+        ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(id) => {
+            let (_speculative_v, final_v) = exec_state.get_denunciation_execution_status(&id);
+            match final_v {
+                true => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                )),
+                false => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                )),
+            }
+        }
+        ExecutionQueryRequestItem::AddressRollsCandidate(addr) => {
+            let (_final_rolls, candidate_rolls) = exec_state.get_final_and_candidate_rolls(&addr);
+            Ok(ExecutionQueryResponseItem::RollCount(candidate_rolls))
+        }
+        ExecutionQueryRequestItem::AddressRollsFinal(addr) => {
+            let (final_rolls, _candidate_rolls) = exec_state.get_final_and_candidate_rolls(&addr);
+            Ok(ExecutionQueryResponseItem::RollCount(final_rolls))
+        }
+        ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) => {
+            let (candidate_v, _final_v) = exec_state.get_address_deferred_credits(&addr);
+            Ok(ExecutionQueryResponseItem::DeferredCredits(candidate_v))
+        }
+        ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) => {
+            let (_candidate_v, final_v) = exec_state.get_address_deferred_credits(&addr);
+            Ok(ExecutionQueryResponseItem::DeferredCredits(final_v))
+        }
+        ExecutionQueryRequestItem::CycleInfos {
+            cycle,
+            restrict_to_addresses,
+        } => {
+            let cycle_infos = exec_state.get_cycle_infos(cycle, restrict_to_addresses.as_ref());
+            match cycle_infos {
+                Some(cycle_infos) => Ok(ExecutionQueryResponseItem::CycleInfos(cycle_infos)),
+                None => Err(ExecutionQueryError::NotFound(format!("Cycle {}", cycle))),
+            }
+        }
+        ExecutionQueryRequestItem::Events(filter) => {
+            let limit = *remaining_events;
+            if limit == 0 {
+                return Err(ExecutionQueryError::TooLargeResponse(
+                    "event budget for this batch is exhausted".to_string(),
+                ));
+            }
+            let events = exec_state.get_filtered_sc_output_event(filter, limit);
+            *remaining_events -= events.len();
+            let bytes = events
+                .iter()
+                .map(|event| {
+                    event
+                        .data
+                        .len()
+                        .saturating_add(EVENT_RESPONSE_OVERHEAD_BYTES)
+                })
+                .fold(0usize, |acc, len| acc.saturating_add(len));
+            account_large_payload(&mut *response_payload_size, max_response_size, bytes)
+                .map(|()| ExecutionQueryResponseItem::Events(events))
+        }
+        ExecutionQueryRequestItem::DeferredCallQuote {
+            target_slot,
+            max_gas_request,
+            params_size,
+        } => {
+            let result = exec_state.deferred_call_quote(target_slot, max_gas_request, params_size);
+            Ok(ExecutionQueryResponseItem::DeferredCallQuote(
+                result.0, result.1, result.2, result.3,
+            ))
+        }
+        ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) => exec_state
+            .deferred_call_info(&deferred_call_id)
+            .ok_or_else(|| {
+                ExecutionQueryError::NotFound(format!("Deferred call id {}", deferred_call_id))
+            })
+            .map(|call| ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)),
+        ExecutionQueryRequestItem::DeferredCallsBySlot(slot) => {
+            let res = exec_state.get_deferred_calls_by_slot(slot);
+            Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
+        }
+    }
+}
+
+/// Estimated serialized size (bytes) of one event's context on top of `data.len()`.
+/// Covers slot, emitter/caller/operation ids and Vec bookkeeping.
+// ponytail: overhead estimated, measure real serialized SCOutputEvent context size and adjust;
+// revisit if the legacy 50 KB events leave the cache and the estimate dominates the budget.
+const EVENT_RESPONSE_OVERHEAD_BYTES: usize = 128;
+
+/// Summed key lengths of a datastore-keys response, for the cumulative size budget.
+fn datastore_keys_byte_len(keys: &BTreeSet<Vec<u8>>) -> usize {
+    keys.iter()
+        .map(Vec::len)
+        .fold(0usize, usize::saturating_add)
 }
 
 /// Account a large payload against the cumulative response budget.

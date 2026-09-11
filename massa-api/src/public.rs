@@ -103,6 +103,7 @@ impl API<Public> {
             .query_state(ExecutionQueryRequest {
                 requests,
                 max_response_size: self.0.api_settings.max_response_body_size as usize,
+                max_event_count: self.0.api_settings.max_events_per_query as usize,
             })
     }
 }

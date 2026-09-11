@@ -144,6 +144,7 @@ pub struct APISettings {
     pub openrpc_spec_path: PathBuf,
     pub max_request_body_size: u32,
     pub max_response_body_size: u32,
+    pub max_events_per_query: u32,
     pub max_connections: u32,
     pub max_subscriptions_per_connection: u32,
     pub max_log_length: u32,
@@ -389,6 +390,8 @@ pub struct GrpcSettings {
     pub max_filters_per_request: u32,
     /// max number of query items that can be included in a single request
     pub max_query_items_per_request: u32,
+    /// max events returned per query_state batch
+    pub max_events_per_query: u32,
     /// certificate authority root path
     pub certificate_authority_root_path: PathBuf,
     /// server certificate path

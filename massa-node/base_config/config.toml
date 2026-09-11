@@ -46,6 +46,8 @@
     max_datastore_keys_query = 500
     # max number of addresses that can be included in a single request
     max_addresses_datastore_keys_query = 50
+    # max events returned per query_state batch
+    max_events_per_query = 7000
     # timeout for API calls to pools (in milliseconds)
     pool_api_timeout = 1000
 
@@ -125,6 +127,8 @@
         client_private_key_path = "../massa-client/config/tls_public_client.key"
         # max datastore keys query
         max_datastore_keys_query = 500
+        # max events returned per query_state batch
+        max_events_per_query = 7000
         # check interval for unidirectional stream
         unidirectional_stream_interval_check = 10
     [grpc.private]
@@ -188,6 +192,8 @@
         max_filters_per_request = 32
         # max number of query items that can be included in a single request
         max_query_items_per_request = 128
+        # max events returned per query_state batch
+        max_events_per_query = 7000
         # certificate authority root path
         certificate_authority_root_path = "config/tls_private_ca.pem"
         # server certificate path
