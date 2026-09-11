@@ -150,9 +150,11 @@ impl ConsensusState {
         let sequence_number = self.blocks_state.sequence_counter();
         self.blocks_state
             .transition_map(block_id, |block_status, _| {
-                // If the block has already been pruned from consensus, there is nothing
-                // left to mark invalid. Avoid a None -> Discarded panic by treating it as
-                // a no-op; the attack attempt was already recorded above.
+                // The block may be unknown to consensus: a wishlisted parent is never inserted in
+                // `blocks_state` until its full block arrives, but protocol can decide it is invalid
+                // before that (committed ops exceed the max block size). `None -> Discarded` is a
+                // forbidden transition (panic), so do nothing: the attack attempt is already noted
+                // above, and the waiters depending on it will be pruned as stale.
                 block_status.as_ref()?;
                 Some(BlockStatus::Discarded {
                     slot: header.content.slot,

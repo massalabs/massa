@@ -104,8 +104,7 @@ impl ConsensusState {
     }
 
     // Keep only a certain (`config.max_future_processing_blocks`) number of blocks that have slots in the future
-    // to avoid high memory consumption. Over-limit entries are preserved as `Discarded` rather than
-    // silently removed, so protocol-side `checked_headers` stays aligned with consensus state.
+    // to avoid high memory consumption
     fn prune_slot_waiting(&mut self) {
         if self.blocks_state.waiting_for_slot_blocks().len()
             <= self.config.max_future_processing_blocks
@@ -129,32 +128,11 @@ impl ConsensusState {
         let len_slot_waiting = slot_waiting.len();
         (self.config.max_future_processing_blocks..len_slot_waiting).for_each(|idx| {
             let (_slot, block_id) = &slot_waiting[idx];
-            let sequence_number = self.blocks_state.sequence_counter();
-            self.blocks_state
-                .transition_map(block_id, |block_status, _| {
-                    if let Some(BlockStatus::WaitingForSlot(header_or_block)) = block_status {
-                        let header = match header_or_block {
-                            HeaderOrBlock::Header(h) => h,
-                            HeaderOrBlock::Block { id, .. } => self
-                                .storage
-                                .read_blocks()
-                                .get(&id)
-                                .unwrap_or_else(|| panic!("block {} should be in storage", id))
-                                .content
-                                .header
-                                .clone(),
-                        };
-                        Some(BlockStatus::Discarded {
-                            slot: header.content.slot,
-                            creator: header.content_creator_address,
-                            parents: header.content.parents,
-                            reason: DiscardReason::Stale,
-                            sequence_number,
-                        })
-                    } else {
-                        panic!("block {} should be in WaitingForSlot state", block_id);
-                    }
-                });
+            // Eviction for size is NOT a verdict on the block: forget it (None), do not mark it
+            // Discarded. Discarded is terminal (never reprocessed) and inherited by every child
+            // in check_header. A forgotten block is refetched through the wishlist as soon as a
+            // child references it, which is the recovery path we want.
+            self.blocks_state.transition_map(block_id, |_, _| None);
         });
     }
 
@@ -189,7 +167,7 @@ impl ConsensusState {
     }
 
     fn prune_waiting_for_dependencies(&mut self) -> Result<(), ConsensusError> {
-        let mut to_discard: PreHashMap<BlockId, DiscardReason> = PreHashMap::default();
+        let mut to_discard: PreHashMap<BlockId, Option<DiscardReason>> = PreHashMap::default();
         let mut to_keep: PreHashMap<BlockId, (u64, Slot)> = PreHashMap::default();
 
         // list items that are older than the latest final blocks in their threads or have deps that are discarded
@@ -220,17 +198,14 @@ impl ConsensusState {
                         }
                     }
                     if discarded_dep_found {
-                        // A discarded dependency always yields a reason (Invalid or Stale).
-                        let reason = discard_reason
-                            .expect("discarded dependency should produce a discard reason");
-                        to_discard.insert(*block_id, reason);
+                        to_discard.insert(*block_id, discard_reason);
                         continue;
                     }
 
                     // is at least as old as the latest final block in its thread => discard as stale
                     let slot = header_or_block.get_slot();
                     if slot.period <= self.latest_final_blocks_periods[slot.thread as usize].1 {
-                        to_discard.insert(*block_id, DiscardReason::Stale);
+                        to_discard.insert(*block_id, Some(DiscardReason::Stale));
                         continue;
                     }
 
@@ -256,21 +231,23 @@ impl ConsensusState {
                         if let Some(reason) = to_discard.get(dep) {
                             dep_to_discard_found = true;
                             match reason {
-                                DiscardReason::Invalid(reason) => {
+                                Some(DiscardReason::Invalid(reason)) => {
                                     discard_reason = Some(DiscardReason::Invalid(format!("discarded because depend on block:{} that has discard reason:{}", hash, reason)));
                                     break;
                                 }
-                                DiscardReason::Stale => discard_reason = Some(DiscardReason::Stale),
-                                DiscardReason::Final => discard_reason = Some(DiscardReason::Stale),
+                                Some(DiscardReason::Stale) => {
+                                    discard_reason = Some(DiscardReason::Stale)
+                                }
+                                Some(DiscardReason::Final) => {
+                                    discard_reason = Some(DiscardReason::Stale)
+                                }
+                                None => {} // leave as None
                             }
                         }
                     }
                     if dep_to_discard_found {
-                        // A dependency queued for discard always has a reason.
-                        let reason = discard_reason
-                            .expect("dependency queued for discard should have a reason");
                         to_keep.remove(&hash);
-                        to_discard.insert(hash, reason);
+                        to_discard.insert(hash, discard_reason);
                         continue;
                     }
                 }
@@ -294,8 +271,13 @@ impl ConsensusState {
                     .min();
                 if let Some((_seq_num, _slot, hash)) = remove_elt {
                     to_keep.remove(&hash);
-                    // Preserve the over-limit entry as discarded instead of silently deleting it.
-                    to_discard.insert(hash, DiscardReason::Stale);
+                    // Eviction for size is NOT a verdict on the block: forget it (None), do not mark
+                    // it Discarded. Discarded is terminal (never reprocessed) and inherited by every
+                    // child in check_header, and here it would also be propagated by the
+                    // discarded-dependency cascade above to every waiter built on this block. A
+                    // forgotten block is refetched through the wishlist as soon as a child
+                    // references it, which is the recovery path we want.
+                    to_discard.insert(hash, None);
                     continue;
                 }
             }
@@ -304,8 +286,8 @@ impl ConsensusState {
             break;
         }
 
-        // transition states to Discarded (every entry in to_discard now has a reason)
-        for (block_id, reason) in to_discard.drain() {
+        // transition states to Discarded if there is a reason, otherwise just drop
+        for (block_id, reason_opt) in to_discard.drain() {
             let sequence_number = self.blocks_state.sequence_counter();
             self.blocks_state.transition_map(&block_id, |block_status, _| {
                 if let Some(BlockStatus::WaitingForDependencies {
@@ -322,21 +304,27 @@ impl ConsensusState {
                             .header
                             .clone()
                     };
-                    massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason});
-                    // add to stats if reason is Stale
-                    if reason == DiscardReason::Stale {
-                        self.new_stale_blocks.insert(
-                            block_id,
-                            (header.content_creator_address, header.content.slot),
-                        );
+                    massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
+                    if let Some(reason) = reason_opt {
+                        // add to stats if reason is Stale
+                        if reason == DiscardReason::Stale {
+                            self.new_stale_blocks.insert(
+                                block_id,
+                                (header.content_creator_address, header.content.slot),
+                            );
+                        }
+                        // transition to Discarded only if there is a reason
+                        Some(BlockStatus::Discarded {
+                                slot: header.content.slot,
+                                creator: header.content_creator_address,
+                                parents: header.content.parents,
+                                reason,
+                                sequence_number,
+                            },
+                        )
+                    } else {
+                        None
                     }
-                    Some(BlockStatus::Discarded {
-                        slot: header.content.slot,
-                        creator: header.content_creator_address,
-                        parents: header.content.parents,
-                        reason,
-                        sequence_number,
-                    })
                 } else {
                     panic!("block {} should be in WaitingForDependencies state", block_id);
                 }
