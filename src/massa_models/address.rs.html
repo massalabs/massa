@@ -740,10 +740,6 @@
 <a href="#740" id="740">740</a>
 <a href="#741" id="741">741</a>
 <a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -963,23 +959,21 @@
 <span class="kw">impl </span>FromStr <span class="kw">for </span>Address {
     <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
     <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
-        <span class="kw">let </span>prefix_err = <span class="prelude-val">Err</span>(ModelsError::AddressParseError(
-            <span class="string">"Invalid address: Address prefix 'AU' or 'AS' not found"</span>.to_string(),
-        ));
+        <span class="kw">let </span>err = <span class="prelude-val">Err</span>(ModelsError::AddressParseError(s.to_string()));
 
         <span class="comment">// Handle the prefix ("A{U|S}")
         </span><span class="kw">let </span><span class="kw-2">mut </span>chars = s.chars();
         <span class="kw">let </span><span class="prelude-val">Some</span>(ADDRESS_PREFIX) = chars.next() <span class="kw">else </span>{
-            <span class="kw">return </span>prefix_err;
+            <span class="kw">return </span>err;
         };
         <span class="kw">let </span><span class="prelude-val">Some</span>(pref) = chars.next() <span class="kw">else </span>{
-            <span class="kw">return </span>prefix_err;
+            <span class="kw">return </span>err;
         };
 
         <span class="kw">let </span>res = <span class="kw">match </span>pref {
             <span class="string">'U' </span>=&gt; Address::User(UserAddress::from_str_without_prefixed_type(chars.as_str())<span class="question-mark">?</span>),
             <span class="string">'S' </span>=&gt; Address::SC(SCAddress::from_str_without_prefixed_type(chars.as_str())<span class="question-mark">?</span>),
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span>prefix_err,
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span>err,
         };
         <span class="prelude-val">Ok</span>(res)
     }
@@ -1431,9 +1425,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_address_errors() {
-        <span class="kw">let </span>expected_error_0 =
-            <span class="string">"address parsing error: Invalid address: Address prefix 'AU' or 'AS' not found"
-                </span>.to_string();
+        <span class="kw">let </span>expected_error_0 = <span class="string">"address parsing error: UnexpectedAddress"</span>.to_string();
         <span class="kw">let </span>actual_error_0 = Address::from_str(<span class="string">"UnexpectedAddress"</span>)
             .unwrap_err()
             .to_string();
