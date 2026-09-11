@@ -128,6 +128,8 @@ pub struct GrpcConfig {
     pub max_filters_per_request: u32,
     /// max number of query items that can be included in a single request
     pub max_query_items_per_request: u32,
+    /// max events returned per query_state batch
+    pub max_events_per_query: u32,
     /// certificate authority root path
     pub certificate_authority_root_path: PathBuf,
     /// server certificate path

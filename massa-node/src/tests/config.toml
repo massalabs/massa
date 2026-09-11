@@ -7,6 +7,7 @@
     bind_public = "0.0.0.0:33035"
     bind_api = "0.0.0.0:33036"
     max_arguments = 128
+    max_events_per_query = 7000
 
 [execution]
     initial_sce_ledger_path = "base_config/initial_sce_ledger.json"

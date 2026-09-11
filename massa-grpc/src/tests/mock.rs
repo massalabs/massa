@@ -112,6 +112,7 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         client_certificate_path: PathBuf::default(),
         client_private_key_path: PathBuf::default(),
         max_query_items_per_request: 50,
+        max_events_per_query: 7000,
         chain_id: *CHAINID,
         minimal_fees: Amount::zero(),
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,

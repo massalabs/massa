@@ -8,8 +8,9 @@ use massa_deferred_calls::slot_changes::DeferredRegistrySlotChanges;
 use massa_deferred_calls::{DeferredCall, DeferredCallRegistry};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
-    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ExecutionConfig, ExecutionQueryError, ExecutionQueryRequest, ExecutionQueryRequestItem,
+    ExecutionQueryResponseItem, ExecutionStackElement, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget,
 };
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
@@ -611,6 +612,114 @@ fn test_nested_call_gas_usage() {
         events_formatted, sorted_events,
         "Gas is not going down through the execution."
     );
+}
+
+/// Test that the `query_state` event budget is shared across the batch.
+///
+/// Two identical `Events` items with `max_event_count = 1`: the first one takes
+/// the single budgeted event, the second one gets a per-item `TooLargeResponse`
+/// error instead of fetching. Same setup as `test_nested_call_gas_usage`, which
+/// guarantees a non-empty event flow.
+#[test]
+fn test_query_state_events_budget_shared() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(1)
+                .returning(move |_| true);
+        });
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        Some(Slot::new(1, 1)),
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        None,
+    );
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_fingerprint()
+        .returning(move || Hash::compute_from(b""));
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/nested_call.wasm"),
+        include_bytes!("./wasm/test.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let address = universe.get_address_sc_deployed(Slot::new(1, 0));
+
+    // Call the function test of the smart contract
+    let operation = ExecutionTestUniverse::create_call_sc_operation(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        10000000,
+        Amount::from_str("0").unwrap(),
+        Amount::from_str("0").unwrap(),
+        Address::from_str(&address).unwrap(),
+        String::from("test"),
+        address.as_bytes().to_vec(),
+    )
+    .unwrap();
+    universe.call_sc_block(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        Slot::new(1, 1),
+        operation,
+    );
+    finalized_waitpoint.wait();
+
+    let filter = || EventFilter {
+        start: Some(Slot::new(1, 1)),
+        ..Default::default()
+    };
+    let resp = universe
+        .module_controller
+        .query_state(ExecutionQueryRequest {
+            requests: vec![
+                ExecutionQueryRequestItem::Events(filter()),
+                ExecutionQueryRequestItem::Events(filter()),
+            ],
+            max_response_size: usize::MAX,
+            max_event_count: 1,
+        });
+    assert_eq!(resp.responses.len(), 2);
+    match &resp.responses[0] {
+        Ok(ExecutionQueryResponseItem::Events(events)) => {
+            assert_eq!(events.len(), 1, "first item should take the budgeted event")
+        }
+        _ => panic!("first Events item should succeed"),
+    }
+    match &resp.responses[1] {
+        Err(ExecutionQueryError::TooLargeResponse(_)) => {}
+        _ => panic!("second Events item should hit the budget"),
+    }
 }
 
 /// Test the recursion depth limit in nested calls using call SC operation
@@ -4033,6 +4142,7 @@ fn datastore_manipulations() {
                 ExecutionQueryRequestItem::Events(EventFilter::default()),
             ],
             max_response_size: usize::MAX,
+            max_event_count: usize::MAX,
         });
     // Just checking that is works no asserts for now
     universe

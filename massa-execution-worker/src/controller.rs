@@ -20,7 +20,7 @@ use massa_models::stats::ExecutionStats;
 use massa_models::{address::Address, amount::Amount, operation::OperationId};
 use massa_models::{block_id::BlockId, slot::Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Display;
 use std::sync::Arc;
 use tracing::info;
@@ -146,8 +146,9 @@ impl ExecutionController for ExecutionControllerImpl {
     /// This invariant is enforced by borrowing: item reads go through `&ExecutionState`
     /// borrowed from the guard, so releasing the guard mid-batch is a compile error.
     ///
-    /// Large payload responses (`Bytecode`, `DatastoreValue`) are counted toward
-    /// `req.max_response_size`. Other response variants are treated as 0 bytes.
+    /// Large payload responses (`Bytecode`, `DatastoreValue`, `Events`, datastore keys)
+    /// are counted toward `req.max_response_size`. Other response variants are treated
+    /// as 0 bytes.
     /// When appending a large payload would exceed the budget, that item is returned
     /// as `ExecutionQueryError::TooLargeResponse` and its bytes are not retained.
     fn query_state(&self, req: ExecutionQueryRequest) -> ExecutionQueryResponse {
@@ -163,12 +164,15 @@ impl ExecutionController for ExecutionControllerImpl {
         };
         // Cumulative size of bytecode / datastore-value payloads kept in `resp`.
         let mut response_payload_size: usize = 0;
+        // Events still returnable by this batch; see `max_event_count`.
+        let mut remaining_events = req.max_event_count;
         for req_item in req.requests {
             let resp_item = eval_query_item(
                 exec_state,
                 req_item,
                 &mut response_payload_size,
                 req.max_response_size,
+                &mut remaining_events,
             );
             resp.responses.push(resp_item);
         }
@@ -181,10 +185,13 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * emitter address
     /// * original caller address
     /// * operation id
+    // ponytail: single-shot path uncapped (usize::MAX), one full active-history scan per call;
+    // thread a handler-provided limit like query_state does if this is abused
+    // (breaking-changes list, F42).
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         self.execution_state
             .read()
-            .get_filtered_sc_output_event(filter)
+            .get_filtered_sc_output_event(filter, usize::MAX)
     }
 
     /// Get the final and candidate values of balance.
@@ -430,6 +437,7 @@ fn eval_query_item(
     req_item: ExecutionQueryRequestItem,
     response_payload_size: &mut usize,
     max_response_size: usize,
+    remaining_events: &mut usize,
 ) -> Result<ExecutionQueryResponseItem, ExecutionQueryError> {
     match req_item {
         ExecutionQueryRequestItem::AddressExistsCandidate(addr) => {
@@ -497,9 +505,13 @@ fn eval_query_item(
                 &address, &prefix, start_key, end_key, count,
             );
             match speculative_v {
-                Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
-                    keys, address, false,
-                )),
+                Some(keys) => {
+                    let bytes = datastore_keys_byte_len(&keys);
+                    account_large_payload(&mut *response_payload_size, max_response_size, bytes)
+                        .map(|()| {
+                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, false)
+                        })
+                }
                 None => Err(ExecutionQueryError::NotFound(format!(
                     "Account {}",
                     address
@@ -516,9 +528,13 @@ fn eval_query_item(
             let final_v =
                 exec_state.get_final_datastore_keys(&address, &prefix, start_key, end_key, count);
             match final_v {
-                Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
-                    keys, address, true,
-                )),
+                Some(keys) => {
+                    let bytes = datastore_keys_byte_len(&keys);
+                    account_large_payload(&mut *response_payload_size, max_response_size, bytes)
+                        .map(|()| {
+                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, true)
+                        })
+                }
                 None => Err(ExecutionQueryError::NotFound(format!(
                     "Account {}",
                     address
@@ -639,9 +655,27 @@ fn eval_query_item(
                 None => Err(ExecutionQueryError::NotFound(format!("Cycle {}", cycle))),
             }
         }
-        ExecutionQueryRequestItem::Events(filter) => Ok(ExecutionQueryResponseItem::Events(
-            exec_state.get_filtered_sc_output_event(filter),
-        )),
+        ExecutionQueryRequestItem::Events(filter) => {
+            let limit = *remaining_events;
+            if limit == 0 {
+                return Err(ExecutionQueryError::TooLargeResponse(
+                    "event budget for this batch is exhausted".to_string(),
+                ));
+            }
+            let events = exec_state.get_filtered_sc_output_event(filter, limit);
+            *remaining_events -= events.len();
+            let bytes = events
+                .iter()
+                .map(|event| {
+                    event
+                        .data
+                        .len()
+                        .saturating_add(EVENT_RESPONSE_OVERHEAD_BYTES)
+                })
+                .fold(0usize, |acc, len| acc.saturating_add(len));
+            account_large_payload(&mut *response_payload_size, max_response_size, bytes)
+                .map(|()| ExecutionQueryResponseItem::Events(events))
+        }
         ExecutionQueryRequestItem::DeferredCallQuote {
             target_slot,
             max_gas_request,
@@ -663,6 +697,19 @@ fn eval_query_item(
             Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
         }
     }
+}
+
+/// Estimated serialized size (bytes) of one event's context on top of `data.len()`.
+/// Covers slot, emitter/caller/operation ids and Vec bookkeeping.
+// ponytail: overhead estimated, measure real serialized SCOutputEvent context size and adjust;
+// revisit if the legacy 50 KB events leave the cache and the estimate dominates the budget.
+const EVENT_RESPONSE_OVERHEAD_BYTES: usize = 128;
+
+/// Summed key lengths of a datastore-keys response, for the cumulative size budget.
+fn datastore_keys_byte_len(keys: &BTreeSet<Vec<u8>>) -> usize {
+    keys.iter()
+        .map(Vec::len)
+        .fold(0usize, usize::saturating_add)
 }
 
 /// Account a large payload against the cumulative response budget.

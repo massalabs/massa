@@ -433,3 +433,85 @@ fn display_bound_human_readable(bound: Bound<Vec<u8>>) {
         Bound::Unbounded => dbg!("bound key Unbounded".to_string()),
     };
 }
+
+/// Tripwire for the unbounded per-item scan: with `count = None`, the scan returns
+/// every key with no cap at all. This documents the hole left while #5189 (per-request
+/// count forwarding) is unmerged: a single datastore-keys item can pull the full range
+/// under the execution lock. When #5189 lands, this test breaks on purpose — update it
+/// to assert the capped count instead. See issue #5057, phase 2.
+#[test]
+fn test_scan_datastore_count_none_is_unbounded() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_datastore_keys()
+                .returning(move |_, _, _, _, _| None);
+        });
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_ledger()
+        .return_const(Box::new(foreign_controllers.ledger_controller.clone()));
+
+    // 2000 deterministic keys, above any per-request cap
+    let mut data = BTreeMap::new();
+    for i in 0..2000usize {
+        data.insert(format!("key{:05}", i).into_bytes(), b"v".to_vec());
+    }
+
+    let mut changes = PreHashMap::default();
+    changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Set(LedgerEntry {
+            datastore: data,
+            ..Default::default()
+        }),
+    );
+
+    let exec_output = ExecutionOutput {
+        slot: Slot::new(1, 0),
+        block_info: None,
+        state_changes: StateChanges {
+            ledger_changes: LedgerChanges(changes.clone()),
+            async_pool_changes: Default::default(),
+            deferred_call_changes: Default::default(),
+            pos_changes: Default::default(),
+            executed_ops_changes: Default::default(),
+            executed_denunciations_changes: Default::default(),
+            execution_trail_hash_change: Default::default(),
+        },
+        events: Default::default(),
+        #[cfg(feature = "execution-trace")]
+        slot_trace: Default::default(),
+        #[cfg(feature = "dump-block")]
+        storage: None,
+        deferred_credits_execution: Default::default(),
+        cancel_async_message_execution: Default::default(),
+        auto_sell_execution: Default::default(),
+        transfers_history: Default::default(),
+        execution_info: None,
+    };
+
+    let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([exec_output]))));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        None,
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    // No cap applied: all 2000 keys come back in one item.
+    assert_eq!(candidate_keys.unwrap().len(), 2000);
+}
