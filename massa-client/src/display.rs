@@ -277,6 +277,12 @@ impl Output for NodeStatus {
         println!();
         println!("Chain id: {}", self.chain_id);
         println!("Current MIP version: {}", self.current_mip_version);
+        if let Some(max_datastore_keys_query) = self.max_datastore_keys_query {
+            println!(
+                "Max datastore keys per query: {}",
+                Style::Protocol.style(max_datastore_keys_query)
+            );
+        }
     }
 }
 

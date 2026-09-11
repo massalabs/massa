@@ -2976,6 +2976,17 @@
                     "current_mip_version": {
                         "description": "Current MIP version",
                         "type": "number"
+                    },
+                    "max_datastore_keys_query": {
+                        "description": "Max number of datastore keys returned by a single datastore key query, null if unlimited",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "number"
+                            }
+                        ]
                     }
                 },
                 "additionalProperties": false
