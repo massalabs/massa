@@ -17,6 +17,9 @@ pub struct OperationInfo {
     /// max amount that the op might spend from the sender's balance
     pub max_spending: Amount,
     pub validity_period_range: RangeInclusive<u64>,
+    /// Whether execution currently marks this op as executed (speculative or final).
+    /// Updated only in refresh() so block production never queries execution.
+    pub executed: bool,
 }
 
 impl OperationInfo {
@@ -37,6 +40,7 @@ impl OperationInfo {
             thread: op.content_creator_address.get_thread(thread_count),
             validity_period_range: op.get_validity_range(operation_validity_periods),
             max_spending: op.get_max_spending(roll_price),
+            executed: false,
         }
     }
 }
