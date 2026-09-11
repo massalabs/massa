@@ -134,6 +134,10 @@ async fn get_status() {
     assert_eq!(response.config.thread_count, 32);
     // Chain id == 77 for Node in sandbox mode otherwise it is always greater
     assert!(response.chain_id >= 77);
+    assert_eq!(
+        response.max_datastore_keys_query,
+        config.max_datastore_keys_queries
+    );
 
     api_public_handle.stop().await;
 }

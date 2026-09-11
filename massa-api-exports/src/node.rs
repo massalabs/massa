@@ -48,6 +48,8 @@ pub struct NodeStatus {
     pub minimal_fees: Amount,
     /// current mip version
     pub current_mip_version: u32,
+    /// max number of datastore keys returned by a single datastore key query
+    pub max_datastore_keys_query: Option<u32>,
 }
 
 impl std::fmt::Display for NodeStatus {
@@ -62,6 +64,13 @@ impl std::fmt::Display for NodeStatus {
 
         writeln!(f, "Version: {}", self.version)?;
         writeln!(f, "Config:\n{}", self.config)?;
+        if let Some(max_datastore_keys_query) = self.max_datastore_keys_query {
+            writeln!(
+                f,
+                "Max datastore keys per query: {}",
+                max_datastore_keys_query
+            )?;
+        }
         writeln!(f)?;
 
         writeln!(f, "Current time: {}", self.current_time.format_instant())?;
