@@ -195,8 +195,11 @@ impl OperationPool {
                 retain = exec_statuses.get(&op_info.id) != Some(&true);
             }
 
-            // filter out ops that spend more than the sender's balance
-            if retain {
+            // Filter out ops that spend more than the sender's balance.
+            // Skip for ops with a live mark: they are not selectable, and their spend is
+            // already in the candidate balance — comparing again would evict them before
+            // any rollback can restore the balance.
+            if retain && !exec_statuses.contains_key(&op_info.id) {
                 retain = match sender_balances.get(&op_info.creator_address) {
                     Some(v) => &op_info.max_spending <= v,
                     None => false, // filter out ops for which the sender does not exist
@@ -214,11 +217,16 @@ impl OperationPool {
     }
 
     /// Eliminate all operations that would cause a sender balance overflow.
-    /// Assumes that the ops are sorted by ascending score.
+    /// Assumes that the ops are sorted by descending score (best first).
     fn eliminate_balance_overflows(&mut self, sender_balances: &PreHashMap<Address, Amount>) {
         let mut balance_cache = PreHashMap::default();
         let mut removed = PreHashSet::default();
         self.sorted_ops.retain(|op_info| {
+            // Live marks: spend already counted in candidate balance; keep for rollback.
+            // Marked ops also score last, so without this skip they would be cut first.
+            if op_info.executed {
+                return true;
+            }
             let balance = balance_cache
                 .entry(op_info.creator_address)
                 .or_insert_with(|| {

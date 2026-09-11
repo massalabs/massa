@@ -81,15 +81,27 @@ fn create_recursive_selector_for_ops(addr: Address) -> MockSelectorController {
 /// Speculative/candidate-only execution must not permanently remove ops from the pool.
 /// They must also be skipped for block production while the mark is live (no gas waste),
 /// and become selectable again after a rollback clears the mark.
+///
+/// Candidate balance already includes speculative spends, so while marked the remaining
+/// balance is below max_spending — balance filters must skip live marks or the op is
+/// wrongly evicted before rollback.
 #[test]
 fn test_refresh_keeps_speculative_only_executed_ops() {
     let keypair = KeyPair::generate(0).unwrap();
     let addr = Address::from_public_key(&keypair.get_public_key());
     let creator_thread = addr.get_thread(PoolConfig::default().thread_count);
 
+    // Op spends 9 + fee 1 = 10. Full balance covers it; after speculative execution
+    // only 1 remains — without skipping balance checks for marked ops, refresh would drop it.
+    let op_amount = Amount::from_raw(9);
+    let op_fee = Amount::from_raw(1);
+    let full_balance = Amount::from_raw(11);
+    let balance_after_speculative = Amount::from_raw(1);
+
     // 0 = not executed, 1 = speculative only, 2 = final
     let exec_phase = Arc::new(AtomicU8::new(0));
     let phase_for_status = exec_phase.clone();
+    let phase_for_balance = exec_phase.clone();
     let mut execution_controller = MockExecutionController::new();
     execution_controller
         .expect_get_ops_exec_status()
@@ -100,14 +112,13 @@ fn test_refresh_keeps_speculative_only_executed_ops() {
         });
     execution_controller
         .expect_get_final_and_candidate_balance()
-        .returning(|addrs| {
-            vec![
-                (
-                    Some(Amount::const_init(1_000_000_000, 0)),
-                    Some(Amount::const_init(1_000_000_000, 0)),
-                );
-                addrs.len()
-            ]
+        .returning(move |addrs| {
+            let candidate = if phase_for_balance.load(Ordering::SeqCst) == 1 {
+                balance_after_speculative
+            } else {
+                full_balance
+            };
+            vec![(Some(full_balance), Some(candidate)); addrs.len()]
         });
 
     let mut addresses = PreHashMap::default();
@@ -132,39 +143,38 @@ fn test_refresh_keeps_speculative_only_executed_ops() {
     );
 
     let ops = create_some_operations(
-        3,
+        1,
         &OpGenerator::default()
             .creator(keypair)
             .expirery(10)
-            .fee(Amount::from_raw(1)),
+            .fee(op_fee)
+            .amount(op_amount),
     );
-    let op_ids: Vec<OperationId> = ops.iter().map(|op| op.id).collect();
+    let op_id = ops[0].id;
     let mut ops_storage = storage.clone_without_refs();
     ops_storage.store_operations(ops);
     operation_pool.add_operations(ops_storage);
-    assert_eq!(operation_pool.len(), 3);
+    assert_eq!(operation_pool.len(), 1);
 
     let target_slot = Slot::new(1, creator_thread);
 
-    // Candidate-history mark only: ops must remain after refresh, but not be block-selected.
+    // Candidate-history mark + depleted candidate balance: op must remain, not be selected.
     exec_phase.store(1, Ordering::SeqCst);
     operation_pool.refresh();
-    assert_eq!(operation_pool.len(), 3);
-    for id in &op_ids {
-        assert!(operation_pool.contains(id));
-    }
+    assert_eq!(operation_pool.len(), 1);
+    assert!(operation_pool.contains(&op_id));
     let (selected, _) = operation_pool.get_block_operations(&target_slot);
     assert!(
         selected.is_empty(),
         "speculatively executed ops must not be selected for blocks"
     );
 
-    // Simulate rollback clearing the speculative mark: still present and selectable again.
+    // Simulate rollback clearing the speculative mark: balance restored, selectable again.
     exec_phase.store(0, Ordering::SeqCst);
     operation_pool.refresh();
-    assert_eq!(operation_pool.len(), 3);
+    assert_eq!(operation_pool.len(), 1);
     let (selected, _) = operation_pool.get_block_operations(&target_slot);
-    assert_eq!(selected.len(), 3);
+    assert_eq!(selected, vec![op_id]);
 
     // Final execution: durable, so refresh may drop them.
     exec_phase.store(2, Ordering::SeqCst);
