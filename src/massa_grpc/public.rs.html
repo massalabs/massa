@@ -1567,7 +1567,6 @@
 <a href="#1567" id="1567">1567</a>
 <a href="#1568" id="1568">1568</a>
 <a href="#1569" id="1569">1569</a>
-<a href="#1570" id="1570">1570</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2558,7 +2557,6 @@
         chain_id: grpc.grpc_config.chain_id,
         minimal_fees: <span class="prelude-val">Some</span>(grpc.grpc_config.minimal_fees.into()),
         current_mip_version,
-        max_datastore_keys_query: grpc.grpc_config.max_datastore_keys_queries,
     };
 
     <span class="prelude-val">Ok</span>(grpc_api::GetStatusResponse {
