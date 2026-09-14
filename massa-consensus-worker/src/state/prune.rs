@@ -321,6 +321,12 @@ impl ConsensusState {
             });
         }
 
+        // Pruning removed or invalidated waiting-for-dependency blocks whose unsatisfied
+        // dependencies may have been advertised in the wishlist. Re-derive and publish the
+        // wishlist so protocol gets a removal delta for those now-unreachable ids and does
+        // not keep requesting blocks consensus has already discarded.
+        self.sync_wishlist()?;
+
         Ok(())
     }
 

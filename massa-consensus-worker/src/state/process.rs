@@ -9,7 +9,6 @@ use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block_header::SecuredHeader,
     block_id::BlockId,
     clique::Clique,
     denunciation::DenunciationPrecursor,
@@ -824,36 +823,11 @@ impl ConsensusState {
         self.new_final_blocks.clear();
         self.new_stale_blocks.clear();
 
-        // notify protocol of block wishlist
-        let new_wishlist = self.get_block_wishlist()?;
-        let new_blocks: PreHashMap<BlockId, Option<SecuredHeader>> = new_wishlist
-            .iter()
-            .filter_map(|(id, header)| {
-                if !self.wishlist.contains_key(id) {
-                    Some((*id, header.clone()))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        let remove_blocks: PreHashSet<BlockId> = self
-            .wishlist
-            .iter()
-            .filter_map(|(id, _)| {
-                if !new_wishlist.contains_key(id) {
-                    Some(*id)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        if !new_blocks.is_empty() || !remove_blocks.is_empty() {
-            massa_trace!("consensus.consensus_worker.block_db_changed.send_wishlist_delta", { "new": new_wishlist, "remove": remove_blocks });
-            self.channels
-                .protocol_controller
-                .send_wishlist_delta(new_blocks, remove_blocks)?;
-            self.wishlist = new_wishlist;
-        }
+        // notify protocol of block wishlist.
+        // This runs after `add_block_to_graph`/`mark_final_blocks` have advanced
+        // `latest_final_blocks_periods`, so blocks that became stale or unreachable
+        // under the new finality floor no longer contribute wishlist entries.
+        self.sync_wishlist()?;
 
         // note new latest final periods
         let latest_final_periods: Vec<u64> = self
