@@ -1688,6 +1688,8 @@
 <a href="#1688" id="1688">1688</a>
 <a href="#1689" id="1689">1689</a>
 <a href="#1690" id="1690">1690</a>
+<a href="#1691" id="1691">1691</a>
+<a href="#1692" id="1692">1692</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -2405,7 +2407,8 @@
 
         <span class="comment">// ask pool whether it carries the operations
         // this is auxiliary metadata: on pool failure (e.g. lock timeout) we still return the
-        // operations found in storage and report `in_pool: false`, like the gRPC endpoints do
+        // operations found in storage and report `in_pool: false`, like we do for
+        // get_endorsements on both the JSON-RPC and gRPC endpoints
         </span><span class="kw">let </span>in_pool = <span class="self">self
             </span>.<span class="number">0
             </span>.pool_command_sender
@@ -2528,7 +2531,8 @@
 
         <span class="comment">// ask pool whether it carries the endorsements
         // this is auxiliary metadata: on pool failure (e.g. lock timeout) we still return the
-        // endorsements found in storage and report `in_pool: false`, like the gRPC endpoints do
+        // endorsements found in storage and report `in_pool: false`, like the gRPC
+        // get_endorsements endpoint already does
         </span><span class="kw">let </span>in_pool = <span class="self">self
             </span>.<span class="number">0
             </span>.pool_command_sender
