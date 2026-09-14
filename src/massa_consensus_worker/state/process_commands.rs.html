@@ -159,13 +159,6 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -316,22 +309,15 @@
         <span class="self">self</span>.maybe_note_attack_attempt(<span class="kw-2">&amp;</span>reason, block_id);
         <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.invalid_block"</span>, {<span class="string">"block_id"</span>: block_id, <span class="string">"reason"</span>: reason});
         <span class="kw">let </span>sequence_number = <span class="self">self</span>.blocks_state.sequence_counter();
-        <span class="self">self</span>.blocks_state
-            .transition_map(block_id, |block_status, <span class="kw">_</span>| {
-                <span class="comment">// The block may be unknown to consensus: a wishlisted parent is never inserted in
-                // `blocks_state` until its full block arrives, but protocol can decide it is invalid
-                // before that (committed ops exceed the max block size). `None -&gt; Discarded` is a
-                // forbidden transition (panic), so do nothing: the attack attempt is already noted
-                // above, and the waiters depending on it will be pruned as stale.
-                </span>block_status.as_ref()<span class="question-mark">?</span>;
-                <span class="prelude-val">Some</span>(BlockStatus::Discarded {
-                    slot: header.content.slot,
-                    creator: header.content_creator_address,
-                    parents: header.content.parents,
-                    reason,
-                    sequence_number,
-                })
-            });
+        <span class="self">self</span>.blocks_state.transition_map(block_id, |<span class="kw">_</span>, <span class="kw">_</span>| {
+            <span class="prelude-val">Some</span>(BlockStatus::Discarded {
+                slot: header.content.slot,
+                creator: header.content_creator_address,
+                parents: header.content.parents,
+                reason,
+                sequence_number,
+            })
+        });
     }
 }
 </code></pre></div></section></main></body></html>

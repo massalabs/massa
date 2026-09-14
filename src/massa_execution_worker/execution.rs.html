@@ -2728,6 +2728,15 @@
 <a href="#2728" id="2728">2728</a>
 <a href="#2729" id="2729">2729</a>
 <a href="#2730" id="2730">2730</a>
+<a href="#2731" id="2731">2731</a>
+<a href="#2732" id="2732">2732</a>
+<a href="#2733" id="2733">2733</a>
+<a href="#2734" id="2734">2734</a>
+<a href="#2735" id="2735">2735</a>
+<a href="#2736" id="2736">2736</a>
+<a href="#2737" id="2737">2737</a>
+<a href="#2738" id="2738">2738</a>
+<a href="#2739" id="2739">2739</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -5227,17 +5236,25 @@
     /// * original caller address
     /// * operation id
     /// * event state (final, candidate or both)
-    </span><span class="kw">pub fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: EventFilter) -&gt; Vec&lt;SCOutputEvent&gt; {
+    </span><span class="kw">pub fn </span>get_filtered_sc_output_event(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        filter: EventFilter,
+        limit: usize,
+    ) -&gt; Vec&lt;SCOutputEvent&gt; {
         <span class="kw">match </span>filter.is_final {
             <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="self">self
                 </span>.final_events_cache
-                .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter),
+                .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter)
+                .into_iter()
+                .take(limit)
+                .collect(),
             <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="self">self
                 </span>.active_history
                 .read()
                 .<span class="number">0
                 </span>.iter()
                 .flat_map(|item| item.events.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter))
+                .take(limit)
                 .collect(),
             <span class="prelude-val">None </span>=&gt; <span class="self">self
                 </span>.final_events_cache
@@ -5250,6 +5267,7 @@
                         </span>.iter()
                         .flat_map(|item| item.events.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter)),
                 )
+                .take(limit)
                 .collect(),
         }
     }

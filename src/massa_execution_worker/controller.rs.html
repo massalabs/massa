@@ -697,6 +697,68 @@
 <a href="#697" id="697">697</a>
 <a href="#698" id="698">698</a>
 <a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -719,7 +781,7 @@
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount, operation::OperationId};
 <span class="kw">use </span>massa_models::{block_id::BlockId, slot::Slot};
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
-<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::fmt::Display;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::info;
@@ -842,280 +904,37 @@
     /// to read a consistent state. Never release the lock between items to reduce contention:
     /// bound the cost of a batch via budgets (per-item errors) instead.
     ///
-    /// Large payload responses (`Bytecode`, `DatastoreValue`) are counted toward
-    /// `req.max_response_size`. Other response variants are treated as 0 bytes.
+    /// This invariant is enforced by borrowing: item reads go through `&amp;ExecutionState`
+    /// borrowed from the guard, so releasing the guard mid-batch is a compile error.
+    ///
+    /// Large payload responses (`Bytecode`, `DatastoreValue`, `Events`, datastore keys)
+    /// are counted toward `req.max_response_size`. Other response variants are treated
+    /// as 0 bytes.
     /// When appending a large payload would exceed the budget, that item is returned
     /// as `ExecutionQueryError::TooLargeResponse` and its bytes are not retained.
     </span><span class="kw">fn </span>query_state(<span class="kw-2">&amp;</span><span class="self">self</span>, req: ExecutionQueryRequest) -&gt; ExecutionQueryResponse {
-        <span class="kw">let </span>execution_lock = <span class="self">self</span>.execution_state.read();
+        <span class="kw">let </span>execution_guard = <span class="self">self</span>.execution_state.read();
+        <span class="comment">// `exec_state` borrows `execution_guard`: the guard cannot be released
+        // while batch reads go through it.
+        </span><span class="kw">let </span>exec_state: <span class="kw-2">&amp;</span>ExecutionState = <span class="kw-2">&amp;</span>execution_guard;
         <span class="kw">let </span><span class="kw-2">mut </span>resp: ExecutionQueryResponse = ExecutionQueryResponse {
             responses: Vec::with_capacity(req.requests.len()),
-            candidate_cursor: execution_lock.active_cursor,
-            final_cursor: execution_lock.final_cursor,
-            final_state_fingerprint: execution_lock.get_final_state_fingerprint(),
+            candidate_cursor: exec_state.active_cursor,
+            final_cursor: exec_state.final_cursor,
+            final_state_fingerprint: exec_state.get_final_state_fingerprint(),
         };
         <span class="comment">// Cumulative size of bytecode / datastore-value payloads kept in `resp`.
         </span><span class="kw">let </span><span class="kw-2">mut </span>response_payload_size: usize = <span class="number">0</span>;
+        <span class="comment">// Events still returnable by this batch; see `max_event_count`.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_events = req.max_event_count;
         <span class="kw">for </span>req_item <span class="kw">in </span>req.requests {
-            <span class="kw">let </span>resp_item = <span class="kw">match </span>req_item {
-                ExecutionQueryRequestItem::AddressExistsCandidate(addr) =&gt; {
-                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Boolean(
-                        execution_lock
-                            .get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr)
-                            .<span class="number">1
-                            </span>.is_some(),
-                    ))
-                }
-                ExecutionQueryRequestItem::AddressExistsFinal(addr) =&gt; {
-                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Boolean(
-                        execution_lock
-                            .get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr)
-                            .<span class="number">0
-                            </span>.is_some(),
-                    ))
-                }
-                ExecutionQueryRequestItem::AddressBalanceCandidate(addr) =&gt; {
-                    <span class="kw">let </span>(_final_v, speculative_v) =
-                        execution_lock.get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr);
-                    <span class="kw">match </span>speculative_v {
-                        <span class="prelude-val">Some</span>(balance) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Amount(balance)),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressBalanceFinal(addr) =&gt; {
-                    <span class="kw">let </span>(final_v, _speculative_v) =
-                        execution_lock.get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr);
-                    <span class="kw">match </span>final_v {
-                        <span class="prelude-val">Some</span>(balance) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Amount(balance)),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressBytecodeCandidate(addr) =&gt; {
-                    <span class="kw">let </span>(_final_v, speculative_v) =
-                        execution_lock.get_final_and_active_bytecode(<span class="kw-2">&amp;</span>addr);
-                    <span class="kw">match </span>speculative_v {
-                        <span class="prelude-val">Some</span>(bytecode) =&gt; account_large_payload(
-                            <span class="kw-2">&amp;mut </span>response_payload_size,
-                            req.max_response_size,
-                            bytecode.<span class="number">0</span>.len(),
-                        )
-                        .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressBytecodeFinal(addr) =&gt; {
-                    <span class="kw">let </span>(final_v, _speculative_v) =
-                        execution_lock.get_final_and_active_bytecode(<span class="kw-2">&amp;</span>addr);
-                    <span class="kw">match </span>final_v {
-                        <span class="prelude-val">Some</span>(bytecode) =&gt; account_large_payload(
-                            <span class="kw-2">&amp;mut </span>response_payload_size,
-                            req.max_response_size,
-                            bytecode.<span class="number">0</span>.len(),
-                        )
-                        .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    address,
-                    prefix,
-                    start_key,
-                    end_key,
-                    count,
-                } =&gt; {
-                    <span class="kw">let </span>(_final_v, speculative_v) = execution_lock
-                        .get_final_and_candidate_datastore_keys(
-                            <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count,
-                        );
-                    <span class="kw">match </span>speculative_v {
-                        <span class="prelude-val">Some</span>(keys) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::AddressDatastoreKeys(
-                            keys, address, <span class="bool-val">false</span>,
-                        )),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
-                            <span class="string">"Account {}"</span>,
-                            address
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    address,
-                    prefix,
-                    start_key,
-                    end_key,
-                    count,
-                } =&gt; {
-                    <span class="kw">let </span>final_v = execution_lock
-                        .get_final_datastore_keys(<span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count);
-                    <span class="kw">match </span>final_v {
-                        <span class="prelude-val">Some</span>(keys) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::AddressDatastoreKeys(
-                            keys, address, <span class="bool-val">true</span>,
-                        )),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
-                            <span class="string">"Account {}"</span>,
-                            address
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } =&gt; {
-                    <span class="kw">let </span>(_final_v, speculative_v) =
-                        execution_lock.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key);
-                    <span class="kw">match </span>speculative_v {
-                        <span class="prelude-val">Some</span>(value) =&gt; account_large_payload(
-                            <span class="kw-2">&amp;mut </span>response_payload_size,
-                            req.max_response_size,
-                            value.len(),
-                        )
-                        .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
-                            <span class="string">"Account {} datastore entry {:?}"</span>,
-                            addr, key
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreValueFinal { addr, key } =&gt; {
-                    <span class="kw">let </span>(final_v, _speculative_v) =
-                        execution_lock.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key);
-                    <span class="kw">match </span>final_v {
-                        <span class="prelude-val">Some</span>(value) =&gt; account_large_payload(
-                            <span class="kw-2">&amp;mut </span>response_payload_size,
-                            req.max_response_size,
-                            value.len(),
-                        )
-                        .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
-                            <span class="string">"Account {} datastore entry {:?}"</span>,
-                            addr, key
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) =&gt; {
-                    <span class="kw">let </span>(speculative_v, _final_v) = execution_lock
-                        .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
-                        .first()
-                        .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
-                        .expect(<span class="string">"expected one return value"</span>);
-                    <span class="kw">match </span>speculative_v {
-                        <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
-                        )),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::OpExecutionStatusFinal(id) =&gt; {
-                    <span class="kw">let </span>(_speculative_v, final_v) = execution_lock
-                        .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
-                        .first()
-                        .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
-                        .expect(<span class="string">"expected one return value"</span>);
-                    <span class="kw">match </span>final_v {
-                        <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
-                        )),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(id) =&gt; {
-                    <span class="kw">let </span>(speculative_v, _final_v) =
-                        execution_lock.get_denunciation_execution_status(<span class="kw-2">&amp;</span>id);
-                    <span class="kw">match </span>speculative_v {
-                        <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        <span class="bool-val">false </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(id) =&gt; {
-                    <span class="kw">let </span>(_speculative_v, final_v) =
-                        execution_lock.get_denunciation_execution_status(<span class="kw-2">&amp;</span>id);
-                    <span class="kw">match </span>final_v {
-                        <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        <span class="bool-val">false </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressRollsCandidate(addr) =&gt; {
-                    <span class="kw">let </span>(_final_rolls, candidate_rolls) =
-                        execution_lock.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>addr);
-                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::RollCount(candidate_rolls))
-                }
-                ExecutionQueryRequestItem::AddressRollsFinal(addr) =&gt; {
-                    <span class="kw">let </span>(final_rolls, _candidate_rolls) =
-                        execution_lock.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>addr);
-                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::RollCount(final_rolls))
-                }
-                ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) =&gt; {
-                    <span class="kw">let </span>(candidate_v, _final_v) =
-                        execution_lock.get_address_deferred_credits(<span class="kw-2">&amp;</span>addr);
-                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCredits(candidate_v))
-                }
-                ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) =&gt; {
-                    <span class="kw">let </span>(_candidate_v, final_v) =
-                        execution_lock.get_address_deferred_credits(<span class="kw-2">&amp;</span>addr);
-                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCredits(final_v))
-                }
-                ExecutionQueryRequestItem::CycleInfos {
-                    cycle,
-                    restrict_to_addresses,
-                } =&gt; {
-                    <span class="kw">let </span>cycle_infos =
-                        execution_lock.get_cycle_infos(cycle, restrict_to_addresses.as_ref());
-                    <span class="kw">match </span>cycle_infos {
-                        <span class="prelude-val">Some</span>(cycle_infos) =&gt; {
-                            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::CycleInfos(cycle_infos))
-                        }
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Cycle {}"</span>, cycle))),
-                    }
-                }
-                ExecutionQueryRequestItem::Events(filter) =&gt; {
-                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Events(
-                        execution_lock.get_filtered_sc_output_event(filter),
-                    ))
-                }
-                ExecutionQueryRequestItem::DeferredCallQuote {
-                    target_slot,
-                    max_gas_request,
-                    params_size,
-                } =&gt; {
-                    <span class="kw">let </span>result = execution_lock.deferred_call_quote(
-                        target_slot,
-                        max_gas_request,
-                        params_size,
-                    );
-                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallQuote(
-                        result.<span class="number">0</span>, result.<span class="number">1</span>, result.<span class="number">2</span>, result.<span class="number">3</span>,
-                    ))
-                }
-                ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) =&gt; execution_lock
-                    .deferred_call_info(<span class="kw-2">&amp;</span>deferred_call_id)
-                    .ok_or_else(|| {
-                        ExecutionQueryError::NotFound(<span class="macro">format!</span>(
-                            <span class="string">"Deferred call id {}"</span>,
-                            deferred_call_id
-                        ))
-                    })
-                    .map(|call| {
-                        ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)
-                    }),
-                ExecutionQueryRequestItem::DeferredCallsBySlot(slot) =&gt; {
-                    <span class="kw">let </span>res = execution_lock.get_deferred_calls_by_slot(slot);
-                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
-                }
-            };
+            <span class="kw">let </span>resp_item = eval_query_item(
+                exec_state,
+                req_item,
+                <span class="kw-2">&amp;mut </span>response_payload_size,
+                req.max_response_size,
+                <span class="kw-2">&amp;mut </span>remaining_events,
+            );
             resp.responses.push(resp_item);
         }
         resp
@@ -1127,10 +946,13 @@
     /// * emitter address
     /// * original caller address
     /// * operation id
+    </span><span class="comment">// ponytail: single-shot path uncapped (usize::MAX), one full active-history scan per call;
+    // thread a handler-provided limit like query_state does if this is abused
+    // (breaking-changes list, F42).
     </span><span class="kw">fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: EventFilter) -&gt; Vec&lt;SCOutputEvent&gt; {
         <span class="self">self</span>.execution_state
             .read()
-            .get_filtered_sc_output_event(filter)
+            .get_filtered_sc_output_event(filter, usize::MAX)
     }
 
     <span class="doccomment">/// Get the final and candidate values of balance.
@@ -1141,15 +963,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addresses: <span class="kw-2">&amp;</span>[Address],
     ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;)&gt; {
-        <span class="kw">let </span>execution_state_lock = <span class="self">self</span>.execution_state.read();
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(addresses.len());
-        <span class="kw">for </span>addr <span class="kw">in </span>addresses {
-            result.push(execution_state_lock.get_final_and_candidate_balance(addr));
-        }
-        result
+        <span class="kw">let </span>execution_guard = <span class="self">self</span>.execution_state.read();
+        get_final_and_candidate_balance_under(<span class="kw-2">&amp;</span>execution_guard, addresses)
     }
 
-    <span class="doccomment">/// Get a copy of a single datastore entry with its final and active values
+    <span class="doccomment">/// Get a copy of a single datastore entry with its final and active values.
     ///
     /// # Return value
     /// * `Vec&lt;(final_data_entry, active_data_entry)&gt;`
@@ -1157,12 +975,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         input: Vec&lt;(Address, Vec&lt;u8&gt;)&gt;,
     ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;)&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(input.len());
-        <span class="kw">let </span>execution_state_lock = <span class="self">self</span>.execution_state.read();
-        <span class="kw">for </span>(addr, key) <span class="kw">in </span>input {
-            result.push(execution_state_lock.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key));
-        }
-        result
+        <span class="kw">let </span>execution_guard = <span class="self">self</span>.execution_state.read();
+        get_final_and_active_data_entry_under(<span class="kw-2">&amp;</span>execution_guard, input)
     }
 
     <span class="doccomment">/// Return the active rolls distribution for the given `cycle`
@@ -1221,41 +1035,14 @@
             .get_denunciation_execution_status(denunciation_index)
     }
 
-    <span class="doccomment">/// Gets information about a batch of addresses
+    <span class="doccomment">/// Gets information about a batch of addresses.
     </span><span class="kw">fn </span>get_addresses_infos(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addresses: <span class="kw-2">&amp;</span>[Address],
         deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
     ) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(addresses.len());
-        <span class="kw">let </span>exec_state = <span class="self">self</span>.execution_state.read();
-        <span class="kw">for </span>addr <span class="kw">in </span>addresses {
-            <span class="kw">let </span>(final_datastore_keys, candidate_datastore_keys) = exec_state
-                .get_final_and_candidate_datastore_keys(
-                    addr,
-                    <span class="kw-2">&amp;</span>[],
-                    std::ops::Bound::Unbounded,
-                    std::ops::Bound::Unbounded,
-                    <span class="prelude-val">None</span>,
-                );
-            <span class="kw">let </span>(final_balance, candidate_balance) =
-                exec_state.get_final_and_candidate_balance(addr);
-            <span class="kw">let </span>(final_roll_count, candidate_roll_count) =
-                exec_state.get_final_and_candidate_rolls(addr);
-            <span class="kw">let </span>future_deferred_credits =
-                exec_state.get_address_future_deferred_credits(addr, deferred_credits_max_slot);
-            res.push(ExecutionAddressInfo {
-                final_datastore_keys: final_datastore_keys.unwrap_or_default(),
-                candidate_datastore_keys: candidate_datastore_keys.unwrap_or_default(),
-                final_balance: final_balance.unwrap_or_default(),
-                candidate_balance: candidate_balance.unwrap_or_default(),
-                final_roll_count,
-                candidate_roll_count,
-                future_deferred_credits,
-                cycle_infos: exec_state.get_address_cycle_infos(addr),
-            });
-        }
-        res
+        <span class="kw">let </span>execution_guard = <span class="self">self</span>.execution_state.read();
+        get_addresses_infos_under(<span class="kw-2">&amp;</span>execution_guard, addresses, deferred_credits_max_slot)
     }
 
     <span class="doccomment">/// Get execution statistics
@@ -1347,6 +1134,343 @@
     </span><span class="kw">fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;bool&gt;, <span class="prelude-ty">Option</span>&lt;bool&gt;)&gt; {
         <span class="self">self</span>.execution_state.read().get_ops_exec_status(batch)
     }
+}
+
+<span class="kw">fn </span>get_final_and_candidate_balance_under(
+    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
+    addresses: <span class="kw-2">&amp;</span>[Address],
+) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;)&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(addresses.len());
+    <span class="kw">for </span>addr <span class="kw">in </span>addresses {
+        result.push(exec_state.get_final_and_candidate_balance(addr));
+    }
+    result
+}
+
+<span class="attr">#[allow(clippy::type_complexity)]
+</span><span class="kw">fn </span>get_final_and_active_data_entry_under(
+    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
+    input: Vec&lt;(Address, Vec&lt;u8&gt;)&gt;,
+) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;)&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(input.len());
+    <span class="kw">for </span>(addr, key) <span class="kw">in </span>input {
+        result.push(exec_state.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key));
+    }
+    result
+}
+
+<span class="kw">fn </span>get_addresses_infos_under(
+    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
+    addresses: <span class="kw-2">&amp;</span>[Address],
+    deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
+) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(addresses.len());
+    <span class="kw">for </span>addr <span class="kw">in </span>addresses {
+        <span class="kw">let </span>(final_datastore_keys, candidate_datastore_keys) = exec_state
+            .get_final_and_candidate_datastore_keys(
+                addr,
+                <span class="kw-2">&amp;</span>[],
+                std::ops::Bound::Unbounded,
+                std::ops::Bound::Unbounded,
+                <span class="prelude-val">None</span>,
+            );
+        <span class="kw">let </span>(final_balance, candidate_balance) = exec_state.get_final_and_candidate_balance(addr);
+        <span class="kw">let </span>(final_roll_count, candidate_roll_count) =
+            exec_state.get_final_and_candidate_rolls(addr);
+        <span class="kw">let </span>future_deferred_credits =
+            exec_state.get_address_future_deferred_credits(addr, deferred_credits_max_slot);
+        res.push(ExecutionAddressInfo {
+            final_datastore_keys: final_datastore_keys.unwrap_or_default(),
+            candidate_datastore_keys: candidate_datastore_keys.unwrap_or_default(),
+            final_balance: final_balance.unwrap_or_default(),
+            candidate_balance: candidate_balance.unwrap_or_default(),
+            final_roll_count,
+            candidate_roll_count,
+            future_deferred_credits,
+            cycle_infos: exec_state.get_address_cycle_infos(addr),
+        });
+    }
+    res
+}
+
+<span class="kw">fn </span>eval_query_item(
+    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
+    req_item: ExecutionQueryRequestItem,
+    response_payload_size: <span class="kw-2">&amp;mut </span>usize,
+    max_response_size: usize,
+    remaining_events: <span class="kw-2">&amp;mut </span>usize,
+) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionQueryResponseItem, ExecutionQueryError&gt; {
+    <span class="kw">match </span>req_item {
+        ExecutionQueryRequestItem::AddressExistsCandidate(addr) =&gt; {
+            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Boolean(
+                exec_state
+                    .get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr)
+                    .<span class="number">1
+                    </span>.is_some(),
+            ))
+        }
+        ExecutionQueryRequestItem::AddressExistsFinal(addr) =&gt; {
+            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Boolean(
+                exec_state
+                    .get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr)
+                    .<span class="number">0
+                    </span>.is_some(),
+            ))
+        }
+        ExecutionQueryRequestItem::AddressBalanceCandidate(addr) =&gt; {
+            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr);
+            <span class="kw">match </span>speculative_v {
+                <span class="prelude-val">Some</span>(balance) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Amount(balance)),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressBalanceFinal(addr) =&gt; {
+            <span class="kw">let </span>(final_v, _speculative_v) = exec_state.get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr);
+            <span class="kw">match </span>final_v {
+                <span class="prelude-val">Some</span>(balance) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Amount(balance)),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressBytecodeCandidate(addr) =&gt; {
+            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_active_bytecode(<span class="kw-2">&amp;</span>addr);
+            <span class="kw">match </span>speculative_v {
+                <span class="prelude-val">Some</span>(bytecode) =&gt; account_large_payload(
+                    <span class="kw-2">&amp;mut *</span>response_payload_size,
+                    max_response_size,
+                    bytecode.<span class="number">0</span>.len(),
+                )
+                .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressBytecodeFinal(addr) =&gt; {
+            <span class="kw">let </span>(final_v, _speculative_v) = exec_state.get_final_and_active_bytecode(<span class="kw-2">&amp;</span>addr);
+            <span class="kw">match </span>final_v {
+                <span class="prelude-val">Some</span>(bytecode) =&gt; account_large_payload(
+                    <span class="kw-2">&amp;mut *</span>response_payload_size,
+                    max_response_size,
+                    bytecode.<span class="number">0</span>.len(),
+                )
+                .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+            address,
+            prefix,
+            start_key,
+            end_key,
+            count,
+        } =&gt; {
+            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_candidate_datastore_keys(
+                <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count,
+            );
+            <span class="kw">match </span>speculative_v {
+                <span class="prelude-val">Some</span>(keys) =&gt; {
+                    <span class="kw">let </span>bytes = datastore_keys_byte_len(<span class="kw-2">&amp;</span>keys);
+                    account_large_payload(<span class="kw-2">&amp;mut *</span>response_payload_size, max_response_size, bytes)
+                        .map(|()| {
+                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, <span class="bool-val">false</span>)
+                        })
+                }
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+                    <span class="string">"Account {}"</span>,
+                    address
+                ))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+            address,
+            prefix,
+            start_key,
+            end_key,
+            count,
+        } =&gt; {
+            <span class="kw">let </span>final_v =
+                exec_state.get_final_datastore_keys(<span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count);
+            <span class="kw">match </span>final_v {
+                <span class="prelude-val">Some</span>(keys) =&gt; {
+                    <span class="kw">let </span>bytes = datastore_keys_byte_len(<span class="kw-2">&amp;</span>keys);
+                    account_large_payload(<span class="kw-2">&amp;mut *</span>response_payload_size, max_response_size, bytes)
+                        .map(|()| {
+                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, <span class="bool-val">true</span>)
+                        })
+                }
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+                    <span class="string">"Account {}"</span>,
+                    address
+                ))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } =&gt; {
+            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key);
+            <span class="kw">match </span>speculative_v {
+                <span class="prelude-val">Some</span>(value) =&gt; account_large_payload(
+                    <span class="kw-2">&amp;mut *</span>response_payload_size,
+                    max_response_size,
+                    value.len(),
+                )
+                .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+                    <span class="string">"Account {} datastore entry {:?}"</span>,
+                    addr, key
+                ))),
+            }
+        }
+        ExecutionQueryRequestItem::AddressDatastoreValueFinal { addr, key } =&gt; {
+            <span class="kw">let </span>(final_v, _speculative_v) = exec_state.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key);
+            <span class="kw">match </span>final_v {
+                <span class="prelude-val">Some</span>(value) =&gt; account_large_payload(
+                    <span class="kw-2">&amp;mut *</span>response_payload_size,
+                    max_response_size,
+                    value.len(),
+                )
+                .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+                    <span class="string">"Account {} datastore entry {:?}"</span>,
+                    addr, key
+                ))),
+            }
+        }
+        ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) =&gt; {
+            <span class="kw">let </span>(speculative_v, _final_v) = exec_state
+                .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
+                .first()
+                .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
+                .expect(<span class="string">"expected one return value"</span>);
+            <span class="kw">match </span>speculative_v {
+                <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                )),
+                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
+                )),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                )),
+            }
+        }
+        ExecutionQueryRequestItem::OpExecutionStatusFinal(id) =&gt; {
+            <span class="kw">let </span>(_speculative_v, final_v) = exec_state
+                .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
+                .first()
+                .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
+                .expect(<span class="string">"expected one return value"</span>);
+            <span class="kw">match </span>final_v {
+                <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                )),
+                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
+                )),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                )),
+            }
+        }
+        ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(id) =&gt; {
+            <span class="kw">let </span>(speculative_v, _final_v) = exec_state.get_denunciation_execution_status(<span class="kw-2">&amp;</span>id);
+            <span class="kw">match </span>speculative_v {
+                <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                )),
+                <span class="bool-val">false </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                )),
+            }
+        }
+        ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(id) =&gt; {
+            <span class="kw">let </span>(_speculative_v, final_v) = exec_state.get_denunciation_execution_status(<span class="kw-2">&amp;</span>id);
+            <span class="kw">match </span>final_v {
+                <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                )),
+                <span class="bool-val">false </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                )),
+            }
+        }
+        ExecutionQueryRequestItem::AddressRollsCandidate(addr) =&gt; {
+            <span class="kw">let </span>(_final_rolls, candidate_rolls) = exec_state.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>addr);
+            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::RollCount(candidate_rolls))
+        }
+        ExecutionQueryRequestItem::AddressRollsFinal(addr) =&gt; {
+            <span class="kw">let </span>(final_rolls, _candidate_rolls) = exec_state.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>addr);
+            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::RollCount(final_rolls))
+        }
+        ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) =&gt; {
+            <span class="kw">let </span>(candidate_v, _final_v) = exec_state.get_address_deferred_credits(<span class="kw-2">&amp;</span>addr);
+            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCredits(candidate_v))
+        }
+        ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) =&gt; {
+            <span class="kw">let </span>(_candidate_v, final_v) = exec_state.get_address_deferred_credits(<span class="kw-2">&amp;</span>addr);
+            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCredits(final_v))
+        }
+        ExecutionQueryRequestItem::CycleInfos {
+            cycle,
+            restrict_to_addresses,
+        } =&gt; {
+            <span class="kw">let </span>cycle_infos = exec_state.get_cycle_infos(cycle, restrict_to_addresses.as_ref());
+            <span class="kw">match </span>cycle_infos {
+                <span class="prelude-val">Some</span>(cycle_infos) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::CycleInfos(cycle_infos)),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Cycle {}"</span>, cycle))),
+            }
+        }
+        ExecutionQueryRequestItem::Events(filter) =&gt; {
+            <span class="kw">let </span>limit = <span class="kw-2">*</span>remaining_events;
+            <span class="kw">if </span>limit == <span class="number">0 </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionQueryError::TooLargeResponse(
+                    <span class="string">"event budget for this batch is exhausted"</span>.to_string(),
+                ));
+            }
+            <span class="kw">let </span>events = exec_state.get_filtered_sc_output_event(filter, limit);
+            <span class="kw-2">*</span>remaining_events -= events.len();
+            <span class="kw">let </span>bytes = events
+                .iter()
+                .map(|event| {
+                    event
+                        .data
+                        .len()
+                        .saturating_add(EVENT_RESPONSE_OVERHEAD_BYTES)
+                })
+                .fold(<span class="number">0usize</span>, |acc, len| acc.saturating_add(len));
+            account_large_payload(<span class="kw-2">&amp;mut *</span>response_payload_size, max_response_size, bytes)
+                .map(|()| ExecutionQueryResponseItem::Events(events))
+        }
+        ExecutionQueryRequestItem::DeferredCallQuote {
+            target_slot,
+            max_gas_request,
+            params_size,
+        } =&gt; {
+            <span class="kw">let </span>result = exec_state.deferred_call_quote(target_slot, max_gas_request, params_size);
+            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallQuote(
+                result.<span class="number">0</span>, result.<span class="number">1</span>, result.<span class="number">2</span>, result.<span class="number">3</span>,
+            ))
+        }
+        ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) =&gt; exec_state
+            .deferred_call_info(<span class="kw-2">&amp;</span>deferred_call_id)
+            .ok_or_else(|| {
+                ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Deferred call id {}"</span>, deferred_call_id))
+            })
+            .map(|call| ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)),
+        ExecutionQueryRequestItem::DeferredCallsBySlot(slot) =&gt; {
+            <span class="kw">let </span>res = exec_state.get_deferred_calls_by_slot(slot);
+            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
+        }
+    }
+}
+
+<span class="doccomment">/// Estimated serialized size (bytes) of one event's context on top of `data.len()`.
+/// Covers slot, emitter/caller/operation ids and Vec bookkeeping.
+</span><span class="comment">// ponytail: overhead estimated, measure real serialized SCOutputEvent context size and adjust;
+// revisit if the legacy 50 KB events leave the cache and the estimate dominates the budget.
+</span><span class="kw">const </span>EVENT_RESPONSE_OVERHEAD_BYTES: usize = <span class="number">128</span>;
+
+<span class="doccomment">/// Summed key lengths of a datastore-keys response, for the cumulative size budget.
+</span><span class="kw">fn </span>datastore_keys_byte_len(keys: <span class="kw-2">&amp;</span>BTreeSet&lt;Vec&lt;u8&gt;&gt;) -&gt; usize {
+    keys.iter()
+        .map(Vec::len)
+        .fold(<span class="number">0usize</span>, usize::saturating_add)
 }
 
 <span class="doccomment">/// Account a large payload against the cumulative response budget.

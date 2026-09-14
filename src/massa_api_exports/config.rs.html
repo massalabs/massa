@@ -100,6 +100,8 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_deferred_calls::config::DeferredCallsConfig;
@@ -199,6 +201,8 @@
     </span><span class="kw">pub </span>max_datastore_keys_queries: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     <span class="doccomment">/// Limit the number of addresses in a single datastore keys request
     </span><span class="kw">pub </span>max_addresses_datastore_keys_query: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    <span class="doccomment">/// Max events returned per query_state batch
+    </span><span class="kw">pub </span>max_events_per_query: u32,
     <span class="doccomment">/// timeout for API calls to pools (in milliseconds)
     </span><span class="kw">pub </span>pool_api_timeout: MassaTime,
 }
