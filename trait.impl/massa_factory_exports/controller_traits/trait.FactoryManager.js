@@ -1,3 +1,3 @@
 (function() {var implementors = {
-"massa_factory_worker":[["impl <a class=\"trait\" href=\"massa_factory_exports/controller_traits/trait.FactoryManager.html\" title=\"trait massa_factory_exports::controller_traits::FactoryManager\">FactoryManager</a> for <a class=\"struct\" href=\"massa_factory_worker/manager/struct.FactoryManagerImpl.html\" title=\"struct massa_factory_worker::manager::FactoryManagerImpl\">FactoryManagerImpl</a>"]]
+"massa_factory_worker":[["impl FactoryManager for <a class=\"struct\" href=\"massa_factory_worker/manager/struct.FactoryManagerImpl.html\" title=\"struct massa_factory_worker::manager::FactoryManagerImpl\">FactoryManagerImpl</a>"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
