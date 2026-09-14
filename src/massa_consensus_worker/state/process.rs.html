@@ -848,32 +848,6 @@
 <a href="#848" id="848">848</a>
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
-<a href="#876" id="876">876</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeSet, HashMap, VecDeque};
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -885,7 +859,6 @@
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
     address::Address,
-    block_header::SecuredHeader,
     block_id::BlockId,
     clique::Clique,
     denunciation::DenunciationPrecursor,
@@ -1700,36 +1673,11 @@
         <span class="self">self</span>.new_final_blocks.clear();
         <span class="self">self</span>.new_stale_blocks.clear();
 
-        <span class="comment">// notify protocol of block wishlist
-        </span><span class="kw">let </span>new_wishlist = <span class="self">self</span>.get_block_wishlist()<span class="question-mark">?</span>;
-        <span class="kw">let </span>new_blocks: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt; = new_wishlist
-            .iter()
-            .filter_map(|(id, header)| {
-                <span class="kw">if </span>!<span class="self">self</span>.wishlist.contains_key(id) {
-                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, header.clone()))
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            })
-            .collect();
-        <span class="kw">let </span>remove_blocks: PreHashSet&lt;BlockId&gt; = <span class="self">self
-            </span>.wishlist
-            .iter()
-            .filter_map(|(id, <span class="kw">_</span>)| {
-                <span class="kw">if </span>!new_wishlist.contains_key(id) {
-                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>id)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            })
-            .collect();
-        <span class="kw">if </span>!new_blocks.is_empty() || !remove_blocks.is_empty() {
-            <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed.send_wishlist_delta"</span>, { <span class="string">"new"</span>: new_wishlist, <span class="string">"remove"</span>: remove_blocks });
-            <span class="self">self</span>.channels
-                .protocol_controller
-                .send_wishlist_delta(new_blocks, remove_blocks)<span class="question-mark">?</span>;
-            <span class="self">self</span>.wishlist = new_wishlist;
-        }
+        <span class="comment">// notify protocol of block wishlist.
+        // This runs after `add_block_to_graph`/`mark_final_blocks` have advanced
+        // `latest_final_blocks_periods`, so blocks that became stale or unreachable
+        // under the new finality floor no longer contribute wishlist entries.
+        </span><span class="self">self</span>.sync_wishlist()<span class="question-mark">?</span>;
 
         <span class="comment">// note new latest final periods
         </span><span class="kw">let </span>latest_final_periods: Vec&lt;u64&gt; = <span class="self">self
