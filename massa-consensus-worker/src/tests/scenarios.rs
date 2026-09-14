@@ -1033,3 +1033,115 @@ fn test_undrawable_slot_headers_do_not_poison_multistake() {
         );
     }
 }
+
+/// Regression test for F26: marking invalid a block that consensus has never
+/// seen must be a no-op, not a panic.
+///
+/// This is the normal missing-parent flow, not a pruning race: a block
+/// wishlisted as a missing parent is never inserted in `blocks_state` (protocol
+/// keeps wishlisted headers to itself), yet protocol can decide it is invalid
+/// before its full block arrives (e.g. its committed operations exceed the max
+/// block size) and send `mark_invalid_block` for it. `None -> Discarded` is a
+/// forbidden transition, so the worker used to panic while holding the shared
+/// state write lock, taking the whole consensus down.
+#[test]
+fn test_mark_invalid_unknown_block_is_noop() {
+    let staking_key: KeyPair = KeyPair::generate(0).unwrap();
+    let cfg = ConsensusConfig {
+        t0: MassaTime::from_millis(100),
+        thread_count: 2,
+        genesis_timestamp: MassaTime::now(),
+        force_keep_final_periods: 50,
+        force_keep_final_periods_without_ops: 128,
+        max_future_processing_blocks: 10,
+        genesis_key: staking_key.clone(),
+        ..ConsensusConfig::default()
+    };
+
+    let staking_address = Address::from_public_key(&staking_key.get_public_key());
+    let last_start_period = cfg.last_start_period;
+
+    let mut foreign_controllers = ConsensusForeignControllers::new_with_mocks();
+    foreign_controllers
+        .execution_controller
+        .expect_update_blockclique_status()
+        .returning(|_, _, _| {});
+    foreign_controllers
+        .pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+    foreign_controllers
+        .pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(|_| {});
+    foreign_controllers
+        .selector_controller
+        .expect_get_producer()
+        .returning(move |_| Ok(staking_address));
+    foreign_controllers
+        .selector_controller
+        .expect_get_selection()
+        .returning(move |_| {
+            Ok(Selection {
+                producer: staking_address,
+                endorsements: vec![staking_address; ENDORSEMENT_COUNT as usize],
+            })
+        });
+
+    let universe = ConsensusTestUniverse::new(foreign_controllers, cfg);
+    let controller = universe.module_controller.clone();
+
+    let genesis_hashes = controller
+        .get_block_graph_status(None, None)
+        .expect("could not get block graph status")
+        .genesis_blocks;
+
+    // A block consensus has never been told about: no header registered, no block registered.
+    let unknown_block = create_block(
+        Slot::new(1 + last_start_period, 0),
+        genesis_hashes.clone(),
+        &staking_key,
+    );
+    assert_eq!(
+        controller.get_block_statuses(&[unknown_block.id])[0],
+        BlockGraphStatus::NotFound,
+        "the block must be unknown to consensus for this test to be meaningful"
+    );
+
+    controller.mark_invalid_block(unknown_block.id, unknown_block.content.header.clone());
+
+    // The worker holds the shared state write lock while handling the command, so a panic
+    // there leaves the lock held forever: check liveness from a separate thread with a
+    // deadline instead of blocking the test process.
+    let (tx, rx) = std::sync::mpsc::channel();
+    let liveness_controller = controller.clone();
+    let liveness_block = create_block(
+        Slot::new(1 + last_start_period, 1),
+        genesis_hashes,
+        &staking_key,
+    );
+    let liveness_block_id = liveness_block.id;
+    std::thread::spawn(move || {
+        liveness_controller
+            .register_block_header(liveness_block_id, liveness_block.content.header.clone());
+        loop {
+            let statuses =
+                liveness_controller.get_block_statuses(&[unknown_block.id, liveness_block_id]);
+            if statuses[1] != BlockGraphStatus::NotFound {
+                let _ = tx.send(statuses);
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    });
+
+    let statuses = rx.recv_timeout(Duration::from_secs(5)).expect(
+        "consensus worker stopped handling commands after mark_invalid_block on an unknown block",
+    );
+
+    assert_eq!(
+        statuses[0],
+        BlockGraphStatus::NotFound,
+        "marking an unknown block invalid must not create an entry for it"
+    );
+}

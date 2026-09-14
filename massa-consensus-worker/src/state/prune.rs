@@ -128,6 +128,10 @@ impl ConsensusState {
         let len_slot_waiting = slot_waiting.len();
         (self.config.max_future_processing_blocks..len_slot_waiting).for_each(|idx| {
             let (_slot, block_id) = &slot_waiting[idx];
+            // Eviction for size is NOT a verdict on the block: forget it (None), do not mark it
+            // Discarded. Discarded is terminal (never reprocessed) and inherited by every child
+            // in check_header. A forgotten block is refetched through the wishlist as soon as a
+            // child references it, which is the recovery path we want.
             self.blocks_state.transition_map(block_id, |_, _| None);
         });
     }
@@ -267,6 +271,12 @@ impl ConsensusState {
                     .min();
                 if let Some((_seq_num, _slot, hash)) = remove_elt {
                     to_keep.remove(&hash);
+                    // Eviction for size is NOT a verdict on the block: forget it (None), do not mark
+                    // it Discarded. Discarded is terminal (never reprocessed) and inherited by every
+                    // child in check_header, and here it would also be propagated by the
+                    // discarded-dependency cascade above to every waiter built on this block. A
+                    // forgotten block is refetched through the wishlist as soon as a child
+                    // references it, which is the recovery path we want.
                     to_discard.insert(hash, None);
                     continue;
                 }
