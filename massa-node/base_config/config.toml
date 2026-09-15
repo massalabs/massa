@@ -251,6 +251,8 @@
     event_snip_amount = 10
     # maximum number of events return by a query
     max_event_per_query = 7000
+    # wall-clock deadline for a query_state batch, in ms (safety net against lock contention)
+    query_state_deadline_ms = 500
     # slot execution info channel capacity
     broadcast_slot_execution_info_channel_capacity = 5000
 

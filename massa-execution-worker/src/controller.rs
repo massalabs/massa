@@ -23,6 +23,7 @@ use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Display;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tracing::info;
 
 #[cfg(feature = "execution-trace")]
@@ -168,7 +169,28 @@ impl ExecutionController for ExecutionControllerImpl {
         // Events still returnable by this batch; see `max_event_count`.
         // `None` means unbounded and stays unbounded.
         let mut remaining_events = req.max_event_count;
-        for req_item in req.requests {
+        // Safety net against lock contention: a wall-clock deadline for the whole
+        // batch. Not the main bound (that is the cumulative budget). `None` = no
+        // deadline.
+        let deadline = req
+            .query_state_deadline_ms
+            .map(|ms| Instant::now() + Duration::from_millis(ms));
+        let mut req_items = req.requests.into_iter().enumerate();
+        while let Some((idx, req_item)) = req_items.next() {
+            // The first item is always evaluated (a 0 ms deadline still lets one
+            // item through — deterministic test); the deadline gates the rest.
+            if idx > 0 && deadline.is_some_and(|d| Instant::now() >= d) {
+                // Remaining items (current and onwards) error out; already
+                // computed items stay valid and cursors are untouched.
+                let err = ExecutionQueryError::TooLargeResponse(
+                    "query_state deadline exceeded".to_string(),
+                );
+                resp.responses.push(Err(err.clone()));
+                for _ in &mut req_items {
+                    resp.responses.push(Err(err.clone()));
+                }
+                break;
+            }
             let resp_item = eval_query_item(
                 exec_state,
                 req_item,

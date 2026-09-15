@@ -54,6 +54,12 @@ pub struct ExecutionQueryRequest {
     /// fetched. `None` means unbounded (explicit opt-out, e.g. tests and empty
     /// requests — never for transport-facing batches).
     pub max_event_count: Option<usize>,
+    /// Wall-clock deadline for the whole batch, in milliseconds. Past the
+    /// deadline, remaining items return a per-item `TooLargeResponse` error;
+    /// already-computed items stay valid. `None` means no deadline (explicit
+    /// opt-out, e.g. tests and empty requests — never for transport-facing
+    /// batches). Safety net against lock contention, not the main bound.
+    pub query_state_deadline_ms: Option<u64>,
 }
 
 /// Response to a list of execution queries
