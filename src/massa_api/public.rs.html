@@ -1690,7 +1690,6 @@
 <a href="#1690" id="1690">1690</a>
 <a href="#1691" id="1691">1691</a>
 <a href="#1692" id="1692">1692</a>
-<a href="#1693" id="1693">1693</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1797,7 +1796,6 @@
             .query_state(ExecutionQueryRequest {
                 requests,
                 max_response_size: <span class="self">self</span>.<span class="number">0</span>.api_settings.max_response_body_size <span class="kw">as </span>usize,
-                max_event_count: <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="number">0</span>.api_settings.max_event_per_query <span class="kw">as </span>usize),
             })
     }
 }
