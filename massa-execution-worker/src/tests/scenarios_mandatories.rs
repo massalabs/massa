@@ -1059,7 +1059,7 @@ fn send_and_receive_async_message() {
             Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
         }
         77658377 => {
-            Address::from_str("AS1Ua3PVmURnETZMLeFXDFGkbgqGjz8NfEHTyGRRGe15sk1kCM9a").unwrap()
+            Address::from_str("AS1vipJvf2MeQUN5rosJJE3TfNMJvUgCpYnQzHG9pGahgmd4MVxN").unwrap()
         }
         _ => panic!("CHAINID not supported"),
     };
@@ -3001,6 +3001,7 @@ fn send_and_receive_transaction() {
             OperationSerializer::new(),
             &KeyPair::from_str(TEST_SK_1).unwrap(),
             *CHAINID,
+            None,
         )
         .unwrap();
         operation_vec.push(operation.clone());
@@ -3102,6 +3103,7 @@ fn roll_buy() {
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         *CHAINID,
+        None,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -3232,6 +3234,7 @@ fn roll_sell() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
+        None,
     )
     .unwrap();
     let operation2 = Operation::new_verifiable(
@@ -3245,6 +3248,7 @@ fn roll_sell() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
+        None,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -3494,20 +3498,23 @@ fn roll_slash() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
+        None,
     )
     .unwrap();
 
     // create a denunciation
     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
         gen_endorsements_for_denunciation(Some(Slot::new(1, 0)), Some(keypair.clone()));
-    let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+    let denunciation =
+        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
 
     // create a denunciation (that will be ignored as it has been created at the last start period)
     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(
         Some(Slot::new(exec_cfg.last_start_period, 4)),
         Some(keypair.clone()),
     );
-    let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+    let denunciation_2 =
+        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
 
     // create the block containing the roll buy operation
     universe.storage.store_operations(vec![operation1.clone()]);
@@ -3624,20 +3631,23 @@ fn roll_slash_2() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
+        None,
     )
     .unwrap();
 
     // create a denunciation
     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
         gen_endorsements_for_denunciation(Some(Slot::new(1, 0)), Some(keypair.clone()));
-    let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+    let denunciation =
+        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
 
     // create a denunciation (that will be ignored as it has been created at the last start period)
     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(
         Some(Slot::new(exec_cfg.last_start_period, 4)),
         Some(keypair.clone()),
     );
-    let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+    let denunciation_2 =
+        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
 
     // create the block containing the roll buy operation
     universe.storage.store_operations(vec![operation1.clone()]);
@@ -4143,6 +4153,7 @@ fn not_enough_instance_gas() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
+        None,
     )
     .unwrap();
     universe.storage.store_operations(vec![operation.clone()]);
@@ -4515,7 +4526,7 @@ fn send_and_receive_async_message_with_reset() {
             Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
         }
         77658377 => {
-            Address::from_str("AS1g6jtsCD2ptEKJ4f6Bj5xJnCxu1Uimdkgwx7vEXfgCLMQNoxRv").unwrap()
+            Address::from_str("AS1zTmZ4y1ugi2qBLJjAtihanaaXw2M6fCmsEiFrLgAgmtMFyf28").unwrap()
         }
         _ => panic!("CHAINID not supported"),
     };
@@ -4719,6 +4730,7 @@ fn execution_trace_transfers_are_bound_to_event() {
         OperationSerializer::new(),
         &sender_keypair,
         *CHAINID,
+        Some(*CHAINID),
     )
     .unwrap();
     let op_id = operation.id;
@@ -4990,7 +5002,7 @@ fn execution_trace_nested() {
 
     let from_addr = match *CHAINID {
         77 => "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string(),
-        77658377 => "AS128FLq3PrWe7RQKD1UoNzk4fKeGwm4PjEYHiTXi2QHyQx5UE71L".to_string(),
+        77658377 => "AS1j9gTwCRaCtBsA2hyjZAYrjmK12GBQfVRQS8LLbnGkCWJsRAJV".to_string(),
         _ => {
             panic!("Invalid chain id for this test");
         }
@@ -5096,6 +5108,7 @@ fn test_dump_block() {
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         *CHAINID,
+        None,
     )
     .unwrap();
     // create the block containing the transaction operation

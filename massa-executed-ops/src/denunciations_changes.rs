@@ -109,7 +109,9 @@ impl Deserializer<ExecutedDenunciationsChanges> for ExecutedDenunciationsChanges
 mod tests {
     use super::*;
 
-    use massa_models::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATION_CHANGES_LENGTH, THREAD_COUNT};
+    use massa_models::config::{
+        CHAINID, ENDORSEMENT_COUNT, MAX_DENUNCIATION_CHANGES_LENGTH, THREAD_COUNT,
+    };
     use massa_models::denunciation::Denunciation;
     use massa_models::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
@@ -120,13 +122,15 @@ mod tests {
     fn test_executed_denunciations_changes_ser_der() {
         let (_, _, s_block_header_1, s_block_header_2, _) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation_1: Denunciation =
-            (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+        let denunciation_1: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+            .try_into()
+            .unwrap();
         let denunciation_index_1 = DenunciationIndex::from(&denunciation_1);
 
         let (_, _, s_endorsement_1, s_endorsement_2, _) =
             gen_endorsements_for_denunciation(None, None);
-        let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+        let denunciation_2 =
+            Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
         let denunciation_index_2 = DenunciationIndex::from(&denunciation_2);
 
         let p_de_changes: ExecutedDenunciationsChanges =
