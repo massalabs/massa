@@ -268,7 +268,14 @@ impl Tester {
             }
 
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
-                tracing::error!("Failed to shutdown socket for {} : {}", addr, e);
+                // the tested peer usually closes the connection on its side as soon as it has
+                // sent us its announcement, so the socket is often already fully torn down here:
+                // nothing left to shut down, and it gets closed anyway when dropped
+                if e.kind() == std::io::ErrorKind::NotConnected {
+                    debug!("Socket for {} was already closed by the peer", addr);
+                } else {
+                    tracing::error!("Failed to shutdown socket for {} : {}", addr, e);
+                }
             }
             res
         };
