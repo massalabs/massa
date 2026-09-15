@@ -1396,7 +1396,7 @@
                         {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
                                 <span class="string">"too many operation ids received. Only a maximum of {} operation ids are accepted per request"</span>,
-                             grpc_config.max_operation_ids_per_request
+                             grpc_config.max_block_ids_per_request
                             )));
                         }
                         <span class="kw">let </span>operation_ids = operation_ids_filter.get_or_insert_with(HashSet::new);
@@ -1620,7 +1620,7 @@
                         {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
                                 <span class="string">"too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request"</span>,
-                             grpc_config.max_endorsement_ids_per_request
+                             grpc_config.max_block_ids_per_request
                             )));
                         }
                         <span class="kw">let </span>endorsement_ids =
