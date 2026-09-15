@@ -436,7 +436,6 @@
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -828,8 +827,7 @@
     </span><span class="kw">pub </span>max_filters_per_request: u32,
     <span class="doccomment">/// max number of query items that can be included in a single request
     </span><span class="kw">pub </span>max_query_items_per_request: u32,
-    <span class="doccomment">/// max events returned per query_state batch
-    /// certificate authority root path
+    <span class="doccomment">/// certificate authority root path
     </span><span class="kw">pub </span>certificate_authority_root_path: PathBuf,
     <span class="doccomment">/// server certificate path
     </span><span class="kw">pub </span>server_certificate_path: PathBuf,
