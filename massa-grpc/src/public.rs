@@ -970,6 +970,7 @@ pub(crate) fn get_status(
         requests: vec![],
         max_response_size: grpc.grpc_config.max_encoding_message_size,
         max_event_count: None,
+        query_state_deadline_ms: None,
     };
     let state = grpc.execution_controller.query_state(empty_request);
 
@@ -1048,6 +1049,7 @@ pub(crate) fn query_state(
             requests: queries,
             max_response_size: grpc.grpc_config.max_encoding_message_size,
             max_event_count: Some(grpc.grpc_config.max_event_per_query as usize),
+            query_state_deadline_ms: grpc.grpc_config.query_state_deadline_ms,
         });
 
     Ok(grpc_api::QueryStateResponse {

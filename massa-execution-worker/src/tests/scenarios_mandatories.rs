@@ -708,6 +708,7 @@ fn test_query_state_events_budget_shared() {
             ],
             max_response_size: usize::MAX,
             max_event_count: Some(1),
+            query_state_deadline_ms: None,
         });
     assert_eq!(resp.responses.len(), 2);
     match &resp.responses[0] {
@@ -720,6 +721,73 @@ fn test_query_state_events_budget_shared() {
         Err(ExecutionQueryError::TooLargeResponse(_)) => {}
         _ => panic!("second Events item should hit the budget"),
     }
+}
+
+/// Test the query_state wall-clock deadline: a 0 ms deadline lets the first item
+/// evaluate and errors out every following item (deterministic, no timing);
+/// `None` disables the deadline entirely.
+#[test]
+fn test_query_state_deadline() {
+    let exec_cfg = ExecutionConfig::default();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+        None,
+    );
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_fingerprint()
+        .returning(move || Hash::compute_from(b""));
+    let universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    // 0 ms deadline: first item evaluates, every following item errors.
+    let resp = universe
+        .module_controller
+        .query_state(ExecutionQueryRequest {
+            requests: vec![
+                ExecutionQueryRequestItem::Events(EventFilter::default()),
+                ExecutionQueryRequestItem::Events(EventFilter::default()),
+                ExecutionQueryRequestItem::Events(EventFilter::default()),
+            ],
+            max_response_size: usize::MAX,
+            max_event_count: None,
+            query_state_deadline_ms: Some(0),
+        });
+    assert_eq!(resp.responses.len(), 3);
+    assert!(
+        resp.responses[0].is_ok(),
+        "first item should evaluate despite the deadline"
+    );
+    for (i, r) in resp.responses.iter().enumerate().skip(1) {
+        assert!(
+            matches!(r, Err(ExecutionQueryError::TooLargeResponse(_))),
+            "item {i} past the deadline should error"
+        );
+    }
+
+    // None: whole batch evaluates (no deadline).
+    let resp = universe
+        .module_controller
+        .query_state(ExecutionQueryRequest {
+            requests: vec![
+                ExecutionQueryRequestItem::Events(EventFilter::default()),
+                ExecutionQueryRequestItem::Events(EventFilter::default()),
+            ],
+            max_response_size: usize::MAX,
+            max_event_count: None,
+            query_state_deadline_ms: None,
+        });
+    assert_eq!(resp.responses.len(), 2);
+    assert!(resp.responses[0].is_ok());
+    assert!(resp.responses[1].is_ok());
 }
 
 /// Test the recursion depth limit in nested calls using call SC operation
@@ -4143,6 +4211,7 @@ fn datastore_manipulations() {
             ],
             max_response_size: usize::MAX,
             max_event_count: None,
+            query_state_deadline_ms: None,
         });
     // Just checking that is works no asserts for now
     universe

@@ -34,3 +34,4 @@ massa-client/wallets/*
 *.profraw
 coverage
 /firedbg
+.opencode/

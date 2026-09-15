@@ -998,6 +998,7 @@ async fn launch(
         deferred_calls_config,
         max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
         max_event_per_query: SETTINGS.execution.max_event_per_query as u32,
+        query_state_deadline_ms: SETTINGS.execution.query_state_deadline_ms,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_addresses_datastore_keys_query: SETTINGS.api.max_addresses_datastore_keys_query,
         pool_api_timeout: SETTINGS.api.pool_api_timeout,
@@ -1036,6 +1037,7 @@ async fn launch(
             SETTINGS.pool.minimal_fees,
             gas_costs.sp_compilation_cost,
             SETTINGS.execution.max_event_per_query,
+            SETTINGS.execution.query_state_deadline_ms,
         );
 
         let grpc_public_api = MassaPublicGrpc {
@@ -1079,6 +1081,7 @@ async fn launch(
             SETTINGS.pool.minimal_fees,
             gas_costs.sp_compilation_cost,
             SETTINGS.execution.max_event_per_query,
+            SETTINGS.execution.query_state_deadline_ms,
         );
 
         let bs_white_black_list = bootstrap_manager
@@ -1231,6 +1234,7 @@ async fn launch(
 }
 
 // Get the configuration of the gRPC server
+#[allow(clippy::too_many_arguments)]
 fn configure_grpc(
     name: ServiceName,
     settings: &GrpcSettings,
@@ -1239,6 +1243,7 @@ fn configure_grpc(
     minimal_fees: Amount,
     sp_compilation_cost: u64,
     max_event_per_query: usize,
+    query_state_deadline_ms: Option<u64>,
 ) -> GrpcConfig {
     GrpcConfig {
         name,
@@ -1300,6 +1305,7 @@ fn configure_grpc(
         max_filters_per_request: settings.max_filters_per_request,
         max_query_items_per_request: settings.max_query_items_per_request,
         max_event_per_query: max_event_per_query as u32,
+        query_state_deadline_ms,
         certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         server_certificate_path: settings.server_certificate_path.clone(),
         server_private_key_path: settings.server_private_key_path.clone(),
