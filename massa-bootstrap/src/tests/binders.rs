@@ -728,14 +728,15 @@ fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
                 client.handshake(version()).unwrap();
                 // Pass the bootstrap time sent by server
                 client.next_timeout(Some(read_timeout)).unwrap();
-                for _ in 0..10 {
-                    let _ = client.send_timeout(
-                        &BootstrapClientMessage::AskBootstrapPeers,
-                        Some(Duration::from_millis(1000)),
-                    );
-                    let _ = client.next_timeout(Some(read_timeout));
-                    std::thread::sleep(timeout.div_f32(5.0));
-                }
+                // a single peers exchange: repeating it in the same session is refused since
+                // Issue #4520, so the data exchange phase is entered once and then left idle
+                let _ = client.send_timeout(
+                    &BootstrapClientMessage::AskBootstrapPeers,
+                    Some(Duration::from_millis(1000)),
+                );
+                let _ = client.next_timeout(Some(read_timeout));
+                // stay connected, silently, past the server deadline
+                std::thread::sleep(timeout.mul_f32(2.0));
             }
         })
         .unwrap();

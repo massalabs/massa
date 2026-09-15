@@ -4,6 +4,7 @@ use super::universe_client::{BootstrapClientForeignControllers, BootstrapClientT
 use super::universe_server::BootstrapServerTestUniverseBuilder;
 use crate::BootstrapConfig;
 use crate::BootstrapError;
+use crate::BootstrapServerMessage;
 use massa_models::amount::Amount;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::Datastore;
@@ -104,5 +105,58 @@ fn test_bootstrap_accept_err() {
         .set_accept_error(true)
         .set_port(port)
         .build();
+    drop(server_universe);
+}
+
+// Regression test for Issue #4520: a client may open a session with `AskBootstrapPeers` (an
+// honest client resuming on another server does exactly that), but repeating it would let it
+// camp on a bootstrap slot until the deadline without ever streaming any state.
+// Each server universe serves a single session, hence the two servers.
+#[test]
+#[serial]
+fn scenario_ask_peers_only() {
+    let server_keypair = KeyPair::generate(0).unwrap();
+    let node_id = NodeId::new(server_keypair.get_public_key());
+
+    // asking once without any prior state streaming is legitimate: the client may have completed
+    // the state with a previous server and only be missing the peers
+    let port = 8072;
+    let server_universe = BootstrapServerTestUniverseBuilder::new()
+        .set_port(port)
+        .set_keypair(&server_keypair)
+        .build();
+    let mut client_universe = BootstrapClientTestUniverse::new(
+        BootstrapClientForeignControllers::new_with_mocks(),
+        BootstrapConfig::default(),
+    );
+    match client_universe.launch_ask_peers_only(port, node_id, 1) {
+        Ok(BootstrapServerMessage::BootstrapPeers { .. }) => {}
+        other => panic!("the first peers request should be served, got: {:?}", other),
+    }
+    drop(server_universe);
+
+    // asking twice in the same session is not something an honest client does, and must be refused
+    let port = 8073;
+    let server_universe = BootstrapServerTestUniverseBuilder::new()
+        .set_port(port)
+        .set_keypair(&server_keypair)
+        .build();
+    let mut client_universe = BootstrapClientTestUniverse::new(
+        BootstrapClientForeignControllers::new_with_mocks(),
+        BootstrapConfig::default(),
+    );
+    match client_universe.launch_ask_peers_only(port, node_id, 2) {
+        Err(BootstrapError::ReceivedError(error)) => {
+            assert!(
+                error.contains("AskBootstrapPeers"),
+                "the server should report the repeated request, got: {}",
+                error
+            );
+        }
+        other => panic!(
+            "the second peers request should have been refused, got: {:?}",
+            other
+        ),
+    }
     drop(server_universe);
 }
