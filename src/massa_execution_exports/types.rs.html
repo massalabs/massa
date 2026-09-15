@@ -405,6 +405,12 @@
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -461,6 +467,12 @@
     /// fetched. `None` means unbounded (explicit opt-out, e.g. tests and empty
     /// requests — never for transport-facing batches).
     </span><span class="kw">pub </span>max_event_count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    <span class="doccomment">/// Wall-clock deadline for the whole batch, in milliseconds. Past the
+    /// deadline, remaining items return a per-item `TooLargeResponse` error;
+    /// already-computed items stay valid. `None` means no deadline (explicit
+    /// opt-out, e.g. tests and empty requests — never for transport-facing
+    /// batches). Safety net against lock contention, not the main bound.
+    </span><span class="kw">pub </span>query_state_deadline_ms: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 }
 
 <span class="doccomment">/// Response to a list of execution queries

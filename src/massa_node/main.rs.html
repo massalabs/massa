@@ -1656,6 +1656,12 @@
 <a href="#1656" id="1656">1656</a>
 <a href="#1657" id="1657">1657</a>
 <a href="#1658" id="1658">1658</a>
+<a href="#1659" id="1659">1659</a>
+<a href="#1660" id="1660">1660</a>
+<a href="#1661" id="1661">1661</a>
+<a href="#1662" id="1662">1662</a>
+<a href="#1663" id="1663">1663</a>
+<a href="#1664" id="1664">1664</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2656,6 +2662,7 @@
         deferred_calls_config,
         max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
         max_event_per_query: SETTINGS.execution.max_event_per_query <span class="kw">as </span>u32,
+        query_state_deadline_ms: SETTINGS.execution.query_state_deadline_ms,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_addresses_datastore_keys_query: SETTINGS.api.max_addresses_datastore_keys_query,
         pool_api_timeout: SETTINGS.api.pool_api_timeout,
@@ -2694,6 +2701,7 @@
             SETTINGS.pool.minimal_fees,
             gas_costs.sp_compilation_cost,
             SETTINGS.execution.max_event_per_query,
+            SETTINGS.execution.query_state_deadline_ms,
         );
 
         <span class="kw">let </span>grpc_public_api = MassaPublicGrpc {
@@ -2737,6 +2745,7 @@
             SETTINGS.pool.minimal_fees,
             gas_costs.sp_compilation_cost,
             SETTINGS.execution.max_event_per_query,
+            SETTINGS.execution.query_state_deadline_ms,
         );
 
         <span class="kw">let </span>bs_white_black_list = bootstrap_manager
@@ -2889,6 +2898,7 @@
 }
 
 <span class="comment">// Get the configuration of the gRPC server
+</span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">fn </span>configure_grpc(
     name: ServiceName,
     settings: <span class="kw-2">&amp;</span>GrpcSettings,
@@ -2897,6 +2907,7 @@
     minimal_fees: Amount,
     sp_compilation_cost: u64,
     max_event_per_query: usize,
+    query_state_deadline_ms: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 ) -&gt; GrpcConfig {
     GrpcConfig {
         name,
@@ -2958,6 +2969,7 @@
         max_filters_per_request: settings.max_filters_per_request,
         max_query_items_per_request: settings.max_query_items_per_request,
         max_event_per_query: max_event_per_query <span class="kw">as </span>u32,
+        query_state_deadline_ms,
         certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         server_certificate_path: settings.server_certificate_path.clone(),
         server_private_key_path: settings.server_private_key_path.clone(),

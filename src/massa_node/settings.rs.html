@@ -436,6 +436,9 @@
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -484,6 +487,9 @@
     <span class="kw">pub </span>event_cache_size: usize,
     <span class="kw">pub </span>event_snip_amount: usize,
     <span class="kw">pub </span>max_event_per_query: usize,
+    <span class="doccomment">/// wall-clock deadline for a query_state batch, in ms (`None` = no deadline)
+    </span><span class="attr">#[serde(default)]
+    </span><span class="kw">pub </span>query_state_deadline_ms: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     <span class="doccomment">/// slot execution info channel capacity
     </span><span class="kw">pub </span>broadcast_slot_execution_info_channel_capacity: usize,
 }
