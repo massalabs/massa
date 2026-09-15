@@ -210,7 +210,7 @@ impl From<OperationType> for grpc_model::OperationType {
                         .collect(),
                 };
                 grpc_operation_type.r#type =
-                    Some(grpc_model::operation_type::Type::ExecutSc(execute_sc));
+                    Some(grpc_model::operation_type::Type::ExecuteSc(execute_sc));
             }
             OperationType::CallSC {
                 target_addr,
