@@ -1457,7 +1457,7 @@ pub(crate) fn search_operations(
                     {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many operation ids received. Only a maximum of {} operation ids are accepted per request",
-                            grpc.grpc_config.max_block_ids_per_request
+                            grpc.grpc_config.max_operation_ids_per_request
                         )));
                     }
                     let operation_ids =
