@@ -757,6 +757,12 @@ pub(crate) fn manage_bootstrap(
         },
     )?;
 
+    // A well-behaved client asks for the peers exactly once, right before sending
+    // `BootstrapSuccess`. Serving the request more than once lets a client hold a bootstrap
+    // slot until the deadline for free, and each request costs a round-trip to the peer
+    // management thread, so the repetition is refused.
+    let mut peers_already_sent = false;
+
     loop {
         let Some(read_timeout) =
             step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration())
@@ -770,6 +776,12 @@ pub(crate) fn manage_bootstrap(
             Err(e) => break Err(e),
             Ok(msg) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
+                    if peers_already_sent {
+                        break Err(BootstrapError::UnexpectedClientMessage(Box::new(
+                            BootstrapClientMessage::AskBootstrapPeers,
+                        )));
+                    }
+
                     let Some(write_timeout) = step_timeout_duration(
                         &deadline,
                         &bootstrap_config.write_timeout.to_duration(),
@@ -785,6 +797,8 @@ pub(crate) fn manage_bootstrap(
                             peers: protocol_controller.get_bootstrap_peers()?,
                         },
                     )?;
+
+                    peers_already_sent = true;
                 }
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,

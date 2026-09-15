@@ -23,7 +23,8 @@ use tempfile::TempDir;
 
 use crate::{
     client::{bootstrap_from_server, connect_to_server, MockBSConnector},
-    BootstrapClientMessage, BootstrapConfig, BootstrapError, GlobalBootstrapState,
+    BootstrapClientMessage, BootstrapConfig, BootstrapError, BootstrapServerMessage,
+    GlobalBootstrapState,
 };
 
 pub struct BootstrapClientForeignControllers {
@@ -155,6 +156,70 @@ impl BootstrapClientTestUniverse {
             &mut self.global_bootstrap_state,
             version,
         )
+    }
+
+    /// Runs the connection prelude by hand (error probe, handshake, `BootstrapTime`), then sends
+    /// `AskBootstrapPeers` `count` times without ever streaming any state, and returns the result
+    /// of the last exchange. Used to drive the abusive client that `bootstrap_from_server` cannot
+    /// produce, since an honest client asks for the peers exactly once.
+    pub fn launch_ask_peers_only(
+        &mut self,
+        remote_port: u16,
+        remote_node_id: NodeId,
+        count: usize,
+    ) -> Result<BootstrapServerMessage, BootstrapError> {
+        let remote_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), remote_port);
+        self.controllers
+            .bs_connector
+            .expect_connect_timeout()
+            .times(1)
+            .returning(move |_, _| Ok(std::net::TcpStream::connect(remote_addr).unwrap()));
+        let version = "BOOT.1.0".parse().unwrap();
+
+        let mut client = connect_to_server(
+            &mut self.controllers.bs_connector,
+            &self.config,
+            &remote_addr,
+            &remote_node_id.get_public_key(),
+            Some(self.config.rate_limit),
+        )
+        .unwrap();
+
+        // the server only sends something here when it refuses the connection
+        match client.next_timeout(Some(self.config.read_error_timeout.to_duration())) {
+            Err(BootstrapError::TimedOut(_)) => {}
+            Err(e) => return Err(e),
+            Ok(BootstrapServerMessage::BootstrapError { error }) => {
+                return Err(BootstrapError::ReceivedError(error))
+            }
+            Ok(msg) => return Err(BootstrapError::UnexpectedServerMessage(msg)),
+        };
+
+        client.handshake(version)?;
+        match client.next_timeout(Some(self.config.read_timeout.into()))? {
+            BootstrapServerMessage::BootstrapTime { .. } => {}
+            msg => return Err(BootstrapError::UnexpectedServerMessage(msg)),
+        };
+
+        let mut last = Err(BootstrapError::GeneralError(
+            "no request was sent".to_string(),
+        ));
+        for _ in 0..count {
+            client.send_timeout(
+                &BootstrapClientMessage::AskBootstrapPeers,
+                Some(self.config.write_timeout.into()),
+            )?;
+            last = match client.next_timeout(Some(self.config.read_timeout.into()))? {
+                BootstrapServerMessage::BootstrapError { error } => {
+                    Err(BootstrapError::ReceivedError(error))
+                }
+                msg => Ok(msg),
+            };
+            if last.is_err() {
+                break;
+            }
+        }
+        last
     }
 
     //TODO: Add consensus blocks and peers
