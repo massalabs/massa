@@ -285,6 +285,7 @@ pub(crate) fn get_node_status(
     let empty_request = ExecutionQueryRequest {
         requests: vec![],
         max_response_size: grpc.grpc_config.max_encoding_message_size,
+        max_event_count: None,
     };
     let state = grpc.execution_controller.query_state(empty_request);
     let node_ip = grpc
