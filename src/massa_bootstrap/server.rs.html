@@ -850,20 +850,6 @@
 <a href="#850" id="850">850</a>
 <a href="#851" id="851">851</a>
 <a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1623,12 +1609,6 @@
         },
     )<span class="question-mark">?</span>;
 
-    <span class="comment">// A well-behaved client asks for the peers exactly once, right before sending
-    // `BootstrapSuccess`. Serving the request more than once lets a client hold a bootstrap
-    // slot until the deadline for free, and each request costs a round-trip to the peer
-    // management thread, so the repetition is refused.
-    </span><span class="kw">let </span><span class="kw-2">mut </span>peers_already_sent = <span class="bool-val">false</span>;
-
     <span class="kw">loop </span>{
         <span class="kw">let </span><span class="prelude-val">Some</span>(read_timeout) =
             step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.read_timeout.to_duration())
@@ -1642,12 +1622,6 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">break </span><span class="prelude-val">Err</span>(e),
             <span class="prelude-val">Ok</span>(msg) =&gt; <span class="kw">match </span>msg {
                 BootstrapClientMessage::AskBootstrapPeers =&gt; {
-                    <span class="kw">if </span>peers_already_sent {
-                        <span class="kw">break </span><span class="prelude-val">Err</span>(BootstrapError::UnexpectedClientMessage(Box::new(
-                            BootstrapClientMessage::AskBootstrapPeers,
-                        )));
-                    }
-
                     <span class="kw">let </span><span class="prelude-val">Some</span>(write_timeout) = step_timeout_duration(
                         <span class="kw-2">&amp;</span>deadline,
                         <span class="kw-2">&amp;</span>bootstrap_config.write_timeout.to_duration(),
@@ -1663,8 +1637,6 @@
                             peers: protocol_controller.get_bootstrap_peers()<span class="question-mark">?</span>,
                         },
                     )<span class="question-mark">?</span>;
-
-                    peers_already_sent = <span class="bool-val">true</span>;
                 }
                 BootstrapClientMessage::AskBootstrapPart {
                     last_slot,
