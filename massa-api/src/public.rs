@@ -66,6 +66,7 @@ use massa_versioning::{
 };
 use std::net::{IpAddr, SocketAddr};
 use std::{collections::BTreeMap, str::FromStr};
+use tracing::warn;
 
 impl API<Public> {
     /// generate a new public API
@@ -713,11 +714,20 @@ impl MassaRpcServer for API<Public> {
         let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
 
         // ask pool whether it carries the operations
+        // this is auxiliary metadata: on pool failure (e.g. lock timeout) we still return the
+        // operations found in storage and report `in_pool: false`, like we do for
+        // get_endorsements on both the JSON-RPC and gRPC endpoints
         let in_pool = self
             .0
             .pool_command_sender
             .contains_operations(&ops, Some(api_cfg.pool_api_timeout))
-            .map_err(|e| ApiError::InternalServerError(format!("Pool error: {}", e)))?;
+            .unwrap_or_else(|e| {
+                warn!(
+                    "could not read operations from pool, reporting in_pool=false: {}",
+                    e
+                );
+                vec![false; ops.len()]
+            });
 
         let op_exec_statuses = self.0.execution_controller.get_ops_exec_status(&ops);
 
@@ -827,12 +837,21 @@ impl MassaRpcServer for API<Public> {
                 .collect()
         };
 
-        // ask pool whether it carries the operations
+        // ask pool whether it carries the endorsements
+        // this is auxiliary metadata: on pool failure (e.g. lock timeout) we still return the
+        // endorsements found in storage and report `in_pool: false`, like the gRPC
+        // get_endorsements endpoint already does
         let in_pool = self
             .0
             .pool_command_sender
             .contains_endorsements(&endorsement_ids, Some(self.0.api_settings.pool_api_timeout))
-            .map_err(|e| ApiError::InternalServerError(format!("Pool error: {}", e)))?;
+            .unwrap_or_else(|e| {
+                warn!(
+                    "could not read endorsements from pool, reporting in_pool=false: {}",
+                    e
+                );
+                vec![false; endorsement_ids.len()]
+            });
 
         // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
         let is_final: Vec<bool> = {
