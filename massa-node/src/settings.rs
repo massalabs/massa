@@ -46,6 +46,9 @@ pub struct ExecutionSettings {
     pub event_cache_size: usize,
     pub event_snip_amount: usize,
     pub max_event_per_query: usize,
+    /// wall-clock deadline for a query_state batch, in ms (`None` = no deadline)
+    #[serde(default)]
+    pub query_state_deadline_ms: Option<u64>,
     /// slot execution info channel capacity
     pub broadcast_slot_execution_info_channel_capacity: usize,
 }

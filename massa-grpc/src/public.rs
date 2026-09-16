@@ -969,6 +969,8 @@ pub(crate) fn get_status(
     let empty_request = ExecutionQueryRequest {
         requests: vec![],
         max_response_size: grpc.grpc_config.max_encoding_message_size,
+        max_event_count: None,
+        query_state_deadline_ms: None,
     };
     let state = grpc.execution_controller.query_state(empty_request);
 
@@ -1047,6 +1049,8 @@ pub(crate) fn query_state(
         .query_state(ExecutionQueryRequest {
             requests: queries,
             max_response_size: grpc.grpc_config.max_encoding_message_size,
+            max_event_count: Some(grpc.grpc_config.max_event_per_query as usize),
+            query_state_deadline_ms: grpc.grpc_config.query_state_deadline_ms,
         });
 
     Ok(grpc_api::QueryStateResponse {
@@ -1458,7 +1462,7 @@ pub(crate) fn search_operations(
                     {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many operation ids received. Only a maximum of {} operation ids are accepted per request",
-                            grpc.grpc_config.max_block_ids_per_request
+                            grpc.grpc_config.max_operation_ids_per_request
                         )));
                     }
                     let operation_ids =

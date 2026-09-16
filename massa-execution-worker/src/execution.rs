@@ -2497,17 +2497,27 @@ impl ExecutionState {
     /// * original caller address
     /// * operation id
     /// * event state (final, candidate or both)
-    pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
+    pub fn get_filtered_sc_output_event(
+        &self,
+        filter: EventFilter,
+        limit: Option<usize>,
+    ) -> Vec<SCOutputEvent> {
+        // `None` means unbounded; callers with a budget pass `Some(remaining)`.
+        let limit = limit.unwrap_or(usize::MAX);
         match filter.is_final {
             Some(true) => self
                 .final_events_cache
-                .get_filtered_sc_output_events(&filter),
+                .get_filtered_sc_output_events(&filter)
+                .into_iter()
+                .take(limit)
+                .collect(),
             Some(false) => self
                 .active_history
                 .read()
                 .0
                 .iter()
                 .flat_map(|item| item.events.get_filtered_sc_output_events(&filter))
+                .take(limit)
                 .collect(),
             None => self
                 .final_events_cache
@@ -2520,6 +2530,7 @@ impl ExecutionState {
                         .iter()
                         .flat_map(|item| item.events.get_filtered_sc_output_events(&filter)),
                 )
+                .take(limit)
                 .collect(),
         }
     }

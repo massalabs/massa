@@ -521,7 +521,7 @@ impl FilterGrpc<Vec<grpc_api::NewOperationsFilter>, FilterNewOperations, SecureS
                         {
                             return Err(GrpcError::InvalidArgument(format!(
                                 "too many operation ids received. Only a maximum of {} operation ids are accepted per request",
-                             grpc_config.max_block_ids_per_request
+                             grpc_config.max_operation_ids_per_request
                             )));
                         }
                         let operation_ids = operation_ids_filter.get_or_insert_with(HashSet::new);
@@ -745,7 +745,7 @@ impl FilterGrpc<Vec<grpc_api::NewEndorsementsFilter>, NewEndorsementsFilter, Sec
                         {
                             return Err(GrpcError::InvalidArgument(format!(
                                 "too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request",
-                             grpc_config.max_block_ids_per_request
+                             grpc_config.max_endorsement_ids_per_request
                             )));
                         }
                         let endorsement_ids =
