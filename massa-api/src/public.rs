@@ -1147,6 +1147,7 @@ impl MassaRpcServer for API<Public> {
         let execution_infos = self.0.execution_controller.get_addresses_infos(
             &addresses,
             std::ops::Bound::Included(deferred_credit_max_slot),
+            self.0.api_settings.max_datastore_keys_queries,
         );
 
         // get future draws from selector

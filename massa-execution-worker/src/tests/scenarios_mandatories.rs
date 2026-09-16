@@ -4216,7 +4216,7 @@ fn datastore_manipulations() {
     // Just checking that is works no asserts for now
     universe
         .module_controller
-        .get_addresses_infos(&[addr], std::ops::Bound::Unbounded);
+        .get_addresses_infos(&[addr], std::ops::Bound::Unbounded, None);
 }
 
 /// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match

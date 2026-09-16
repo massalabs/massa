@@ -105,11 +105,14 @@ pub trait ExecutionController: Send + Sync {
         denunciation_index: &DenunciationIndex,
     ) -> (bool, bool);
 
-    /// Gets information about a batch of addresses
+    /// Gets information about a batch of addresses.
+    /// `max_keys` caps the datastore keys listed per address (`None` = unbounded);
+    /// callers must pass their configured cap, never `None` on a transport path.
     fn get_addresses_infos(
         &self,
         addresses: &[Address],
         deferred_credits_max_slot: std::ops::Bound<Slot>,
+        max_keys: Option<u32>,
     ) -> Vec<ExecutionAddressInfo>;
 
     /// Get execution statistics
