@@ -171,6 +171,9 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker
@@ -278,11 +281,14 @@
         denunciation_index: <span class="kw-2">&amp;</span>DenunciationIndex,
     ) -&gt; (bool, bool);
 
-    <span class="doccomment">/// Gets information about a batch of addresses
+    <span class="doccomment">/// Gets information about a batch of addresses.
+    /// `max_keys` caps the datastore keys listed per address (`None` = unbounded);
+    /// callers must pass their configured cap, never `None` on a transport path.
     </span><span class="kw">fn </span>get_addresses_infos(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addresses: <span class="kw-2">&amp;</span>[Address],
         deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
+        max_keys: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     ) -&gt; Vec&lt;ExecutionAddressInfo&gt;;
 
     <span class="doccomment">/// Get execution statistics
