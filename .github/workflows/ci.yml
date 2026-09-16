@@ -130,7 +130,7 @@ jobs:
           toolchain: 1.91.1
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "clippy"
+          shared-key: "misc"
           save-if: ${{ github.ref_name == 'main' }}
       - run: cargo xtask check_gas_cost_definitions
 
