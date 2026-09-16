@@ -226,8 +226,15 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo install cargo-nextest --locked --version 0.9.97-b.2
       - run: cargo nextest run --retries 10 --profile ci --features=execution-trace,dump-block
-      - run: cargo clean
-      - run: cargo test --doc
+      # Doc tests reuse the artifacts the nextest run above just built, so they
+      # must ask for the same feature set. A `cargo clean` used to sit here, and
+      # the doc tests ran without features: between them that forced a second
+      # full rebuild of the workspace and its opt-level=3 dependencies, costing
+      # ~20 min per run - more than the test suite itself.
+      - run: cargo test --doc --features=execution-trace,dump-block
+      - name: Check disk space after tests (Ubuntu)
+        if: always() && runner.os == 'Linux'
+        run: df -h
       - uses: codecov/codecov-action@v4
         with:
           files: lcov.info
