@@ -70,6 +70,10 @@ async fn get_status() {
     assert_eq!(status.version, *VERSION.to_string());
     // Chain id == 77 for Node in sandbox mode otherwise it is always greater
     assert!(status.chain_id >= 77);
+    assert_eq!(
+        status.max_datastore_keys_query,
+        config.max_datastore_keys_queries
+    );
 
     stop_handle.stop();
 }
