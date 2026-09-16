@@ -1,118 +1,237 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-db-exports/src/controller.rs`."><title>controller.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-e56847b5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_db_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.1 (ed61e7d7e 2025-11-07)" data-channel="1.91.1" data-search-js="search-e256b49e.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-6dc2a7f3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">massa_db_exports/</div>controller.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{DBBatch, Key, MassaDBError, StreamBatch, Value};
-<a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
-<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
-<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>parking_lot::RwLock;
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>std::path::PathBuf;
-<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>std::{fmt::Debug, sync::Arc};
-<a href=#7 id=7 data-nosnippet>7</a>
-<a href=#8 id=8 data-nosnippet>8</a><span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
-<a href=#9 id=9 data-nosnippet>9</a></span><span class="kw">use </span>std::collections::BTreeMap;
-<a href=#10 id=10 data-nosnippet>10</a>
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">pub type </span>ShareableMassaDBController = Arc&lt;RwLock&lt;Box&lt;<span class="kw">dyn </span>MassaDBController&gt;&gt;&gt;;
-<a href=#12 id=12 data-nosnippet>12</a>
-<a href=#13 id=13 data-nosnippet>13</a><span class="doccomment">/// Controller trait for the MassaDB
-<a href=#14 id=14 data-nosnippet>14</a>/// TODO: MOCK IT WITH MOCKALL. HAVING LIFETIMES ERRORS WITH AUTO MOCK
-<a href=#15 id=15 data-nosnippet>15</a></span><span class="kw">pub trait </span>MassaDBController: Send + Sync + Debug {
-<a href=#16 id=16 data-nosnippet>16</a>    <span class="doccomment">/// Creates a new hard copy of the DB, for the given slot
-<a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PathBuf;
-<a href=#18 id=18 data-nosnippet>18</a>
-<a href=#19 id=19 data-nosnippet>19</a>    <span class="doccomment">/// Get the current change_id attached to the database.
-<a href=#20 id=20 data-nosnippet>20</a>    </span><span class="kw">fn </span>get_change_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt;;
-<a href=#21 id=21 data-nosnippet>21</a>
-<a href=#22 id=22 data-nosnippet>22</a>    <span class="doccomment">/// Set the initial change_id. This function should only be called at startup/reset, as it does not batch this set with other changes.
-<a href=#23 id=23 data-nosnippet>23</a>    </span><span class="kw">fn </span>set_initial_change_id(<span class="kw-2">&amp;</span><span class="self">self</span>, change_id: Slot);
-<a href=#24 id=24 data-nosnippet>24</a>
-<a href=#25 id=25 data-nosnippet>25</a>    <span class="doccomment">/// Writes the batch to the DB
-<a href=#26 id=26 data-nosnippet>26</a>    </span><span class="kw">fn </span>write_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: DBBatch, versioning_batch: DBBatch, change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;);
-<a href=#27 id=27 data-nosnippet>27</a>
-<a href=#28 id=28 data-nosnippet>28</a>    <span class="doccomment">/// Utility function to put / update a key &amp; value in the batch
-<a href=#29 id=29 data-nosnippet>29</a>    </span><span class="kw">fn </span>put_or_update_entry_value(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch, key: Vec&lt;u8&gt;, value: <span class="kw-2">&amp;</span>[u8]);
-<a href=#30 id=30 data-nosnippet>30</a>
-<a href=#31 id=31 data-nosnippet>31</a>    <span class="doccomment">/// Utility function to delete a key &amp; value in the batch
-<a href=#32 id=32 data-nosnippet>32</a>    </span><span class="kw">fn </span>delete_key(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch, key: Vec&lt;u8&gt;);
-<a href=#33 id=33 data-nosnippet>33</a>
-<a href=#34 id=34 data-nosnippet>34</a>    <span class="doccomment">/// Utility function to delete all keys in a prefix
-<a href=#35 id=35 data-nosnippet>35</a>    </span><span class="kw">fn </span>delete_prefix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, prefix: <span class="kw-2">&amp;</span>str, handle_str: <span class="kw-2">&amp;</span>str, change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;);
-<a href=#36 id=36 data-nosnippet>36</a>
-<a href=#37 id=37 data-nosnippet>37</a>    <span class="doccomment">/// Reset the database, and attach it to the given slot.
-<a href=#38 id=38 data-nosnippet>38</a>    /// Note that this does not clear the db's content, only the change_id and the history.
-<a href=#39 id=39 data-nosnippet>39</a>    </span><span class="kw">fn </span>reset_slot_and_history(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot);
-<a href=#40 id=40 data-nosnippet>40</a>
-<a href=#41 id=41 data-nosnippet>41</a>    <span class="doccomment">/// Exposes RocksDB's "get_cf" function
-<a href=#42 id=42 data-nosnippet>42</a>    </span><span class="kw">fn </span>get_cf(<span class="kw-2">&amp;</span><span class="self">self</span>, handle_cf: <span class="kw-2">&amp;</span>str, key: Key) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, MassaDBError&gt;;
-<a href=#43 id=43 data-nosnippet>43</a>
-<a href=#44 id=44 data-nosnippet>44</a>    <span class="doccomment">/// Exposes RocksDB's "multi_get_cf" function
-<a href=#45 id=45 data-nosnippet>45</a>    </span><span class="kw">fn </span>multi_get_cf(<span class="kw-2">&amp;</span><span class="self">self</span>, query: Vec&lt;(<span class="kw-2">&amp;</span>str, Key)&gt;) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, MassaDBError&gt;&gt;;
-<a href=#46 id=46 data-nosnippet>46</a>
-<a href=#47 id=47 data-nosnippet>47</a>    <span class="doccomment">/// Exposes RocksDB's "iterator_cf" function, without filling up the read cache
-<a href=#48 id=48 data-nosnippet>48</a>    </span><span class="kw">fn </span>iterator_cf_for_full_db_traversal(
-<a href=#49 id=49 data-nosnippet>49</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#50 id=50 data-nosnippet>50</a>        handle_cf: <span class="kw-2">&amp;</span>str,
-<a href=#51 id=51 data-nosnippet>51</a>        mode: MassaIteratorMode,
-<a href=#52 id=52 data-nosnippet>52</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt;;
-<a href=#53 id=53 data-nosnippet>53</a>
-<a href=#54 id=54 data-nosnippet>54</a>    <span class="doccomment">/// Exposes RocksDB's "iterator_cf" function
-<a href=#55 id=55 data-nosnippet>55</a>    </span><span class="kw">fn </span>iterator_cf(
-<a href=#56 id=56 data-nosnippet>56</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#57 id=57 data-nosnippet>57</a>        handle_cf: <span class="kw-2">&amp;</span>str,
-<a href=#58 id=58 data-nosnippet>58</a>        mode: MassaIteratorMode,
-<a href=#59 id=59 data-nosnippet>59</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt;;
-<a href=#60 id=60 data-nosnippet>60</a>
-<a href=#61 id=61 data-nosnippet>61</a>    <span class="doccomment">/// Exposes RocksDB's "prefix_iterator_cf" function
-<a href=#62 id=62 data-nosnippet>62</a>    </span><span class="kw">fn </span>prefix_iterator_cf(
-<a href=#63 id=63 data-nosnippet>63</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#64 id=64 data-nosnippet>64</a>        handle_cf: <span class="kw-2">&amp;</span>str,
-<a href=#65 id=65 data-nosnippet>65</a>        prefix: <span class="kw-2">&amp;</span>[u8],
-<a href=#66 id=66 data-nosnippet>66</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt;;
-<a href=#67 id=67 data-nosnippet>67</a>
-<a href=#68 id=68 data-nosnippet>68</a>    <span class="doccomment">/// Get the current extended state hash of the database
-<a href=#69 id=69 data-nosnippet>69</a>    </span><span class="kw">fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof&lt;HASH_XOF_SIZE_BYTES&gt;;
-<a href=#70 id=70 data-nosnippet>70</a>
-<a href=#71 id=71 data-nosnippet>71</a>    <span class="doccomment">/// Flushes the underlying db.
-<a href=#72 id=72 data-nosnippet>72</a>    </span><span class="kw">fn </span>flush(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaDBError&gt;;
-<a href=#73 id=73 data-nosnippet>73</a>
-<a href=#74 id=74 data-nosnippet>74</a>    <span class="doccomment">/// Write a stream_batch of database entries received from a bootstrap server
-<a href=#75 id=75 data-nosnippet>75</a>    </span><span class="kw">fn </span>write_batch_bootstrap_client(
-<a href=#76 id=76 data-nosnippet>76</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#77 id=77 data-nosnippet>77</a>        stream_changes: StreamBatch&lt;Slot&gt;,
-<a href=#78 id=78 data-nosnippet>78</a>        stream_changes_versioning: StreamBatch&lt;Slot&gt;,
-<a href=#79 id=79 data-nosnippet>79</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(StreamingStep&lt;Key&gt;, StreamingStep&lt;Key&gt;), MassaDBError&gt;;
-<a href=#80 id=80 data-nosnippet>80</a>
-<a href=#81 id=81 data-nosnippet>81</a>    <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
-<a href=#82 id=82 data-nosnippet>82</a>    ///
-<a href=#83 id=83 data-nosnippet>83</a>    /// Returns a StreamBatch&lt;Slot&gt;
-<a href=#84 id=84 data-nosnippet>84</a>    </span><span class="kw">fn </span>get_batch_to_stream(
-<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#86 id=86 data-nosnippet>86</a>        last_state_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
-<a href=#87 id=87 data-nosnippet>87</a>        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-<a href=#88 id=88 data-nosnippet>88</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
-<a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a>    <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
-<a href=#91 id=91 data-nosnippet>91</a>    ///
-<a href=#92 id=92 data-nosnippet>92</a>    /// Returns a StreamBatch&lt;Slot&gt;
-<a href=#93 id=93 data-nosnippet>93</a>    </span><span class="kw">fn </span>get_versioning_batch_to_stream(
-<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#95 id=95 data-nosnippet>95</a>        last_versioning_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
-<a href=#96 id=96 data-nosnippet>96</a>        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-<a href=#97 id=97 data-nosnippet>97</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
-<a href=#98 id=98 data-nosnippet>98</a>
-<a href=#99 id=99 data-nosnippet>99</a>    <span class="doccomment">/// Get the total size of the change history and the change versioning history respectively
-<a href=#100 id=100 data-nosnippet>100</a>    </span><span class="kw">fn </span>get_change_history_sizes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, usize);
-<a href=#101 id=101 data-nosnippet>101</a>
-<a href=#102 id=102 data-nosnippet>102</a>    <span class="doccomment">/// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
-<a href=#103 id=103 data-nosnippet>103</a>    </span><span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
-<a href=#104 id=104 data-nosnippet>104</a>    </span><span class="kw">fn </span>get_entire_database(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt;;
-<a href=#105 id=105 data-nosnippet>105</a>}
-<a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a><span class="doccomment">/// Similar to RocksDB's IteratorMode
-<a href=#108 id=108 data-nosnippet>108</a></span><span class="kw">pub enum </span>MassaIteratorMode&lt;<span class="lifetime">'a</span>&gt; {
-<a href=#109 id=109 data-nosnippet>109</a>    Start,
-<a href=#110 id=110 data-nosnippet>110</a>    End,
-<a href=#111 id=111 data-nosnippet>111</a>    From(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], MassaDirection),
-<a href=#112 id=112 data-nosnippet>112</a>}
-<a href=#113 id=113 data-nosnippet>113</a>
-<a href=#114 id=114 data-nosnippet>114</a><span class="doccomment">/// Similar to RocksDB's Direction
-<a href=#115 id=115 data-nosnippet>115</a></span><span class="kw">pub enum </span>MassaDirection {
-<a href=#116 id=116 data-nosnippet>116</a>    Forward,
-<a href=#117 id=117 data-nosnippet>117</a>    Reverse,
-<a href=#118 id=118 data-nosnippet>118</a>}</code></pre></div></section></main></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-db-exports/src/controller.rs`."><title>controller.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_db_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<a href="#2" id="2">2</a>
+<a href="#3" id="3">3</a>
+<a href="#4" id="4">4</a>
+<a href="#5" id="5">5</a>
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+<a href="#8" id="8">8</a>
+<a href="#9" id="9">9</a>
+<a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
+<a href="#48" id="48">48</a>
+<a href="#49" id="49">49</a>
+<a href="#50" id="50">50</a>
+<a href="#51" id="51">51</a>
+<a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{DBBatch, Key, MassaDBError, StreamBatch, Value};
+<span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
+<span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
+<span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::{fmt::Debug, sync::Arc};
+
+<span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
+</span><span class="kw">use </span>std::collections::BTreeMap;
+
+<span class="kw">pub type </span>ShareableMassaDBController = Arc&lt;RwLock&lt;Box&lt;<span class="kw">dyn </span>MassaDBController&gt;&gt;&gt;;
+
+<span class="doccomment">/// Controller trait for the MassaDB
+/// TODO: MOCK IT WITH MOCKALL. HAVING LIFETIMES ERRORS WITH AUTO MOCK
+</span><span class="kw">pub trait </span>MassaDBController: Send + Sync + Debug {
+    <span class="doccomment">/// Creates a new hard copy of the DB, for the given slot
+    </span><span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PathBuf;
+
+    <span class="doccomment">/// Get the current change_id attached to the database.
+    </span><span class="kw">fn </span>get_change_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt;;
+
+    <span class="doccomment">/// Set the initial change_id. This function should only be called at startup/reset, as it does not batch this set with other changes.
+    </span><span class="kw">fn </span>set_initial_change_id(<span class="kw-2">&amp;</span><span class="self">self</span>, change_id: Slot);
+
+    <span class="doccomment">/// Writes the batch to the DB
+    </span><span class="kw">fn </span>write_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: DBBatch, versioning_batch: DBBatch, change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;);
+
+    <span class="doccomment">/// Utility function to put / update a key &amp; value in the batch
+    </span><span class="kw">fn </span>put_or_update_entry_value(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch, key: Vec&lt;u8&gt;, value: <span class="kw-2">&amp;</span>[u8]);
+
+    <span class="doccomment">/// Utility function to delete a key &amp; value in the batch
+    </span><span class="kw">fn </span>delete_key(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch, key: Vec&lt;u8&gt;);
+
+    <span class="doccomment">/// Utility function to delete all keys in a prefix
+    </span><span class="kw">fn </span>delete_prefix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, prefix: <span class="kw-2">&amp;</span>str, handle_str: <span class="kw-2">&amp;</span>str, change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;);
+
+    <span class="doccomment">/// Reset the database, and attach it to the given slot.
+    /// Note that this does not clear the db's content, only the change_id and the history.
+    </span><span class="kw">fn </span>reset_slot_and_history(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot);
+
+    <span class="doccomment">/// Exposes RocksDB's "get_cf" function
+    </span><span class="kw">fn </span>get_cf(<span class="kw-2">&amp;</span><span class="self">self</span>, handle_cf: <span class="kw-2">&amp;</span>str, key: Key) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, MassaDBError&gt;;
+
+    <span class="doccomment">/// Exposes RocksDB's "multi_get_cf" function
+    </span><span class="kw">fn </span>multi_get_cf(<span class="kw-2">&amp;</span><span class="self">self</span>, query: Vec&lt;(<span class="kw-2">&amp;</span>str, Key)&gt;) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, MassaDBError&gt;&gt;;
+
+    <span class="doccomment">/// Exposes RocksDB's "iterator_cf" function, without filling up the read cache
+    </span><span class="kw">fn </span>iterator_cf_for_full_db_traversal(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        handle_cf: <span class="kw-2">&amp;</span>str,
+        mode: MassaIteratorMode,
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt;;
+
+    <span class="doccomment">/// Exposes RocksDB's "iterator_cf" function
+    </span><span class="kw">fn </span>iterator_cf(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        handle_cf: <span class="kw-2">&amp;</span>str,
+        mode: MassaIteratorMode,
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt;;
+
+    <span class="doccomment">/// Exposes RocksDB's "prefix_iterator_cf" function
+    </span><span class="kw">fn </span>prefix_iterator_cf(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        handle_cf: <span class="kw-2">&amp;</span>str,
+        prefix: <span class="kw-2">&amp;</span>[u8],
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt;;
+
+    <span class="doccomment">/// Get the current extended state hash of the database
+    </span><span class="kw">fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof&lt;HASH_XOF_SIZE_BYTES&gt;;
+
+    <span class="doccomment">/// Flushes the underlying db.
+    </span><span class="kw">fn </span>flush(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaDBError&gt;;
+
+    <span class="doccomment">/// Write a stream_batch of database entries received from a bootstrap server
+    </span><span class="kw">fn </span>write_batch_bootstrap_client(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        stream_changes: StreamBatch&lt;Slot&gt;,
+        stream_changes_versioning: StreamBatch&lt;Slot&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(StreamingStep&lt;Key&gt;, StreamingStep&lt;Key&gt;), MassaDBError&gt;;
+
+    <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
+    ///
+    /// Returns a StreamBatch&lt;Slot&gt;
+    </span><span class="kw">fn </span>get_batch_to_stream(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        last_state_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
+
+    <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
+    ///
+    /// Returns a StreamBatch&lt;Slot&gt;
+    </span><span class="kw">fn </span>get_versioning_batch_to_stream(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        last_versioning_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
+
+    <span class="doccomment">/// Get the total size of the change history and the change versioning history respectively
+    </span><span class="kw">fn </span>get_change_history_sizes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, usize);
+
+    <span class="doccomment">/// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
+    </span><span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
+    </span><span class="kw">fn </span>get_entire_database(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt;;
+}
+
+<span class="doccomment">/// Similar to RocksDB's IteratorMode
+</span><span class="kw">pub enum </span>MassaIteratorMode&lt;<span class="lifetime">'a</span>&gt; {
+    Start,
+    End,
+    From(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], MassaDirection),
+}
+
+<span class="doccomment">/// Similar to RocksDB's Direction
+</span><span class="kw">pub enum </span>MassaDirection {
+    Forward,
+    Reverse,
+}
+</code></pre></div></section></main></body></html>

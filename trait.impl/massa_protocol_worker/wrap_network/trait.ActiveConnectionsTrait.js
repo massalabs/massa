@@ -1,9 +1,3 @@
-(function() {
-    var implementors = Object.fromEntries([["massa_protocol_worker",[]]]);
-    if (window.register_implementors) {
-        window.register_implementors(implementors);
-    } else {
-        window.pending_implementors = implementors;
-    }
-})()
-//{"start":57,"fragment_lengths":[28]}
+(function() {var implementors = {
+"massa_protocol_worker":[]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
