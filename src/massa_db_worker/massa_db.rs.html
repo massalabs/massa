@@ -2005,6 +2005,18 @@
 <a href="#2005" id="2005">2005</a>
 <a href="#2006" id="2006">2006</a>
 <a href="#2007" id="2007">2007</a>
+<a href="#2008" id="2008">2008</a>
+<a href="#2009" id="2009">2009</a>
+<a href="#2010" id="2010">2010</a>
+<a href="#2011" id="2011">2011</a>
+<a href="#2012" id="2012">2012</a>
+<a href="#2013" id="2013">2013</a>
+<a href="#2014" id="2014">2014</a>
+<a href="#2015" id="2015">2015</a>
+<a href="#2016" id="2016">2016</a>
+<a href="#2017" id="2017">2017</a>
+<a href="#2018" id="2018">2018</a>
+<a href="#2019" id="2019">2019</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -2182,24 +2194,30 @@
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
             <span class="kw">let </span>read_opts = <span class="self">Self</span>::read_opts_for_full_db_traversal();
 
-            <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            <span class="comment">// Creates an iterator from the last streamed key if defined, otherwise initialize it at the first key.
             </span><span class="kw">let </span>db_iterator = <span class="kw">match </span><span class="kw-2">&amp;</span>last_state_step {
-                StreamingStep::Ongoing(max_key) =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.db.iterator_cf_opt(
-                        handle,
-                        read_opts,
-                        IteratorMode::From(max_key, Direction::Forward),
-                    );
-                    iter.next();
-                    iter
-                }
+                StreamingStep::Ongoing(max_key) =&gt; <span class="self">self</span>.db.iterator_cf_opt(
+                    handle,
+                    read_opts,
+                    IteratorMode::From(max_key, Direction::Forward),
+                ),
                 <span class="kw">_ </span>=&gt; <span class="self">self
                     </span>.db
                     .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
+            <span class="comment">// `IteratorMode::From(max_key, Forward)` seeks to the first key &gt;= max_key, so max_key
+            // itself has to be skipped, but only if it is still in the DB: it may have been deleted
+            // since the previous batch, in which case the first key yielded is a new element.
+            </span><span class="kw">let </span>skip_key = <span class="kw">match </span><span class="kw-2">&amp;</span>last_state_step {
+                StreamingStep::Ongoing(max_key) =&gt; <span class="prelude-val">Some</span>(max_key.as_slice()),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+            };
 
             <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
+                <span class="kw">if </span>skip_key == <span class="prelude-val">Some</span>(serialized_key.as_ref()) {
+                    <span class="kw">continue</span>;
+                }
                 <span class="kw">let </span>key_len = serialized_key.len();
                 <span class="kw">let </span>value_len = serialized_value.len();
                 <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
@@ -2318,23 +2336,29 @@
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
             <span class="kw">let </span>read_opts = <span class="self">Self</span>::read_opts_for_full_db_traversal();
 
-            <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            <span class="comment">// Creates an iterator from the last streamed key if defined, otherwise initialize it at the first key.
             </span><span class="kw">let </span>db_iterator = <span class="kw">match </span><span class="kw-2">&amp;</span>last_versioning_step {
-                StreamingStep::Ongoing(max_key) =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.db.iterator_cf_opt(
-                        handle,
-                        read_opts,
-                        IteratorMode::From(max_key, Direction::Forward),
-                    );
-                    iter.next();
-                    iter
-                }
+                StreamingStep::Ongoing(max_key) =&gt; <span class="self">self</span>.db.iterator_cf_opt(
+                    handle,
+                    read_opts,
+                    IteratorMode::From(max_key, Direction::Forward),
+                ),
                 <span class="kw">_ </span>=&gt; <span class="self">self
                     </span>.db
                     .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
+            <span class="comment">// `IteratorMode::From(max_key, Forward)` seeks to the first key &gt;= max_key, so max_key
+            // itself has to be skipped, but only if it is still in the DB: it may have been deleted
+            // since the previous batch, in which case the first key yielded is a new element.
+            </span><span class="kw">let </span>skip_key = <span class="kw">match </span><span class="kw-2">&amp;</span>last_versioning_step {
+                StreamingStep::Ongoing(max_key) =&gt; <span class="prelude-val">Some</span>(max_key.as_slice()),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+            };
             <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
+                <span class="kw">if </span>skip_key == <span class="prelude-val">Some</span>(serialized_key.as_ref()) {
+                    <span class="kw">continue</span>;
+                }
                 <span class="kw">let </span>key_len = serialized_key.len();
                 <span class="kw">let </span>value_len = serialized_value.len();
                 <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
