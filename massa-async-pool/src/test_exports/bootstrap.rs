@@ -5,7 +5,7 @@ use massa_signature::KeyPair;
 use rand::Rng;
 use std::str::FromStr;
 
-/// This file defines tools to test the asynchronous pool bootstrap
+// This file defines tools to test the asynchronous pool bootstrap
 
 fn get_random_address() -> Address {
     let keypair = KeyPair::generate(0).unwrap();

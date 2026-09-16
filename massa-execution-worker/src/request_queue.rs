@@ -137,7 +137,7 @@ impl<T, R> RequestQueue<T, R> {
         self.queue.push_back(req);
     }
 
-    /// Take all the elements into a new queue and reset the current queue
+    // Take all the elements into a new queue and reset the current queue
     /*pub fn take(&mut self) -> Self {
         RequestQueue {
             max_items: self.max_items,

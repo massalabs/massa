@@ -21,8 +21,7 @@ pub struct MassaReceiver<T> {
     pub(crate) ref_counter: Arc<()>,
 }
 
-/// implement drop on MassaSender
-
+/// implement drop on MassaReceiver
 impl<T> Drop for MassaReceiver<T> {
     fn drop(&mut self) {
         let ref_count = Arc::strong_count(&self.ref_counter);

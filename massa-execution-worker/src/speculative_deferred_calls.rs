@@ -542,7 +542,7 @@ mod tests {
         };
 
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let mock_final_state = Arc::new(RwLock::new(MockFinalStateController::new()));
 
@@ -681,7 +681,7 @@ mod tests {
         };
 
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let mock_final_state = Arc::new(RwLock::new(MockFinalStateController::new()));
         let config = DeferredCallsConfig::default();

@@ -21,7 +21,7 @@ use std::{cmp::Ordering, convert::TryInto, str::FromStr};
 /// Flexibility: Blake3 is highly flexible and can be used in a variety of applications, including as a general-purpose hash function,
 /// as a key derivation function, and as a message authentication code. It also supports a wide range of input sizes and can produce output
 /// of any desired length.
-
+///
 /// Scalability: Blake3 can efficiently take advantage of multiple cores and SIMD (single instruction, multiple data) instructions,
 /// allowing it to scale well on modern CPUs.
 ///
@@ -42,7 +42,7 @@ pub struct Hash(blake3::Hash);
 
 impl PartialOrd for Hash {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.0.as_bytes().cmp(other.0.as_bytes()))
+        Some(self.cmp(other))
     }
 }
 
@@ -50,7 +50,6 @@ impl PartialOrd for Hash {
 /// as keys. For e.g., it is used for the BTreeMap where the order of the addresses is to be maintained.
 /// This function helps to have a single coherent BTreeMap which is then used to perform the draw
 /// See Pos-Worker for more details.
-
 impl Ord for Hash {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.as_bytes().cmp(other.0.as_bytes())

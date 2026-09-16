@@ -347,7 +347,7 @@ mod tests {
         match message {
             PeerManagementMessage::ListPeers(peers) => {
                 assert_eq!(peers.len(), 2);
-                let ids_vec = vec![keypair1.get_public_key(), keypair2.get_public_key()];
+                let ids_vec = [keypair1.get_public_key(), keypair2.get_public_key()];
                 let iter = peers.iter().zip(ids_vec.iter());
                 for ((peer_id, message_listeners), public_key) in iter {
                     assert_eq!(peer_id, &PeerId::from_public_key(*public_key));

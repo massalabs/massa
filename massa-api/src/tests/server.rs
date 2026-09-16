@@ -19,7 +19,7 @@ async fn max_conn() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .unwrap();
 
@@ -58,7 +58,7 @@ async fn max_request_size() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
     let params = rpc_params![vec![
@@ -102,7 +102,7 @@ async fn ws_disabled() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .unwrap();
 
@@ -136,7 +136,7 @@ async fn http_disabled() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -156,7 +156,7 @@ async fn host_allowed() {
 
     let hosts = vec![format!(
         "http://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     )];
 
     api_server.0.api_settings.allow_hosts = hosts.clone();
@@ -170,7 +170,7 @@ async fn host_allowed() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -197,7 +197,7 @@ async fn host_allowed() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr2.to_string().split(':').last().unwrap()
+            addr2.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 

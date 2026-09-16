@@ -1025,10 +1025,7 @@ impl PoSFinalState {
                 rng_seed_key!(self.cycle_history_cycle_prefix(cycle)),
             )
             .expect(CYCLE_HISTORY_DESER_ERROR);
-        let serialized_rng_seed = match serialized_rng_seed {
-            Some(s) => s,
-            None => return None,
-        };
+        let serialized_rng_seed = serialized_rng_seed?;
 
         let (_, rng_seed) = self
             .cycle_info_deserializer
@@ -1115,14 +1112,8 @@ impl PoSFinalState {
     pub fn get_cycle_info(&self, cycle: u64) -> Option<CycleInfo> {
         // TODO improve performance by not taking a lock and re-searching the key at every element
 
-        let complete = match self.is_cycle_complete(cycle) {
-            Some(complete) => complete,
-            None => return None,
-        };
-        let rng_seed = match self.get_cycle_history_rng_seed(cycle) {
-            Some(rng_seed) => rng_seed,
-            None => return None,
-        };
+        let complete = self.is_cycle_complete(cycle)?;
+        let rng_seed = self.get_cycle_history_rng_seed(cycle)?;
         let final_state_hash_snapshot = self.get_cycle_history_final_state_hash_snapshot(cycle);
 
         let roll_counts = self.get_all_roll_counts(cycle);
@@ -1775,7 +1766,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
@@ -1914,7 +1905,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let selector_controller = Box::new(MockSelectorController::new());
 
@@ -2111,7 +2102,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
@@ -2215,7 +2206,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
@@ -2392,7 +2383,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let selector_controller = Box::new(MockSelectorController::new());
 
@@ -2507,7 +2498,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let mut selector_controller = Box::new(MockSelectorController::new());
         selector_controller
@@ -2601,7 +2592,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
@@ -2696,7 +2687,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
@@ -2781,7 +2772,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
@@ -2859,7 +2850,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");

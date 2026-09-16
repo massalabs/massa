@@ -821,7 +821,7 @@ mod tests {
         };
 
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
 
         let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000, 1000);
@@ -1113,7 +1113,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
 
         let mut ledger_db = LedgerDB::new(db, 32, 255, 1000, 1000);
@@ -1161,7 +1161,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let ledger_db = LedgerDB::new(db, 32, 255, 1000, 1000);
         let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());

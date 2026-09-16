@@ -434,7 +434,7 @@ impl Command {
     /// Returns true if the command should be hidden from history
     pub(crate) fn hide_from_history(&self) -> bool {
         let hide_from_history = self.get_str("hide_from_history");
-        hide_from_history.map_or(false, |f| f == "true")
+        hide_from_history == Some("true")
     }
 
     /// run a given command
@@ -444,7 +444,7 @@ impl Command {
     /// - wallet_opt: an optional access to the wallet
     /// - parameters: the parsed parameters
     /// - json: true if --json was passed as an option
-    ///     it means that we don't want to print anything we just want the json output
+    ///   it means that we don't want to print anything we just want the json output
     pub(crate) async fn run(
         &self,
         client: &mut Client,

@@ -40,7 +40,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
@@ -59,7 +59,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
@@ -81,7 +81,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
@@ -127,7 +127,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
@@ -214,7 +214,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
@@ -249,7 +249,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
           components: rustfmt
       - uses: actions/checkout@v4
         with:
@@ -282,7 +282,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:

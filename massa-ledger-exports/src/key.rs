@@ -257,7 +257,7 @@ impl Deserializer<Key> for KeyDeserializer {
         // Skip the ledger prefix without slicing past the end of the buffer:
         // an undersized input must yield a clean parse error rather than an
         // out-of-bounds panic.
-        let prefix_len = LEDGER_PREFIX.as_bytes().len();
+        let prefix_len = LEDGER_PREFIX.len();
         let after_prefix = buffer.get(prefix_len..).ok_or_else(|| {
             nom::Err::Error(E::from_error_kind(buffer, nom::error::ErrorKind::Eof))
         })?;
@@ -310,7 +310,7 @@ mod tests {
     fn undersized_buffer_errors_instead_of_panicking() {
         // A buffer shorter than the ledger prefix must not trigger an
         // out-of-bounds slice panic.
-        let short = vec![0u8; LEDGER_PREFIX.as_bytes().len().saturating_sub(1)];
+        let short = vec![0u8; LEDGER_PREFIX.len().saturating_sub(1)];
         let res = KeyDeserializer::new(255, true).deserialize::<DeserializeError>(&short);
         assert!(res.is_err(), "undersized buffer must produce a parse error");
     }
@@ -326,7 +326,7 @@ mod tests {
         // The version is a u64 varint written immediately after the prefix;
         // `KEY_VERSION == 0` encodes as a single `0x00` byte. Flip it to a
         // non-canonical value.
-        let version_idx = LEDGER_PREFIX.as_bytes().len();
+        let version_idx = LEDGER_PREFIX.len();
         assert_eq!(serialized[version_idx], 0u8);
         serialized[version_idx] = 1u8;
 

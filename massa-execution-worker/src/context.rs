@@ -566,7 +566,7 @@ impl ExecutionContext {
     pub fn has_write_rights_on(&self, addr: &Address) -> bool {
         self.stack
             .last()
-            .map_or(false, |v| v.owned_addresses.contains(addr))
+            .is_some_and(|v| v.owned_addresses.contains(addr))
     }
 
     /// Creates a new smart contract address with initial bytecode, and returns this address

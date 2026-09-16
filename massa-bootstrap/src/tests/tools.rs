@@ -753,6 +753,7 @@ pub(crate) fn serialize_minimal_bootstrap_part_with_crafted_state_new_elements(
 }
 
 impl BootstrapServerMessage {
+    /// Generates a message filled with random data of random size
     pub fn generate<R: Rng>(rng: &mut R) -> Self {
         let variant = rng.gen_range(0..6);
         match variant {
@@ -828,9 +829,9 @@ impl BootstrapServerMessage {
         }
     }
 
-    // Generate a message with errors added inside the message.
-    // Has to be generated quickly, and have a previsible error case based on the
-    // "faulty_part" input number.
+    /// Generate a message with errors added inside the message.
+    /// Has to be generated quickly, and have a previsible error case based on the
+    /// "faulty_part" input number.
     pub fn generate_faulty<R: Rng>(
         rng: &mut R,
         faulty_part: BootstrapServerMessageFaultyPart,
@@ -1132,6 +1133,7 @@ impl BootstrapServerMessage {
         }
     }
 
+    /// Checks that two messages are equal or not
     pub fn equals(&self, other: &BootstrapServerMessage) -> bool {
         match (self, other) {
             (
@@ -1225,7 +1227,7 @@ impl BootstrapClientMessageFaultyPart {
 }
 
 impl BootstrapClientMessage {
-    // Checks that two messages are equal or not
+    /// Checks that two messages are equal or not
     pub fn equals(&self, other: &BootstrapClientMessage) -> bool {
         match (self, other) {
             (
@@ -1266,8 +1268,8 @@ impl BootstrapClientMessage {
         }
     }
 
-    // Generates a message filled with random data of random size based on the limit given in
-    // constants. Used for parametric testing
+    /// Generates a message filled with random data of random size based on the limit given in
+    /// constants. Used for parametric testing
     pub fn generate<R: Rng>(rng: &mut R) -> Self {
         let variant = rng.gen_range(0..4);
         match variant {
@@ -1320,9 +1322,9 @@ impl BootstrapClientMessage {
         }
     }
 
-    // Generate a message with errors added inside the message.
-    // Has to be generated quickly, and have a previsible error case based on the
-    // "faulty_part" input number.
+    /// Generate a message with errors added inside the message.
+    /// Has to be generated quickly, and have a previsible error case based on the
+    /// "faulty_part" input number.
     pub fn generate_faulty<R: Rng>(
         rng: &mut R,
         faulty_part: BootstrapClientMessageFaultyPart,

@@ -32,7 +32,7 @@ fn call_registry_apply_changes() {
     };
     let call_id_serializer = DeferredCallIdSerializer::new();
     let db: ShareableMassaDBController = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
     ));
 
     let registry = DeferredCallRegistry::new(db, DeferredCallsConfig::default());
@@ -87,7 +87,7 @@ fn call_registry_get_slot_calls() {
     };
     let call_id_serializer = DeferredCallIdSerializer::new();
     let db: ShareableMassaDBController = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
     ));
 
     let registry = DeferredCallRegistry::new(db, DeferredCallsConfig::default());
@@ -155,7 +155,7 @@ fn uninitialized_slot_base_fee_uses_min_gas_cost() {
         enable_metrics: false,
     };
     let db: ShareableMassaDBController = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
     ));
 
     let config = DeferredCallsConfig::default();

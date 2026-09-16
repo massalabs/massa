@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use crate::SlotRange;
 use crate::{config::GrpcConfig, error::GrpcError};
+#[cfg(feature = "execution-info")]
 use massa_execution_exports::execution_info::ExecutionInfoForSlot;
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
 use massa_models::address::Address;
@@ -88,9 +89,10 @@ pub(crate) struct NewEndorsementsFilter {
     block_ids: Option<HashSet<BlockId>>,
 }
 
+// Filter for execution-info streams (only compiled with feature execution-info)
+#[cfg(feature = "execution-info")]
 pub(crate) struct NewExecutionInfoFilter {
-    // Address to filter (not used without feature execution-info)
-    #[allow(dead_code)]
+    // Address to filter
     address: Option<Address>,
 }
 
@@ -189,10 +191,10 @@ fn filter_map_exec_output_inner(
         if slot_ranges.iter().any(|slot_range| {
             slot_range
                 .start_slot
-                .map_or(false, |start| exec_output.slot < start.into())
+                .is_some_and(|start| exec_output.slot < start.into())
                 || slot_range
                     .end_slot
-                    .map_or(false, |end| exec_output.slot >= end.into())
+                    .is_some_and(|end| exec_output.slot >= end.into())
         }) {
             return None;
         }
@@ -207,16 +209,16 @@ fn filter_map_exec_output_inner(
                     .context
                     .call_stack
                     .front()
-                    .map_or(false, |call| call.to_string().eq(addr)),
+                    .is_some_and(|call| call.to_string().eq(addr)),
                 grpc_api::execution_event_filter::Filter::EmitterAddress(addr) => event
                     .context
                     .call_stack
                     .back()
-                    .map_or(false, |emit| emit.to_string().eq(addr)),
+                    .is_some_and(|emit| emit.to_string().eq(addr)),
                 grpc_api::execution_event_filter::Filter::OriginalOperationId(ope_id) => event
                     .context
                     .origin_operation_id
-                    .map_or(false, |ope| ope.to_string().eq(ope_id)),
+                    .is_some_and(|ope| ope.to_string().eq(ope_id)),
                 grpc_api::execution_event_filter::Filter::IsFailure(b) => {
                     event.context.is_error.eq(b)
                 }
@@ -828,6 +830,7 @@ impl FilterGrpc<Vec<grpc_api::NewEndorsementsFilter>, NewEndorsementsFilter, Sec
     }
 }
 
+#[cfg(feature = "execution-info")]
 impl FilterGrpc<Option<String>, NewExecutionInfoFilter, ExecutionInfoForSlot>
     for NewExecutionInfoFilter
 {
@@ -844,32 +847,22 @@ impl FilterGrpc<Option<String>, NewExecutionInfoFilter, ExecutionInfoForSlot>
         Ok(NewExecutionInfoFilter { address })
     }
 
-    #[allow(unused_mut)]
     fn filter_output(
         &self,
-        mut _content: ExecutionInfoForSlot,
+        mut content: ExecutionInfoForSlot,
         _grpc_config: &GrpcConfig,
     ) -> Option<ExecutionInfoForSlot> {
-        #[cfg(feature = "execution-info")]
-        {
-            if let Some(address_filter) = &self.address {
-                _content.transfers.retain(|transfer| {
-                    transfer.from.map_or(false, |from| from.eq(address_filter))
-                        || transfer.to.map_or(false, |to| to.eq(address_filter))
-                });
-            }
-
-            if _content.transfers.is_empty() {
-                // if content.is_empty() {
-                return None;
-            } else {
-                return Some(_content);
-            }
+        if let Some(address_filter) = &self.address {
+            content.transfers.retain(|transfer| {
+                transfer.from.is_some_and(|from| from.eq(address_filter))
+                    || transfer.to.is_some_and(|to| to.eq(address_filter))
+            });
         }
 
-        #[cfg(not(feature = "execution-info"))]
-        {
+        if content.transfers.is_empty() {
             None
+        } else {
+            Some(content)
         }
     }
 }

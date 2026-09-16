@@ -283,7 +283,7 @@ async fn launch(
         enable_metrics: SETTINGS.metrics.enabled,
     };
     let db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
     ));
 
     // Create final ledger

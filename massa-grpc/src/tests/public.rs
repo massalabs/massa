@@ -59,7 +59,7 @@ async fn get_status() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -100,7 +100,7 @@ async fn get_transactions_throughput() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -166,7 +166,7 @@ async fn get_slot_transfers_reports_every_requested_slot() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -214,7 +214,7 @@ async fn get_operations() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -269,7 +269,7 @@ async fn get_blocks() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -324,7 +324,7 @@ async fn get_stakers() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -394,7 +394,7 @@ async fn get_datastore_entries() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -463,7 +463,7 @@ async fn execute_read_only_call() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -593,7 +593,7 @@ async fn get_endorsements() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -660,7 +660,7 @@ async fn get_next_block_best_parents() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -721,7 +721,7 @@ async fn get_sc_execution_events() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -828,7 +828,7 @@ async fn get_selector_draws() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -1005,7 +1005,7 @@ async fn query_state() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -1076,7 +1076,7 @@ async fn search_blocks() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -1344,7 +1344,7 @@ async fn search_endorsements() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();
@@ -1522,7 +1522,7 @@ async fn search_operations() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').last().unwrap()
+        addr.to_string().split(':').next_back().unwrap()
     ))
     .await
     .unwrap();

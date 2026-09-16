@@ -426,17 +426,17 @@ impl Storage {
     }
 
     /// Gets a read reference to the operations index
-    pub fn read_operations(&self) -> RwLockReadGuard<OperationIndexes> {
+    pub fn read_operations(&self) -> RwLockReadGuard<'_, OperationIndexes> {
         self.operations.read()
     }
 
     /// Gets a read reference to the endorsements index
-    pub fn read_endorsements(&self) -> RwLockReadGuard<EndorsementIndexes> {
+    pub fn read_endorsements(&self) -> RwLockReadGuard<'_, EndorsementIndexes> {
         self.endorsements.read()
     }
 
     /// Gets a read reference to the blocks index
-    pub fn read_blocks(&self) -> RwLockReadGuard<BlockIndexes> {
+    pub fn read_blocks(&self) -> RwLockReadGuard<'_, BlockIndexes> {
         self.blocks.read()
     }
 

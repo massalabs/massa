@@ -84,6 +84,10 @@
 //! can be found in https://github.com/massalabs/massa-functional-tests/blob/main/tests_versioning.py.
 //! Note that those tests might not be up to date with the latest module code.
 
+// The MIP store errors are large by design. Boxing them would be an API break,
+// so the lint is silenced crate-wide rather than on each fallible function.
+#![allow(clippy::result_large_err)]
+
 pub mod address_factory;
 pub mod grpc_mapping;
 pub mod keypair_factory;

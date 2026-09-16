@@ -256,7 +256,7 @@ mod test {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config.clone())) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config.clone())) as Box<dyn MassaDBController + 'static>
         ));
 
         let mut exec_de = ExecutedDenunciations::new(config.clone(), db);
@@ -298,7 +298,7 @@ mod test {
 
         // Init an exec de from disk
         let db2 = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
 
         let mut exec_de2 = ExecutedDenunciations::new(config, db2);

@@ -458,7 +458,7 @@ impl std::hash::Hash for PublicKey {
 
 impl PartialOrd for PublicKey {
     fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
-        Some(self.to_bytes().cmp(&other.to_bytes()))
+        Some(self.cmp(other))
     }
 }
 
@@ -617,7 +617,7 @@ impl std::hash::Hash for PublicKey {
 #[transition::impl_version(versions("0"))]
 impl PartialOrd for PublicKey {
     fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
-        Some(self.0.to_bytes().cmp(&other.0.to_bytes()))
+        Some(self.cmp(other))
     }
 }
 

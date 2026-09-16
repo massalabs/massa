@@ -10,6 +10,10 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+// `BootstrapError` is large by design: it carries a `BootstrapServerMessage`.
+// Boxing it would be an API break, so the lint is silenced crate-wide rather
+// than on each of the ~40 fallible functions here.
+#![allow(clippy::result_large_err)]
 
 use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalStateController;

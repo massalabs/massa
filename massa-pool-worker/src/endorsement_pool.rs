@@ -137,10 +137,8 @@ impl EndorsementPool {
                         continue;
                     }
                 };
-                if !pos_draws
-                    .endorsements
-                    .get(endo.content.index as usize)
-                    .map_or(false, |a| a == &endo.content_creator_address)
+                if pos_draws.endorsements.get(endo.content.index as usize)
+                    != Some(&endo.content_creator_address)
                 {
                     warn!(
                         "error, endorsement with id {} at slot {} is not selected for PoS draw",
@@ -258,7 +256,7 @@ impl EndorsementPool {
                 slot
             );
             for endo_id in endo_ids.iter_mut() {
-                if endo_id.map_or(false, |id| !claimed_endos.contains(&id)) {
+                if endo_id.is_some_and(|id| !claimed_endos.contains(&id)) {
                     *endo_id = None;
                 }
             }

@@ -30,7 +30,6 @@ impl BlockIndexes {
     /// Insert a block and populate the indexes.
     /// Arguments:
     /// - block: the block to insert
-
     pub(crate) fn insert(&mut self, block: SecureShareBlock) {
         if let hash_map::Entry::Vacant(vac) = self.blocks.entry(block.id) {
             let block = vac.insert(Box::new(block));

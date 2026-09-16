@@ -23,7 +23,7 @@ use massa_serialization::{
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 
-/// Ser / Der
+// Ser / Der
 
 const MIP_INFO_NAME_MAX_LEN: u32 = 255;
 const MIP_INFO_COMPONENTS_MAX_ENTRIES: u32 = 8;

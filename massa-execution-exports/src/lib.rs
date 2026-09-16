@@ -65,6 +65,8 @@ pub use error::{ExecutionError, ExecutionQueryError};
 pub use event_store::EventStore;
 pub use massa_sc_runtime::{CondomLimits, GasCosts};
 use massa_serialization as _;
+#[cfg(test)]
+use mockall as _;
 pub use settings::{ExecutionConfig, StorageCostsConstants};
 use tracing as _;
 pub use types::{

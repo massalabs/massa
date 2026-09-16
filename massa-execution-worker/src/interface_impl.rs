@@ -134,7 +134,7 @@ impl InterfaceImpl {
         };
 
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
         let (final_state, _tempfile) =
             get_sample_state(config.last_start_period, selector_controller, mip_store, db).unwrap();

@@ -2575,10 +2575,7 @@ impl ExecutionState {
         let final_state_lock = self.final_state.read();
 
         // check if cycle is complete
-        let is_final = match final_state_lock.get_pos_state().is_cycle_complete(cycle) {
-            Some(v) => v,
-            None => return None,
-        };
+        let is_final = final_state_lock.get_pos_state().is_cycle_complete(cycle)?;
 
         // active rolls
         let staker_infos: BTreeMap<Address, ExecutionQueryStakerInfo>;

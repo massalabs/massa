@@ -64,8 +64,8 @@ use crate::{
     BootstrapConfig,
 };
 
-/// Abstraction layer over data produced by the listener, and transported
-/// over to the worker via a channel
+// Abstraction layer over data produced by the listener, and transported
+// over to the worker via a channel
 
 /// handle on the bootstrap server
 pub struct BootstrapManager {

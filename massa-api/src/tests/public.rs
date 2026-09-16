@@ -122,7 +122,7 @@ async fn get_status() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];
@@ -162,7 +162,7 @@ async fn get_cliques() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];
@@ -204,7 +204,7 @@ async fn get_operations() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
     let params = rpc_params![vec![
@@ -247,7 +247,7 @@ async fn get_endorsements() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -301,7 +301,7 @@ async fn get_blocks() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -345,7 +345,7 @@ async fn get_blockclique_block_by_slot() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -441,7 +441,7 @@ async fn get_graph_interval() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -492,7 +492,7 @@ async fn send_operations_low_fee() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
     let keypair = KeyPair::generate(0).unwrap();
@@ -552,7 +552,7 @@ async fn send_operations() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
     let keypair = KeyPair::generate(0).unwrap();
@@ -658,7 +658,7 @@ async fn get_filtered_sc_output_event() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -728,7 +728,7 @@ async fn execute_read_only_bytecode() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -818,7 +818,7 @@ async fn execute_read_only_call() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -884,7 +884,7 @@ async fn get_addresses() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -934,7 +934,7 @@ async fn get_addresses_bytecode() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -984,7 +984,7 @@ async fn get_datastore_entries() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -1024,7 +1024,7 @@ async fn wrong_api() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -1267,7 +1267,7 @@ async fn get_openrpc_spec() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];
@@ -1293,7 +1293,7 @@ async fn get_openrpc_spec() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];
@@ -1370,7 +1370,7 @@ async fn get_slots_transfers_keeps_positional_alignment() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
 
@@ -1433,7 +1433,7 @@ async fn get_stakers() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').last().unwrap()
+            addr.to_string().split(':').next_back().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];
