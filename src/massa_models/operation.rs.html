@@ -1942,6 +1942,7 @@
 <a href="#1942" id="1942">1942</a>
 <a href="#1943" id="1943">1943</a>
 <a href="#1944" id="1944">1944</a>
+<a href="#1945" id="1945">1945</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -3331,7 +3332,7 @@
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair, *CHAINID).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair, *CHAINID, None).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
@@ -3410,7 +3411,7 @@
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair, *CHAINID).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair, *CHAINID, None).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
@@ -3517,7 +3518,8 @@
         );
 
         <span class="kw">let </span>op: SecureShare&lt;Operation, OperationId&gt; =
-            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, chain_id).unwrap();
+            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, chain_id, <span class="prelude-val">None</span>)
+                .unwrap();
 
         <span class="macro">println!</span>(<span class="string">"Chain id: {}"</span>, <span class="kw-2">*</span>CHAINID);
         <span class="macro">println!</span>(<span class="string">"Operation id: {:?}"</span>, op.id);
@@ -3582,8 +3584,8 @@
 
         <span class="kw">let </span>op_serializer = OperationSerializer::new();
 
-        <span class="kw">let </span>op =
-            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+        <span class="kw">let </span>op = Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+            .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
         SecureShareSerializer::new()
@@ -3660,8 +3662,8 @@
         <span class="macro">assert_eq!</span>(res_content, content);
         <span class="kw">let </span>op_serializer = OperationSerializer::new();
 
-        <span class="kw">let </span>op =
-            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+        <span class="kw">let </span>op = Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+            .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
         SecureShareSerializer::new()
@@ -3739,8 +3741,8 @@
         <span class="macro">assert_eq!</span>(res_content, content);
         <span class="kw">let </span>op_serializer = OperationSerializer::new();
 
-        <span class="kw">let </span>op =
-            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, <span class="kw-2">*</span>CHAINID).unwrap();
+        <span class="kw">let </span>op = Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, <span class="kw-2">*</span>CHAINID, <span class="prelude-val">None</span>)
+            .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
         SecureShareSerializer::new()

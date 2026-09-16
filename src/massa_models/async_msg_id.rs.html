@@ -185,6 +185,11 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(missing_docs)]
 
 </span><span class="kw">use </span>massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
@@ -203,6 +208,11 @@
 <span class="doccomment">/// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
 /// `(rev(Ratio(msg.fee, max(msg.max_gas,1))), emission_slot, emission_index)`
+///
+/// From `MipComponent::Execution` version 2 (MIP-0002), batch selection and pool eviction
+/// re-rank with `fee / max(max_gas + async_msg_cst_gas_cost, 1)` via
+/// [`crate::async_msg::AsyncMessage::compute_priority_id`]; stored ids keep the historical
+/// formula so identity of already-emitted messages is unchanged.
 </span><span class="kw">pub type </span>AsyncMessageId = (std::cmp::Reverse&lt;Ratio&lt;u64&gt;&gt;, Slot, u64);
 
 <span class="attr">#[derive(Clone)]
