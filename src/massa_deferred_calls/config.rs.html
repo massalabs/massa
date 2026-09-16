@@ -1,125 +1,62 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-deferred-calls/src/config.rs`."><title>config.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_deferred_calls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
-<a href="#2" id="2">2</a>
-<a href="#3" id="3">3</a>
-<a href="#4" id="4">4</a>
-<a href="#5" id="5">5</a>
-<a href="#6" id="6">6</a>
-<a href="#7" id="7">7</a>
-<a href="#8" id="8">8</a>
-<a href="#9" id="9">9</a>
-<a href="#10" id="10">10</a>
-<a href="#11" id="11">11</a>
-<a href="#12" id="12">12</a>
-<a href="#13" id="13">13</a>
-<a href="#14" id="14">14</a>
-<a href="#15" id="15">15</a>
-<a href="#16" id="16">16</a>
-<a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
-<a href="#19" id="19">19</a>
-<a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
-<a href="#42" id="42">42</a>
-<a href="#43" id="43">43</a>
-<a href="#44" id="44">44</a>
-<a href="#45" id="45">45</a>
-<a href="#46" id="46">46</a>
-<a href="#47" id="47">47</a>
-<a href="#48" id="48">48</a>
-<a href="#49" id="49">49</a>
-<a href="#50" id="50">50</a>
-<a href="#51" id="51">51</a>
-<a href="#52" id="52">52</a>
-<a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
-    amount::Amount,
-    config::{
-        DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_CST_GAS_COST,
-        DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_MAX_ASYNC_GAS,
-        DEFERRED_CALL_MAX_FUTURE_SLOTS, DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
-        DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
-        LEDGER_COST_PER_BYTE, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
-    },
-};
-<span class="kw">use </span>serde::Deserialize;
-
-<span class="attr">#[derive(Debug, Clone, Copy, Deserialize)]
-</span><span class="kw">pub struct </span>DeferredCallsConfig {
-    <span class="doccomment">/// thread count
-    </span><span class="kw">pub </span>thread_count: u8,
-    <span class="doccomment">/// max function name length
-    </span><span class="kw">pub </span>max_function_name_length: u16,
-    <span class="doccomment">/// Maximum size of deferred call future slots (1 week)
-    </span><span class="kw">pub </span>max_future_slots: u64,
-    <span class="doccomment">/// base fee max max change denominator
-    </span><span class="kw">pub </span>base_fee_max_max_change_denominator: usize,
-    <span class="doccomment">/// min gas increment (1 nanomassa)
-    </span><span class="kw">pub </span>min_gas_increment: u64,
-    <span class="doccomment">/// min gas cost (10 nanomassa)
-    </span><span class="kw">pub </span>min_gas_cost: u64,
-    <span class="doccomment">/// call gas cost
-    </span><span class="kw">pub </span>call_cst_gas_cost: u64,
-    <span class="doccomment">/// global overbooking penalty
-    </span><span class="kw">pub </span>global_overbooking_penalty: Amount,
-    <span class="doccomment">/// slot overbooking penalty
-    </span><span class="kw">pub </span>slot_overbooking_penalty: Amount,
-
-    <span class="doccomment">/// max parameter size
-    </span><span class="kw">pub </span>max_parameter_size: u32,
-
-    <span class="kw">pub </span>max_pool_changes: u64,
-
-    <span class="kw">pub </span>max_gas: u64,
-
-    <span class="kw">pub </span>ledger_cost_per_byte: Amount,
-}
-
-<span class="kw">impl </span>Default <span class="kw">for </span>DeferredCallsConfig {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            thread_count: THREAD_COUNT,
-            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
-            max_future_slots: DEFERRED_CALL_MAX_FUTURE_SLOTS,
-            max_parameter_size: MAX_PARAMETERS_SIZE,
-            max_pool_changes: DEFERRED_CALL_MAX_POOL_CHANGES,
-            max_gas: DEFERRED_CALL_MAX_ASYNC_GAS,
-            base_fee_max_max_change_denominator: DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR,
-            min_gas_increment: DEFERRED_CALL_MIN_GAS_INCREMENT,
-            min_gas_cost: DEFERRED_CALL_MIN_GAS_COST,
-            global_overbooking_penalty: DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
-            slot_overbooking_penalty: DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
-            call_cst_gas_cost: DEFERRED_CALL_CST_GAS_COST,
-            ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
-        }
-    }
-}
-</code></pre></div></section></main></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-deferred-calls/src/config.rs`."><title>config.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-e56847b5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_deferred_calls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.1 (ed61e7d7e 2025-11-07)" data-channel="1.91.1" data-search-js="search-e256b49e.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-6dc2a7f3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">massa_deferred_calls/</div>config.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-2"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>massa_models::{
+<a href=#2 id=2 data-nosnippet>2</a>    amount::Amount,
+<a href=#3 id=3 data-nosnippet>3</a>    config::{
+<a href=#4 id=4 data-nosnippet>4</a>        DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_CST_GAS_COST,
+<a href=#5 id=5 data-nosnippet>5</a>        DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_MAX_ASYNC_GAS,
+<a href=#6 id=6 data-nosnippet>6</a>        DEFERRED_CALL_MAX_FUTURE_SLOTS, DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
+<a href=#7 id=7 data-nosnippet>7</a>        DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
+<a href=#8 id=8 data-nosnippet>8</a>        LEDGER_COST_PER_BYTE, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
+<a href=#9 id=9 data-nosnippet>9</a>    },
+<a href=#10 id=10 data-nosnippet>10</a>};
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>serde::Deserialize;
+<a href=#12 id=12 data-nosnippet>12</a>
+<a href=#13 id=13 data-nosnippet>13</a><span class="attr">#[derive(Debug, Clone, Copy, Deserialize)]
+<a href=#14 id=14 data-nosnippet>14</a></span><span class="kw">pub struct </span>DeferredCallsConfig {
+<a href=#15 id=15 data-nosnippet>15</a>    <span class="doccomment">/// thread count
+<a href=#16 id=16 data-nosnippet>16</a>    </span><span class="kw">pub </span>thread_count: u8,
+<a href=#17 id=17 data-nosnippet>17</a>    <span class="doccomment">/// max function name length
+<a href=#18 id=18 data-nosnippet>18</a>    </span><span class="kw">pub </span>max_function_name_length: u16,
+<a href=#19 id=19 data-nosnippet>19</a>    <span class="doccomment">/// Maximum size of deferred call future slots (1 week)
+<a href=#20 id=20 data-nosnippet>20</a>    </span><span class="kw">pub </span>max_future_slots: u64,
+<a href=#21 id=21 data-nosnippet>21</a>    <span class="doccomment">/// base fee max max change denominator
+<a href=#22 id=22 data-nosnippet>22</a>    </span><span class="kw">pub </span>base_fee_max_max_change_denominator: usize,
+<a href=#23 id=23 data-nosnippet>23</a>    <span class="doccomment">/// min gas increment (1 nanomassa)
+<a href=#24 id=24 data-nosnippet>24</a>    </span><span class="kw">pub </span>min_gas_increment: u64,
+<a href=#25 id=25 data-nosnippet>25</a>    <span class="doccomment">/// min gas cost (10 nanomassa)
+<a href=#26 id=26 data-nosnippet>26</a>    </span><span class="kw">pub </span>min_gas_cost: u64,
+<a href=#27 id=27 data-nosnippet>27</a>    <span class="doccomment">/// call gas cost
+<a href=#28 id=28 data-nosnippet>28</a>    </span><span class="kw">pub </span>call_cst_gas_cost: u64,
+<a href=#29 id=29 data-nosnippet>29</a>    <span class="doccomment">/// global overbooking penalty
+<a href=#30 id=30 data-nosnippet>30</a>    </span><span class="kw">pub </span>global_overbooking_penalty: Amount,
+<a href=#31 id=31 data-nosnippet>31</a>    <span class="doccomment">/// slot overbooking penalty
+<a href=#32 id=32 data-nosnippet>32</a>    </span><span class="kw">pub </span>slot_overbooking_penalty: Amount,
+<a href=#33 id=33 data-nosnippet>33</a>
+<a href=#34 id=34 data-nosnippet>34</a>    <span class="doccomment">/// max parameter size
+<a href=#35 id=35 data-nosnippet>35</a>    </span><span class="kw">pub </span>max_parameter_size: u32,
+<a href=#36 id=36 data-nosnippet>36</a>
+<a href=#37 id=37 data-nosnippet>37</a>    <span class="kw">pub </span>max_pool_changes: u64,
+<a href=#38 id=38 data-nosnippet>38</a>
+<a href=#39 id=39 data-nosnippet>39</a>    <span class="kw">pub </span>max_gas: u64,
+<a href=#40 id=40 data-nosnippet>40</a>
+<a href=#41 id=41 data-nosnippet>41</a>    <span class="kw">pub </span>ledger_cost_per_byte: Amount,
+<a href=#42 id=42 data-nosnippet>42</a>}
+<a href=#43 id=43 data-nosnippet>43</a>
+<a href=#44 id=44 data-nosnippet>44</a><span class="kw">impl </span>Default <span class="kw">for </span>DeferredCallsConfig {
+<a href=#45 id=45 data-nosnippet>45</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#46 id=46 data-nosnippet>46</a>        <span class="self">Self </span>{
+<a href=#47 id=47 data-nosnippet>47</a>            thread_count: THREAD_COUNT,
+<a href=#48 id=48 data-nosnippet>48</a>            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+<a href=#49 id=49 data-nosnippet>49</a>            max_future_slots: DEFERRED_CALL_MAX_FUTURE_SLOTS,
+<a href=#50 id=50 data-nosnippet>50</a>            max_parameter_size: MAX_PARAMETERS_SIZE,
+<a href=#51 id=51 data-nosnippet>51</a>            max_pool_changes: DEFERRED_CALL_MAX_POOL_CHANGES,
+<a href=#52 id=52 data-nosnippet>52</a>            max_gas: DEFERRED_CALL_MAX_ASYNC_GAS,
+<a href=#53 id=53 data-nosnippet>53</a>            base_fee_max_max_change_denominator: DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR,
+<a href=#54 id=54 data-nosnippet>54</a>            min_gas_increment: DEFERRED_CALL_MIN_GAS_INCREMENT,
+<a href=#55 id=55 data-nosnippet>55</a>            min_gas_cost: DEFERRED_CALL_MIN_GAS_COST,
+<a href=#56 id=56 data-nosnippet>56</a>            global_overbooking_penalty: DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
+<a href=#57 id=57 data-nosnippet>57</a>            slot_overbooking_penalty: DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
+<a href=#58 id=58 data-nosnippet>58</a>            call_cst_gas_cost: DEFERRED_CALL_CST_GAS_COST,
+<a href=#59 id=59 data-nosnippet>59</a>            ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
+<a href=#60 id=60 data-nosnippet>60</a>        }
+<a href=#61 id=61 data-nosnippet>61</a>    }
+<a href=#62 id=62 data-nosnippet>62</a>}</code></pre></div></section></main></body></html>
