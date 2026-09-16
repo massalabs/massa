@@ -105,69 +105,72 @@
 <a href=#105 id=105 data-nosnippet>105</a>        denunciation_index: <span class="kw-2">&amp;</span>DenunciationIndex,
 <a href=#106 id=106 data-nosnippet>106</a>    ) -&gt; (bool, bool);
 <a href=#107 id=107 data-nosnippet>107</a>
-<a href=#108 id=108 data-nosnippet>108</a>    <span class="doccomment">/// Gets information about a batch of addresses
-<a href=#109 id=109 data-nosnippet>109</a>    </span><span class="kw">fn </span>get_addresses_infos(
-<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#111 id=111 data-nosnippet>111</a>        addresses: <span class="kw-2">&amp;</span>[Address],
-<a href=#112 id=112 data-nosnippet>112</a>        deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
-<a href=#113 id=113 data-nosnippet>113</a>    ) -&gt; Vec&lt;ExecutionAddressInfo&gt;;
-<a href=#114 id=114 data-nosnippet>114</a>
-<a href=#115 id=115 data-nosnippet>115</a>    <span class="doccomment">/// Get execution statistics
-<a href=#116 id=116 data-nosnippet>116</a>    </span><span class="kw">fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats;
+<a href=#108 id=108 data-nosnippet>108</a>    <span class="doccomment">/// Gets information about a batch of addresses.
+<a href=#109 id=109 data-nosnippet>109</a>    /// `max_keys` caps the datastore keys listed per address (`None` = unbounded);
+<a href=#110 id=110 data-nosnippet>110</a>    /// callers must pass their configured cap, never `None` on a transport path.
+<a href=#111 id=111 data-nosnippet>111</a>    </span><span class="kw">fn </span>get_addresses_infos(
+<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#113 id=113 data-nosnippet>113</a>        addresses: <span class="kw-2">&amp;</span>[Address],
+<a href=#114 id=114 data-nosnippet>114</a>        deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
+<a href=#115 id=115 data-nosnippet>115</a>        max_keys: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+<a href=#116 id=116 data-nosnippet>116</a>    ) -&gt; Vec&lt;ExecutionAddressInfo&gt;;
 <a href=#117 id=117 data-nosnippet>117</a>
-<a href=#118 id=118 data-nosnippet>118</a>    <span class="doccomment">/// Get the current module LRU cache size
-<a href=#119 id=119 data-nosnippet>119</a>    </span><span class="kw">fn </span>get_module_lru_cache_memory_usage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+<a href=#118 id=118 data-nosnippet>118</a>    <span class="doccomment">/// Get execution statistics
+<a href=#119 id=119 data-nosnippet>119</a>    </span><span class="kw">fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats;
 <a href=#120 id=120 data-nosnippet>120</a>
-<a href=#121 id=121 data-nosnippet>121</a>    <span class="doccomment">/// Get the number of events currently in the active history
-<a href=#122 id=122 data-nosnippet>122</a>    </span><span class="kw">fn </span>get_active_history_total_event_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+<a href=#121 id=121 data-nosnippet>121</a>    <span class="doccomment">/// Get the current module LRU cache size
+<a href=#122 id=122 data-nosnippet>122</a>    </span><span class="kw">fn </span>get_module_lru_cache_memory_usage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 <a href=#123 id=123 data-nosnippet>123</a>
-<a href=#124 id=124 data-nosnippet>124</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#125 id=125 data-nosnippet>125</a>    </span><span class="doccomment">/// Get the abi call stack for a given operation id
-<a href=#126 id=126 data-nosnippet>126</a>    </span><span class="kw">fn </span>get_operation_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, operation_id: OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;AbiTrace&gt;&gt;;
-<a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#129 id=129 data-nosnippet>129</a>    </span><span class="doccomment">/// Get the abi call stack for a given slot
-<a href=#130 id=130 data-nosnippet>130</a>    </span><span class="kw">fn </span>get_slot_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt;;
-<a href=#131 id=131 data-nosnippet>131</a>
-<a href=#132 id=132 data-nosnippet>132</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#133 id=133 data-nosnippet>133</a>    </span><span class="doccomment">/// Get the all transfers of MAS for a given slot
-<a href=#134 id=134 data-nosnippet>134</a>    </span><span class="kw">fn </span>get_transfers_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;Transfer&gt;&gt;;
-<a href=#135 id=135 data-nosnippet>135</a>
-<a href=#136 id=136 data-nosnippet>136</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#137 id=137 data-nosnippet>137</a>    </span><span class="doccomment">/// Get both the ABI call stack and the direct transfers for a given slot, read from a
-<a href=#138 id=138 data-nosnippet>138</a>    /// single consistent snapshot of the execution trace history.
-<a href=#139 id=139 data-nosnippet>139</a>    ///
-<a href=#140 id=140 data-nosnippet>140</a>    /// Callers that need both datasets for a slot must use this instead of combining
-<a href=#141 id=141 data-nosnippet>141</a>    /// `get_slot_abi_call_stack` and `get_transfers_for_slot`: those are two separate reads,
-<a href=#142 id=142 data-nosnippet>142</a>    /// and a slot re-execution occurring between them can yield a response mixing data from
-<a href=#143 id=143 data-nosnippet>143</a>    /// two different executions of the same slot.
-<a href=#144 id=144 data-nosnippet>144</a>    </span><span class="kw">fn </span>get_slot_abi_call_stack_and_transfers(
-<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#146 id=146 data-nosnippet>146</a>        slot: Slot,
-<a href=#147 id=147 data-nosnippet>147</a>    ) -&gt; (<span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;Transfer&gt;&gt;);
-<a href=#148 id=148 data-nosnippet>148</a>
-<a href=#149 id=149 data-nosnippet>149</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#150 id=150 data-nosnippet>150</a>    </span><span class="doccomment">/// Get the transfer of MAS for a given operation id
-<a href=#151 id=151 data-nosnippet>151</a>    </span><span class="kw">fn </span>get_transfer_for_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;Transfer&gt;;
-<a href=#152 id=152 data-nosnippet>152</a>
-<a href=#153 id=153 data-nosnippet>153</a>    <span class="doccomment">/// Returns a boxed clone of self.
-<a href=#154 id=154 data-nosnippet>154</a>    /// Useful to allow cloning `Box&lt;dyn ExecutionController&gt;`.
-<a href=#155 id=155 data-nosnippet>155</a>    </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt;;
-<a href=#156 id=156 data-nosnippet>156</a>}
-<a href=#157 id=157 data-nosnippet>157</a>
-<a href=#158 id=158 data-nosnippet>158</a><span class="doccomment">/// Allow cloning `Box&lt;dyn ExecutionController&gt;`
-<a href=#159 id=159 data-nosnippet>159</a>/// Uses `ExecutionController::clone_box` internally
-<a href=#160 id=160 data-nosnippet>160</a></span><span class="kw">impl </span>Clone <span class="kw">for </span>Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
-<a href=#161 id=161 data-nosnippet>161</a>    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
-<a href=#162 id=162 data-nosnippet>162</a>        <span class="self">self</span>.clone_box()
-<a href=#163 id=163 data-nosnippet>163</a>    }
-<a href=#164 id=164 data-nosnippet>164</a>}
-<a href=#165 id=165 data-nosnippet>165</a>
-<a href=#166 id=166 data-nosnippet>166</a><span class="doccomment">/// Execution manager used to stop the execution thread
-<a href=#167 id=167 data-nosnippet>167</a></span><span class="kw">pub trait </span>ExecutionManager {
-<a href=#168 id=168 data-nosnippet>168</a>    <span class="doccomment">/// Stop the execution thread
-<a href=#169 id=169 data-nosnippet>169</a>    /// Note that we do not take self by value to consume it
-<a href=#170 id=170 data-nosnippet>170</a>    /// because it is not allowed to move out of `Box&lt;dyn ExecutionManager&gt;`
-<a href=#171 id=171 data-nosnippet>171</a>    /// This will improve if the `unsized_fn_params` feature stabilizes enough to be safely usable.
-<a href=#172 id=172 data-nosnippet>172</a>    </span><span class="kw">fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
-<a href=#173 id=173 data-nosnippet>173</a>}</code></pre></div></section></main></body></html>
+<a href=#124 id=124 data-nosnippet>124</a>    <span class="doccomment">/// Get the number of events currently in the active history
+<a href=#125 id=125 data-nosnippet>125</a>    </span><span class="kw">fn </span>get_active_history_total_event_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+<a href=#126 id=126 data-nosnippet>126</a>
+<a href=#127 id=127 data-nosnippet>127</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#128 id=128 data-nosnippet>128</a>    </span><span class="doccomment">/// Get the abi call stack for a given operation id
+<a href=#129 id=129 data-nosnippet>129</a>    </span><span class="kw">fn </span>get_operation_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, operation_id: OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;AbiTrace&gt;&gt;;
+<a href=#130 id=130 data-nosnippet>130</a>
+<a href=#131 id=131 data-nosnippet>131</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#132 id=132 data-nosnippet>132</a>    </span><span class="doccomment">/// Get the abi call stack for a given slot
+<a href=#133 id=133 data-nosnippet>133</a>    </span><span class="kw">fn </span>get_slot_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt;;
+<a href=#134 id=134 data-nosnippet>134</a>
+<a href=#135 id=135 data-nosnippet>135</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#136 id=136 data-nosnippet>136</a>    </span><span class="doccomment">/// Get the all transfers of MAS for a given slot
+<a href=#137 id=137 data-nosnippet>137</a>    </span><span class="kw">fn </span>get_transfers_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;Transfer&gt;&gt;;
+<a href=#138 id=138 data-nosnippet>138</a>
+<a href=#139 id=139 data-nosnippet>139</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#140 id=140 data-nosnippet>140</a>    </span><span class="doccomment">/// Get both the ABI call stack and the direct transfers for a given slot, read from a
+<a href=#141 id=141 data-nosnippet>141</a>    /// single consistent snapshot of the execution trace history.
+<a href=#142 id=142 data-nosnippet>142</a>    ///
+<a href=#143 id=143 data-nosnippet>143</a>    /// Callers that need both datasets for a slot must use this instead of combining
+<a href=#144 id=144 data-nosnippet>144</a>    /// `get_slot_abi_call_stack` and `get_transfers_for_slot`: those are two separate reads,
+<a href=#145 id=145 data-nosnippet>145</a>    /// and a slot re-execution occurring between them can yield a response mixing data from
+<a href=#146 id=146 data-nosnippet>146</a>    /// two different executions of the same slot.
+<a href=#147 id=147 data-nosnippet>147</a>    </span><span class="kw">fn </span>get_slot_abi_call_stack_and_transfers(
+<a href=#148 id=148 data-nosnippet>148</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#149 id=149 data-nosnippet>149</a>        slot: Slot,
+<a href=#150 id=150 data-nosnippet>150</a>    ) -&gt; (<span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;Transfer&gt;&gt;);
+<a href=#151 id=151 data-nosnippet>151</a>
+<a href=#152 id=152 data-nosnippet>152</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#153 id=153 data-nosnippet>153</a>    </span><span class="doccomment">/// Get the transfer of MAS for a given operation id
+<a href=#154 id=154 data-nosnippet>154</a>    </span><span class="kw">fn </span>get_transfer_for_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;Transfer&gt;;
+<a href=#155 id=155 data-nosnippet>155</a>
+<a href=#156 id=156 data-nosnippet>156</a>    <span class="doccomment">/// Returns a boxed clone of self.
+<a href=#157 id=157 data-nosnippet>157</a>    /// Useful to allow cloning `Box&lt;dyn ExecutionController&gt;`.
+<a href=#158 id=158 data-nosnippet>158</a>    </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt;;
+<a href=#159 id=159 data-nosnippet>159</a>}
+<a href=#160 id=160 data-nosnippet>160</a>
+<a href=#161 id=161 data-nosnippet>161</a><span class="doccomment">/// Allow cloning `Box&lt;dyn ExecutionController&gt;`
+<a href=#162 id=162 data-nosnippet>162</a>/// Uses `ExecutionController::clone_box` internally
+<a href=#163 id=163 data-nosnippet>163</a></span><span class="kw">impl </span>Clone <span class="kw">for </span>Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
+<a href=#164 id=164 data-nosnippet>164</a>    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
+<a href=#165 id=165 data-nosnippet>165</a>        <span class="self">self</span>.clone_box()
+<a href=#166 id=166 data-nosnippet>166</a>    }
+<a href=#167 id=167 data-nosnippet>167</a>}
+<a href=#168 id=168 data-nosnippet>168</a>
+<a href=#169 id=169 data-nosnippet>169</a><span class="doccomment">/// Execution manager used to stop the execution thread
+<a href=#170 id=170 data-nosnippet>170</a></span><span class="kw">pub trait </span>ExecutionManager {
+<a href=#171 id=171 data-nosnippet>171</a>    <span class="doccomment">/// Stop the execution thread
+<a href=#172 id=172 data-nosnippet>172</a>    /// Note that we do not take self by value to consume it
+<a href=#173 id=173 data-nosnippet>173</a>    /// because it is not allowed to move out of `Box&lt;dyn ExecutionManager&gt;`
+<a href=#174 id=174 data-nosnippet>174</a>    /// This will improve if the `unsized_fn_params` feature stabilizes enough to be safely usable.
+<a href=#175 id=175 data-nosnippet>175</a>    </span><span class="kw">fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+<a href=#176 id=176 data-nosnippet>176</a>}</code></pre></div></section></main></body></html>

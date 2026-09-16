@@ -303,485 +303,492 @@
 <a href=#303 id=303 data-nosnippet>303</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#304 id=304 data-nosnippet>304</a>        addresses: <span class="kw-2">&amp;</span>[Address],
 <a href=#305 id=305 data-nosnippet>305</a>        deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
-<a href=#306 id=306 data-nosnippet>306</a>    ) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
-<a href=#307 id=307 data-nosnippet>307</a>        <span class="kw">let </span>execution_guard = <span class="self">self</span>.execution_state.read();
-<a href=#308 id=308 data-nosnippet>308</a>        get_addresses_infos_under(<span class="kw-2">&amp;</span>execution_guard, addresses, deferred_credits_max_slot)
-<a href=#309 id=309 data-nosnippet>309</a>    }
-<a href=#310 id=310 data-nosnippet>310</a>
-<a href=#311 id=311 data-nosnippet>311</a>    <span class="doccomment">/// Get execution statistics
-<a href=#312 id=312 data-nosnippet>312</a>    </span><span class="kw">fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats {
-<a href=#313 id=313 data-nosnippet>313</a>        <span class="self">self</span>.execution_state.read().get_stats()
-<a href=#314 id=314 data-nosnippet>314</a>    }
-<a href=#315 id=315 data-nosnippet>315</a>
-<a href=#316 id=316 data-nosnippet>316</a>    <span class="doccomment">/// Get the memory usage of the module LRU cache
-<a href=#317 id=317 data-nosnippet>317</a>    </span><span class="kw">fn </span>get_module_lru_cache_memory_usage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-<a href=#318 id=318 data-nosnippet>318</a>        <span class="self">self</span>.execution_state
-<a href=#319 id=319 data-nosnippet>319</a>            .read()
-<a href=#320 id=320 data-nosnippet>320</a>            .module_cache
-<a href=#321 id=321 data-nosnippet>321</a>            .read()
-<a href=#322 id=322 data-nosnippet>322</a>            .get_module_lru_cache_memory_usage()
-<a href=#323 id=323 data-nosnippet>323</a>    }
-<a href=#324 id=324 data-nosnippet>324</a>
-<a href=#325 id=325 data-nosnippet>325</a>    <span class="doccomment">/// Get the number of events currently in the active history
-<a href=#326 id=326 data-nosnippet>326</a>    </span><span class="kw">fn </span>get_active_history_total_event_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-<a href=#327 id=327 data-nosnippet>327</a>        <span class="self">self</span>.execution_state
-<a href=#328 id=328 data-nosnippet>328</a>            .read()
-<a href=#329 id=329 data-nosnippet>329</a>            .active_history
-<a href=#330 id=330 data-nosnippet>330</a>            .read()
-<a href=#331 id=331 data-nosnippet>331</a>            .<span class="number">0
-<a href=#332 id=332 data-nosnippet>332</a>            </span>.iter()
-<a href=#333 id=333 data-nosnippet>333</a>            .map(|exec_out| exec_out.events.<span class="number">0</span>.len())
-<a href=#334 id=334 data-nosnippet>334</a>            .sum()
-<a href=#335 id=335 data-nosnippet>335</a>    }
-<a href=#336 id=336 data-nosnippet>336</a>
-<a href=#337 id=337 data-nosnippet>337</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#338 id=338 data-nosnippet>338</a>    </span><span class="kw">fn </span>get_operation_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, operation_id: OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;AbiTrace&gt;&gt; {
-<a href=#339 id=339 data-nosnippet>339</a>        <span class="self">self</span>.execution_state
-<a href=#340 id=340 data-nosnippet>340</a>            .read()
-<a href=#341 id=341 data-nosnippet>341</a>            .trace_history
-<a href=#342 id=342 data-nosnippet>342</a>            .read()
-<a href=#343 id=343 data-nosnippet>343</a>            .fetch_traces_for_op(<span class="kw-2">&amp;</span>operation_id)
-<a href=#344 id=344 data-nosnippet>344</a>    }
-<a href=#345 id=345 data-nosnippet>345</a>
-<a href=#346 id=346 data-nosnippet>346</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#347 id=347 data-nosnippet>347</a>    </span><span class="kw">fn </span>get_slot_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt; {
-<a href=#348 id=348 data-nosnippet>348</a>        <span class="self">self</span>.execution_state
-<a href=#349 id=349 data-nosnippet>349</a>            .read()
-<a href=#350 id=350 data-nosnippet>350</a>            .trace_history
-<a href=#351 id=351 data-nosnippet>351</a>            .read()
-<a href=#352 id=352 data-nosnippet>352</a>            .fetch_traces_for_slot(<span class="kw-2">&amp;</span>slot)
-<a href=#353 id=353 data-nosnippet>353</a>    }
-<a href=#354 id=354 data-nosnippet>354</a>
-<a href=#355 id=355 data-nosnippet>355</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#356 id=356 data-nosnippet>356</a>    </span><span class="kw">fn </span>get_transfers_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;Transfer&gt;&gt; {
-<a href=#357 id=357 data-nosnippet>357</a>        <span class="self">self</span>.execution_state
-<a href=#358 id=358 data-nosnippet>358</a>            .read()
-<a href=#359 id=359 data-nosnippet>359</a>            .trace_history
-<a href=#360 id=360 data-nosnippet>360</a>            .read()
-<a href=#361 id=361 data-nosnippet>361</a>            .fetch_transfers_for_slot(<span class="kw-2">&amp;</span>slot)
-<a href=#362 id=362 data-nosnippet>362</a>    }
-<a href=#363 id=363 data-nosnippet>363</a>
-<a href=#364 id=364 data-nosnippet>364</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#365 id=365 data-nosnippet>365</a>    </span><span class="kw">fn </span>get_slot_abi_call_stack_and_transfers(
-<a href=#366 id=366 data-nosnippet>366</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#367 id=367 data-nosnippet>367</a>        slot: Slot,
-<a href=#368 id=368 data-nosnippet>368</a>    ) -&gt; (<span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;Transfer&gt;&gt;) {
-<a href=#369 id=369 data-nosnippet>369</a>        <span class="comment">// Hold a single `execution_state` (and thus `trace_history`) read lock for both
-<a href=#370 id=370 data-nosnippet>370</a>        // lookups. A slot re-execution takes the `execution_state` write lock, so it cannot
-<a href=#371 id=371 data-nosnippet>371</a>        // run between the two reads; the returned ABI call stack and transfers are therefore
-<a href=#372 id=372 data-nosnippet>372</a>        // guaranteed to come from the same slot execution.
-<a href=#373 id=373 data-nosnippet>373</a>        </span><span class="self">self</span>.execution_state
-<a href=#374 id=374 data-nosnippet>374</a>            .read()
-<a href=#375 id=375 data-nosnippet>375</a>            .trace_history
-<a href=#376 id=376 data-nosnippet>376</a>            .read()
-<a href=#377 id=377 data-nosnippet>377</a>            .fetch_slot_traces_and_transfers(<span class="kw-2">&amp;</span>slot)
-<a href=#378 id=378 data-nosnippet>378</a>    }
-<a href=#379 id=379 data-nosnippet>379</a>
-<a href=#380 id=380 data-nosnippet>380</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#381 id=381 data-nosnippet>381</a>    </span><span class="kw">fn </span>get_transfer_for_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;Transfer&gt; {
-<a href=#382 id=382 data-nosnippet>382</a>        <span class="self">self</span>.execution_state
-<a href=#383 id=383 data-nosnippet>383</a>            .read()
-<a href=#384 id=384 data-nosnippet>384</a>            .trace_history
-<a href=#385 id=385 data-nosnippet>385</a>            .read()
-<a href=#386 id=386 data-nosnippet>386</a>            .fetch_transfer_for_op(op_id)
-<a href=#387 id=387 data-nosnippet>387</a>    }
-<a href=#388 id=388 data-nosnippet>388</a>
-<a href=#389 id=389 data-nosnippet>389</a>    <span class="doccomment">/// Returns a boxed clone of self.
-<a href=#390 id=390 data-nosnippet>390</a>    /// Allows cloning `Box&lt;dyn ExecutionController&gt;`,
-<a href=#391 id=391 data-nosnippet>391</a>    /// see `massa-execution-exports/controller_traits.rs`
-<a href=#392 id=392 data-nosnippet>392</a>    </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
-<a href=#393 id=393 data-nosnippet>393</a>        Box::new(<span class="self">self</span>.clone())
-<a href=#394 id=394 data-nosnippet>394</a>    }
-<a href=#395 id=395 data-nosnippet>395</a>
-<a href=#396 id=396 data-nosnippet>396</a>    <span class="doccomment">/// See trait definition
-<a href=#397 id=397 data-nosnippet>397</a>    </span><span class="kw">fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;bool&gt;, <span class="prelude-ty">Option</span>&lt;bool&gt;)&gt; {
-<a href=#398 id=398 data-nosnippet>398</a>        <span class="self">self</span>.execution_state.read().get_ops_exec_status(batch)
-<a href=#399 id=399 data-nosnippet>399</a>    }
-<a href=#400 id=400 data-nosnippet>400</a>}
+<a href=#306 id=306 data-nosnippet>306</a>        max_keys: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+<a href=#307 id=307 data-nosnippet>307</a>    ) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
+<a href=#308 id=308 data-nosnippet>308</a>        <span class="kw">let </span>execution_guard = <span class="self">self</span>.execution_state.read();
+<a href=#309 id=309 data-nosnippet>309</a>        get_addresses_infos_under(
+<a href=#310 id=310 data-nosnippet>310</a>            <span class="kw-2">&amp;</span>execution_guard,
+<a href=#311 id=311 data-nosnippet>311</a>            addresses,
+<a href=#312 id=312 data-nosnippet>312</a>            deferred_credits_max_slot,
+<a href=#313 id=313 data-nosnippet>313</a>            max_keys,
+<a href=#314 id=314 data-nosnippet>314</a>        )
+<a href=#315 id=315 data-nosnippet>315</a>    }
+<a href=#316 id=316 data-nosnippet>316</a>
+<a href=#317 id=317 data-nosnippet>317</a>    <span class="doccomment">/// Get execution statistics
+<a href=#318 id=318 data-nosnippet>318</a>    </span><span class="kw">fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats {
+<a href=#319 id=319 data-nosnippet>319</a>        <span class="self">self</span>.execution_state.read().get_stats()
+<a href=#320 id=320 data-nosnippet>320</a>    }
+<a href=#321 id=321 data-nosnippet>321</a>
+<a href=#322 id=322 data-nosnippet>322</a>    <span class="doccomment">/// Get the memory usage of the module LRU cache
+<a href=#323 id=323 data-nosnippet>323</a>    </span><span class="kw">fn </span>get_module_lru_cache_memory_usage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+<a href=#324 id=324 data-nosnippet>324</a>        <span class="self">self</span>.execution_state
+<a href=#325 id=325 data-nosnippet>325</a>            .read()
+<a href=#326 id=326 data-nosnippet>326</a>            .module_cache
+<a href=#327 id=327 data-nosnippet>327</a>            .read()
+<a href=#328 id=328 data-nosnippet>328</a>            .get_module_lru_cache_memory_usage()
+<a href=#329 id=329 data-nosnippet>329</a>    }
+<a href=#330 id=330 data-nosnippet>330</a>
+<a href=#331 id=331 data-nosnippet>331</a>    <span class="doccomment">/// Get the number of events currently in the active history
+<a href=#332 id=332 data-nosnippet>332</a>    </span><span class="kw">fn </span>get_active_history_total_event_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+<a href=#333 id=333 data-nosnippet>333</a>        <span class="self">self</span>.execution_state
+<a href=#334 id=334 data-nosnippet>334</a>            .read()
+<a href=#335 id=335 data-nosnippet>335</a>            .active_history
+<a href=#336 id=336 data-nosnippet>336</a>            .read()
+<a href=#337 id=337 data-nosnippet>337</a>            .<span class="number">0
+<a href=#338 id=338 data-nosnippet>338</a>            </span>.iter()
+<a href=#339 id=339 data-nosnippet>339</a>            .map(|exec_out| exec_out.events.<span class="number">0</span>.len())
+<a href=#340 id=340 data-nosnippet>340</a>            .sum()
+<a href=#341 id=341 data-nosnippet>341</a>    }
+<a href=#342 id=342 data-nosnippet>342</a>
+<a href=#343 id=343 data-nosnippet>343</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#344 id=344 data-nosnippet>344</a>    </span><span class="kw">fn </span>get_operation_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, operation_id: OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;AbiTrace&gt;&gt; {
+<a href=#345 id=345 data-nosnippet>345</a>        <span class="self">self</span>.execution_state
+<a href=#346 id=346 data-nosnippet>346</a>            .read()
+<a href=#347 id=347 data-nosnippet>347</a>            .trace_history
+<a href=#348 id=348 data-nosnippet>348</a>            .read()
+<a href=#349 id=349 data-nosnippet>349</a>            .fetch_traces_for_op(<span class="kw-2">&amp;</span>operation_id)
+<a href=#350 id=350 data-nosnippet>350</a>    }
+<a href=#351 id=351 data-nosnippet>351</a>
+<a href=#352 id=352 data-nosnippet>352</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#353 id=353 data-nosnippet>353</a>    </span><span class="kw">fn </span>get_slot_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt; {
+<a href=#354 id=354 data-nosnippet>354</a>        <span class="self">self</span>.execution_state
+<a href=#355 id=355 data-nosnippet>355</a>            .read()
+<a href=#356 id=356 data-nosnippet>356</a>            .trace_history
+<a href=#357 id=357 data-nosnippet>357</a>            .read()
+<a href=#358 id=358 data-nosnippet>358</a>            .fetch_traces_for_slot(<span class="kw-2">&amp;</span>slot)
+<a href=#359 id=359 data-nosnippet>359</a>    }
+<a href=#360 id=360 data-nosnippet>360</a>
+<a href=#361 id=361 data-nosnippet>361</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#362 id=362 data-nosnippet>362</a>    </span><span class="kw">fn </span>get_transfers_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;Transfer&gt;&gt; {
+<a href=#363 id=363 data-nosnippet>363</a>        <span class="self">self</span>.execution_state
+<a href=#364 id=364 data-nosnippet>364</a>            .read()
+<a href=#365 id=365 data-nosnippet>365</a>            .trace_history
+<a href=#366 id=366 data-nosnippet>366</a>            .read()
+<a href=#367 id=367 data-nosnippet>367</a>            .fetch_transfers_for_slot(<span class="kw-2">&amp;</span>slot)
+<a href=#368 id=368 data-nosnippet>368</a>    }
+<a href=#369 id=369 data-nosnippet>369</a>
+<a href=#370 id=370 data-nosnippet>370</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#371 id=371 data-nosnippet>371</a>    </span><span class="kw">fn </span>get_slot_abi_call_stack_and_transfers(
+<a href=#372 id=372 data-nosnippet>372</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#373 id=373 data-nosnippet>373</a>        slot: Slot,
+<a href=#374 id=374 data-nosnippet>374</a>    ) -&gt; (<span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;Transfer&gt;&gt;) {
+<a href=#375 id=375 data-nosnippet>375</a>        <span class="comment">// Hold a single `execution_state` (and thus `trace_history`) read lock for both
+<a href=#376 id=376 data-nosnippet>376</a>        // lookups. A slot re-execution takes the `execution_state` write lock, so it cannot
+<a href=#377 id=377 data-nosnippet>377</a>        // run between the two reads; the returned ABI call stack and transfers are therefore
+<a href=#378 id=378 data-nosnippet>378</a>        // guaranteed to come from the same slot execution.
+<a href=#379 id=379 data-nosnippet>379</a>        </span><span class="self">self</span>.execution_state
+<a href=#380 id=380 data-nosnippet>380</a>            .read()
+<a href=#381 id=381 data-nosnippet>381</a>            .trace_history
+<a href=#382 id=382 data-nosnippet>382</a>            .read()
+<a href=#383 id=383 data-nosnippet>383</a>            .fetch_slot_traces_and_transfers(<span class="kw-2">&amp;</span>slot)
+<a href=#384 id=384 data-nosnippet>384</a>    }
+<a href=#385 id=385 data-nosnippet>385</a>
+<a href=#386 id=386 data-nosnippet>386</a>    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#387 id=387 data-nosnippet>387</a>    </span><span class="kw">fn </span>get_transfer_for_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;Transfer&gt; {
+<a href=#388 id=388 data-nosnippet>388</a>        <span class="self">self</span>.execution_state
+<a href=#389 id=389 data-nosnippet>389</a>            .read()
+<a href=#390 id=390 data-nosnippet>390</a>            .trace_history
+<a href=#391 id=391 data-nosnippet>391</a>            .read()
+<a href=#392 id=392 data-nosnippet>392</a>            .fetch_transfer_for_op(op_id)
+<a href=#393 id=393 data-nosnippet>393</a>    }
+<a href=#394 id=394 data-nosnippet>394</a>
+<a href=#395 id=395 data-nosnippet>395</a>    <span class="doccomment">/// Returns a boxed clone of self.
+<a href=#396 id=396 data-nosnippet>396</a>    /// Allows cloning `Box&lt;dyn ExecutionController&gt;`,
+<a href=#397 id=397 data-nosnippet>397</a>    /// see `massa-execution-exports/controller_traits.rs`
+<a href=#398 id=398 data-nosnippet>398</a>    </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>ExecutionController&gt; {
+<a href=#399 id=399 data-nosnippet>399</a>        Box::new(<span class="self">self</span>.clone())
+<a href=#400 id=400 data-nosnippet>400</a>    }
 <a href=#401 id=401 data-nosnippet>401</a>
-<a href=#402 id=402 data-nosnippet>402</a><span class="kw">fn </span>get_final_and_candidate_balance_under(
-<a href=#403 id=403 data-nosnippet>403</a>    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
-<a href=#404 id=404 data-nosnippet>404</a>    addresses: <span class="kw-2">&amp;</span>[Address],
-<a href=#405 id=405 data-nosnippet>405</a>) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;)&gt; {
-<a href=#406 id=406 data-nosnippet>406</a>    <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(addresses.len());
-<a href=#407 id=407 data-nosnippet>407</a>    <span class="kw">for </span>addr <span class="kw">in </span>addresses {
-<a href=#408 id=408 data-nosnippet>408</a>        result.push(exec_state.get_final_and_candidate_balance(addr));
-<a href=#409 id=409 data-nosnippet>409</a>    }
-<a href=#410 id=410 data-nosnippet>410</a>    result
-<a href=#411 id=411 data-nosnippet>411</a>}
-<a href=#412 id=412 data-nosnippet>412</a>
-<a href=#413 id=413 data-nosnippet>413</a><span class="attr">#[allow(clippy::type_complexity)]
-<a href=#414 id=414 data-nosnippet>414</a></span><span class="kw">fn </span>get_final_and_active_data_entry_under(
-<a href=#415 id=415 data-nosnippet>415</a>    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
-<a href=#416 id=416 data-nosnippet>416</a>    input: Vec&lt;(Address, Vec&lt;u8&gt;)&gt;,
-<a href=#417 id=417 data-nosnippet>417</a>) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;)&gt; {
-<a href=#418 id=418 data-nosnippet>418</a>    <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(input.len());
-<a href=#419 id=419 data-nosnippet>419</a>    <span class="kw">for </span>(addr, key) <span class="kw">in </span>input {
-<a href=#420 id=420 data-nosnippet>420</a>        result.push(exec_state.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key));
-<a href=#421 id=421 data-nosnippet>421</a>    }
-<a href=#422 id=422 data-nosnippet>422</a>    result
-<a href=#423 id=423 data-nosnippet>423</a>}
-<a href=#424 id=424 data-nosnippet>424</a>
-<a href=#425 id=425 data-nosnippet>425</a><span class="kw">fn </span>get_addresses_infos_under(
-<a href=#426 id=426 data-nosnippet>426</a>    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
-<a href=#427 id=427 data-nosnippet>427</a>    addresses: <span class="kw-2">&amp;</span>[Address],
-<a href=#428 id=428 data-nosnippet>428</a>    deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
-<a href=#429 id=429 data-nosnippet>429</a>) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
-<a href=#430 id=430 data-nosnippet>430</a>    <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(addresses.len());
-<a href=#431 id=431 data-nosnippet>431</a>    <span class="kw">for </span>addr <span class="kw">in </span>addresses {
-<a href=#432 id=432 data-nosnippet>432</a>        <span class="kw">let </span>(final_datastore_keys, candidate_datastore_keys) = exec_state
-<a href=#433 id=433 data-nosnippet>433</a>            .get_final_and_candidate_datastore_keys(
-<a href=#434 id=434 data-nosnippet>434</a>                addr,
-<a href=#435 id=435 data-nosnippet>435</a>                <span class="kw-2">&amp;</span>[],
-<a href=#436 id=436 data-nosnippet>436</a>                std::ops::Bound::Unbounded,
-<a href=#437 id=437 data-nosnippet>437</a>                std::ops::Bound::Unbounded,
-<a href=#438 id=438 data-nosnippet>438</a>                <span class="prelude-val">None</span>,
-<a href=#439 id=439 data-nosnippet>439</a>            );
-<a href=#440 id=440 data-nosnippet>440</a>        <span class="kw">let </span>(final_balance, candidate_balance) = exec_state.get_final_and_candidate_balance(addr);
-<a href=#441 id=441 data-nosnippet>441</a>        <span class="kw">let </span>(final_roll_count, candidate_roll_count) =
-<a href=#442 id=442 data-nosnippet>442</a>            exec_state.get_final_and_candidate_rolls(addr);
-<a href=#443 id=443 data-nosnippet>443</a>        <span class="kw">let </span>future_deferred_credits =
-<a href=#444 id=444 data-nosnippet>444</a>            exec_state.get_address_future_deferred_credits(addr, deferred_credits_max_slot);
-<a href=#445 id=445 data-nosnippet>445</a>        res.push(ExecutionAddressInfo {
-<a href=#446 id=446 data-nosnippet>446</a>            final_datastore_keys: final_datastore_keys.unwrap_or_default(),
-<a href=#447 id=447 data-nosnippet>447</a>            candidate_datastore_keys: candidate_datastore_keys.unwrap_or_default(),
-<a href=#448 id=448 data-nosnippet>448</a>            final_balance: final_balance.unwrap_or_default(),
-<a href=#449 id=449 data-nosnippet>449</a>            candidate_balance: candidate_balance.unwrap_or_default(),
-<a href=#450 id=450 data-nosnippet>450</a>            final_roll_count,
-<a href=#451 id=451 data-nosnippet>451</a>            candidate_roll_count,
-<a href=#452 id=452 data-nosnippet>452</a>            future_deferred_credits,
-<a href=#453 id=453 data-nosnippet>453</a>            cycle_infos: exec_state.get_address_cycle_infos(addr),
-<a href=#454 id=454 data-nosnippet>454</a>        });
-<a href=#455 id=455 data-nosnippet>455</a>    }
-<a href=#456 id=456 data-nosnippet>456</a>    res
-<a href=#457 id=457 data-nosnippet>457</a>}
-<a href=#458 id=458 data-nosnippet>458</a>
-<a href=#459 id=459 data-nosnippet>459</a><span class="kw">fn </span>eval_query_item(
-<a href=#460 id=460 data-nosnippet>460</a>    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
-<a href=#461 id=461 data-nosnippet>461</a>    req_item: ExecutionQueryRequestItem,
-<a href=#462 id=462 data-nosnippet>462</a>    response_payload_size: <span class="kw-2">&amp;mut </span>usize,
-<a href=#463 id=463 data-nosnippet>463</a>    max_response_size: usize,
-<a href=#464 id=464 data-nosnippet>464</a>    remaining_events: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;usize&gt;,
-<a href=#465 id=465 data-nosnippet>465</a>) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionQueryResponseItem, ExecutionQueryError&gt; {
-<a href=#466 id=466 data-nosnippet>466</a>    <span class="kw">match </span>req_item {
-<a href=#467 id=467 data-nosnippet>467</a>        ExecutionQueryRequestItem::AddressExistsCandidate(addr) =&gt; {
-<a href=#468 id=468 data-nosnippet>468</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Boolean(
-<a href=#469 id=469 data-nosnippet>469</a>                exec_state
-<a href=#470 id=470 data-nosnippet>470</a>                    .get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr)
-<a href=#471 id=471 data-nosnippet>471</a>                    .<span class="number">1
-<a href=#472 id=472 data-nosnippet>472</a>                    </span>.is_some(),
-<a href=#473 id=473 data-nosnippet>473</a>            ))
-<a href=#474 id=474 data-nosnippet>474</a>        }
-<a href=#475 id=475 data-nosnippet>475</a>        ExecutionQueryRequestItem::AddressExistsFinal(addr) =&gt; {
-<a href=#476 id=476 data-nosnippet>476</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Boolean(
-<a href=#477 id=477 data-nosnippet>477</a>                exec_state
-<a href=#478 id=478 data-nosnippet>478</a>                    .get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr)
-<a href=#479 id=479 data-nosnippet>479</a>                    .<span class="number">0
-<a href=#480 id=480 data-nosnippet>480</a>                    </span>.is_some(),
-<a href=#481 id=481 data-nosnippet>481</a>            ))
-<a href=#482 id=482 data-nosnippet>482</a>        }
-<a href=#483 id=483 data-nosnippet>483</a>        ExecutionQueryRequestItem::AddressBalanceCandidate(addr) =&gt; {
-<a href=#484 id=484 data-nosnippet>484</a>            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr);
-<a href=#485 id=485 data-nosnippet>485</a>            <span class="kw">match </span>speculative_v {
-<a href=#486 id=486 data-nosnippet>486</a>                <span class="prelude-val">Some</span>(balance) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Amount(balance)),
-<a href=#487 id=487 data-nosnippet>487</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
-<a href=#488 id=488 data-nosnippet>488</a>            }
+<a href=#402 id=402 data-nosnippet>402</a>    <span class="doccomment">/// See trait definition
+<a href=#403 id=403 data-nosnippet>403</a>    </span><span class="kw">fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;bool&gt;, <span class="prelude-ty">Option</span>&lt;bool&gt;)&gt; {
+<a href=#404 id=404 data-nosnippet>404</a>        <span class="self">self</span>.execution_state.read().get_ops_exec_status(batch)
+<a href=#405 id=405 data-nosnippet>405</a>    }
+<a href=#406 id=406 data-nosnippet>406</a>}
+<a href=#407 id=407 data-nosnippet>407</a>
+<a href=#408 id=408 data-nosnippet>408</a><span class="kw">fn </span>get_final_and_candidate_balance_under(
+<a href=#409 id=409 data-nosnippet>409</a>    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
+<a href=#410 id=410 data-nosnippet>410</a>    addresses: <span class="kw-2">&amp;</span>[Address],
+<a href=#411 id=411 data-nosnippet>411</a>) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;)&gt; {
+<a href=#412 id=412 data-nosnippet>412</a>    <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(addresses.len());
+<a href=#413 id=413 data-nosnippet>413</a>    <span class="kw">for </span>addr <span class="kw">in </span>addresses {
+<a href=#414 id=414 data-nosnippet>414</a>        result.push(exec_state.get_final_and_candidate_balance(addr));
+<a href=#415 id=415 data-nosnippet>415</a>    }
+<a href=#416 id=416 data-nosnippet>416</a>    result
+<a href=#417 id=417 data-nosnippet>417</a>}
+<a href=#418 id=418 data-nosnippet>418</a>
+<a href=#419 id=419 data-nosnippet>419</a><span class="attr">#[allow(clippy::type_complexity)]
+<a href=#420 id=420 data-nosnippet>420</a></span><span class="kw">fn </span>get_final_and_active_data_entry_under(
+<a href=#421 id=421 data-nosnippet>421</a>    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
+<a href=#422 id=422 data-nosnippet>422</a>    input: Vec&lt;(Address, Vec&lt;u8&gt;)&gt;,
+<a href=#423 id=423 data-nosnippet>423</a>) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;)&gt; {
+<a href=#424 id=424 data-nosnippet>424</a>    <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::with_capacity(input.len());
+<a href=#425 id=425 data-nosnippet>425</a>    <span class="kw">for </span>(addr, key) <span class="kw">in </span>input {
+<a href=#426 id=426 data-nosnippet>426</a>        result.push(exec_state.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key));
+<a href=#427 id=427 data-nosnippet>427</a>    }
+<a href=#428 id=428 data-nosnippet>428</a>    result
+<a href=#429 id=429 data-nosnippet>429</a>}
+<a href=#430 id=430 data-nosnippet>430</a>
+<a href=#431 id=431 data-nosnippet>431</a><span class="kw">fn </span>get_addresses_infos_under(
+<a href=#432 id=432 data-nosnippet>432</a>    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
+<a href=#433 id=433 data-nosnippet>433</a>    addresses: <span class="kw-2">&amp;</span>[Address],
+<a href=#434 id=434 data-nosnippet>434</a>    deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
+<a href=#435 id=435 data-nosnippet>435</a>    max_keys: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+<a href=#436 id=436 data-nosnippet>436</a>) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
+<a href=#437 id=437 data-nosnippet>437</a>    <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(addresses.len());
+<a href=#438 id=438 data-nosnippet>438</a>    <span class="kw">for </span>addr <span class="kw">in </span>addresses {
+<a href=#439 id=439 data-nosnippet>439</a>        <span class="kw">let </span>(final_datastore_keys, candidate_datastore_keys) = exec_state
+<a href=#440 id=440 data-nosnippet>440</a>            .get_final_and_candidate_datastore_keys(
+<a href=#441 id=441 data-nosnippet>441</a>                addr,
+<a href=#442 id=442 data-nosnippet>442</a>                <span class="kw-2">&amp;</span>[],
+<a href=#443 id=443 data-nosnippet>443</a>                std::ops::Bound::Unbounded,
+<a href=#444 id=444 data-nosnippet>444</a>                std::ops::Bound::Unbounded,
+<a href=#445 id=445 data-nosnippet>445</a>                max_keys,
+<a href=#446 id=446 data-nosnippet>446</a>            );
+<a href=#447 id=447 data-nosnippet>447</a>        <span class="kw">let </span>(final_balance, candidate_balance) = exec_state.get_final_and_candidate_balance(addr);
+<a href=#448 id=448 data-nosnippet>448</a>        <span class="kw">let </span>(final_roll_count, candidate_roll_count) =
+<a href=#449 id=449 data-nosnippet>449</a>            exec_state.get_final_and_candidate_rolls(addr);
+<a href=#450 id=450 data-nosnippet>450</a>        <span class="kw">let </span>future_deferred_credits =
+<a href=#451 id=451 data-nosnippet>451</a>            exec_state.get_address_future_deferred_credits(addr, deferred_credits_max_slot);
+<a href=#452 id=452 data-nosnippet>452</a>        res.push(ExecutionAddressInfo {
+<a href=#453 id=453 data-nosnippet>453</a>            final_datastore_keys: final_datastore_keys.unwrap_or_default(),
+<a href=#454 id=454 data-nosnippet>454</a>            candidate_datastore_keys: candidate_datastore_keys.unwrap_or_default(),
+<a href=#455 id=455 data-nosnippet>455</a>            final_balance: final_balance.unwrap_or_default(),
+<a href=#456 id=456 data-nosnippet>456</a>            candidate_balance: candidate_balance.unwrap_or_default(),
+<a href=#457 id=457 data-nosnippet>457</a>            final_roll_count,
+<a href=#458 id=458 data-nosnippet>458</a>            candidate_roll_count,
+<a href=#459 id=459 data-nosnippet>459</a>            future_deferred_credits,
+<a href=#460 id=460 data-nosnippet>460</a>            cycle_infos: exec_state.get_address_cycle_infos(addr),
+<a href=#461 id=461 data-nosnippet>461</a>        });
+<a href=#462 id=462 data-nosnippet>462</a>    }
+<a href=#463 id=463 data-nosnippet>463</a>    res
+<a href=#464 id=464 data-nosnippet>464</a>}
+<a href=#465 id=465 data-nosnippet>465</a>
+<a href=#466 id=466 data-nosnippet>466</a><span class="kw">fn </span>eval_query_item(
+<a href=#467 id=467 data-nosnippet>467</a>    exec_state: <span class="kw-2">&amp;</span>ExecutionState,
+<a href=#468 id=468 data-nosnippet>468</a>    req_item: ExecutionQueryRequestItem,
+<a href=#469 id=469 data-nosnippet>469</a>    response_payload_size: <span class="kw-2">&amp;mut </span>usize,
+<a href=#470 id=470 data-nosnippet>470</a>    max_response_size: usize,
+<a href=#471 id=471 data-nosnippet>471</a>    remaining_events: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;usize&gt;,
+<a href=#472 id=472 data-nosnippet>472</a>) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionQueryResponseItem, ExecutionQueryError&gt; {
+<a href=#473 id=473 data-nosnippet>473</a>    <span class="kw">match </span>req_item {
+<a href=#474 id=474 data-nosnippet>474</a>        ExecutionQueryRequestItem::AddressExistsCandidate(addr) =&gt; {
+<a href=#475 id=475 data-nosnippet>475</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Boolean(
+<a href=#476 id=476 data-nosnippet>476</a>                exec_state
+<a href=#477 id=477 data-nosnippet>477</a>                    .get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr)
+<a href=#478 id=478 data-nosnippet>478</a>                    .<span class="number">1
+<a href=#479 id=479 data-nosnippet>479</a>                    </span>.is_some(),
+<a href=#480 id=480 data-nosnippet>480</a>            ))
+<a href=#481 id=481 data-nosnippet>481</a>        }
+<a href=#482 id=482 data-nosnippet>482</a>        ExecutionQueryRequestItem::AddressExistsFinal(addr) =&gt; {
+<a href=#483 id=483 data-nosnippet>483</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Boolean(
+<a href=#484 id=484 data-nosnippet>484</a>                exec_state
+<a href=#485 id=485 data-nosnippet>485</a>                    .get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr)
+<a href=#486 id=486 data-nosnippet>486</a>                    .<span class="number">0
+<a href=#487 id=487 data-nosnippet>487</a>                    </span>.is_some(),
+<a href=#488 id=488 data-nosnippet>488</a>            ))
 <a href=#489 id=489 data-nosnippet>489</a>        }
-<a href=#490 id=490 data-nosnippet>490</a>        ExecutionQueryRequestItem::AddressBalanceFinal(addr) =&gt; {
-<a href=#491 id=491 data-nosnippet>491</a>            <span class="kw">let </span>(final_v, _speculative_v) = exec_state.get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr);
-<a href=#492 id=492 data-nosnippet>492</a>            <span class="kw">match </span>final_v {
+<a href=#490 id=490 data-nosnippet>490</a>        ExecutionQueryRequestItem::AddressBalanceCandidate(addr) =&gt; {
+<a href=#491 id=491 data-nosnippet>491</a>            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr);
+<a href=#492 id=492 data-nosnippet>492</a>            <span class="kw">match </span>speculative_v {
 <a href=#493 id=493 data-nosnippet>493</a>                <span class="prelude-val">Some</span>(balance) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Amount(balance)),
 <a href=#494 id=494 data-nosnippet>494</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
 <a href=#495 id=495 data-nosnippet>495</a>            }
 <a href=#496 id=496 data-nosnippet>496</a>        }
-<a href=#497 id=497 data-nosnippet>497</a>        ExecutionQueryRequestItem::AddressBytecodeCandidate(addr) =&gt; {
-<a href=#498 id=498 data-nosnippet>498</a>            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_active_bytecode(<span class="kw-2">&amp;</span>addr);
-<a href=#499 id=499 data-nosnippet>499</a>            <span class="kw">match </span>speculative_v {
-<a href=#500 id=500 data-nosnippet>500</a>                <span class="prelude-val">Some</span>(bytecode) =&gt; account_large_payload(
-<a href=#501 id=501 data-nosnippet>501</a>                    <span class="kw-2">&amp;mut *</span>response_payload_size,
-<a href=#502 id=502 data-nosnippet>502</a>                    max_response_size,
-<a href=#503 id=503 data-nosnippet>503</a>                    bytecode.<span class="number">0</span>.len(),
-<a href=#504 id=504 data-nosnippet>504</a>                )
-<a href=#505 id=505 data-nosnippet>505</a>                .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
-<a href=#506 id=506 data-nosnippet>506</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
-<a href=#507 id=507 data-nosnippet>507</a>            }
-<a href=#508 id=508 data-nosnippet>508</a>        }
-<a href=#509 id=509 data-nosnippet>509</a>        ExecutionQueryRequestItem::AddressBytecodeFinal(addr) =&gt; {
-<a href=#510 id=510 data-nosnippet>510</a>            <span class="kw">let </span>(final_v, _speculative_v) = exec_state.get_final_and_active_bytecode(<span class="kw-2">&amp;</span>addr);
-<a href=#511 id=511 data-nosnippet>511</a>            <span class="kw">match </span>final_v {
-<a href=#512 id=512 data-nosnippet>512</a>                <span class="prelude-val">Some</span>(bytecode) =&gt; account_large_payload(
-<a href=#513 id=513 data-nosnippet>513</a>                    <span class="kw-2">&amp;mut *</span>response_payload_size,
-<a href=#514 id=514 data-nosnippet>514</a>                    max_response_size,
-<a href=#515 id=515 data-nosnippet>515</a>                    bytecode.<span class="number">0</span>.len(),
-<a href=#516 id=516 data-nosnippet>516</a>                )
-<a href=#517 id=517 data-nosnippet>517</a>                .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
-<a href=#518 id=518 data-nosnippet>518</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
-<a href=#519 id=519 data-nosnippet>519</a>            }
-<a href=#520 id=520 data-nosnippet>520</a>        }
-<a href=#521 id=521 data-nosnippet>521</a>        ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-<a href=#522 id=522 data-nosnippet>522</a>            address,
-<a href=#523 id=523 data-nosnippet>523</a>            prefix,
-<a href=#524 id=524 data-nosnippet>524</a>            start_key,
-<a href=#525 id=525 data-nosnippet>525</a>            end_key,
-<a href=#526 id=526 data-nosnippet>526</a>            count,
-<a href=#527 id=527 data-nosnippet>527</a>        } =&gt; {
-<a href=#528 id=528 data-nosnippet>528</a>            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_candidate_datastore_keys(
-<a href=#529 id=529 data-nosnippet>529</a>                <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count,
-<a href=#530 id=530 data-nosnippet>530</a>            );
-<a href=#531 id=531 data-nosnippet>531</a>            <span class="kw">match </span>speculative_v {
-<a href=#532 id=532 data-nosnippet>532</a>                <span class="prelude-val">Some</span>(keys) =&gt; {
-<a href=#533 id=533 data-nosnippet>533</a>                    <span class="kw">let </span>bytes = datastore_keys_byte_len(<span class="kw-2">&amp;</span>keys);
-<a href=#534 id=534 data-nosnippet>534</a>                    account_large_payload(<span class="kw-2">&amp;mut *</span>response_payload_size, max_response_size, bytes)
-<a href=#535 id=535 data-nosnippet>535</a>                        .map(|()| {
-<a href=#536 id=536 data-nosnippet>536</a>                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, <span class="bool-val">false</span>)
-<a href=#537 id=537 data-nosnippet>537</a>                        })
-<a href=#538 id=538 data-nosnippet>538</a>                }
-<a href=#539 id=539 data-nosnippet>539</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
-<a href=#540 id=540 data-nosnippet>540</a>                    <span class="string">"Account {}"</span>,
-<a href=#541 id=541 data-nosnippet>541</a>                    address
-<a href=#542 id=542 data-nosnippet>542</a>                ))),
-<a href=#543 id=543 data-nosnippet>543</a>            }
-<a href=#544 id=544 data-nosnippet>544</a>        }
-<a href=#545 id=545 data-nosnippet>545</a>        ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-<a href=#546 id=546 data-nosnippet>546</a>            address,
-<a href=#547 id=547 data-nosnippet>547</a>            prefix,
-<a href=#548 id=548 data-nosnippet>548</a>            start_key,
-<a href=#549 id=549 data-nosnippet>549</a>            end_key,
-<a href=#550 id=550 data-nosnippet>550</a>            count,
-<a href=#551 id=551 data-nosnippet>551</a>        } =&gt; {
-<a href=#552 id=552 data-nosnippet>552</a>            <span class="kw">let </span>final_v =
-<a href=#553 id=553 data-nosnippet>553</a>                exec_state.get_final_datastore_keys(<span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count);
-<a href=#554 id=554 data-nosnippet>554</a>            <span class="kw">match </span>final_v {
-<a href=#555 id=555 data-nosnippet>555</a>                <span class="prelude-val">Some</span>(keys) =&gt; {
-<a href=#556 id=556 data-nosnippet>556</a>                    <span class="kw">let </span>bytes = datastore_keys_byte_len(<span class="kw-2">&amp;</span>keys);
-<a href=#557 id=557 data-nosnippet>557</a>                    account_large_payload(<span class="kw-2">&amp;mut *</span>response_payload_size, max_response_size, bytes)
-<a href=#558 id=558 data-nosnippet>558</a>                        .map(|()| {
-<a href=#559 id=559 data-nosnippet>559</a>                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, <span class="bool-val">true</span>)
-<a href=#560 id=560 data-nosnippet>560</a>                        })
-<a href=#561 id=561 data-nosnippet>561</a>                }
-<a href=#562 id=562 data-nosnippet>562</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
-<a href=#563 id=563 data-nosnippet>563</a>                    <span class="string">"Account {}"</span>,
-<a href=#564 id=564 data-nosnippet>564</a>                    address
-<a href=#565 id=565 data-nosnippet>565</a>                ))),
-<a href=#566 id=566 data-nosnippet>566</a>            }
-<a href=#567 id=567 data-nosnippet>567</a>        }
-<a href=#568 id=568 data-nosnippet>568</a>        ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } =&gt; {
-<a href=#569 id=569 data-nosnippet>569</a>            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key);
-<a href=#570 id=570 data-nosnippet>570</a>            <span class="kw">match </span>speculative_v {
-<a href=#571 id=571 data-nosnippet>571</a>                <span class="prelude-val">Some</span>(value) =&gt; account_large_payload(
-<a href=#572 id=572 data-nosnippet>572</a>                    <span class="kw-2">&amp;mut *</span>response_payload_size,
-<a href=#573 id=573 data-nosnippet>573</a>                    max_response_size,
-<a href=#574 id=574 data-nosnippet>574</a>                    value.len(),
-<a href=#575 id=575 data-nosnippet>575</a>                )
-<a href=#576 id=576 data-nosnippet>576</a>                .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
-<a href=#577 id=577 data-nosnippet>577</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
-<a href=#578 id=578 data-nosnippet>578</a>                    <span class="string">"Account {} datastore entry {:?}"</span>,
-<a href=#579 id=579 data-nosnippet>579</a>                    addr, key
-<a href=#580 id=580 data-nosnippet>580</a>                ))),
-<a href=#581 id=581 data-nosnippet>581</a>            }
-<a href=#582 id=582 data-nosnippet>582</a>        }
-<a href=#583 id=583 data-nosnippet>583</a>        ExecutionQueryRequestItem::AddressDatastoreValueFinal { addr, key } =&gt; {
-<a href=#584 id=584 data-nosnippet>584</a>            <span class="kw">let </span>(final_v, _speculative_v) = exec_state.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key);
-<a href=#585 id=585 data-nosnippet>585</a>            <span class="kw">match </span>final_v {
-<a href=#586 id=586 data-nosnippet>586</a>                <span class="prelude-val">Some</span>(value) =&gt; account_large_payload(
-<a href=#587 id=587 data-nosnippet>587</a>                    <span class="kw-2">&amp;mut *</span>response_payload_size,
-<a href=#588 id=588 data-nosnippet>588</a>                    max_response_size,
-<a href=#589 id=589 data-nosnippet>589</a>                    value.len(),
-<a href=#590 id=590 data-nosnippet>590</a>                )
-<a href=#591 id=591 data-nosnippet>591</a>                .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
-<a href=#592 id=592 data-nosnippet>592</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
-<a href=#593 id=593 data-nosnippet>593</a>                    <span class="string">"Account {} datastore entry {:?}"</span>,
-<a href=#594 id=594 data-nosnippet>594</a>                    addr, key
-<a href=#595 id=595 data-nosnippet>595</a>                ))),
-<a href=#596 id=596 data-nosnippet>596</a>            }
-<a href=#597 id=597 data-nosnippet>597</a>        }
-<a href=#598 id=598 data-nosnippet>598</a>        ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) =&gt; {
-<a href=#599 id=599 data-nosnippet>599</a>            <span class="kw">let </span>(speculative_v, _final_v) = exec_state
-<a href=#600 id=600 data-nosnippet>600</a>                .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
-<a href=#601 id=601 data-nosnippet>601</a>                .first()
-<a href=#602 id=602 data-nosnippet>602</a>                .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
-<a href=#603 id=603 data-nosnippet>603</a>                .expect(<span class="string">"expected one return value"</span>);
-<a href=#604 id=604 data-nosnippet>604</a>            <span class="kw">match </span>speculative_v {
-<a href=#605 id=605 data-nosnippet>605</a>                <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#606 id=606 data-nosnippet>606</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-<a href=#607 id=607 data-nosnippet>607</a>                )),
-<a href=#608 id=608 data-nosnippet>608</a>                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#609 id=609 data-nosnippet>609</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
-<a href=#610 id=610 data-nosnippet>610</a>                )),
-<a href=#611 id=611 data-nosnippet>611</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#612 id=612 data-nosnippet>612</a>                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
-<a href=#613 id=613 data-nosnippet>613</a>                )),
-<a href=#614 id=614 data-nosnippet>614</a>            }
-<a href=#615 id=615 data-nosnippet>615</a>        }
-<a href=#616 id=616 data-nosnippet>616</a>        ExecutionQueryRequestItem::OpExecutionStatusFinal(id) =&gt; {
-<a href=#617 id=617 data-nosnippet>617</a>            <span class="kw">let </span>(_speculative_v, final_v) = exec_state
-<a href=#618 id=618 data-nosnippet>618</a>                .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
-<a href=#619 id=619 data-nosnippet>619</a>                .first()
-<a href=#620 id=620 data-nosnippet>620</a>                .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
-<a href=#621 id=621 data-nosnippet>621</a>                .expect(<span class="string">"expected one return value"</span>);
-<a href=#622 id=622 data-nosnippet>622</a>            <span class="kw">match </span>final_v {
-<a href=#623 id=623 data-nosnippet>623</a>                <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#624 id=624 data-nosnippet>624</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-<a href=#625 id=625 data-nosnippet>625</a>                )),
-<a href=#626 id=626 data-nosnippet>626</a>                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#627 id=627 data-nosnippet>627</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
-<a href=#628 id=628 data-nosnippet>628</a>                )),
-<a href=#629 id=629 data-nosnippet>629</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#630 id=630 data-nosnippet>630</a>                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
-<a href=#631 id=631 data-nosnippet>631</a>                )),
-<a href=#632 id=632 data-nosnippet>632</a>            }
-<a href=#633 id=633 data-nosnippet>633</a>        }
-<a href=#634 id=634 data-nosnippet>634</a>        ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(id) =&gt; {
-<a href=#635 id=635 data-nosnippet>635</a>            <span class="kw">let </span>(speculative_v, _final_v) = exec_state.get_denunciation_execution_status(<span class="kw-2">&amp;</span>id);
-<a href=#636 id=636 data-nosnippet>636</a>            <span class="kw">match </span>speculative_v {
-<a href=#637 id=637 data-nosnippet>637</a>                <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#638 id=638 data-nosnippet>638</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-<a href=#639 id=639 data-nosnippet>639</a>                )),
-<a href=#640 id=640 data-nosnippet>640</a>                <span class="bool-val">false </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#641 id=641 data-nosnippet>641</a>                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
-<a href=#642 id=642 data-nosnippet>642</a>                )),
-<a href=#643 id=643 data-nosnippet>643</a>            }
-<a href=#644 id=644 data-nosnippet>644</a>        }
-<a href=#645 id=645 data-nosnippet>645</a>        ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(id) =&gt; {
-<a href=#646 id=646 data-nosnippet>646</a>            <span class="kw">let </span>(_speculative_v, final_v) = exec_state.get_denunciation_execution_status(<span class="kw-2">&amp;</span>id);
-<a href=#647 id=647 data-nosnippet>647</a>            <span class="kw">match </span>final_v {
-<a href=#648 id=648 data-nosnippet>648</a>                <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#649 id=649 data-nosnippet>649</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-<a href=#650 id=650 data-nosnippet>650</a>                )),
-<a href=#651 id=651 data-nosnippet>651</a>                <span class="bool-val">false </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
-<a href=#652 id=652 data-nosnippet>652</a>                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
-<a href=#653 id=653 data-nosnippet>653</a>                )),
-<a href=#654 id=654 data-nosnippet>654</a>            }
-<a href=#655 id=655 data-nosnippet>655</a>        }
-<a href=#656 id=656 data-nosnippet>656</a>        ExecutionQueryRequestItem::AddressRollsCandidate(addr) =&gt; {
-<a href=#657 id=657 data-nosnippet>657</a>            <span class="kw">let </span>(_final_rolls, candidate_rolls) = exec_state.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>addr);
-<a href=#658 id=658 data-nosnippet>658</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::RollCount(candidate_rolls))
-<a href=#659 id=659 data-nosnippet>659</a>        }
-<a href=#660 id=660 data-nosnippet>660</a>        ExecutionQueryRequestItem::AddressRollsFinal(addr) =&gt; {
-<a href=#661 id=661 data-nosnippet>661</a>            <span class="kw">let </span>(final_rolls, _candidate_rolls) = exec_state.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>addr);
-<a href=#662 id=662 data-nosnippet>662</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::RollCount(final_rolls))
-<a href=#663 id=663 data-nosnippet>663</a>        }
-<a href=#664 id=664 data-nosnippet>664</a>        ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) =&gt; {
-<a href=#665 id=665 data-nosnippet>665</a>            <span class="kw">let </span>(candidate_v, _final_v) = exec_state.get_address_deferred_credits(<span class="kw-2">&amp;</span>addr);
-<a href=#666 id=666 data-nosnippet>666</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCredits(candidate_v))
-<a href=#667 id=667 data-nosnippet>667</a>        }
-<a href=#668 id=668 data-nosnippet>668</a>        ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) =&gt; {
-<a href=#669 id=669 data-nosnippet>669</a>            <span class="kw">let </span>(_candidate_v, final_v) = exec_state.get_address_deferred_credits(<span class="kw-2">&amp;</span>addr);
-<a href=#670 id=670 data-nosnippet>670</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCredits(final_v))
-<a href=#671 id=671 data-nosnippet>671</a>        }
-<a href=#672 id=672 data-nosnippet>672</a>        ExecutionQueryRequestItem::CycleInfos {
-<a href=#673 id=673 data-nosnippet>673</a>            cycle,
-<a href=#674 id=674 data-nosnippet>674</a>            restrict_to_addresses,
-<a href=#675 id=675 data-nosnippet>675</a>        } =&gt; {
-<a href=#676 id=676 data-nosnippet>676</a>            <span class="kw">let </span>cycle_infos = exec_state.get_cycle_infos(cycle, restrict_to_addresses.as_ref());
-<a href=#677 id=677 data-nosnippet>677</a>            <span class="kw">match </span>cycle_infos {
-<a href=#678 id=678 data-nosnippet>678</a>                <span class="prelude-val">Some</span>(cycle_infos) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::CycleInfos(cycle_infos)),
-<a href=#679 id=679 data-nosnippet>679</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Cycle {}"</span>, cycle))),
-<a href=#680 id=680 data-nosnippet>680</a>            }
-<a href=#681 id=681 data-nosnippet>681</a>        }
-<a href=#682 id=682 data-nosnippet>682</a>        ExecutionQueryRequestItem::Events(filter) =&gt; {
-<a href=#683 id=683 data-nosnippet>683</a>            <span class="kw">if </span><span class="kw-2">*</span>remaining_events == <span class="prelude-val">Some</span>(<span class="number">0</span>) {
-<a href=#684 id=684 data-nosnippet>684</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionQueryError::TooLargeResponse(
-<a href=#685 id=685 data-nosnippet>685</a>                    <span class="string">"event budget for this batch is exhausted"</span>.to_string(),
-<a href=#686 id=686 data-nosnippet>686</a>                ));
+<a href=#497 id=497 data-nosnippet>497</a>        ExecutionQueryRequestItem::AddressBalanceFinal(addr) =&gt; {
+<a href=#498 id=498 data-nosnippet>498</a>            <span class="kw">let </span>(final_v, _speculative_v) = exec_state.get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addr);
+<a href=#499 id=499 data-nosnippet>499</a>            <span class="kw">match </span>final_v {
+<a href=#500 id=500 data-nosnippet>500</a>                <span class="prelude-val">Some</span>(balance) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::Amount(balance)),
+<a href=#501 id=501 data-nosnippet>501</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
+<a href=#502 id=502 data-nosnippet>502</a>            }
+<a href=#503 id=503 data-nosnippet>503</a>        }
+<a href=#504 id=504 data-nosnippet>504</a>        ExecutionQueryRequestItem::AddressBytecodeCandidate(addr) =&gt; {
+<a href=#505 id=505 data-nosnippet>505</a>            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_active_bytecode(<span class="kw-2">&amp;</span>addr);
+<a href=#506 id=506 data-nosnippet>506</a>            <span class="kw">match </span>speculative_v {
+<a href=#507 id=507 data-nosnippet>507</a>                <span class="prelude-val">Some</span>(bytecode) =&gt; account_large_payload(
+<a href=#508 id=508 data-nosnippet>508</a>                    <span class="kw-2">&amp;mut *</span>response_payload_size,
+<a href=#509 id=509 data-nosnippet>509</a>                    max_response_size,
+<a href=#510 id=510 data-nosnippet>510</a>                    bytecode.<span class="number">0</span>.len(),
+<a href=#511 id=511 data-nosnippet>511</a>                )
+<a href=#512 id=512 data-nosnippet>512</a>                .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
+<a href=#513 id=513 data-nosnippet>513</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
+<a href=#514 id=514 data-nosnippet>514</a>            }
+<a href=#515 id=515 data-nosnippet>515</a>        }
+<a href=#516 id=516 data-nosnippet>516</a>        ExecutionQueryRequestItem::AddressBytecodeFinal(addr) =&gt; {
+<a href=#517 id=517 data-nosnippet>517</a>            <span class="kw">let </span>(final_v, _speculative_v) = exec_state.get_final_and_active_bytecode(<span class="kw-2">&amp;</span>addr);
+<a href=#518 id=518 data-nosnippet>518</a>            <span class="kw">match </span>final_v {
+<a href=#519 id=519 data-nosnippet>519</a>                <span class="prelude-val">Some</span>(bytecode) =&gt; account_large_payload(
+<a href=#520 id=520 data-nosnippet>520</a>                    <span class="kw-2">&amp;mut *</span>response_payload_size,
+<a href=#521 id=521 data-nosnippet>521</a>                    max_response_size,
+<a href=#522 id=522 data-nosnippet>522</a>                    bytecode.<span class="number">0</span>.len(),
+<a href=#523 id=523 data-nosnippet>523</a>                )
+<a href=#524 id=524 data-nosnippet>524</a>                .map(|()| ExecutionQueryResponseItem::Bytecode(bytecode)),
+<a href=#525 id=525 data-nosnippet>525</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
+<a href=#526 id=526 data-nosnippet>526</a>            }
+<a href=#527 id=527 data-nosnippet>527</a>        }
+<a href=#528 id=528 data-nosnippet>528</a>        ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+<a href=#529 id=529 data-nosnippet>529</a>            address,
+<a href=#530 id=530 data-nosnippet>530</a>            prefix,
+<a href=#531 id=531 data-nosnippet>531</a>            start_key,
+<a href=#532 id=532 data-nosnippet>532</a>            end_key,
+<a href=#533 id=533 data-nosnippet>533</a>            count,
+<a href=#534 id=534 data-nosnippet>534</a>        } =&gt; {
+<a href=#535 id=535 data-nosnippet>535</a>            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_candidate_datastore_keys(
+<a href=#536 id=536 data-nosnippet>536</a>                <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count,
+<a href=#537 id=537 data-nosnippet>537</a>            );
+<a href=#538 id=538 data-nosnippet>538</a>            <span class="kw">match </span>speculative_v {
+<a href=#539 id=539 data-nosnippet>539</a>                <span class="prelude-val">Some</span>(keys) =&gt; {
+<a href=#540 id=540 data-nosnippet>540</a>                    <span class="kw">let </span>bytes = datastore_keys_byte_len(<span class="kw-2">&amp;</span>keys);
+<a href=#541 id=541 data-nosnippet>541</a>                    account_large_payload(<span class="kw-2">&amp;mut *</span>response_payload_size, max_response_size, bytes)
+<a href=#542 id=542 data-nosnippet>542</a>                        .map(|()| {
+<a href=#543 id=543 data-nosnippet>543</a>                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, <span class="bool-val">false</span>)
+<a href=#544 id=544 data-nosnippet>544</a>                        })
+<a href=#545 id=545 data-nosnippet>545</a>                }
+<a href=#546 id=546 data-nosnippet>546</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+<a href=#547 id=547 data-nosnippet>547</a>                    <span class="string">"Account {}"</span>,
+<a href=#548 id=548 data-nosnippet>548</a>                    address
+<a href=#549 id=549 data-nosnippet>549</a>                ))),
+<a href=#550 id=550 data-nosnippet>550</a>            }
+<a href=#551 id=551 data-nosnippet>551</a>        }
+<a href=#552 id=552 data-nosnippet>552</a>        ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+<a href=#553 id=553 data-nosnippet>553</a>            address,
+<a href=#554 id=554 data-nosnippet>554</a>            prefix,
+<a href=#555 id=555 data-nosnippet>555</a>            start_key,
+<a href=#556 id=556 data-nosnippet>556</a>            end_key,
+<a href=#557 id=557 data-nosnippet>557</a>            count,
+<a href=#558 id=558 data-nosnippet>558</a>        } =&gt; {
+<a href=#559 id=559 data-nosnippet>559</a>            <span class="kw">let </span>final_v =
+<a href=#560 id=560 data-nosnippet>560</a>                exec_state.get_final_datastore_keys(<span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count);
+<a href=#561 id=561 data-nosnippet>561</a>            <span class="kw">match </span>final_v {
+<a href=#562 id=562 data-nosnippet>562</a>                <span class="prelude-val">Some</span>(keys) =&gt; {
+<a href=#563 id=563 data-nosnippet>563</a>                    <span class="kw">let </span>bytes = datastore_keys_byte_len(<span class="kw-2">&amp;</span>keys);
+<a href=#564 id=564 data-nosnippet>564</a>                    account_large_payload(<span class="kw-2">&amp;mut *</span>response_payload_size, max_response_size, bytes)
+<a href=#565 id=565 data-nosnippet>565</a>                        .map(|()| {
+<a href=#566 id=566 data-nosnippet>566</a>                            ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, <span class="bool-val">true</span>)
+<a href=#567 id=567 data-nosnippet>567</a>                        })
+<a href=#568 id=568 data-nosnippet>568</a>                }
+<a href=#569 id=569 data-nosnippet>569</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+<a href=#570 id=570 data-nosnippet>570</a>                    <span class="string">"Account {}"</span>,
+<a href=#571 id=571 data-nosnippet>571</a>                    address
+<a href=#572 id=572 data-nosnippet>572</a>                ))),
+<a href=#573 id=573 data-nosnippet>573</a>            }
+<a href=#574 id=574 data-nosnippet>574</a>        }
+<a href=#575 id=575 data-nosnippet>575</a>        ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } =&gt; {
+<a href=#576 id=576 data-nosnippet>576</a>            <span class="kw">let </span>(_final_v, speculative_v) = exec_state.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key);
+<a href=#577 id=577 data-nosnippet>577</a>            <span class="kw">match </span>speculative_v {
+<a href=#578 id=578 data-nosnippet>578</a>                <span class="prelude-val">Some</span>(value) =&gt; account_large_payload(
+<a href=#579 id=579 data-nosnippet>579</a>                    <span class="kw-2">&amp;mut *</span>response_payload_size,
+<a href=#580 id=580 data-nosnippet>580</a>                    max_response_size,
+<a href=#581 id=581 data-nosnippet>581</a>                    value.len(),
+<a href=#582 id=582 data-nosnippet>582</a>                )
+<a href=#583 id=583 data-nosnippet>583</a>                .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
+<a href=#584 id=584 data-nosnippet>584</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+<a href=#585 id=585 data-nosnippet>585</a>                    <span class="string">"Account {} datastore entry {:?}"</span>,
+<a href=#586 id=586 data-nosnippet>586</a>                    addr, key
+<a href=#587 id=587 data-nosnippet>587</a>                ))),
+<a href=#588 id=588 data-nosnippet>588</a>            }
+<a href=#589 id=589 data-nosnippet>589</a>        }
+<a href=#590 id=590 data-nosnippet>590</a>        ExecutionQueryRequestItem::AddressDatastoreValueFinal { addr, key } =&gt; {
+<a href=#591 id=591 data-nosnippet>591</a>            <span class="kw">let </span>(final_v, _speculative_v) = exec_state.get_final_and_active_data_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>key);
+<a href=#592 id=592 data-nosnippet>592</a>            <span class="kw">match </span>final_v {
+<a href=#593 id=593 data-nosnippet>593</a>                <span class="prelude-val">Some</span>(value) =&gt; account_large_payload(
+<a href=#594 id=594 data-nosnippet>594</a>                    <span class="kw-2">&amp;mut *</span>response_payload_size,
+<a href=#595 id=595 data-nosnippet>595</a>                    max_response_size,
+<a href=#596 id=596 data-nosnippet>596</a>                    value.len(),
+<a href=#597 id=597 data-nosnippet>597</a>                )
+<a href=#598 id=598 data-nosnippet>598</a>                .map(|()| ExecutionQueryResponseItem::DatastoreValue(value)),
+<a href=#599 id=599 data-nosnippet>599</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+<a href=#600 id=600 data-nosnippet>600</a>                    <span class="string">"Account {} datastore entry {:?}"</span>,
+<a href=#601 id=601 data-nosnippet>601</a>                    addr, key
+<a href=#602 id=602 data-nosnippet>602</a>                ))),
+<a href=#603 id=603 data-nosnippet>603</a>            }
+<a href=#604 id=604 data-nosnippet>604</a>        }
+<a href=#605 id=605 data-nosnippet>605</a>        ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) =&gt; {
+<a href=#606 id=606 data-nosnippet>606</a>            <span class="kw">let </span>(speculative_v, _final_v) = exec_state
+<a href=#607 id=607 data-nosnippet>607</a>                .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
+<a href=#608 id=608 data-nosnippet>608</a>                .first()
+<a href=#609 id=609 data-nosnippet>609</a>                .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
+<a href=#610 id=610 data-nosnippet>610</a>                .expect(<span class="string">"expected one return value"</span>);
+<a href=#611 id=611 data-nosnippet>611</a>            <span class="kw">match </span>speculative_v {
+<a href=#612 id=612 data-nosnippet>612</a>                <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#613 id=613 data-nosnippet>613</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+<a href=#614 id=614 data-nosnippet>614</a>                )),
+<a href=#615 id=615 data-nosnippet>615</a>                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#616 id=616 data-nosnippet>616</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
+<a href=#617 id=617 data-nosnippet>617</a>                )),
+<a href=#618 id=618 data-nosnippet>618</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#619 id=619 data-nosnippet>619</a>                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+<a href=#620 id=620 data-nosnippet>620</a>                )),
+<a href=#621 id=621 data-nosnippet>621</a>            }
+<a href=#622 id=622 data-nosnippet>622</a>        }
+<a href=#623 id=623 data-nosnippet>623</a>        ExecutionQueryRequestItem::OpExecutionStatusFinal(id) =&gt; {
+<a href=#624 id=624 data-nosnippet>624</a>            <span class="kw">let </span>(_speculative_v, final_v) = exec_state
+<a href=#625 id=625 data-nosnippet>625</a>                .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
+<a href=#626 id=626 data-nosnippet>626</a>                .first()
+<a href=#627 id=627 data-nosnippet>627</a>                .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
+<a href=#628 id=628 data-nosnippet>628</a>                .expect(<span class="string">"expected one return value"</span>);
+<a href=#629 id=629 data-nosnippet>629</a>            <span class="kw">match </span>final_v {
+<a href=#630 id=630 data-nosnippet>630</a>                <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#631 id=631 data-nosnippet>631</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+<a href=#632 id=632 data-nosnippet>632</a>                )),
+<a href=#633 id=633 data-nosnippet>633</a>                <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#634 id=634 data-nosnippet>634</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
+<a href=#635 id=635 data-nosnippet>635</a>                )),
+<a href=#636 id=636 data-nosnippet>636</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#637 id=637 data-nosnippet>637</a>                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+<a href=#638 id=638 data-nosnippet>638</a>                )),
+<a href=#639 id=639 data-nosnippet>639</a>            }
+<a href=#640 id=640 data-nosnippet>640</a>        }
+<a href=#641 id=641 data-nosnippet>641</a>        ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(id) =&gt; {
+<a href=#642 id=642 data-nosnippet>642</a>            <span class="kw">let </span>(speculative_v, _final_v) = exec_state.get_denunciation_execution_status(<span class="kw-2">&amp;</span>id);
+<a href=#643 id=643 data-nosnippet>643</a>            <span class="kw">match </span>speculative_v {
+<a href=#644 id=644 data-nosnippet>644</a>                <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#645 id=645 data-nosnippet>645</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+<a href=#646 id=646 data-nosnippet>646</a>                )),
+<a href=#647 id=647 data-nosnippet>647</a>                <span class="bool-val">false </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#648 id=648 data-nosnippet>648</a>                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+<a href=#649 id=649 data-nosnippet>649</a>                )),
+<a href=#650 id=650 data-nosnippet>650</a>            }
+<a href=#651 id=651 data-nosnippet>651</a>        }
+<a href=#652 id=652 data-nosnippet>652</a>        ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(id) =&gt; {
+<a href=#653 id=653 data-nosnippet>653</a>            <span class="kw">let </span>(_speculative_v, final_v) = exec_state.get_denunciation_execution_status(<span class="kw-2">&amp;</span>id);
+<a href=#654 id=654 data-nosnippet>654</a>            <span class="kw">match </span>final_v {
+<a href=#655 id=655 data-nosnippet>655</a>                <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#656 id=656 data-nosnippet>656</a>                    ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+<a href=#657 id=657 data-nosnippet>657</a>                )),
+<a href=#658 id=658 data-nosnippet>658</a>                <span class="bool-val">false </span>=&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::ExecutionStatus(
+<a href=#659 id=659 data-nosnippet>659</a>                    ExecutionQueryExecutionStatus::ExecutableOrExpired,
+<a href=#660 id=660 data-nosnippet>660</a>                )),
+<a href=#661 id=661 data-nosnippet>661</a>            }
+<a href=#662 id=662 data-nosnippet>662</a>        }
+<a href=#663 id=663 data-nosnippet>663</a>        ExecutionQueryRequestItem::AddressRollsCandidate(addr) =&gt; {
+<a href=#664 id=664 data-nosnippet>664</a>            <span class="kw">let </span>(_final_rolls, candidate_rolls) = exec_state.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>addr);
+<a href=#665 id=665 data-nosnippet>665</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::RollCount(candidate_rolls))
+<a href=#666 id=666 data-nosnippet>666</a>        }
+<a href=#667 id=667 data-nosnippet>667</a>        ExecutionQueryRequestItem::AddressRollsFinal(addr) =&gt; {
+<a href=#668 id=668 data-nosnippet>668</a>            <span class="kw">let </span>(final_rolls, _candidate_rolls) = exec_state.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>addr);
+<a href=#669 id=669 data-nosnippet>669</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::RollCount(final_rolls))
+<a href=#670 id=670 data-nosnippet>670</a>        }
+<a href=#671 id=671 data-nosnippet>671</a>        ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) =&gt; {
+<a href=#672 id=672 data-nosnippet>672</a>            <span class="kw">let </span>(candidate_v, _final_v) = exec_state.get_address_deferred_credits(<span class="kw-2">&amp;</span>addr);
+<a href=#673 id=673 data-nosnippet>673</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCredits(candidate_v))
+<a href=#674 id=674 data-nosnippet>674</a>        }
+<a href=#675 id=675 data-nosnippet>675</a>        ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) =&gt; {
+<a href=#676 id=676 data-nosnippet>676</a>            <span class="kw">let </span>(_candidate_v, final_v) = exec_state.get_address_deferred_credits(<span class="kw-2">&amp;</span>addr);
+<a href=#677 id=677 data-nosnippet>677</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCredits(final_v))
+<a href=#678 id=678 data-nosnippet>678</a>        }
+<a href=#679 id=679 data-nosnippet>679</a>        ExecutionQueryRequestItem::CycleInfos {
+<a href=#680 id=680 data-nosnippet>680</a>            cycle,
+<a href=#681 id=681 data-nosnippet>681</a>            restrict_to_addresses,
+<a href=#682 id=682 data-nosnippet>682</a>        } =&gt; {
+<a href=#683 id=683 data-nosnippet>683</a>            <span class="kw">let </span>cycle_infos = exec_state.get_cycle_infos(cycle, restrict_to_addresses.as_ref());
+<a href=#684 id=684 data-nosnippet>684</a>            <span class="kw">match </span>cycle_infos {
+<a href=#685 id=685 data-nosnippet>685</a>                <span class="prelude-val">Some</span>(cycle_infos) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::CycleInfos(cycle_infos)),
+<a href=#686 id=686 data-nosnippet>686</a>                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Cycle {}"</span>, cycle))),
 <a href=#687 id=687 data-nosnippet>687</a>            }
-<a href=#688 id=688 data-nosnippet>688</a>            <span class="kw">let </span>limit = <span class="kw-2">*</span>remaining_events;
-<a href=#689 id=689 data-nosnippet>689</a>            <span class="kw">let </span>events = exec_state.get_filtered_sc_output_event(filter, limit);
-<a href=#690 id=690 data-nosnippet>690</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(remaining) = remaining_events {
-<a href=#691 id=691 data-nosnippet>691</a>                <span class="kw-2">*</span>remaining -= events.len();
-<a href=#692 id=692 data-nosnippet>692</a>            }
-<a href=#693 id=693 data-nosnippet>693</a>            <span class="kw">let </span>bytes = events
-<a href=#694 id=694 data-nosnippet>694</a>                .iter()
-<a href=#695 id=695 data-nosnippet>695</a>                .map(|event| {
-<a href=#696 id=696 data-nosnippet>696</a>                    event
-<a href=#697 id=697 data-nosnippet>697</a>                        .data
-<a href=#698 id=698 data-nosnippet>698</a>                        .len()
-<a href=#699 id=699 data-nosnippet>699</a>                        .saturating_add(EVENT_RESPONSE_OVERHEAD_BYTES)
-<a href=#700 id=700 data-nosnippet>700</a>                })
-<a href=#701 id=701 data-nosnippet>701</a>                .fold(<span class="number">0usize</span>, |acc, len| acc.saturating_add(len));
-<a href=#702 id=702 data-nosnippet>702</a>            account_large_payload(<span class="kw-2">&amp;mut *</span>response_payload_size, max_response_size, bytes)
-<a href=#703 id=703 data-nosnippet>703</a>                .map(|()| ExecutionQueryResponseItem::Events(events))
-<a href=#704 id=704 data-nosnippet>704</a>        }
-<a href=#705 id=705 data-nosnippet>705</a>        ExecutionQueryRequestItem::DeferredCallQuote {
-<a href=#706 id=706 data-nosnippet>706</a>            target_slot,
-<a href=#707 id=707 data-nosnippet>707</a>            max_gas_request,
-<a href=#708 id=708 data-nosnippet>708</a>            params_size,
-<a href=#709 id=709 data-nosnippet>709</a>        } =&gt; {
-<a href=#710 id=710 data-nosnippet>710</a>            <span class="kw">let </span>result = exec_state.deferred_call_quote(target_slot, max_gas_request, params_size);
-<a href=#711 id=711 data-nosnippet>711</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallQuote(
-<a href=#712 id=712 data-nosnippet>712</a>                result.<span class="number">0</span>, result.<span class="number">1</span>, result.<span class="number">2</span>, result.<span class="number">3</span>,
-<a href=#713 id=713 data-nosnippet>713</a>            ))
-<a href=#714 id=714 data-nosnippet>714</a>        }
-<a href=#715 id=715 data-nosnippet>715</a>        ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) =&gt; exec_state
-<a href=#716 id=716 data-nosnippet>716</a>            .deferred_call_info(<span class="kw-2">&amp;</span>deferred_call_id)
-<a href=#717 id=717 data-nosnippet>717</a>            .ok_or_else(|| {
-<a href=#718 id=718 data-nosnippet>718</a>                ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Deferred call id {}"</span>, deferred_call_id))
-<a href=#719 id=719 data-nosnippet>719</a>            })
-<a href=#720 id=720 data-nosnippet>720</a>            .map(|call| ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)),
-<a href=#721 id=721 data-nosnippet>721</a>        ExecutionQueryRequestItem::DeferredCallsBySlot(slot) =&gt; {
-<a href=#722 id=722 data-nosnippet>722</a>            <span class="kw">let </span>res = exec_state.get_deferred_calls_by_slot(slot);
-<a href=#723 id=723 data-nosnippet>723</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
-<a href=#724 id=724 data-nosnippet>724</a>        }
-<a href=#725 id=725 data-nosnippet>725</a>    }
-<a href=#726 id=726 data-nosnippet>726</a>}
-<a href=#727 id=727 data-nosnippet>727</a>
-<a href=#728 id=728 data-nosnippet>728</a><span class="doccomment">/// Estimated serialized size (bytes) of one event's context on top of `data.len()`.
-<a href=#729 id=729 data-nosnippet>729</a>/// Covers slot, emitter/caller/operation ids and Vec bookkeeping.
-<a href=#730 id=730 data-nosnippet>730</a></span><span class="comment">// ponytail: overhead estimated, measure real serialized SCOutputEvent context size and adjust;
-<a href=#731 id=731 data-nosnippet>731</a>// revisit if the legacy 50 KB events leave the cache and the estimate dominates the budget.
-<a href=#732 id=732 data-nosnippet>732</a></span><span class="kw">const </span>EVENT_RESPONSE_OVERHEAD_BYTES: usize = <span class="number">128</span>;
-<a href=#733 id=733 data-nosnippet>733</a>
-<a href=#734 id=734 data-nosnippet>734</a><span class="doccomment">/// Summed key lengths of a datastore-keys response, for the cumulative size budget.
-<a href=#735 id=735 data-nosnippet>735</a></span><span class="kw">fn </span>datastore_keys_byte_len(keys: <span class="kw-2">&amp;</span>BTreeSet&lt;Vec&lt;u8&gt;&gt;) -&gt; usize {
-<a href=#736 id=736 data-nosnippet>736</a>    keys.iter()
-<a href=#737 id=737 data-nosnippet>737</a>        .map(Vec::len)
-<a href=#738 id=738 data-nosnippet>738</a>        .fold(<span class="number">0usize</span>, usize::saturating_add)
-<a href=#739 id=739 data-nosnippet>739</a>}
+<a href=#688 id=688 data-nosnippet>688</a>        }
+<a href=#689 id=689 data-nosnippet>689</a>        ExecutionQueryRequestItem::Events(filter) =&gt; {
+<a href=#690 id=690 data-nosnippet>690</a>            <span class="kw">if </span><span class="kw-2">*</span>remaining_events == <span class="prelude-val">Some</span>(<span class="number">0</span>) {
+<a href=#691 id=691 data-nosnippet>691</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionQueryError::TooLargeResponse(
+<a href=#692 id=692 data-nosnippet>692</a>                    <span class="string">"event budget for this batch is exhausted"</span>.to_string(),
+<a href=#693 id=693 data-nosnippet>693</a>                ));
+<a href=#694 id=694 data-nosnippet>694</a>            }
+<a href=#695 id=695 data-nosnippet>695</a>            <span class="kw">let </span>limit = <span class="kw-2">*</span>remaining_events;
+<a href=#696 id=696 data-nosnippet>696</a>            <span class="kw">let </span>events = exec_state.get_filtered_sc_output_event(filter, limit);
+<a href=#697 id=697 data-nosnippet>697</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(remaining) = remaining_events {
+<a href=#698 id=698 data-nosnippet>698</a>                <span class="kw-2">*</span>remaining -= events.len();
+<a href=#699 id=699 data-nosnippet>699</a>            }
+<a href=#700 id=700 data-nosnippet>700</a>            <span class="kw">let </span>bytes = events
+<a href=#701 id=701 data-nosnippet>701</a>                .iter()
+<a href=#702 id=702 data-nosnippet>702</a>                .map(|event| {
+<a href=#703 id=703 data-nosnippet>703</a>                    event
+<a href=#704 id=704 data-nosnippet>704</a>                        .data
+<a href=#705 id=705 data-nosnippet>705</a>                        .len()
+<a href=#706 id=706 data-nosnippet>706</a>                        .saturating_add(EVENT_RESPONSE_OVERHEAD_BYTES)
+<a href=#707 id=707 data-nosnippet>707</a>                })
+<a href=#708 id=708 data-nosnippet>708</a>                .fold(<span class="number">0usize</span>, |acc, len| acc.saturating_add(len));
+<a href=#709 id=709 data-nosnippet>709</a>            account_large_payload(<span class="kw-2">&amp;mut *</span>response_payload_size, max_response_size, bytes)
+<a href=#710 id=710 data-nosnippet>710</a>                .map(|()| ExecutionQueryResponseItem::Events(events))
+<a href=#711 id=711 data-nosnippet>711</a>        }
+<a href=#712 id=712 data-nosnippet>712</a>        ExecutionQueryRequestItem::DeferredCallQuote {
+<a href=#713 id=713 data-nosnippet>713</a>            target_slot,
+<a href=#714 id=714 data-nosnippet>714</a>            max_gas_request,
+<a href=#715 id=715 data-nosnippet>715</a>            params_size,
+<a href=#716 id=716 data-nosnippet>716</a>        } =&gt; {
+<a href=#717 id=717 data-nosnippet>717</a>            <span class="kw">let </span>result = exec_state.deferred_call_quote(target_slot, max_gas_request, params_size);
+<a href=#718 id=718 data-nosnippet>718</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallQuote(
+<a href=#719 id=719 data-nosnippet>719</a>                result.<span class="number">0</span>, result.<span class="number">1</span>, result.<span class="number">2</span>, result.<span class="number">3</span>,
+<a href=#720 id=720 data-nosnippet>720</a>            ))
+<a href=#721 id=721 data-nosnippet>721</a>        }
+<a href=#722 id=722 data-nosnippet>722</a>        ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) =&gt; exec_state
+<a href=#723 id=723 data-nosnippet>723</a>            .deferred_call_info(<span class="kw-2">&amp;</span>deferred_call_id)
+<a href=#724 id=724 data-nosnippet>724</a>            .ok_or_else(|| {
+<a href=#725 id=725 data-nosnippet>725</a>                ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Deferred call id {}"</span>, deferred_call_id))
+<a href=#726 id=726 data-nosnippet>726</a>            })
+<a href=#727 id=727 data-nosnippet>727</a>            .map(|call| ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)),
+<a href=#728 id=728 data-nosnippet>728</a>        ExecutionQueryRequestItem::DeferredCallsBySlot(slot) =&gt; {
+<a href=#729 id=729 data-nosnippet>729</a>            <span class="kw">let </span>res = exec_state.get_deferred_calls_by_slot(slot);
+<a href=#730 id=730 data-nosnippet>730</a>            <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
+<a href=#731 id=731 data-nosnippet>731</a>        }
+<a href=#732 id=732 data-nosnippet>732</a>    }
+<a href=#733 id=733 data-nosnippet>733</a>}
+<a href=#734 id=734 data-nosnippet>734</a>
+<a href=#735 id=735 data-nosnippet>735</a><span class="doccomment">/// Estimated serialized size (bytes) of one event's context on top of `data.len()`.
+<a href=#736 id=736 data-nosnippet>736</a>/// Covers slot, emitter/caller/operation ids and Vec bookkeeping.
+<a href=#737 id=737 data-nosnippet>737</a></span><span class="comment">// ponytail: overhead estimated, measure real serialized SCOutputEvent context size and adjust;
+<a href=#738 id=738 data-nosnippet>738</a>// revisit if the legacy 50 KB events leave the cache and the estimate dominates the budget.
+<a href=#739 id=739 data-nosnippet>739</a></span><span class="kw">const </span>EVENT_RESPONSE_OVERHEAD_BYTES: usize = <span class="number">128</span>;
 <a href=#740 id=740 data-nosnippet>740</a>
-<a href=#741 id=741 data-nosnippet>741</a><span class="doccomment">/// Account a large payload against the cumulative response budget.
-<a href=#742 id=742 data-nosnippet>742</a>/// Only bytecode and datastore-value lengths are counted; other items are ignored.
-<a href=#743 id=743 data-nosnippet>743</a></span><span class="kw">fn </span>account_large_payload(
-<a href=#744 id=744 data-nosnippet>744</a>    accumulated: <span class="kw-2">&amp;mut </span>usize,
-<a href=#745 id=745 data-nosnippet>745</a>    max_response_size: usize,
-<a href=#746 id=746 data-nosnippet>746</a>    payload_len: usize,
-<a href=#747 id=747 data-nosnippet>747</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionQueryError&gt; {
-<a href=#748 id=748 data-nosnippet>748</a>    <span class="kw">let </span>new_size = accumulated.saturating_add(payload_len);
-<a href=#749 id=749 data-nosnippet>749</a>    <span class="kw">if </span>new_size &gt; max_response_size {
-<a href=#750 id=750 data-nosnippet>750</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionQueryError::TooLargeResponse(<span class="macro">format!</span>(
-<a href=#751 id=751 data-nosnippet>751</a>            <span class="string">"query response size would exceed limit of {} bytes (current {}, item {})"</span>,
-<a href=#752 id=752 data-nosnippet>752</a>            max_response_size, accumulated, payload_len
-<a href=#753 id=753 data-nosnippet>753</a>        )));
-<a href=#754 id=754 data-nosnippet>754</a>    }
-<a href=#755 id=755 data-nosnippet>755</a>    <span class="kw-2">*</span>accumulated = new_size;
-<a href=#756 id=756 data-nosnippet>756</a>    <span class="prelude-val">Ok</span>(())
-<a href=#757 id=757 data-nosnippet>757</a>}
-<a href=#758 id=758 data-nosnippet>758</a>
-<a href=#759 id=759 data-nosnippet>759</a><span class="doccomment">/// Execution manager
-<a href=#760 id=760 data-nosnippet>760</a>/// Allows stopping the execution worker
-<a href=#761 id=761 data-nosnippet>761</a></span><span class="kw">pub struct </span>ExecutionManagerImpl {
-<a href=#762 id=762 data-nosnippet>762</a>    <span class="doccomment">/// input data to process in the Execution manager loop
-<a href=#763 id=763 data-nosnippet>763</a>    /// with a wake-up condition variable that needs to be triggered when the data changes
-<a href=#764 id=764 data-nosnippet>764</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
-<a href=#765 id=765 data-nosnippet>765</a>    <span class="doccomment">/// handle used to join the worker thread
-<a href=#766 id=766 data-nosnippet>766</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) thread_handle: <span class="prelude-ty">Option</span>&lt;std::thread::JoinHandle&lt;()&gt;&gt;,
-<a href=#767 id=767 data-nosnippet>767</a>}
-<a href=#768 id=768 data-nosnippet>768</a>
-<a href=#769 id=769 data-nosnippet>769</a><span class="kw">impl </span>ExecutionManager <span class="kw">for </span>ExecutionManagerImpl {
-<a href=#770 id=770 data-nosnippet>770</a>    <span class="doccomment">/// stops the worker
-<a href=#771 id=771 data-nosnippet>771</a>    </span><span class="kw">fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#772 id=772 data-nosnippet>772</a>        <span class="macro">info!</span>(<span class="string">"Stopping Execution manager..."</span>);
-<a href=#773 id=773 data-nosnippet>773</a>        <span class="comment">// notify the worker thread to stop
-<a href=#774 id=774 data-nosnippet>774</a>        </span>{
-<a href=#775 id=775 data-nosnippet>775</a>            <span class="kw">let </span><span class="kw-2">mut </span>input_wlock = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
-<a href=#776 id=776 data-nosnippet>776</a>            input_wlock.stop = <span class="bool-val">true</span>;
-<a href=#777 id=777 data-nosnippet>777</a>            <span class="self">self</span>.input_data.<span class="number">0</span>.notify_one();
-<a href=#778 id=778 data-nosnippet>778</a>        }
-<a href=#779 id=779 data-nosnippet>779</a>        <span class="comment">// join the execution thread
-<a href=#780 id=780 data-nosnippet>780</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(join_handle) = <span class="self">self</span>.thread_handle.take() {
-<a href=#781 id=781 data-nosnippet>781</a>            join_handle
-<a href=#782 id=782 data-nosnippet>782</a>                .join()
-<a href=#783 id=783 data-nosnippet>783</a>                .expect(<span class="string">"Execution manager thread panicked"</span>);
-<a href=#784 id=784 data-nosnippet>784</a>        }
-<a href=#785 id=785 data-nosnippet>785</a>        <span class="macro">info!</span>(<span class="string">"Execution manager stopped"</span>);
-<a href=#786 id=786 data-nosnippet>786</a>    }
-<a href=#787 id=787 data-nosnippet>787</a>}</code></pre></div></section></main></body></html>
+<a href=#741 id=741 data-nosnippet>741</a><span class="doccomment">/// Summed key lengths of a datastore-keys response, for the cumulative size budget.
+<a href=#742 id=742 data-nosnippet>742</a></span><span class="kw">fn </span>datastore_keys_byte_len(keys: <span class="kw-2">&amp;</span>BTreeSet&lt;Vec&lt;u8&gt;&gt;) -&gt; usize {
+<a href=#743 id=743 data-nosnippet>743</a>    keys.iter()
+<a href=#744 id=744 data-nosnippet>744</a>        .map(Vec::len)
+<a href=#745 id=745 data-nosnippet>745</a>        .fold(<span class="number">0usize</span>, usize::saturating_add)
+<a href=#746 id=746 data-nosnippet>746</a>}
+<a href=#747 id=747 data-nosnippet>747</a>
+<a href=#748 id=748 data-nosnippet>748</a><span class="doccomment">/// Account a large payload against the cumulative response budget.
+<a href=#749 id=749 data-nosnippet>749</a>/// Only bytecode and datastore-value lengths are counted; other items are ignored.
+<a href=#750 id=750 data-nosnippet>750</a></span><span class="kw">fn </span>account_large_payload(
+<a href=#751 id=751 data-nosnippet>751</a>    accumulated: <span class="kw-2">&amp;mut </span>usize,
+<a href=#752 id=752 data-nosnippet>752</a>    max_response_size: usize,
+<a href=#753 id=753 data-nosnippet>753</a>    payload_len: usize,
+<a href=#754 id=754 data-nosnippet>754</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionQueryError&gt; {
+<a href=#755 id=755 data-nosnippet>755</a>    <span class="kw">let </span>new_size = accumulated.saturating_add(payload_len);
+<a href=#756 id=756 data-nosnippet>756</a>    <span class="kw">if </span>new_size &gt; max_response_size {
+<a href=#757 id=757 data-nosnippet>757</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionQueryError::TooLargeResponse(<span class="macro">format!</span>(
+<a href=#758 id=758 data-nosnippet>758</a>            <span class="string">"query response size would exceed limit of {} bytes (current {}, item {})"</span>,
+<a href=#759 id=759 data-nosnippet>759</a>            max_response_size, accumulated, payload_len
+<a href=#760 id=760 data-nosnippet>760</a>        )));
+<a href=#761 id=761 data-nosnippet>761</a>    }
+<a href=#762 id=762 data-nosnippet>762</a>    <span class="kw-2">*</span>accumulated = new_size;
+<a href=#763 id=763 data-nosnippet>763</a>    <span class="prelude-val">Ok</span>(())
+<a href=#764 id=764 data-nosnippet>764</a>}
+<a href=#765 id=765 data-nosnippet>765</a>
+<a href=#766 id=766 data-nosnippet>766</a><span class="doccomment">/// Execution manager
+<a href=#767 id=767 data-nosnippet>767</a>/// Allows stopping the execution worker
+<a href=#768 id=768 data-nosnippet>768</a></span><span class="kw">pub struct </span>ExecutionManagerImpl {
+<a href=#769 id=769 data-nosnippet>769</a>    <span class="doccomment">/// input data to process in the Execution manager loop
+<a href=#770 id=770 data-nosnippet>770</a>    /// with a wake-up condition variable that needs to be triggered when the data changes
+<a href=#771 id=771 data-nosnippet>771</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
+<a href=#772 id=772 data-nosnippet>772</a>    <span class="doccomment">/// handle used to join the worker thread
+<a href=#773 id=773 data-nosnippet>773</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) thread_handle: <span class="prelude-ty">Option</span>&lt;std::thread::JoinHandle&lt;()&gt;&gt;,
+<a href=#774 id=774 data-nosnippet>774</a>}
+<a href=#775 id=775 data-nosnippet>775</a>
+<a href=#776 id=776 data-nosnippet>776</a><span class="kw">impl </span>ExecutionManager <span class="kw">for </span>ExecutionManagerImpl {
+<a href=#777 id=777 data-nosnippet>777</a>    <span class="doccomment">/// stops the worker
+<a href=#778 id=778 data-nosnippet>778</a>    </span><span class="kw">fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#779 id=779 data-nosnippet>779</a>        <span class="macro">info!</span>(<span class="string">"Stopping Execution manager..."</span>);
+<a href=#780 id=780 data-nosnippet>780</a>        <span class="comment">// notify the worker thread to stop
+<a href=#781 id=781 data-nosnippet>781</a>        </span>{
+<a href=#782 id=782 data-nosnippet>782</a>            <span class="kw">let </span><span class="kw-2">mut </span>input_wlock = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
+<a href=#783 id=783 data-nosnippet>783</a>            input_wlock.stop = <span class="bool-val">true</span>;
+<a href=#784 id=784 data-nosnippet>784</a>            <span class="self">self</span>.input_data.<span class="number">0</span>.notify_one();
+<a href=#785 id=785 data-nosnippet>785</a>        }
+<a href=#786 id=786 data-nosnippet>786</a>        <span class="comment">// join the execution thread
+<a href=#787 id=787 data-nosnippet>787</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(join_handle) = <span class="self">self</span>.thread_handle.take() {
+<a href=#788 id=788 data-nosnippet>788</a>            join_handle
+<a href=#789 id=789 data-nosnippet>789</a>                .join()
+<a href=#790 id=790 data-nosnippet>790</a>                .expect(<span class="string">"Execution manager thread panicked"</span>);
+<a href=#791 id=791 data-nosnippet>791</a>        }
+<a href=#792 id=792 data-nosnippet>792</a>        <span class="macro">info!</span>(<span class="string">"Execution manager stopped"</span>);
+<a href=#793 id=793 data-nosnippet>793</a>    }
+<a href=#794 id=794 data-nosnippet>794</a>}</code></pre></div></section></main></body></html>
