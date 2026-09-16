@@ -1328,26 +1328,6 @@
 <a href="#1328" id="1328">1328</a>
 <a href="#1329" id="1329">1329</a>
 <a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
@@ -1567,28 +1547,8 @@
     }
 
     <span class="doccomment">/// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
-    ///
-    /// Uses `fee / max(max_gas, 1)`. Prefer [`Self::compute_priority_id`] when ranking must
-    /// match the gas actually charged at execution (`max_gas + async_msg_cst_gas_cost`) to avoid any pricing issue.
-    /// The pricing mismatch between the two functions is real, but small in practice: `send_message` rejects `max_gas` below
-    /// `gas_costs.max_instance_cost` (2.1M gas), so the skew `(max_gas + cst) / max_gas` is at
-    /// most `1 + 1M/2.1M ≈ 1.48×`. Emitting costs 40M gas of ABI per message (~107 per block
-    /// at most, by taking the whole block), so the priority advantage tops out around 48% for a
-    /// sender paying full blocks.
     </span><span class="kw">pub fn </span>compute_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AsyncMessageId {
-        <span class="self">self</span>.compute_priority_id(<span class="number">0</span>)
-    }
-
-    <span class="doccomment">/// Priority key used for pool ordering / batch selection.
-    ///
-    /// Ranks by `fee / max(max_gas + extra_gas_cost, 1)`, then `emission_slot`, then
-    /// `emission_index`. Pass the fixed per-message gas surcharge as `extra_gas_cost` so
-    /// priority matches the budget consumed in `take_batch_to_execute`.
-    </span><span class="kw">pub fn </span>compute_priority_id(<span class="kw-2">&amp;</span><span class="self">self</span>, extra_gas_cost: u64) -&gt; AsyncMessageId {
-        <span class="kw">let </span>denom = <span class="kw">match </span><span class="self">self</span>.max_gas.saturating_add(extra_gas_cost) {
-            <span class="number">0 </span>=&gt; <span class="number">1</span>,
-            d =&gt; d,
-        };
+        <span class="kw">let </span>denom = <span class="kw">if </span><span class="self">self</span>.max_gas &gt; <span class="number">0 </span>{ <span class="self">self</span>.max_gas } <span class="kw">else </span>{ <span class="number">1 </span>};
         (
             std::cmp::Reverse(Ratio::new(<span class="self">self</span>.fee.to_raw(), denom)),
             <span class="self">self</span>.emission_slot,
