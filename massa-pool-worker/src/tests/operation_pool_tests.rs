@@ -25,14 +25,18 @@ use super::tools::{
 };
 use massa_execution_exports::MockExecutionController;
 use massa_models::{
-    address::Address, amount::Amount, config::ENDORSEMENT_COUNT, operation::OperationId,
-    prehash::PreHashMap, slot::Slot,
+    address::Address, amount::Amount, config::ENDORSEMENT_COUNT,
+    config::{CHAINID, MIP_STORE_STATS_BLOCK_CONSIDERED},
+    operation::OperationId, prehash::PreHashMap, slot::Slot,
 };
 use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig};
 use massa_pos_exports::{MockSelectorController, Selection};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_versioning::mips::get_mip_list;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::test_exports::create_test_wallet;
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::{
     collections::BTreeMap,
@@ -138,6 +142,15 @@ fn test_refresh_keeps_speculative_only_executed_ops() {
                 operation_sender,
             },
             selector: Box::new(create_recursive_selector_for_ops(addr)),
+            mip_store: MipStore::try_from((
+                get_mip_list(),
+                MipStatsConfig {
+                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                    warn_announced_version_ratio: Ratio::new_raw(30, 100),
+                },
+            ))
+            .expect("mip store creation failed"),
+            chain_id: *CHAINID,
         },
         wallet,
     );
