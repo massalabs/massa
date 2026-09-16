@@ -175,24 +175,30 @@ where
             let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
             let read_opts = Self::read_opts_for_full_db_traversal();
 
-            // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            // Creates an iterator from the last streamed key if defined, otherwise initialize it at the first key.
             let db_iterator = match &last_state_step {
-                StreamingStep::Ongoing(max_key) => {
-                    let mut iter = self.db.iterator_cf_opt(
-                        handle,
-                        read_opts,
-                        IteratorMode::From(max_key, Direction::Forward),
-                    );
-                    iter.next();
-                    iter
-                }
+                StreamingStep::Ongoing(max_key) => self.db.iterator_cf_opt(
+                    handle,
+                    read_opts,
+                    IteratorMode::From(max_key, Direction::Forward),
+                ),
                 _ => self
                     .db
                     .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
+            // `IteratorMode::From(max_key, Forward)` seeks to the first key >= max_key, so max_key
+            // itself has to be skipped, but only if it is still in the DB: it may have been deleted
+            // since the previous batch, in which case the first key yielded is a new element.
+            let skip_key = match &last_state_step {
+                StreamingStep::Ongoing(max_key) => Some(max_key.as_slice()),
+                _ => None,
+            };
 
             let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
+                if skip_key == Some(serialized_key.as_ref()) {
+                    continue;
+                }
                 let key_len = serialized_key.len();
                 let value_len = serialized_value.len();
                 let mut buffer = Vec::new();
@@ -311,23 +317,29 @@ where
             let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
             let read_opts = Self::read_opts_for_full_db_traversal();
 
-            // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            // Creates an iterator from the last streamed key if defined, otherwise initialize it at the first key.
             let db_iterator = match &last_versioning_step {
-                StreamingStep::Ongoing(max_key) => {
-                    let mut iter = self.db.iterator_cf_opt(
-                        handle,
-                        read_opts,
-                        IteratorMode::From(max_key, Direction::Forward),
-                    );
-                    iter.next();
-                    iter
-                }
+                StreamingStep::Ongoing(max_key) => self.db.iterator_cf_opt(
+                    handle,
+                    read_opts,
+                    IteratorMode::From(max_key, Direction::Forward),
+                ),
                 _ => self
                     .db
                     .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
+            // `IteratorMode::From(max_key, Forward)` seeks to the first key >= max_key, so max_key
+            // itself has to be skipped, but only if it is still in the DB: it may have been deleted
+            // since the previous batch, in which case the first key yielded is a new element.
+            let skip_key = match &last_versioning_step {
+                StreamingStep::Ongoing(max_key) => Some(max_key.as_slice()),
+                _ => None,
+            };
             let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
+                if skip_key == Some(serialized_key.as_ref()) {
+                    continue;
+                }
                 let key_len = serialized_key.len();
                 let value_len = serialized_value.len();
                 let mut buffer = Vec::new();
