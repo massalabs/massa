@@ -25,9 +25,13 @@ use super::tools::{
 };
 use massa_execution_exports::MockExecutionController;
 use massa_models::{
-    address::Address, amount::Amount, config::ENDORSEMENT_COUNT,
+    address::Address,
+    amount::Amount,
+    config::ENDORSEMENT_COUNT,
     config::{CHAINID, MIP_STORE_STATS_BLOCK_CONSIDERED},
-    operation::OperationId, prehash::PreHashMap, slot::Slot,
+    operation::OperationId,
+    prehash::PreHashMap,
+    slot::Slot,
 };
 use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig};
 use massa_pos_exports::{MockSelectorController, Selection};
