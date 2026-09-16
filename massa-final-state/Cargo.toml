@@ -21,7 +21,6 @@ bootstrap_server = []
 [dependencies]
 displaydoc = { workspace = true }
 serde = { workspace = true, "features" = ["derive"] }
-nom = { workspace = true }
 bs58 = { workspace = true, "features" = [
     "check",
 ] } # BOM UPGRADE     Revert to {"version": "0.4", "features": ["check"]} if problem
@@ -35,7 +34,6 @@ massa_ledger_worker = { workspace = true, "optional" = true }
 massa_executed_ops = { workspace = true }
 massa_models = { workspace = true }
 massa_async_pool = { workspace = true }
-massa_serialization = { workspace = true }
 massa_pos_exports = { workspace = true }
 massa_db_exports = { workspace = true }
 massa-proto-rs = { workspace = true, "features" = ["tonic"] }

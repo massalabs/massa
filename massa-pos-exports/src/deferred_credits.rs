@@ -2,7 +2,7 @@ use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
     prehash::PreHashMap,
-    slot::{Slot, SlotDeserializer, SlotSerializer},
+    slot::Slot,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -14,10 +14,10 @@ use nom::{
     IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, ops::RangeBounds};
 use std::{
+    collections::BTreeMap,
     fmt::Debug,
-    ops::Bound::{Excluded, Included},
+    ops::{Bound::Included, RangeBounds},
 };
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -130,111 +130,6 @@ impl DeferredCredits {
 
 #[derive(Clone)]
 #[allow(missing_docs)]
-/// Serializer for `DeferredCredits`
-pub struct DeferredCreditsSerializer {
-    pub slot_ser: SlotSerializer,
-    pub u64_ser: U64VarIntSerializer,
-    pub credits_ser: CreditsSerializer,
-}
-
-impl Default for DeferredCreditsSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl DeferredCreditsSerializer {
-    /// Creates a new `DeferredCredits` serializer
-    pub fn new() -> Self {
-        Self {
-            slot_ser: SlotSerializer::new(),
-            u64_ser: U64VarIntSerializer::new(),
-            credits_ser: CreditsSerializer::new(),
-        }
-    }
-}
-
-impl Serializer<DeferredCredits> for DeferredCreditsSerializer {
-    fn serialize(
-        &self,
-        value: &DeferredCredits,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
-        // deferred credits length
-        self.u64_ser
-            .serialize(&(value.credits.len() as u64), buffer)?;
-        // deferred credits
-        for (slot, credits) in &value.credits {
-            // slot
-            self.slot_ser.serialize(slot, buffer)?;
-            // credits
-            self.credits_ser.serialize(credits, buffer)?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Clone)]
-#[allow(missing_docs)]
-/// Deserializer for `DeferredCredits`
-pub struct DeferredCreditsDeserializer {
-    pub u64_deserializer: U64VarIntDeserializer,
-    pub slot_deserializer: SlotDeserializer,
-    pub credit_deserializer: CreditsDeserializer,
-}
-
-impl DeferredCreditsDeserializer {
-    /// Creates a new `DeferredCredits` deserializer
-    pub fn new(thread_count: u8, max_credits_length: u64) -> DeferredCreditsDeserializer {
-        DeferredCreditsDeserializer {
-            u64_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_credits_length),
-            ),
-            slot_deserializer: SlotDeserializer::new(
-                (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
-            ),
-            credit_deserializer: CreditsDeserializer::new(max_credits_length),
-        }
-    }
-}
-
-impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], DeferredCredits, E> {
-        context(
-            "Failed DeferredCredits deserialization",
-            length_count(
-                context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
-                }),
-                tuple((
-                    context("Failed slot deserialization", |input| {
-                        self.slot_deserializer.deserialize(input)
-                    }),
-                    context("Failed credit deserialization", |input| {
-                        self.credit_deserializer.deserialize(input)
-                    }),
-                )),
-            ),
-        )
-        // Note: unsorted slots, and duplicate slots (last occurrence wins), on the wire still deserialize
-        // to a normalized BTreeMap. This deserializer is only reached through PoSChangesDeserializer /
-        // StateChangesDeserializer, which are test-only: production reads deferred credits per key from
-        // the DB and bootstrap streams DB batches. Massa is malleability-resistant by construction, this
-        // is not exploitable.
-        .map(|elements| DeferredCredits {
-            credits: elements.into_iter().collect(),
-        })
-        .parse(buffer)
-    }
-}
-
-#[derive(Clone)]
-#[allow(missing_docs)]
 /// Serializer for `Credits`
 pub struct CreditsSerializer {
     pub u64_ser: U64VarIntSerializer,
@@ -289,7 +184,7 @@ pub struct CreditsDeserializer {
 
 impl CreditsDeserializer {
     /// Creates a new single credit deserializer
-    fn new(max_credits_length: u64) -> CreditsDeserializer {
+    pub fn new(max_credits_length: u64) -> CreditsDeserializer {
         CreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -327,42 +222,5 @@ impl Deserializer<PreHashMap<Address, Amount>> for CreditsDeserializer {
         )
         .map(|elements| elements.into_iter().collect())
         .parse(buffer)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use massa_models::config::{MAX_DEFERRED_CREDITS_LENGTH, THREAD_COUNT};
-    use massa_serialization::DeserializeError;
-    use std::str::FromStr;
-
-    #[test]
-    fn test_deferred_credits_ser_der() {
-        let addr1 =
-            Address::from_str("AU1jUbxeXW49QRT6Le5aPuNdcGWQV2kpnDyQkKoka4MmEUW3m8Xm").unwrap();
-        let addr2 =
-            Address::from_str("AU12nfJdBNotWffSEDDCS9mMXAxDbHbAVM9GW7pvVJoLxdCeeroX8").unwrap();
-
-        let mut def_credits = DeferredCredits::default();
-        def_credits.insert(Slot::new(1, 0), addr1, Amount::from_str("0.0").unwrap());
-        def_credits.insert(Slot::new(1, 3), addr2, Amount::from_raw(u64::MAX));
-
-        let mut buf = Vec::new();
-        let serializer = DeferredCreditsSerializer::new();
-        let deserializer =
-            DeferredCreditsDeserializer::new(THREAD_COUNT, MAX_DEFERRED_CREDITS_LENGTH);
-        let deserializer2 = DeferredCreditsDeserializer::new(THREAD_COUNT, 1);
-
-        serializer.serialize(&def_credits, &mut buf).unwrap();
-        let (rem, def_credits_der) = deserializer.deserialize::<DeserializeError>(&buf).unwrap();
-        assert!(rem.is_empty());
-        assert_eq!(def_credits_der.credits, def_credits.credits);
-
-        buf.clear();
-        serializer.serialize(&def_credits, &mut buf).unwrap();
-        let res = deserializer2.deserialize::<DeserializeError>(&buf);
-
-        assert!(res.is_err());
     }
 }

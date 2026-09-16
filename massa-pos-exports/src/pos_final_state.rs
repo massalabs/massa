@@ -1,9 +1,8 @@
 use crate::{
-    CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
-    DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
+    CreditsDeserializer, CreditsSerializer, CycleInfo, CycleInfoDeserializer, CycleInfoSerializer,
+    DeferredCredits, PoSChanges, PoSConfig, PosError, PosResult, ProductionStats,
     SelectorController,
 };
-use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_db_exports::{
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController,
@@ -12,17 +11,22 @@ use massa_db_exports::{
 };
 use massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
-use massa_models::amount::Amount;
-use massa_models::config::LEDGER_ENTRY_BASE_COST;
-use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
+use massa_models::{
+    address::Address, amount::Amount, config::LEDGER_ENTRY_BASE_COST, prehash::PreHashMap,
+    slot::Slot,
+};
 use massa_serialization::{
     buf_to_array_ctr, DeserializeError, Deserializer, Serializer, U64VarIntSerializer,
 };
 use nom::AsBytes;
-use std::collections::VecDeque;
-use std::ops::Bound::{Excluded, Included, Unbounded};
-use std::ops::RangeBounds;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    ops::{
+        Bound::{Excluded, Included, Unbounded},
+        RangeBounds,
+    },
+    path::PathBuf,
+};
 use tracing::{debug, warn};
 
 // General cycle info idents
@@ -142,14 +146,14 @@ pub struct PoSFinalState {
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
-    /// deferred credits serializer
-    pub deferred_credits_serializer: DeferredCreditsSerializer,
-    /// deferred credits deserializer
-    pub deferred_credits_deserializer: DeferredCreditsDeserializer,
+    /// credits serializer
+    pub credits_serializer: CreditsSerializer,
+    /// credits deserializer
+    pub credits_deserializer: CreditsDeserializer,
     /// cycle info serializer
-    pub cycle_info_serializer: CycleHistorySerializer,
+    pub cycle_info_serializer: CycleInfoSerializer,
     /// cycle info deserializer
-    pub cycle_info_deserializer: CycleHistoryDeserializer,
+    pub cycle_info_deserializer: CycleInfoDeserializer,
 }
 
 impl PoSFinalState {
@@ -182,25 +186,20 @@ impl PoSFinalState {
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(config.thread_count, config.max_credit_length);
-        let cycle_info_deserializer = CycleHistoryDeserializer::new(
-            config.cycle_history_length as u64,
-            config.max_rolls_length,
-            config.max_production_stats_length,
-        );
+        let cycle_info_deserializer =
+            CycleInfoDeserializer::new(config.max_rolls_length, config.max_production_stats_length);
 
         let pos_state = Self {
-            config,
+            config: config.clone(),
             db,
             cycle_history_cache: Default::default(),
             rng_seed_cache: None,
             selector,
             initial_rolls,
             initial_seeds,
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            deferred_credits_deserializer,
-            cycle_info_serializer: CycleHistorySerializer::new(),
+            credits_serializer: CreditsSerializer::new(),
+            credits_deserializer: CreditsDeserializer::new(config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
 
@@ -757,7 +756,6 @@ impl PoSFinalState {
                 {
                     let (_, amount) = self
                         .cycle_info_deserializer
-                        .cycle_info_deserializer
                         .rolls_deser
                         .u64_deserializer
                         .deserialize::<DeserializeError>(&serialized_value)
@@ -782,7 +780,6 @@ impl PoSFinalState {
                     db.get_cf(STATE_CF, key).expect(CYCLE_HISTORY_DESER_ERROR)
                 {
                     let (_, amount) = self
-                        .cycle_info_deserializer
                         .cycle_info_deserializer
                         .rolls_deser
                         .u64_deserializer
@@ -860,8 +857,7 @@ impl PoSFinalState {
             }
 
             let (_, address) = self
-                .deferred_credits_deserializer
-                .credit_deserializer
+                .credits_deserializer
                 .address_deserializer
                 .deserialize::<DeserializeError>(rest_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
@@ -873,8 +869,7 @@ impl PoSFinalState {
             }
 
             let (_, amount) = self
-                .deferred_credits_deserializer
-                .credit_deserializer
+                .credits_deserializer
                 .amount_deserializer
                 .deserialize::<DeserializeError>(&serialized_value)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
@@ -926,14 +921,12 @@ impl PoSFinalState {
 
             let (_, address) = self
                 .cycle_info_deserializer
-                .cycle_info_deserializer
                 .rolls_deser
                 .address_deserializer
                 .deserialize::<DeserializeError>(&rest_key[1..])
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
             let (_, amount) = self
-                .cycle_info_deserializer
                 .cycle_info_deserializer
                 .rolls_deser
                 .u64_deserializer
@@ -976,7 +969,6 @@ impl PoSFinalState {
 
             let (rest_key, address) = self
                 .cycle_info_deserializer
-                .cycle_info_deserializer
                 .production_stats_deser
                 .address_deserializer
                 .deserialize::<DeserializeError>(&rest_key[1..])
@@ -988,7 +980,6 @@ impl PoSFinalState {
             }
 
             let (_, value) = self
-                .cycle_info_deserializer
                 .cycle_info_deserializer
                 .production_stats_deser
                 .u64_deserializer
@@ -1029,7 +1020,6 @@ impl PoSFinalState {
 
         let (_, rng_seed) = self
             .cycle_info_deserializer
-            .cycle_info_deserializer
             .bitvec_deser
             .deserialize::<DeserializeError>(&serialized_rng_seed)
             .expect(CYCLE_HISTORY_DESER_ERROR);
@@ -1053,7 +1043,6 @@ impl PoSFinalState {
             )
             .expect(CYCLE_HISTORY_DESER_ERROR)?;
         let (_, state_hash) = self
-            .cycle_info_deserializer
             .cycle_info_deserializer
             .opt_hash_deser
             .deserialize::<DeserializeError>(&serialized_state_hash)
@@ -1132,8 +1121,7 @@ impl PoSFinalState {
 
         let mut serialized_key = Vec::new();
         serialized_key.extend_from_slice(&slot.to_bytes_key());
-        self.deferred_credits_serializer
-            .credits_ser
+        self.credits_serializer
             .address_ser
             .serialize(addr, &mut serialized_key)
             .expect(DEFERRED_CREDITS_SER_ERROR);
@@ -1141,8 +1129,7 @@ impl PoSFinalState {
         match db.get_cf(STATE_CF, deferred_credits_key!(serialized_key)) {
             Ok(Some(serialized_amount)) => {
                 let (_, amount) = self
-                    .deferred_credits_deserializer
-                    .credit_deserializer
+                    .credits_deserializer
                     .amount_deserializer
                     .deserialize::<DeserializeError>(&serialized_amount)
                     .expect(DEFERRED_CREDITS_DESER_ERROR);
@@ -1173,13 +1160,11 @@ impl PoSFinalState {
             (Some(Ok(Some(serialized_fail))), Some(Ok(Some(serialized_success)))) => {
                 let (_, fail) = self
                     .cycle_info_deserializer
-                    .cycle_info_deserializer
                     .production_stats_deser
                     .u64_deserializer
                     .deserialize::<DeserializeError>(serialized_fail)
                     .expect(CYCLE_HISTORY_DESER_ERROR);
                 let (_, success) = self
-                    .cycle_info_deserializer
                     .cycle_info_deserializer
                     .production_stats_deser
                     .u64_deserializer
@@ -1273,7 +1258,6 @@ impl PoSFinalState {
 
         let mut serialized_value = Vec::new();
         self.cycle_info_serializer
-            .cycle_info_serializer
             .opt_hash_ser
             .serialize(&value, &mut serialized_value)
             .expect(CYCLE_HISTORY_SER_ERROR);
@@ -1293,7 +1277,6 @@ impl PoSFinalState {
 
         let mut serialized_value = Vec::new();
         self.cycle_info_serializer
-            .cycle_info_serializer
             .bitvec_ser
             .serialize(&value, &mut serialized_value)
             .expect(CYCLE_HISTORY_SER_ERROR);
@@ -1322,7 +1305,6 @@ impl PoSFinalState {
         } else if let Some(roll_count) = roll_count {
             let mut serialized_roll_count = Vec::new();
             self.cycle_info_serializer
-                .cycle_info_serializer
                 .u64_ser
                 .serialize(roll_count, &mut serialized_roll_count)
                 .expect(CYCLE_HISTORY_SER_ERROR);
@@ -1337,7 +1319,6 @@ impl PoSFinalState {
         if let Some(production_stats) = production_stats {
             let mut serialized_prod_stats_fail = Vec::new();
             self.cycle_info_serializer
-                .cycle_info_serializer
                 .u64_ser
                 .serialize(
                     &production_stats.block_failure_count,
@@ -1353,7 +1334,6 @@ impl PoSFinalState {
             // Production stats success
             let mut serialized_prod_stats_success = Vec::new();
             self.cycle_info_serializer
-                .cycle_info_serializer
                 .u64_ser
                 .serialize(
                     &production_stats.block_success_count,
@@ -1380,8 +1360,7 @@ impl PoSFinalState {
 
         let mut serialized_key = Vec::new();
         serialized_key.extend_from_slice(&slot.to_bytes_key());
-        self.deferred_credits_serializer
-            .credits_ser
+        self.credits_serializer
             .address_ser
             .serialize(address, &mut serialized_key)
             .expect(DEFERRED_CREDITS_SER_ERROR);
@@ -1390,8 +1369,7 @@ impl PoSFinalState {
             db.delete_key(batch, deferred_credits_key!(serialized_key));
         } else {
             let mut serialized_amount = Vec::new();
-            self.deferred_credits_serializer
-                .credits_ser
+            self.credits_serializer
                 .amount_ser
                 .serialize(amount, &mut serialized_amount)
                 .expect(DEFERRED_CREDITS_SER_ERROR);
@@ -1456,11 +1434,10 @@ impl PoSFinalState {
                     else {
                         return false;
                     };
-                    let Ok((rest, rng_seed)) = self
-                        .cycle_info_deserializer
-                        .cycle_info_deserializer
-                        .bitvec_deser
-                        .deserialize::<DeserializeError>(&serialized_rng_seed)
+                    let Ok((rest, rng_seed)) =
+                        self.cycle_info_deserializer
+                            .bitvec_deser
+                            .deserialize::<DeserializeError>(&serialized_rng_seed)
                     else {
                         return false;
                     };
@@ -1474,7 +1451,6 @@ impl PoSFinalState {
                     return false;
                 }
                 let Ok((rest_key, rng_seed)) = self
-                    .cycle_info_deserializer
                     .cycle_info_deserializer
                     .bitvec_deser
                     .deserialize::<DeserializeError>(serialized_value)
@@ -1496,7 +1472,6 @@ impl PoSFinalState {
                 }
                 let Ok((rest_key, _final_state_hash)) = self
                     .cycle_info_deserializer
-                    .cycle_info_deserializer
                     .opt_hash_deser
                     .deserialize::<DeserializeError>(serialized_value)
                 else {
@@ -1512,7 +1487,6 @@ impl PoSFinalState {
                     nom::Err<massa_serialization::DeserializeError<'_>>,
                 > = self
                     .cycle_info_deserializer
-                    .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
                     .deserialize::<DeserializeError>(&rest_key[1..])
@@ -1523,7 +1497,6 @@ impl PoSFinalState {
                     return false;
                 }
                 let Ok((rest_key, _addr)) = self
-                    .cycle_info_deserializer
                     .cycle_info_deserializer
                     .rolls_deser
                     .u64_deserializer
@@ -1541,7 +1514,6 @@ impl PoSFinalState {
                     nom::Err<massa_serialization::DeserializeError<'_>>,
                 > = self
                     .cycle_info_deserializer
-                    .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
                     .deserialize::<DeserializeError>(&rest_key[1..])
@@ -1556,7 +1528,6 @@ impl PoSFinalState {
                     PROD_STATS_FAIL_IDENT => {
                         let Ok((rest_key, _fail)) = self
                             .cycle_info_deserializer
-                            .cycle_info_deserializer
                             .production_stats_deser
                             .u64_deserializer
                             .deserialize::<DeserializeError>(serialized_value)
@@ -1569,7 +1540,6 @@ impl PoSFinalState {
                     }
                     PROD_STATS_SUCCESS_IDENT => {
                         let Ok((rest_key, _success)) = self
-                            .cycle_info_deserializer
                             .cycle_info_deserializer
                             .production_stats_deser
                             .u64_deserializer
@@ -1614,8 +1584,7 @@ impl PoSFinalState {
             (&[u8], Address),
             nom::Err<massa_serialization::DeserializeError<'_>>,
         > = self
-            .deferred_credits_deserializer
-            .credit_deserializer
+            .credits_deserializer
             .address_deserializer
             .deserialize::<DeserializeError>(rest_key)
         else {
@@ -1626,8 +1595,7 @@ impl PoSFinalState {
         }
 
         let Ok((rest_key, _amount)) = self
-            .deferred_credits_deserializer
-            .credit_deserializer
+            .credits_deserializer
             .amount_deserializer
             .deserialize::<DeserializeError>(serialized_value)
         else {
@@ -1663,15 +1631,13 @@ impl PoSFinalState {
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             let (_, address) = self
-                .deferred_credits_deserializer
-                .credit_deserializer
+                .credits_deserializer
                 .address_deserializer
                 .deserialize::<DeserializeError>(rest_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             let (_, amount) = self
-                .deferred_credits_deserializer
-                .credit_deserializer
+                .credits_deserializer
                 .amount_deserializer
                 .deserialize::<DeserializeError>(&serialized_value)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
@@ -1771,24 +1737,21 @@ mod tests {
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
-        let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
-        let cycle_info_deserializer = CycleHistoryDeserializer::new(
-            pos_config.cycle_history_length as u64,
+        let cycle_info_deserializer = CycleInfoDeserializer::new(
             pos_config.max_rolls_length,
             pos_config.max_production_stats_length,
         );
         let mut pos_state = PoSFinalState {
-            config: pos_config,
+            config: pos_config.clone(),
             db: db.clone(),
             cycle_history_cache: Default::default(),
             rng_seed_cache: None,
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            deferred_credits_deserializer,
-            cycle_info_serializer: CycleHistorySerializer::new(),
+            credits_serializer: CreditsSerializer::new(),
+            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
         let mut batch = DBBatch::new();
@@ -2108,25 +2071,22 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
-        let cycle_info_deserializer = CycleHistoryDeserializer::new(
-            pos_config.cycle_history_length as u64,
+        let cycle_info_deserializer = CycleInfoDeserializer::new(
             pos_config.max_rolls_length,
             pos_config.max_production_stats_length,
         );
 
         let mut pos_state = PoSFinalState {
-            config: pos_config,
+            config: pos_config.clone(),
             db: db.clone(),
             cycle_history_cache: Default::default(),
             rng_seed_cache: None,
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            deferred_credits_deserializer,
-            cycle_info_serializer: CycleHistorySerializer::new(),
+            credits_serializer: CreditsSerializer::new(),
+            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
 
@@ -2212,25 +2172,22 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
-        let cycle_info_deserializer = CycleHistoryDeserializer::new(
-            pos_config.cycle_history_length as u64,
+        let cycle_info_deserializer = CycleInfoDeserializer::new(
             pos_config.max_rolls_length,
             pos_config.max_production_stats_length,
         );
 
         let mut pos_state = PoSFinalState {
-            config: pos_config,
+            config: pos_config.clone(),
             db: db.clone(),
             cycle_history_cache: Default::default(),
             rng_seed_cache: None,
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            deferred_credits_deserializer,
-            cycle_info_serializer: CycleHistorySerializer::new(),
+            credits_serializer: CreditsSerializer::new(),
+            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
 
@@ -2598,25 +2555,22 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
-        let cycle_info_deserializer = CycleHistoryDeserializer::new(
-            pos_config.cycle_history_length as u64,
+        let cycle_info_deserializer = CycleInfoDeserializer::new(
             pos_config.max_rolls_length,
             pos_config.max_production_stats_length,
         );
 
         let mut pos_state = PoSFinalState {
-            config: pos_config,
+            config: pos_config.clone(),
             db: db.clone(),
             cycle_history_cache: Default::default(),
             rng_seed_cache: None,
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            deferred_credits_deserializer,
-            cycle_info_serializer: CycleHistorySerializer::new(),
+            credits_serializer: CreditsSerializer::new(),
+            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
 
@@ -2636,7 +2590,6 @@ mod tests {
         let key = rng_seed_key!(prefix);
         let mut serialized_value = Vec::new();
         pos_state
-            .cycle_info_serializer
             .cycle_info_serializer
             .bitvec_ser
             .serialize(&oversized, &mut serialized_value)
@@ -2693,25 +2646,22 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
-        let cycle_info_deserializer = CycleHistoryDeserializer::new(
-            pos_config.cycle_history_length as u64,
+        let cycle_info_deserializer = CycleInfoDeserializer::new(
             pos_config.max_rolls_length,
             pos_config.max_production_stats_length,
         );
 
         let mut pos_state = PoSFinalState {
-            config: pos_config,
+            config: pos_config.clone(),
             db: db.clone(),
             cycle_history_cache: Default::default(),
             rng_seed_cache: None,
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            deferred_credits_deserializer,
-            cycle_info_serializer: CycleHistorySerializer::new(),
+            credits_serializer: CreditsSerializer::new(),
+            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
 
@@ -2778,25 +2728,22 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
-        let cycle_info_deserializer = CycleHistoryDeserializer::new(
-            pos_config.cycle_history_length as u64,
+        let cycle_info_deserializer = CycleInfoDeserializer::new(
             pos_config.max_rolls_length,
             pos_config.max_production_stats_length,
         );
 
         let mut pos_state = PoSFinalState {
-            config: pos_config,
+            config: pos_config.clone(),
             db: db.clone(),
             cycle_history_cache: Default::default(),
             rng_seed_cache: None,
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            deferred_credits_deserializer,
-            cycle_info_serializer: CycleHistorySerializer::new(),
+            credits_serializer: CreditsSerializer::new(),
+            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
 
@@ -2856,25 +2803,22 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
-        let cycle_info_deserializer = CycleHistoryDeserializer::new(
-            pos_config.cycle_history_length as u64,
+        let cycle_info_deserializer = CycleInfoDeserializer::new(
             pos_config.max_rolls_length,
             pos_config.max_production_stats_length,
         );
 
         let mut pos_state = PoSFinalState {
-            config: pos_config,
+            config: pos_config.clone(),
             db: db.clone(),
             cycle_history_cache: Default::default(),
             rng_seed_cache: None,
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            deferred_credits_deserializer,
-            cycle_info_serializer: CycleHistorySerializer::new(),
+            credits_serializer: CreditsSerializer::new(),
+            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
 
