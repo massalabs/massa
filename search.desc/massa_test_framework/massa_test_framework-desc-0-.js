@@ -1,1 +1,0 @@
-searchState.loadedDescShard("massa_test_framework", 0, "")
