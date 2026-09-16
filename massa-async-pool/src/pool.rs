@@ -1101,7 +1101,7 @@ mod tests {
             enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>,
         ));
         let pool = AsyncPool::new(config, db);
 
@@ -1156,7 +1156,7 @@ mod tests {
             enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>,
         ));
         let mut pool = AsyncPool::new(config, db);
 
@@ -1231,7 +1231,7 @@ mod tests {
             enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>,
         ));
         let mut pool = AsyncPool::new(config, db);
 
@@ -1302,7 +1302,7 @@ mod tests {
             enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>,
         ));
         let mut pool = AsyncPool::new(config, db);
 
@@ -1364,7 +1364,7 @@ mod tests {
             enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>,
         ));
         let mut pool = AsyncPool::new(config, db);
 
@@ -1419,7 +1419,7 @@ mod tests {
         let db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(
             db_config.clone(),
         ))
-            as Box<(dyn MassaDBController + 'static)>));
+            as Box<dyn MassaDBController + 'static>));
         let mut pool = AsyncPool::new(config.clone(), db);
 
         assert!(pool.message_cache.is_empty());
@@ -1458,7 +1458,7 @@ mod tests {
         drop(pool);
 
         let db2: ShareableMassaDBController = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>,
         ));
         let mut pool2 = AsyncPool::new(config, db2);
 

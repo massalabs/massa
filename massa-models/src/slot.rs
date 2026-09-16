@@ -120,7 +120,7 @@ impl Deserializer<Slot> for SlotDeserializer {
 
 impl PartialOrd for Slot {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some((self.period, self.thread).cmp(&(other.period, other.thread)))
+        Some(self.cmp(other))
     }
 }
 
@@ -221,7 +221,7 @@ impl Slot {
 
     /// check if the slot is first in the cycle
     pub fn is_first_of_cycle(&self, periods_per_cycle: u64) -> bool {
-        self.period % periods_per_cycle == 0 && self.thread == 0
+        self.period.is_multiple_of(periods_per_cycle) && self.thread == 0
     }
 
     /// Returns a fixed-size sortable binary key

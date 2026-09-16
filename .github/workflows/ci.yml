@@ -40,7 +40,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
@@ -59,7 +59,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
@@ -81,7 +81,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
@@ -127,10 +127,10 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "clippy"
+          shared-key: "misc"
           save-if: ${{ github.ref_name == 'main' }}
       - run: cargo xtask check_gas_cost_definitions
 
@@ -214,7 +214,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
@@ -226,8 +226,15 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo install cargo-nextest --locked --version 0.9.97-b.2
       - run: cargo nextest run --retries 10 --profile ci --features=execution-trace,dump-block
-      - run: cargo clean
-      - run: cargo test --doc
+      # Doc tests reuse the artifacts the nextest run above just built, so they
+      # must ask for the same feature set. A `cargo clean` used to sit here, and
+      # the doc tests ran without features: between them that forced a second
+      # full rebuild of the workspace and its opt-level=3 dependencies, costing
+      # ~20 min per run - more than the test suite itself.
+      - run: cargo test --doc --features=execution-trace,dump-block
+      - name: Check disk space after tests (Ubuntu)
+        if: always() && runner.os == 'Linux'
+        run: df -h
       - uses: codecov/codecov-action@v4
         with:
           files: lcov.info
@@ -249,7 +256,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
           components: rustfmt
       - uses: actions/checkout@v4
         with:
@@ -282,7 +289,7 @@ jobs:
           submodules: "recursive"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.81.0
+          toolchain: 1.91.1
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:

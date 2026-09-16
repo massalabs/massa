@@ -51,7 +51,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         enable_metrics: false,
     };
     let db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
     ));
 
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();

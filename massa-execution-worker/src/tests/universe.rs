@@ -79,7 +79,7 @@ impl ExecutionForeignControllers {
         };
 
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
 
         let mut event_cache_controller = MockEventCacheControllerWrapper::new();

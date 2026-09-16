@@ -475,5 +475,5 @@ pub const DEFERRED_CALL_CST_GAS_COST: u64 = 750_000;
 const _: () = {
     assert!(THREAD_COUNT > 1);
     assert!((T0).as_millis() >= 1);
-    assert!((T0).as_millis() % (THREAD_COUNT as u64) == 0);
+    assert!((T0).as_millis().is_multiple_of(THREAD_COUNT as u64));
 };

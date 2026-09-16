@@ -25,6 +25,7 @@ mod settings;
 mod voting;
 
 #[cfg(test)]
+/// Test module
 pub mod tests;
 
 #[derive(Parser)]

@@ -310,7 +310,7 @@ mod test {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config.clone())) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config.clone())) as Box<dyn MassaDBController + 'static>
         ));
 
         let mut exec_ops = ExecutedOps::new(config.clone(), db.clone());
@@ -338,7 +338,7 @@ mod test {
         drop(exec_ops);
 
         let db2 = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
 
         // After an init from disk, cache is empty, so recompute it and compare with original
@@ -385,10 +385,10 @@ mod test {
         };
 
         let db_a = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_a_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_a_config)) as Box<dyn MassaDBController + 'static>
         ));
         let db_c = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_c_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_c_config)) as Box<dyn MassaDBController + 'static>
         ));
 
         // initialize the executed ops and executed ops changes

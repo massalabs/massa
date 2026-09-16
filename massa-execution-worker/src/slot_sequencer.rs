@@ -592,7 +592,7 @@ impl SlotSequencer {
             // Read whether that slot is present in the slot sequence and is marked as SCE-final.
             let finalization_task_available = self
                 .get_slot(&next_execution_final_slot)
-                .map_or(false, |s_info| s_info.execution_final);
+                .is_some_and(|s_info| s_info.execution_final);
             if finalization_task_available {
                 // A non-executed SCE-final slot is ready for execution.
                 return true;

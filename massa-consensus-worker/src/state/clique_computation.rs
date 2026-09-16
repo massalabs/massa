@@ -57,7 +57,6 @@ pub fn compute_max_cliques(
 }
 
 /// Tests
-
 #[cfg(test)]
 mod tests {
     use crate::state::clique_computation::compute_max_cliques;

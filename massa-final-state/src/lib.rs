@@ -86,6 +86,9 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+// `FinalStateError` is large by design. Boxing it would be an API break, so the
+// lint is silenced crate-wide rather than on each fallible function.
+#![allow(clippy::result_large_err)]
 
 mod config;
 mod controller_trait;

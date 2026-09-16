@@ -67,7 +67,7 @@ impl TestUniverse for BootstrapClientTestUniverse {
             max_ledger_backups: 10,
             enable_metrics: false,
         }))
-            as Box<(dyn MassaDBController + 'static)>));
+            as Box<dyn MassaDBController + 'static>));
         controllers
             .final_state_controller
             .write()

@@ -864,12 +864,12 @@ impl LedgerChanges {
         match self.0.get(addr) {
             // This ledger entry is being replaced by a new one:
             // check if the new ledger entry has a datastore entry for the provided key
-            Some(SetUpdateOrDelete::Set(v)) => key.map_or(true, |k| v.datastore.contains_key(&k)),
+            Some(SetUpdateOrDelete::Set(v)) => key.is_none_or(|k| v.datastore.contains_key(&k)),
 
             // This ledger entry is being updated
             Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
                 // Check if the update being applied to that datastore entry
-                key.map_or(true, |k| datastore.contains_key(&k))
+                key.is_none_or(|k| datastore.contains_key(&k))
             }
 
             // This ledger entry is being deleted: return true

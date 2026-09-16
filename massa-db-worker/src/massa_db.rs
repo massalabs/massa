@@ -1135,7 +1135,7 @@ mod test {
 
         let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         let db = Arc::new(RwLock::new(
-            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+            Box::new(_db) as Box<dyn MassaDBController + 'static>
         ));
 
         assert_eq!(
@@ -1222,7 +1222,7 @@ mod test {
 
         let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         let db = Arc::new(RwLock::new(
-            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+            Box::new(_db) as Box<dyn MassaDBController + 'static>
         ));
 
         assert_eq!(
@@ -1310,7 +1310,7 @@ mod test {
 
         let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         let db = Arc::new(RwLock::new(
-            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+            Box::new(_db) as Box<dyn MassaDBController + 'static>
         ));
 
         // Add data
@@ -1361,7 +1361,7 @@ mod test {
             let db_backup_1 = Arc::new(RwLock::new(Box::new(
                 MassaDB::new_with_options(db_backup_1_config, db_backup_1_opts.clone()).unwrap(),
             )
-                as Box<(dyn MassaDBController + 'static)>));
+                as Box<dyn MassaDBController + 'static>));
 
             assert_eq!(db_backup_1.read().get_xof_db_hash(), hash_1);
             assert_ne!(db_backup_1.read().get_xof_db_hash(), hash_2);
@@ -1388,7 +1388,7 @@ mod test {
             let db_backup_2 = Arc::new(RwLock::new(Box::new(
                 MassaDB::new_with_options(db_backup_2_config, db_backup_2_opts.clone()).unwrap(),
             )
-                as Box<(dyn MassaDBController + 'static)>));
+                as Box<dyn MassaDBController + 'static>));
 
             assert_eq!(db_backup_2.read().get_xof_db_hash(), hash_2);
             assert_ne!(db_backup_2.read().get_xof_db_hash(), hash_1);
@@ -1426,7 +1426,7 @@ mod test {
         let db = Arc::new(RwLock::new(Box::new(
             MassaDB::new_with_options(db_config.clone(), db_opts.clone()).unwrap(),
         )
-            as Box<(dyn MassaDBController + 'static)>));
+            as Box<dyn MassaDBController + 'static>));
 
         let mut backups = BTreeMap::default();
 
@@ -1487,7 +1487,7 @@ mod test {
                         db_opts_no_create.clone(),
                     );
                     Arc::new(RwLock::new(
-                        Box::new(_db.unwrap()) as Box<(dyn MassaDBController + 'static)>
+                        Box::new(_db.unwrap()) as Box<dyn MassaDBController + 'static>
                     ))
                 }
             };
@@ -1527,7 +1527,7 @@ mod test {
 
         let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         let db = Arc::new(RwLock::new(
-            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+            Box::new(_db) as Box<dyn MassaDBController + 'static>
         ));
 
         // Add data (at slot 1)
@@ -1623,7 +1623,7 @@ mod test {
 
         let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         let db = Arc::new(RwLock::new(
-            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+            Box::new(_db) as Box<dyn MassaDBController + 'static>
         ));
 
         // let db_ = db.read().get_db();
@@ -1714,7 +1714,7 @@ mod test {
 
         let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         let db = Arc::new(RwLock::new(
-            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+            Box::new(_db) as Box<dyn MassaDBController + 'static>
         ));
 
         // Add data 1 (at slot 1)
@@ -1802,7 +1802,7 @@ mod test {
 
         let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         let db = Arc::new(RwLock::new(
-            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+            Box::new(_db) as Box<dyn MassaDBController + 'static>
         ));
 
         // Add data 1 (at slot 1)
@@ -1922,7 +1922,7 @@ mod test {
 
         let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         let db = Arc::new(RwLock::new(
-            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+            Box::new(_db) as Box<dyn MassaDBController + 'static>
         ));
 
         // Add data 1 (at slot 1)

@@ -62,7 +62,7 @@ impl BootstrapServerForeignControllers {
             max_ledger_backups: 10,
             enable_metrics: false,
         }))
-            as Box<(dyn MassaDBController + 'static)>));
+            as Box<dyn MassaDBController + 'static>));
         Self {
             final_state_controller: Arc::new(RwLock::new(MockFinalStateController::new())),
             consensus_controller: MockConsensusControllerWrapper::new(),
@@ -276,8 +276,7 @@ impl BootstrapServerTestUniverseBuilder {
                 .times(1)
                 // Mock the `accept` method here by receiving from the listen-loop thread
                 .returning(move || {
-                    Err(BootstrapError::IoError(std::io::Error::new(
-                        std::io::ErrorKind::Other,
+                    Err(BootstrapError::IoError(std::io::Error::other(
                         "mocked error",
                     )))
                 })

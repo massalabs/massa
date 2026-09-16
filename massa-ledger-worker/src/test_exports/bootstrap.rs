@@ -7,8 +7,9 @@ use std::collections::HashMap;
 
 use crate::{ledger_db::LedgerDB, FinalLedger};
 
-/// This file defines tools to test the ledger bootstrap
+// This file defines tools to test the ledger bootstrap
 
+/// Create a final ledger from the given config and initial entries
 pub fn create_final_ledger(
     db: ShareableMassaDBController,
     config: LedgerConfig,

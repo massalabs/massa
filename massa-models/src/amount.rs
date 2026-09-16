@@ -87,7 +87,7 @@ impl Amount {
             Some(v) => v,
             None => panic!(),
         };
-        assert!(raw_mantissa % scale_factor == 0);
+        assert!(raw_mantissa.is_multiple_of(scale_factor));
         let res = raw_mantissa / scale_factor;
         assert!(res <= (u64::MAX as u128));
         Self(res as u64)
