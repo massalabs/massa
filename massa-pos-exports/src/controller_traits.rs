@@ -21,9 +21,6 @@ pub struct Selection {
     pub producer: Address,
 }
 
-#[cfg(feature = "test-exports")]
-use std::sync::Arc;
-
 #[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
 /// interface that communicates with the selector worker thread
 pub trait SelectorController: Send + Sync {

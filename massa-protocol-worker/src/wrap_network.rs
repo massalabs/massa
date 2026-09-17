@@ -17,9 +17,6 @@ use crate::{
     messages::{Message, MessagesHandler, MessagesSerializer},
 };
 
-#[cfg(test)]
-use std::sync::{Arc, RwLock};
-
 #[cfg_attr(test, mockall_wrap::wrap, mockall::automock)]
 pub trait ActiveConnectionsTrait: Send + Sync {
     fn send_to_peer(
