@@ -8,9 +8,6 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
-#[cfg(feature = "test-exports")]
-use std::sync::Arc;
-
 /// Interface that communicates with the graph worker thread
 #[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
 pub trait ConsensusController: Send + Sync {

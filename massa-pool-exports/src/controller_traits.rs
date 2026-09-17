@@ -12,9 +12,6 @@ use massa_time::MassaTime;
 
 use crate::error::PoolError;
 
-#[cfg(feature = "test-exports")]
-use std::sync::{Arc, RwLock};
-
 /// Trait defining a pool controller
 #[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
 pub trait PoolController: Send + Sync {

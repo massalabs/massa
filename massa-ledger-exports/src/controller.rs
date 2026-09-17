@@ -4,9 +4,6 @@ use std::{collections::BTreeSet, ops::Bound};
 use crate::{LedgerChanges, LedgerError};
 use massa_db_exports::DBBatch;
 
-#[cfg(feature = "test-exports")]
-use std::sync::{Arc, RwLock};
-
 #[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
 pub trait LedgerController: Send + Sync {
     /// Loads ledger from file
