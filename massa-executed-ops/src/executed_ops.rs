@@ -3,14 +3,14 @@
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
-use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
+use crate::ExecutedOpsConfig;
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR,
     EXECUTED_OPS_ID_SER_ERROR, EXECUTED_OPS_PREFIX, STATE_CF,
 };
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
-    prehash::PreHashSet,
+    prehash::{PreHashMap, PreHashSet},
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_serialization::{
@@ -20,6 +20,9 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     ops::Bound::{Excluded, Included},
 };
+
+/// Changes for ExecutedOps (was_successful, op_expiry_slot)
+pub type ExecutedOpsChanges = PreHashMap<OperationId, (bool, Slot)>;
 
 /// Op id key formatting macro
 #[macro_export]

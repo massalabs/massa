@@ -3,7 +3,7 @@
 //! This file defines a structure to list and prune previously executed denunciations.
 //! Used to detect denunciation reuse.
 
-use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
+use crate::ExecutedDenunciationsConfig;
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
     EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF,
@@ -15,6 +15,9 @@ use massa_models::{
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use std::collections::{BTreeMap, HashSet};
+
+/// Speculative changes for ExecutedDenunciations
+pub type ExecutedDenunciationsChanges = HashSet<DenunciationIndex>;
 
 /// Denunciation index key formatting macro
 #[macro_export]

@@ -1,7 +1,7 @@
 use crate::{
-    CreditsDeserializer, CreditsSerializer, CycleInfo, CycleInfoDeserializer, CycleInfoSerializer,
-    DeferredCredits, PoSChanges, PoSConfig, PosError, PosResult, ProductionStats,
-    SelectorController,
+    CycleInfo, CycleInfoDeserializer, CycleInfoSerializer, DeferredCreditDeserializer,
+    DeferredCreditSerializer, DeferredCredits, PoSChanges, PoSConfig, PosError, PosResult,
+    ProductionStats, SelectorController,
 };
 use bitvec::vec::BitVec;
 use massa_db_exports::{
@@ -146,10 +146,10 @@ pub struct PoSFinalState {
     pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle look back (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
-    /// credits serializer
-    pub credits_serializer: CreditsSerializer,
-    /// credits deserializer
-    pub credits_deserializer: CreditsDeserializer,
+    /// inner deferred credits serializer (one slot's credits)
+    pub credits_serializer: DeferredCreditSerializer,
+    /// inner deferred credits deserializer (one slot's credits)
+    pub credits_deserializer: DeferredCreditDeserializer,
     /// cycle info serializer
     pub cycle_info_serializer: CycleInfoSerializer,
     /// cycle info deserializer
@@ -197,8 +197,8 @@ impl PoSFinalState {
             selector,
             initial_rolls,
             initial_seeds,
-            credits_serializer: CreditsSerializer::new(),
-            credits_deserializer: CreditsDeserializer::new(config.max_credit_length),
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(config.max_credit_length),
             cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
@@ -1749,8 +1749,8 @@ mod tests {
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            credits_serializer: CreditsSerializer::new(),
-            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(pos_config.max_credit_length),
             cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
@@ -2084,8 +2084,8 @@ mod tests {
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            credits_serializer: CreditsSerializer::new(),
-            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(pos_config.max_credit_length),
             cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
@@ -2185,8 +2185,8 @@ mod tests {
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            credits_serializer: CreditsSerializer::new(),
-            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(pos_config.max_credit_length),
             cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
@@ -2568,8 +2568,8 @@ mod tests {
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            credits_serializer: CreditsSerializer::new(),
-            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(pos_config.max_credit_length),
             cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
@@ -2659,8 +2659,8 @@ mod tests {
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            credits_serializer: CreditsSerializer::new(),
-            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(pos_config.max_credit_length),
             cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
@@ -2741,8 +2741,8 @@ mod tests {
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            credits_serializer: CreditsSerializer::new(),
-            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(pos_config.max_credit_length),
             cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };
@@ -2816,8 +2816,8 @@ mod tests {
             selector: selector_controller,
             initial_rolls: Default::default(),
             initial_seeds,
-            credits_serializer: CreditsSerializer::new(),
-            credits_deserializer: CreditsDeserializer::new(pos_config.max_credit_length),
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(pos_config.max_credit_length),
             cycle_info_serializer: CycleInfoSerializer::new(),
             cycle_info_deserializer,
         };

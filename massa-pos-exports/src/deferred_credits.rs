@@ -130,21 +130,21 @@ impl DeferredCredits {
 
 #[derive(Clone)]
 #[allow(missing_docs)]
-/// Serializer for `Credits`
-pub struct CreditsSerializer {
+/// Inner serializer for one slot's deferred credits (Address -> Amount map) within `DeferredCredits`
+pub struct DeferredCreditSerializer {
     pub u64_ser: U64VarIntSerializer,
     pub address_ser: AddressSerializer,
     pub amount_ser: AmountSerializer,
 }
 
-impl Default for CreditsSerializer {
+impl Default for DeferredCreditSerializer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl CreditsSerializer {
-    /// Creates a new `Credits` serializer
+impl DeferredCreditSerializer {
+    /// Creates a new inner deferred credit serializer
     pub fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
@@ -154,7 +154,7 @@ impl CreditsSerializer {
     }
 }
 
-impl Serializer<PreHashMap<Address, Amount>> for CreditsSerializer {
+impl Serializer<PreHashMap<Address, Amount>> for DeferredCreditSerializer {
     fn serialize(
         &self,
         value: &PreHashMap<Address, Amount>,
@@ -175,17 +175,17 @@ impl Serializer<PreHashMap<Address, Amount>> for CreditsSerializer {
 
 #[derive(Clone)]
 #[allow(missing_docs)]
-/// Deserializer for a single credit
-pub struct CreditsDeserializer {
+/// Inner deserializer for one slot's deferred credits (Address -> Amount map) within `DeferredCredits`
+pub struct DeferredCreditDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     pub address_deserializer: AddressDeserializer,
     pub amount_deserializer: AmountDeserializer,
 }
 
-impl CreditsDeserializer {
-    /// Creates a new single credit deserializer
-    pub fn new(max_credits_length: u64) -> CreditsDeserializer {
-        CreditsDeserializer {
+impl DeferredCreditDeserializer {
+    /// Creates a new inner deferred credit deserializer
+    pub fn new(max_credits_length: u64) -> DeferredCreditDeserializer {
+        DeferredCreditDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
                 Included(max_credits_length),
@@ -199,7 +199,7 @@ impl CreditsDeserializer {
     }
 }
 
-impl Deserializer<PreHashMap<Address, Amount>> for CreditsDeserializer {
+impl Deserializer<PreHashMap<Address, Amount>> for DeferredCreditDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
