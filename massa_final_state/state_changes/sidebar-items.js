@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["StateChanges","StateChangesDeserializer","StateChangesSerializer"]};
+window.SIDEBAR_ITEMS = {"struct":["StateChanges"]};

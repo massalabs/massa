@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CycleHistoryDeserializer","CycleHistorySerializer","CycleInfo","CycleInfoDeserializer","CycleInfoSerializer","ProductionStats","ProductionStatsDeserializer","ProductionStatsSerializer","RollsDeserializer"]};
+window.SIDEBAR_ITEMS = {"struct":["CycleInfo","CycleInfoDeserializer","CycleInfoSerializer","ProductionStats","ProductionStatsDeserializer","ProductionStatsSerializer","RollsDeserializer"]};
