@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["PoSChanges","PoSChangesDeserializer","PoSChangesSerializer"]};
+window.SIDEBAR_ITEMS = {"struct":["PoSChanges"]};
