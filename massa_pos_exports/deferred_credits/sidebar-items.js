@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CreditsDeserializer","CreditsSerializer","DeferredCredits"]};
+window.SIDEBAR_ITEMS = {"struct":["CreditsDeserializer","CreditsSerializer","DeferredCredits","DeferredCreditsDeserializer","DeferredCreditsSerializer"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["AsyncPoolChanges"]};
+window.SIDEBAR_ITEMS = {"struct":["AsyncPoolChanges","AsyncPoolChangesDeserializer","AsyncPoolChangesSerializer"]};

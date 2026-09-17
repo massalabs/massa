@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["ExecutedOpsChanges"]};
+window.SIDEBAR_ITEMS = {"struct":["ExecutedOpsChangesDeserializer","ExecutedOpsChangesSerializer"],"type":["ExecutedOpsChanges"]};
