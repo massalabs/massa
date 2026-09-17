@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"attr":["wrap"],"fn":["generate_wrap","trait_has_mut_self"]};
