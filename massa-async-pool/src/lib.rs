@@ -42,6 +42,9 @@
 //! ## How is the `AsyncPool` handled
 //! ```md
 //! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(rev(Ratio(msg.fee, max(msg.max_gas,1))), rev(msg.slot), rev(msg.emission_index))`
+//!   From execution component version 2 (MIP-0002), batch selection and overflow eviction
+//!   re-rank with `fee / max(max_gas + async_msg_cst_gas_cost, 1)` so priority matches the
+//!   gas actually charged when taking a batch.
 //!
 //! * when an AsyncMessage is added to the AsyncPool:
 //!   * if the AsyncPool length has exceeded config.max_async_pool_length:

@@ -238,7 +238,7 @@ impl SecureShareEndorsement {
     // TODO: gh-issue #3398
     /// Used under testing conditions to validate an instance of Self
     pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if let Err(e) = self.verify_signature() {
+        if let Err(e) = self.verify_signature(Some(*crate::config::CHAINID)) {
             return Err(e.into());
         }
         if self.content.slot.thread >= crate::config::THREAD_COUNT {
@@ -255,11 +255,24 @@ impl SecureShareEndorsement {
 pub type SecureShareEndorsement = SecureShare<Endorsement, EndorsementId>;
 
 impl SecureShareContent for Endorsement {
-    /// Compute the signed hash
-    fn compute_signed_hash(&self, public_key: &PublicKey, content_hash: &Hash) -> Hash {
+    /// Compute the signed hash. `sig_chain_id` selects the layout:
+    /// * `None` -> legacy (chain-agnostic) layout, byte-for-byte identical to the
+    ///   pre-fix layout (used pre MIP-0002 activation).
+    /// * `Some(chain_id)` -> chain-scoped layout: `chain_id` is folded into the
+    ///   signed hash so the same endorsement signed on two different chains
+    ///   produces two different signed hashes. This prevents cross-chain replay
+    ///   of endorsements as denunciations (F90 / PDF #11).
+    fn compute_signed_hash(
+        &self,
+        public_key: &PublicKey,
+        content_hash: &Hash,
+        sig_chain_id: Option<u64>,
+    ) -> Hash {
         let mut signed_data: Vec<u8> = Vec::new();
         signed_data.extend(public_key.to_bytes());
-        signed_data.extend(EndorsementDenunciationData::new(self.slot, self.index).to_bytes());
+        signed_data.extend(
+            EndorsementDenunciationData::new(self.slot, self.index, sig_chain_id).to_bytes(),
+        );
         signed_data.extend(content_hash.to_bytes());
         Hash::compute_from(&signed_data)
     }
@@ -490,12 +503,32 @@ impl Deserializer<Endorsement> for EndorsementDeserializerLW {
 pub struct EndorsementDenunciationData {
     slot: Slot,
     index: u32,
+    /// `None` for the legacy (chain-agnostic) signed-hash layout.
+    /// `Some(chain_id)` for the chain-scoped layout (post MIP-0002 `Execution` v2).
+    chain_id: Option<u64>,
 }
 
 impl EndorsementDenunciationData {
-    /// Create a new denunciation data for endorsement
-    pub fn new(slot: Slot, index: u32) -> Self {
-        Self { slot, index }
+    /// Create a new denunciation data for endorsement. Pass `None` for the legacy
+    /// layout, `Some(chain_id)` for the chain-scoped layout.
+    pub fn new(slot: Slot, index: u32, chain_id: Option<u64>) -> Self {
+        Self {
+            slot,
+            index,
+            chain_id,
+        }
+    }
+
+    /// Legacy layout: bytes are byte-for-byte identical to the pre-fix layout, so
+    /// endorsements signed before MIP-0002 activation keep verifying.
+    /// Equivalent to `Self::new(slot, index, None)`.
+    #[allow(dead_code)]
+    pub fn new_legacy(slot: Slot, index: u32) -> Self {
+        Self {
+            slot,
+            index,
+            chain_id: None,
+        }
     }
 
     /// Get byte array
@@ -503,6 +536,9 @@ impl EndorsementDenunciationData {
         let mut buf = Vec::new();
         buf.extend(self.slot.to_bytes_key());
         buf.extend(self.index.to_le_bytes());
+        if let Some(chain_id) = self.chain_id {
+            buf.extend(chain_id.to_be_bytes());
+        }
         buf
     }
 }
@@ -533,6 +569,7 @@ mod tests {
             EndorsementSerializer::new(),
             &sender_keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -562,6 +599,7 @@ mod tests {
             EndorsementSerializerLW::new(),
             &sender_keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -598,6 +636,7 @@ mod tests {
             EndorsementSerializer::new(),
             &sender_keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
         let mut serialized = vec![];
@@ -619,12 +658,13 @@ mod tests {
             EndorsementSerializerLW::new(),
             &sender_keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
         // Test with batch len == 1 (no // verif)
         let batch_1 = [(
-            s_endorsement_1.compute_signed_hash(),
+            s_endorsement_1.compute_signed_hash(Some(*CHAINID)),
             s_endorsement_1.signature,
             s_endorsement_1.content_creator_pub_key,
         )];
@@ -633,12 +673,12 @@ mod tests {
         // Test with batch len > 1 (// verif)
         let batch_2 = [
             (
-                s_endorsement_1.compute_signed_hash(),
+                s_endorsement_1.compute_signed_hash(Some(*CHAINID)),
                 s_endorsement_1.signature,
                 s_endorsement_1.content_creator_pub_key,
             ),
             (
-                s_endorsement_2.compute_signed_hash(),
+                s_endorsement_2.compute_signed_hash(Some(*CHAINID)),
                 s_endorsement_2.signature,
                 s_endorsement_2.content_creator_pub_key,
             ),
