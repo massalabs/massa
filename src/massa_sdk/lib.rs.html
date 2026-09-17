@@ -846,4 +846,59 @@
 <a href=#846 id=846 data-nosnippet>846</a><span class="comment">// SDK error object
 <a href=#847 id=847 data-nosnippet>847</a></span><span class="kw">fn </span>to_error_obj(message: String) -&gt; ErrorObject&lt;<span class="lifetime">'static</span>&gt; {
 <a href=#848 id=848 data-nosnippet>848</a>    ErrorObject::owned(-<span class="number">32080</span>, message, <span class="prelude-val">None</span>::&lt;()&gt;)
-<a href=#849 id=849 data-nosnippet>849</a>}</code></pre></div></section></main></body></html>
+<a href=#849 id=849 data-nosnippet>849</a>}
+<a href=#850 id=850 data-nosnippet>850</a>
+<a href=#851 id=851 data-nosnippet>851</a><span class="attr">#[cfg(test)]
+<a href=#852 id=852 data-nosnippet>852</a></span><span class="kw">mod </span>client_from_url_tests {
+<a href=#853 id=853 data-nosnippet>853</a>    <span class="kw">use super</span>::{Client, ClientConfig, HttpConfig};
+<a href=#854 id=854 data-nosnippet>854</a>    <span class="kw">use </span>massa_time::MassaTime;
+<a href=#855 id=855 data-nosnippet>855</a>
+<a href=#856 id=856 data-nosnippet>856</a>    <span class="kw">fn </span>test_http_config() -&gt; HttpConfig {
+<a href=#857 id=857 data-nosnippet>857</a>        HttpConfig {
+<a href=#858 id=858 data-nosnippet>858</a>            client_config: ClientConfig {
+<a href=#859 id=859 data-nosnippet>859</a>                max_request_body_size: <span class="number">1024</span>,
+<a href=#860 id=860 data-nosnippet>860</a>                request_timeout: MassaTime::from_millis(<span class="number">1000</span>),
+<a href=#861 id=861 data-nosnippet>861</a>                max_concurrent_requests: <span class="number">1</span>,
+<a href=#862 id=862 data-nosnippet>862</a>                certificate_store: <span class="string">"Native"</span>.to_string(),
+<a href=#863 id=863 data-nosnippet>863</a>                id_kind: <span class="string">"Number"</span>.to_string(),
+<a href=#864 id=864 data-nosnippet>864</a>                max_log_length: <span class="number">1024</span>,
+<a href=#865 id=865 data-nosnippet>865</a>                headers: <span class="macro">vec!</span>[],
+<a href=#866 id=866 data-nosnippet>866</a>            },
+<a href=#867 id=867 data-nosnippet>867</a>            enabled: <span class="bool-val">true</span>,
+<a href=#868 id=868 data-nosnippet>868</a>        }
+<a href=#869 id=869 data-nosnippet>869</a>    }
+<a href=#870 id=870 data-nosnippet>870</a>
+<a href=#871 id=871 data-nosnippet>871</a>    <span class="attr">#[tokio::test]
+<a href=#872 id=872 data-nosnippet>872</a>    </span><span class="kw">async fn </span>accepts_https_url_with_path() {
+<a href=#873 id=873 data-nosnippet>873</a>        <span class="kw">let </span>client = Client::from_url(
+<a href=#874 id=874 data-nosnippet>874</a>            <span class="string">"https://mainnet.massa.net/api/v2"</span>,
+<a href=#875 id=875 data-nosnippet>875</a>            <span class="number">33034</span>,
+<a href=#876 id=876 data-nosnippet>876</a>            <span class="number">0</span>,
+<a href=#877 id=877 data-nosnippet>877</a>            <span class="kw-2">&amp;</span>test_http_config(),
+<a href=#878 id=878 data-nosnippet>878</a>        )
+<a href=#879 id=879 data-nosnippet>879</a>        .<span class="kw">await
+<a href=#880 id=880 data-nosnippet>880</a>        </span>.unwrap();
+<a href=#881 id=881 data-nosnippet>881</a>        <span class="macro">assert_eq!</span>(client.chain_id, <span class="number">0</span>);
+<a href=#882 id=882 data-nosnippet>882</a>        <span class="macro">assert!</span>(client.grpc_public.is_none());
+<a href=#883 id=883 data-nosnippet>883</a>        <span class="macro">assert!</span>(client.grpc_private.is_none());
+<a href=#884 id=884 data-nosnippet>884</a>    }
+<a href=#885 id=885 data-nosnippet>885</a>
+<a href=#886 id=886 data-nosnippet>886</a>    <span class="attr">#[tokio::test]
+<a href=#887 id=887 data-nosnippet>887</a>    </span><span class="kw">async fn </span>accepts_http_ip_url() {
+<a href=#888 id=888 data-nosnippet>888</a>        <span class="kw">let </span>client = Client::from_url(<span class="string">"http://127.0.0.1:33035"</span>, <span class="number">33034</span>, <span class="number">0</span>, <span class="kw-2">&amp;</span>test_http_config())
+<a href=#889 id=889 data-nosnippet>889</a>            .<span class="kw">await
+<a href=#890 id=890 data-nosnippet>890</a>            </span>.unwrap();
+<a href=#891 id=891 data-nosnippet>891</a>        <span class="macro">assert_eq!</span>(client.chain_id, <span class="number">0</span>);
+<a href=#892 id=892 data-nosnippet>892</a>    }
+<a href=#893 id=893 data-nosnippet>893</a>
+<a href=#894 id=894 data-nosnippet>894</a>    <span class="attr">#[tokio::test]
+<a href=#895 id=895 data-nosnippet>895</a>    </span><span class="kw">async fn </span>rejects_invalid_url() {
+<a href=#896 id=896 data-nosnippet>896</a>        <span class="kw">let </span>err = <span class="kw">match </span>Client::from_url(<span class="string">"not a url"</span>, <span class="number">33034</span>, <span class="number">0</span>, <span class="kw-2">&amp;</span>test_http_config()).<span class="kw">await </span>{
+<a href=#897 id=897 data-nosnippet>897</a>            <span class="prelude-val">Err</span>(e) =&gt; e.to_string(),
+<a href=#898 id=898 data-nosnippet>898</a>            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"expected an error"</span>),
+<a href=#899 id=899 data-nosnippet>899</a>        };
+<a href=#900 id=900 data-nosnippet>900</a>        <span class="macro">assert!</span>(err.contains(<span class="string">"invalid URL 'not a url'"</span>), <span class="string">"{}"</span>, err);
+<a href=#901 id=901 data-nosnippet>901</a>        <span class="macro">assert!</span>(err.contains(<span class="string">"https://mainnet.massa.net/api/v2"</span>), <span class="string">"{}"</span>, err);
+<a href=#902 id=902 data-nosnippet>902</a>        <span class="macro">assert!</span>(err.contains(<span class="string">"http://127.0.0.1:33035"</span>), <span class="string">"{}"</span>, err);
+<a href=#903 id=903 data-nosnippet>903</a>    }
+<a href=#904 id=904 data-nosnippet>904</a>}</code></pre></div></section></main></body></html>
