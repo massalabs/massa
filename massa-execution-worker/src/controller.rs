@@ -303,9 +303,15 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         addresses: &[Address],
         deferred_credits_max_slot: std::ops::Bound<Slot>,
+        max_keys: Option<u32>,
     ) -> Vec<ExecutionAddressInfo> {
         let execution_guard = self.execution_state.read();
-        get_addresses_infos_under(&execution_guard, addresses, deferred_credits_max_slot)
+        get_addresses_infos_under(
+            &execution_guard,
+            addresses,
+            deferred_credits_max_slot,
+            max_keys,
+        )
     }
 
     /// Get execution statistics
@@ -426,6 +432,7 @@ fn get_addresses_infos_under(
     exec_state: &ExecutionState,
     addresses: &[Address],
     deferred_credits_max_slot: std::ops::Bound<Slot>,
+    max_keys: Option<u32>,
 ) -> Vec<ExecutionAddressInfo> {
     let mut res = Vec::with_capacity(addresses.len());
     for addr in addresses {
@@ -435,7 +442,7 @@ fn get_addresses_infos_under(
                 &[],
                 std::ops::Bound::Unbounded,
                 std::ops::Bound::Unbounded,
-                None,
+                max_keys,
             );
         let (final_balance, candidate_balance) = exec_state.get_final_and_candidate_balance(addr);
         let (final_roll_count, candidate_roll_count) =

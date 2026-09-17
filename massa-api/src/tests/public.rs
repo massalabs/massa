@@ -853,20 +853,22 @@ async fn get_addresses() {
     let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionController::new();
-    exec_ctrl.expect_get_addresses_infos().returning(|a, _s| {
-        a.iter()
-            .map(|_addr| ExecutionAddressInfo {
-                candidate_balance: Amount::from_str("100000").unwrap(),
-                final_balance: Amount::from_str("80000").unwrap(),
-                final_roll_count: 55,
-                final_datastore_keys: std::collections::BTreeSet::new(),
-                candidate_roll_count: 12,
-                candidate_datastore_keys: std::collections::BTreeSet::new(),
-                future_deferred_credits: BTreeMap::new(),
-                cycle_infos: vec![],
-            })
-            .collect()
-    });
+    exec_ctrl
+        .expect_get_addresses_infos()
+        .returning(|a, _s, _m| {
+            a.iter()
+                .map(|_addr| ExecutionAddressInfo {
+                    candidate_balance: Amount::from_str("100000").unwrap(),
+                    final_balance: Amount::from_str("80000").unwrap(),
+                    final_roll_count: 55,
+                    final_datastore_keys: std::collections::BTreeSet::new(),
+                    candidate_roll_count: 12,
+                    candidate_datastore_keys: std::collections::BTreeSet::new(),
+                    future_deferred_credits: BTreeMap::new(),
+                    cycle_infos: vec![],
+                })
+                .collect()
+        });
 
     let mut selector_ctrl = MockSelectorController::new();
     selector_ctrl
