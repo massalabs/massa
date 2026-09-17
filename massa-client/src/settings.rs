@@ -29,6 +29,10 @@ pub struct CliSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct DefaultNode {
     pub ip: IpAddr,
+    /// Optional full URL for the node's public JSON-RPC endpoint.
+    /// When set, it overrides `ip` for the public JSON-RPC endpoint; the host
+    /// part is reused for the private JSON-RPC and gRPC endpoints.
+    pub url: Option<String>,
     pub private_port: u16,
     pub public_port: u16,
     pub grpc_public_port: u16,

@@ -46,7 +46,10 @@ struct Args {
     /// Chain id
     #[arg(long)]
     chain_id: Option<u64>,
-    /// Address to listen on
+    /// URL of the node's public JSON-RPC endpoint (e.g. https://mainnet.massa.net/api/v2)
+    #[arg(long)]
+    url: Option<String>,
+    /// Address to listen on (kept for backward compatibility, use --url instead)
     #[arg(long)]
     ip: Option<IpAddr>,
     /// Command that client would execute (non-interactive mode)
@@ -165,16 +168,14 @@ async fn run(args: Args) -> Result<()> {
         enabled: SETTINGS.client.http.enabled,
     };
 
-    let grpc_public_tls = grpc_tls_config(&SETTINGS.client.grpc.public, "public")?;
-    let grpc_private_tls = grpc_tls_config(&SETTINGS.client.grpc.private, "private")?;
-
     // TODO: move settings loading in another crate ... see #1277
     let settings = SETTINGS.clone();
 
-    let address = match args.ip {
-        Some(ip) => ip,
-        None => settings.default_node.ip,
-    };
+    let node_url = args
+        .url
+        .filter(|s| !s.is_empty())
+        .or_else(|| settings.default_node.url.clone().filter(|s| !s.is_empty()));
+    let node_ip = args.ip;
     let public_port = match args.public_port {
         Some(public_port) => public_port,
         None => settings.default_node.public_port,
@@ -215,18 +216,27 @@ async fn run(args: Args) -> Result<()> {
     );
 
     // Note: grpc handler requires a mut handler
-    let mut client = Client::new(
-        address,
-        public_port,
-        private_port,
-        grpc_port,
-        grpc_priv_port,
-        chain_id,
-        &http_config,
-        grpc_public_tls.as_ref(),
-        grpc_private_tls.as_ref(),
-    )
-    .await?;
+    let mut client = match node_url {
+        Some(public_url) => {
+            Client::from_url(&public_url, private_port, chain_id, &http_config).await?
+        }
+        None => {
+            let grpc_public_tls = grpc_tls_config(&SETTINGS.client.grpc.public, "public")?;
+            let grpc_private_tls = grpc_tls_config(&SETTINGS.client.grpc.private, "private")?;
+            Client::new(
+                node_ip.unwrap_or(settings.default_node.ip),
+                public_port,
+                private_port,
+                grpc_port,
+                grpc_priv_port,
+                chain_id,
+                &http_config,
+                grpc_public_tls.as_ref(),
+                grpc_private_tls.as_ref(),
+            )
+            .await?
+        }
+    };
     if std::io::stdout().is_terminal() && args.command == Command::help && !args.json {
         // Interactive mode
         repl::run(&mut client, &args.wallet, args.password).await?;

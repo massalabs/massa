@@ -73,6 +73,9 @@ pub enum ClientError {
     /// Url error
     #[error("Invalid grpc url: {0}")]
     Url(#[from] http::uri::InvalidUri),
+    /// Invalid URL supplied for the JSON-RPC endpoint.
+    #[error("Invalid node url: {0}")]
+    InvalidUrl(String),
     /// Connection error
     #[error("Cannot connect to grpc server: {0}")]
     Connect(#[from] tonic::transport::Error),
@@ -217,6 +220,47 @@ impl Client {
             private: RpcClient::from_url(&private_url, http_config).await,
             grpc_public: grpc_pub_client,
             grpc_private: grpc_priv_client,
+            chain_id,
+        })
+    }
+
+    /// creates a new client from a public JSON-RPC URL.
+    ///
+    /// `public_url` is used as-is for the public JSON-RPC endpoint. The host
+    /// extracted from it is reused for the private JSON-RPC endpoint on the
+    /// provided `private_port`. The gRPC clients are left as `None`: this
+    /// constructor is intended for `massa-client`, which only uses the JSON-RPC
+    /// endpoints.
+    pub async fn from_url(
+        public_url: &str,
+        private_port: u16,
+        chain_id: u64,
+        http_config: &HttpConfig,
+    ) -> Result<Client, ClientError> {
+        const URL_EXAMPLES: &str =
+            "expected a public JSON-RPC URL such as https://mainnet.massa.net/api/v2 \
+             or http://127.0.0.1:33035";
+        let public_uri: http::Uri = public_url.parse().map_err(|err| {
+            ClientError::InvalidUrl(format!(
+                "invalid URL '{}': {} ({})",
+                public_url, err, URL_EXAMPLES
+            ))
+        })?;
+        let host = public_uri.host().ok_or_else(|| {
+            ClientError::InvalidUrl(format!(
+                "URL '{}' has no host ({})",
+                public_url, URL_EXAMPLES
+            ))
+        })?;
+        let scheme = public_uri.scheme_str().unwrap_or("http");
+
+        let private_url = format!("{}://{}:{}", scheme, host, private_port);
+
+        Ok(Client {
+            public: RpcClient::from_url(public_url, http_config).await,
+            private: RpcClient::from_url(&private_url, http_config).await,
+            grpc_public: None,
+            grpc_private: None,
             chain_id,
         })
     }
@@ -802,4 +846,59 @@ fn get_headers(headers: &[(String, String)]) -> HeaderMap {
 // SDK error object
 fn to_error_obj(message: String) -> ErrorObject<'static> {
     ErrorObject::owned(-32080, message, None::<()>)
+}
+
+#[cfg(test)]
+mod client_from_url_tests {
+    use super::{Client, ClientConfig, HttpConfig};
+    use massa_time::MassaTime;
+
+    fn test_http_config() -> HttpConfig {
+        HttpConfig {
+            client_config: ClientConfig {
+                max_request_body_size: 1024,
+                request_timeout: MassaTime::from_millis(1000),
+                max_concurrent_requests: 1,
+                certificate_store: "Native".to_string(),
+                id_kind: "Number".to_string(),
+                max_log_length: 1024,
+                headers: vec![],
+            },
+            enabled: true,
+        }
+    }
+
+    #[tokio::test]
+    async fn accepts_https_url_with_path() {
+        let client = Client::from_url(
+            "https://mainnet.massa.net/api/v2",
+            33034,
+            0,
+            &test_http_config(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(client.chain_id, 0);
+        assert!(client.grpc_public.is_none());
+        assert!(client.grpc_private.is_none());
+    }
+
+    #[tokio::test]
+    async fn accepts_http_ip_url() {
+        let client = Client::from_url("http://127.0.0.1:33035", 33034, 0, &test_http_config())
+            .await
+            .unwrap();
+        assert_eq!(client.chain_id, 0);
+    }
+
+    #[tokio::test]
+    async fn rejects_invalid_url() {
+        let err = match Client::from_url("not a url", 33034, 0, &test_http_config()).await {
+            Err(e) => e.to_string(),
+            Ok(_) => panic!("expected an error"),
+        };
+        assert!(err.contains("invalid URL 'not a url'"), "{}", err);
+        assert!(err.contains("https://mainnet.massa.net/api/v2"), "{}", err);
+        assert!(err.contains("http://127.0.0.1:33035"), "{}", err);
+    }
 }
