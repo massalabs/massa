@@ -1,32 +1,14 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! This file provides structures representing changes to the asynchronous message pool
-use std::{
-    collections::{btree_map::Entry, BTreeMap},
-    ops::Bound::Included,
-};
+use std::collections::{btree_map::Entry, BTreeMap};
 
 use massa_models::{
-    async_msg::{
-        AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer, AsyncMessageUpdate,
-        AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
-    },
-    async_msg_id::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
-    types::{
-        Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-        SetUpdateOrDeleteSerializer,
-    },
+    async_msg::{AsyncMessage, AsyncMessageUpdate},
+    async_msg_id::AsyncMessageId,
+    types::{Applicable, SetOrKeep, SetUpdateOrDelete},
 };
 
-use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
-};
-use nom::{
-    error::{context, ContextError, ParseError},
-    multi::length_count,
-    sequence::tuple,
-    IResult, Parser,
-};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -53,135 +35,6 @@ impl Applicable<AsyncPoolChanges> for AsyncPoolChanges {
                 }
             }
         }
-    }
-}
-
-/// `AsyncPoolChanges` serializer
-pub struct AsyncPoolChangesSerializer {
-    u64_serializer: U64VarIntSerializer,
-    id_serializer: AsyncMessageIdSerializer,
-    set_update_or_delete_message_serializer: SetUpdateOrDeleteSerializer<
-        AsyncMessage,
-        AsyncMessageUpdate,
-        AsyncMessageSerializer,
-        AsyncMessageUpdateSerializer,
-    >,
-}
-
-impl AsyncPoolChangesSerializer {
-    pub fn new() -> Self {
-        Self {
-            u64_serializer: U64VarIntSerializer::new(),
-            id_serializer: AsyncMessageIdSerializer::new(),
-            set_update_or_delete_message_serializer: SetUpdateOrDeleteSerializer::new(
-                AsyncMessageSerializer::new(false),
-                AsyncMessageUpdateSerializer::new(false),
-            ),
-        }
-    }
-}
-
-impl Default for AsyncPoolChangesSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
-    fn serialize(
-        &self,
-        value: &AsyncPoolChanges,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
-        self.u64_serializer.serialize(
-            &(value.0.len().try_into().map_err(|_| {
-                SerializeError::GeneralError("Fail to transform usize to u64".to_string())
-            })?),
-            buffer,
-        )?;
-        for (id, change) in &value.0 {
-            self.id_serializer.serialize(id, buffer)?;
-            self.set_update_or_delete_message_serializer
-                .serialize(change, buffer)?;
-        }
-        Ok(())
-    }
-}
-
-pub struct AsyncPoolChangesDeserializer {
-    async_pool_changes_length: U64VarIntDeserializer,
-    id_deserializer: AsyncMessageIdDeserializer,
-    set_update_or_delete_message_deserializer: SetUpdateOrDeleteDeserializer<
-        AsyncMessage,
-        AsyncMessageUpdate,
-        AsyncMessageDeserializer,
-        AsyncMessageUpdateDeserializer,
-    >,
-}
-
-impl AsyncPoolChangesDeserializer {
-    pub fn new(
-        thread_count: u8,
-        max_async_pool_changes: u64,
-        max_function_length: u16,
-        max_function_params_length: u64,
-        max_key_length: u32,
-    ) -> Self {
-        Self {
-            async_pool_changes_length: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_async_pool_changes),
-            ),
-            id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
-            set_update_or_delete_message_deserializer: SetUpdateOrDeleteDeserializer::new(
-                AsyncMessageDeserializer::new(
-                    thread_count,
-                    max_function_length,
-                    max_function_params_length,
-                    max_key_length,
-                    false,
-                ),
-                AsyncMessageUpdateDeserializer::new(
-                    thread_count,
-                    max_function_length,
-                    max_function_params_length,
-                    max_key_length,
-                    false,
-                ),
-            ),
-        }
-    }
-}
-
-impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], AsyncPoolChanges, E> {
-        context(
-            "Failed AsyncPoolChanges deserialization",
-            length_count(
-                context("Failed length deserialization", |input| {
-                    self.async_pool_changes_length.deserialize(input)
-                }),
-                |input: &'a [u8]| {
-                    tuple((
-                        context("Failed id deserialization", |input| {
-                            self.id_deserializer.deserialize(input)
-                        }),
-                        context(
-                            "Failed set_update_or_delete_message deserialization",
-                            |input| {
-                                self.set_update_or_delete_message_deserializer
-                                    .deserialize(input)
-                            },
-                        ),
-                    ))(input)
-                },
-            ),
-        )
-        .map(|vec| AsyncPoolChanges(vec.into_iter().map(|data| (data.0, data.1)).collect()))
-        .parse(buffer)
     }
 }
 
@@ -236,7 +89,6 @@ mod tests {
     use massa_models::{
         address::Address, amount::Amount, async_msg::AsyncMessageTrigger, slot::Slot,
     };
-    use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
     use assert_matches::assert_matches;
 
@@ -262,51 +114,6 @@ mod tests {
             }),
             None,
         )
-    }
-
-    #[test]
-    fn test_changes_ser_deser() {
-        // Async pool changes serialization && deserialization
-
-        let message = get_message();
-        let mut changes = AsyncPoolChanges::default();
-        changes.0.insert(
-            message.compute_id(),
-            SetUpdateOrDelete::Set(message.clone()),
-        );
-
-        let mut message2 = message.clone();
-        message2.fee = Amount::from_str("2").unwrap();
-        assert_ne!(message.compute_id(), message2.compute_id());
-
-        let mut message3 = message.clone();
-        message3.fee = Amount::from_str("3").unwrap();
-        assert_ne!(message.compute_id(), message3.compute_id());
-
-        changes
-            .0
-            .insert(message2.compute_id(), SetUpdateOrDelete::Delete);
-
-        let update3 = AsyncMessageUpdate {
-            coins: SetOrKeep::Set(Amount::from_str("3").unwrap()),
-            ..Default::default()
-        };
-
-        changes
-            .0
-            .insert(message3.compute_id(), SetUpdateOrDelete::Update(update3));
-
-        assert_eq!(changes.0.len(), 3);
-
-        let mut serialized = Vec::new();
-        let serializer = AsyncPoolChangesSerializer::new();
-        let deserializer = AsyncPoolChangesDeserializer::new(32, 10000, 10000, 100000, 100000);
-        serializer.serialize(&changes, &mut serialized).unwrap();
-        let (rest, changes_deser) = deserializer
-            .deserialize::<DeserializeError>(&serialized)
-            .unwrap();
-        assert!(rest.is_empty());
-        assert_eq!(changes, changes_deser);
     }
 
     #[test]

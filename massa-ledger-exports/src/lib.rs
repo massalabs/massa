@@ -18,8 +18,7 @@ pub use key::{
     BYTECODE_IDENT, DATASTORE_IDENT, VERSION_IDENT,
 };
 pub use ledger_changes::{
-    DatastoreUpdateDeserializer, DatastoreUpdateSerializer, LedgerChanges,
-    LedgerChangesDeserializer, LedgerChangesSerializer, LedgerEntryUpdate,
+    DatastoreUpdateDeserializer, DatastoreUpdateSerializer, LedgerChanges, LedgerEntryUpdate,
     LedgerEntryUpdateDeserializer, LedgerEntryUpdateSerializer,
 };
 pub use ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};

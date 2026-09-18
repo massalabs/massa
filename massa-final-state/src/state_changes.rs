@@ -2,31 +2,12 @@
 
 //! This file provides structures representing changes to the final state
 
-use massa_async_pool::{
-    AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
-};
-use massa_deferred_calls::{
-    config::DeferredCallsConfig,
-    registry_changes::{
-        DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
-        DeferredRegistryChangesSerializer,
-    },
-};
-use massa_executed_ops::{
-    ExecutedDenunciationsChanges, ExecutedDenunciationsChangesDeserializer,
-    ExecutedDenunciationsChangesSerializer, ExecutedOpsChanges, ExecutedOpsChangesDeserializer,
-    ExecutedOpsChangesSerializer,
-};
-use massa_hash::{HashDeserializer, HashSerializer};
-use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
-use massa_models::types::{SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
-use massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
-use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::{
-    error::{context, ContextError, ParseError},
-    sequence::tuple,
-    IResult, Parser,
-};
+use massa_async_pool::AsyncPoolChanges;
+use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
+use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
+use massa_ledger_exports::LedgerChanges;
+use massa_models::types::SetOrKeep;
+use massa_pos_exports::PoSChanges;
 use serde::{Deserialize, Serialize};
 
 /// represents changes that can be applied to the execution state
@@ -48,205 +29,15 @@ pub struct StateChanges {
     pub execution_trail_hash_change: SetOrKeep<massa_hash::Hash>,
 }
 
-/// Basic `StateChanges` serializer.
-pub struct StateChangesSerializer {
-    ledger_changes_serializer: LedgerChangesSerializer,
-    async_pool_changes_serializer: AsyncPoolChangesSerializer,
-    deferred_call_changes_serializer: DeferredRegistryChangesSerializer,
-    pos_changes_serializer: PoSChangesSerializer,
-    ops_changes_serializer: ExecutedOpsChangesSerializer,
-    de_changes_serializer: ExecutedDenunciationsChangesSerializer,
-    execution_trail_hash_change_serializer: SetOrKeepSerializer<massa_hash::Hash, HashSerializer>,
-}
-
-impl StateChangesSerializer {
-    /// Creates a `StateChangesSerializer`
-    pub fn new(deferred_calls_config: DeferredCallsConfig) -> Self {
-        Self {
-            ledger_changes_serializer: LedgerChangesSerializer::new(),
-            async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
-            deferred_call_changes_serializer: DeferredRegistryChangesSerializer::new(
-                deferred_calls_config,
-            ),
-            pos_changes_serializer: PoSChangesSerializer::new(),
-            ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
-            de_changes_serializer: ExecutedDenunciationsChangesSerializer::new(),
-            execution_trail_hash_change_serializer: SetOrKeepSerializer::new(HashSerializer::new()),
-        }
-    }
-}
-
-impl Serializer<StateChanges> for StateChangesSerializer {
-    fn serialize(&self, value: &StateChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        self.ledger_changes_serializer
-            .serialize(&value.ledger_changes, buffer)?;
-        self.async_pool_changes_serializer
-            .serialize(&value.async_pool_changes, buffer)?;
-        self.deferred_call_changes_serializer
-            .serialize(&value.deferred_call_changes, buffer)?;
-        self.pos_changes_serializer
-            .serialize(&value.pos_changes, buffer)?;
-        self.ops_changes_serializer
-            .serialize(&value.executed_ops_changes, buffer)?;
-        self.de_changes_serializer
-            .serialize(&value.executed_denunciations_changes, buffer)?;
-        self.execution_trail_hash_change_serializer
-            .serialize(&value.execution_trail_hash_change, buffer)?;
-        Ok(())
-    }
-}
-
-/// Basic `StateChanges` deserializer
-pub struct StateChangesDeserializer {
-    ledger_changes_deserializer: LedgerChangesDeserializer,
-    async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
-    deferred_call_changes_deserializer: DeferredRegistryChangesDeserializer,
-    pos_changes_deserializer: PoSChangesDeserializer,
-    ops_changes_deserializer: ExecutedOpsChangesDeserializer,
-    de_changes_deserializer: ExecutedDenunciationsChangesDeserializer,
-    execution_trail_hash_change_deserializer:
-        SetOrKeepDeserializer<massa_hash::Hash, HashDeserializer>,
-}
-
-impl StateChangesDeserializer {
-    /// Creates a `StateChangesDeserializer`
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        thread_count: u8,
-        max_async_pool_changes: u64,
-        max_function_length: u16,
-        max_function_params_length: u64,
-        max_ledger_changes_count: u64,
-        max_datastore_key_length: u8,
-        max_datastore_value_length: u64,
-        max_datastore_entry_count: u64,
-        max_bytecode_size: u64,
-        max_rolls_length: u64,
-        max_production_stats_length: u64,
-        max_credits_length: u64,
-        max_ops_changes_length: u64,
-        endorsement_count: u32,
-        max_de_changes_length: u64,
-        deferred_calls_config: DeferredCallsConfig,
-    ) -> Self {
-        Self {
-            ledger_changes_deserializer: LedgerChangesDeserializer::new(
-                max_ledger_changes_count,
-                max_datastore_key_length,
-                max_datastore_value_length,
-                max_datastore_entry_count,
-                max_bytecode_size,
-            ),
-            async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(
-                thread_count,
-                max_async_pool_changes,
-                max_function_length,
-                max_function_params_length,
-                max_datastore_key_length as u32,
-            ),
-            // todo max gas
-            deferred_call_changes_deserializer: DeferredRegistryChangesDeserializer::new(
-                deferred_calls_config,
-            ),
-            pos_changes_deserializer: PoSChangesDeserializer::new(
-                thread_count,
-                max_rolls_length,
-                max_production_stats_length,
-                max_credits_length,
-            ),
-            ops_changes_deserializer: ExecutedOpsChangesDeserializer::new(
-                thread_count,
-                max_ops_changes_length,
-            ),
-            de_changes_deserializer: ExecutedDenunciationsChangesDeserializer::new(
-                thread_count,
-                endorsement_count,
-                max_de_changes_length,
-            ),
-            execution_trail_hash_change_deserializer: SetOrKeepDeserializer::new(
-                HashDeserializer::new(),
-            ),
-        }
-    }
-}
-
-impl Deserializer<StateChanges> for StateChangesDeserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], StateChanges, E> {
-        context(
-            "Failed StateChanges deserialization",
-            tuple((
-                context("Failed ledger_changes deserialization", |input| {
-                    self.ledger_changes_deserializer.deserialize(input)
-                }),
-                context("Failed async_pool_changes deserialization", |input| {
-                    self.async_pool_changes_deserializer.deserialize(input)
-                }),
-                context("Failed deferred_call_changes deserialization", |input| {
-                    self.deferred_call_changes_deserializer.deserialize(input)
-                }),
-                context("Failed roll_state_changes deserialization", |input| {
-                    self.pos_changes_deserializer.deserialize(input)
-                }),
-                context("Failed executed_ops_changes deserialization", |input| {
-                    self.ops_changes_deserializer.deserialize(input)
-                }),
-                context("Failed de_changes deserialization", |input| {
-                    self.de_changes_deserializer.deserialize(input)
-                }),
-                context(
-                    "Failed execution_trail_hash_change deserialization",
-                    |input| {
-                        self.execution_trail_hash_change_deserializer
-                            .deserialize(input)
-                    },
-                ),
-            )),
-        )
-        .map(
-            |(
-                ledger_changes,
-                async_pool_changes,
-                deferred_call_changes,
-                pos_changes,
-                executed_ops_changes,
-                executed_denunciations_changes,
-                execution_trail_hash_change,
-            )| StateChanges {
-                ledger_changes,
-                async_pool_changes,
-                deferred_call_changes,
-                pos_changes,
-                executed_ops_changes,
-                executed_denunciations_changes,
-                execution_trail_hash_change,
-            },
-        )
-        .parse(buffer)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use std::collections::BTreeMap;
     use std::str::FromStr;
 
-    use massa_deferred_calls::config::DeferredCallsConfig;
     use massa_ledger_exports::LedgerEntryUpdate;
     use massa_models::{
         address::Address, amount::Amount, async_msg::AsyncMessage, bytecode::Bytecode, slot::Slot,
         types::SetUpdateOrDelete,
-    };
-    use massa_serialization::DeserializeError;
-
-    use massa_models::config::{
-        ENDORSEMENT_COUNT, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BYTECODE_LENGTH,
-        MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-        MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATION_CHANGES_LENGTH,
-        MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT,
-        MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
     };
 
     use super::*;
@@ -264,73 +55,6 @@ mod test {
                 self.executed_denunciations_changes == other.executed_denunciations_changes &&
                 self.execution_trail_hash_change == other.execution_trail_hash_change
         }
-    }
-
-    #[test]
-    fn test_state_changes_ser_der() {
-        let mut state_changes = StateChanges::default();
-        let message = AsyncMessage::new(
-            Slot::new(1, 0),
-            0,
-            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-            Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-            String::from("test"),
-            10000000,
-            Amount::from_str("1").unwrap(),
-            Amount::from_str("1").unwrap(),
-            Slot::new(2, 0),
-            Slot::new(3, 0),
-            vec![1, 2, 3, 4],
-            None,
-            None,
-        );
-        let mut async_pool_changes = AsyncPoolChanges::default();
-        async_pool_changes
-            .0
-            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
-        state_changes.async_pool_changes = async_pool_changes;
-
-        let amount = Amount::from_str("1").unwrap();
-        let bytecode = Bytecode(vec![1, 2, 3]);
-        let ledger_entry = LedgerEntryUpdate {
-            balance: SetOrKeep::Set(amount),
-            bytecode: SetOrKeep::Set(bytecode),
-            datastore: BTreeMap::default(),
-        };
-        let mut ledger_changes = LedgerChanges::default();
-        ledger_changes.0.insert(
-            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-            SetUpdateOrDelete::Update(ledger_entry),
-        );
-        state_changes.ledger_changes = ledger_changes;
-        let deferred_calls_config = DeferredCallsConfig::default();
-        let mut serialized = Vec::new();
-        StateChangesSerializer::new(deferred_calls_config)
-            .serialize(&state_changes, &mut serialized)
-            .unwrap();
-
-        let (rest, state_changes_deser) = StateChangesDeserializer::new(
-            THREAD_COUNT,
-            MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-            MAX_FUNCTION_NAME_LENGTH,
-            MAX_PARAMETERS_SIZE as u64,
-            MAX_LEDGER_CHANGES_COUNT,
-            MAX_DATASTORE_KEY_LENGTH,
-            MAX_DATASTORE_VALUE_LENGTH,
-            MAX_DATASTORE_ENTRY_COUNT,
-            MAX_BYTECODE_LENGTH,
-            MAX_ROLLS_COUNT_LENGTH,
-            MAX_PRODUCTION_STATS_LENGTH,
-            MAX_DEFERRED_CREDITS_LENGTH,
-            MAX_EXECUTED_OPS_CHANGES_LENGTH,
-            ENDORSEMENT_COUNT,
-            MAX_DENUNCIATION_CHANGES_LENGTH,
-            deferred_calls_config,
-        )
-        .deserialize::<DeserializeError>(&serialized)
-        .unwrap();
-        assert!(rest.is_empty());
-        assert_eq!(state_changes, state_changes_deser);
     }
 
     #[test]

@@ -10,12 +10,12 @@ use massa_db_exports::{
     DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, DEFERRED_CALL_TOTAL_GAS, KEY_DESER_ERROR,
     STATE_CF,
 };
-use massa_models::address::Address;
-use massa_serialization::{buf_to_array_ctr, DeserializeError, Deserializer, Serializer};
-use registry_changes::{
-    DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
-    DeferredRegistryChangesSerializer,
+use massa_models::{address::Address, slot::SlotDeserializer};
+use massa_serialization::{
+    buf_to_array_ctr, DeserializeError, Deserializer, Serializer, U128VarIntDeserializer,
+    U128VarIntSerializer,
 };
+use registry_changes::DeferredCallRegistryChanges;
 
 /// This module implements a new version of the Autonomous Smart Contracts. (ASC)
 /// This new version allow asynchronous calls to be registered for a specific slot and ensure his execution.
@@ -31,13 +31,14 @@ mod tests;
 mod macros;
 
 pub use call::DeferredCall;
-use massa_models::types::{SetOrDelete, SetOrKeep};
+use massa_models::types::{SetOrDelete, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
 use massa_models::{
     amount::Amount,
     deferred_calls::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
     slot::Slot,
 };
 use std::collections::{BTreeMap, HashSet};
+use std::ops::Bound;
 
 // #[derive(Debug)]
 pub struct DeferredCallRegistry {
@@ -46,8 +47,9 @@ pub struct DeferredCallRegistry {
     call_id_serializer: DeferredCallIdSerializer,
     call_deserializer: DeferredCallDeserializer,
     call_id_deserializer: DeferredCallIdDeserializer,
-    registry_changes_deserializer: DeferredRegistryChangesDeserializer,
-    registry_changes_serializer: DeferredRegistryChangesSerializer,
+    slot_deserializer: SlotDeserializer,
+    effective_total_gas_deserializer: SetOrKeepDeserializer<u128, U128VarIntDeserializer>,
+    effective_total_gas_serializer: SetOrKeepSerializer<u128, U128VarIntSerializer>,
     min_gas_cost: u64,
 }
 
@@ -67,8 +69,14 @@ impl DeferredCallRegistry {
             call_id_serializer: DeferredCallIdSerializer::new(),
             call_deserializer: DeferredCallDeserializer::new(config),
             call_id_deserializer: DeferredCallIdDeserializer::new(),
-            registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(config),
-            registry_changes_serializer: DeferredRegistryChangesSerializer::new(config),
+            slot_deserializer: SlotDeserializer::new(
+                (Bound::Included(0), Bound::Included(u64::MAX)),
+                (Bound::Included(0), Bound::Excluded(config.thread_count)),
+            ),
+            effective_total_gas_deserializer: SetOrKeepDeserializer::new(
+                U128VarIntDeserializer::new(Bound::Included(u128::MIN), Bound::Included(u128::MAX)),
+            ),
+            effective_total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
             min_gas_cost: config.min_gas_cost,
         }
     }
@@ -189,7 +197,6 @@ impl DeferredCallRegistry {
         {
             Some(v) => {
                 let result = self
-                    .registry_changes_deserializer
                     .effective_total_gas_deserializer
                     .deserialize::<DeserializeError>(&v)
                     .expect(DEFERRED_CALL_DESER_ERROR)
@@ -413,8 +420,7 @@ impl DeferredCallRegistry {
                 massa_metrics::set_deferred_calls_total_gas(val);
                 let key = DEFERRED_CALL_TOTAL_GAS.as_bytes().to_vec();
                 let mut value_ser = Vec::new();
-                self.registry_changes_serializer
-                    .effective_total_gas_serializer
+                self.effective_total_gas_serializer
                     .serialize(&changes.effective_total_gas, &mut value_ser)
                     .expect(DEFERRED_CALL_SER_ERROR);
                 self.db
@@ -502,7 +508,6 @@ impl DeferredCallRegistry {
                             }
                             CALL_FIELD_TARGET_SLOT => {
                                 return self
-                                    .registry_changes_deserializer
                                     .slot_deserializer
                                     .deserialize::<DeserializeError>(serialized_value)
                                     .is_ok()
@@ -563,7 +568,6 @@ impl DeferredCallRegistry {
             }
         } else if serialized_key.eq(DEFERRED_CALL_TOTAL_GAS.as_bytes()) {
             return self
-                .registry_changes_deserializer
                 .effective_total_gas_deserializer
                 .deserialize::<DeserializeError>(serialized_value)
                 .is_ok();

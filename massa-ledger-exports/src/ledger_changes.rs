@@ -2,28 +2,33 @@
 
 //! This file provides structures representing changes to ledger entries
 
-use crate::ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
-use massa_models::address::{Address, AddressDeserializer, AddressSerializer};
-use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
-use massa_models::bytecode::{Bytecode, BytecodeDeserializer, BytecodeSerializer};
-use massa_models::prehash::PreHashMap;
-use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
-use massa_models::types::{
-    Applicable, SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeep,
-    SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-    SetUpdateOrDeleteSerializer,
+use crate::ledger_entry::LedgerEntry;
+use massa_models::{
+    address::Address,
+    amount::{Amount, AmountDeserializer, AmountSerializer},
+    bytecode::{Bytecode, BytecodeDeserializer, BytecodeSerializer},
+    prehash::PreHashMap,
+    serialization::{VecU8Deserializer, VecU8Serializer},
+    types::{
+        Applicable, SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeep,
+        SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete,
+    },
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use nom::error::{context, ContextError, ParseError};
-use nom::multi::length_count;
-use nom::sequence::tuple;
-use nom::{IResult, Parser};
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::{hash_map, BTreeMap};
-use std::ops::Bound::Included;
+use std::{
+    collections::{hash_map, BTreeMap},
+    ops::Bound::Included,
+};
 
 /// represents an update to one or more fields of a `LedgerEntry`
 #[serde_as]
@@ -337,180 +342,6 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
 pub struct LedgerChanges(
     pub PreHashMap<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>,
 );
-
-/// `LedgerChanges` serializer
-pub struct LedgerChangesSerializer {
-    u64_serializer: U64VarIntSerializer,
-    address_serializer: AddressSerializer,
-    entry_serializer: SetUpdateOrDeleteSerializer<
-        LedgerEntry,
-        LedgerEntryUpdate,
-        LedgerEntrySerializer,
-        LedgerEntryUpdateSerializer,
-    >,
-}
-
-impl LedgerChangesSerializer {
-    /// Creates a new `LedgerChangesSerializer`
-    pub fn new() -> Self {
-        Self {
-            u64_serializer: U64VarIntSerializer::new(),
-            address_serializer: AddressSerializer::new(),
-            entry_serializer: SetUpdateOrDeleteSerializer::new(
-                LedgerEntrySerializer::new(),
-                LedgerEntryUpdateSerializer::new(),
-            ),
-        }
-    }
-}
-
-impl Default for LedgerChangesSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Serializer<LedgerChanges> for LedgerChangesSerializer {
-    /// ## Example
-    /// ```
-    /// use massa_serialization::Serializer;
-    /// use massa_ledger_exports::{LedgerEntry, LedgerChanges, LedgerChangesSerializer};
-    /// use std::str::FromStr;
-    /// use massa_models::types::{SetUpdateOrDelete};
-    /// use std::collections::BTreeMap;
-    /// use massa_models::{amount::Amount, address::Address, bytecode::Bytecode};
-    ///
-    /// let key = "hello world".as_bytes().to_vec();
-    /// let mut datastore = BTreeMap::new();
-    /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_str("1").unwrap();
-    /// let bytecode = Bytecode(vec![1, 2, 3]);
-    /// let ledger_entry = LedgerEntry {
-    ///    balance,
-    ///    bytecode,
-    ///    datastore,
-    /// };
-    /// let mut serialized = Vec::new();
-    /// let mut changes = LedgerChanges::default();
-    /// changes.0.insert(
-    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///    SetUpdateOrDelete::Set(ledger_entry),
-    /// );
-    /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();
-    /// ```
-    fn serialize(&self, value: &LedgerChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        let entry_count: u64 = value.0.len().try_into().map_err(|err| {
-            SerializeError::GeneralError(format!("too many entries in LedgerChanges: {}", err))
-        })?;
-        self.u64_serializer.serialize(&entry_count, buffer)?;
-        for (address, data) in value.0.iter() {
-            self.address_serializer.serialize(address, buffer)?;
-            self.entry_serializer.serialize(data, buffer)?;
-        }
-        Ok(())
-    }
-}
-
-/// `LedgerChanges` deserializer
-pub struct LedgerChangesDeserializer {
-    length_deserializer: U64VarIntDeserializer,
-    address_deserializer: AddressDeserializer,
-    entry_deserializer: SetUpdateOrDeleteDeserializer<
-        LedgerEntry,
-        LedgerEntryUpdate,
-        LedgerEntryDeserializer,
-        LedgerEntryUpdateDeserializer,
-    >,
-}
-
-impl LedgerChangesDeserializer {
-    /// Creates a new `LedgerChangesDeserializer`
-    pub fn new(
-        max_ledger_changes_count: u64,
-        max_datastore_key_length: u8,
-        max_datastore_value_length: u64,
-        max_datastore_entry_count: u64,
-        max_bytecode_size: u64,
-    ) -> Self {
-        Self {
-            length_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_ledger_changes_count),
-            ),
-            address_deserializer: AddressDeserializer::new(),
-            entry_deserializer: SetUpdateOrDeleteDeserializer::new(
-                LedgerEntryDeserializer::new(
-                    max_datastore_entry_count,
-                    max_datastore_key_length,
-                    max_datastore_value_length,
-                    max_bytecode_size,
-                ),
-                LedgerEntryUpdateDeserializer::new(
-                    max_datastore_key_length,
-                    max_datastore_value_length,
-                    max_datastore_entry_count,
-                    max_bytecode_size,
-                ),
-            ),
-        }
-    }
-}
-
-impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
-    /// ## Example
-    /// ```
-    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
-    /// use massa_ledger_exports::{LedgerEntry,  LedgerChanges, LedgerChangesSerializer, LedgerChangesDeserializer};
-    /// use std::str::FromStr;
-    /// use std::collections::BTreeMap;
-    /// use massa_models::types::{SetUpdateOrDelete};
-    /// use massa_models::{amount::Amount, address::Address, bytecode::Bytecode};
-    ///
-    /// let key = "hello world".as_bytes().to_vec();
-    /// let mut datastore = BTreeMap::new();
-    /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_str("1").unwrap();
-    /// let bytecode = Bytecode(vec![1, 2, 3]);
-    /// let ledger_entry = LedgerEntry {
-    ///    balance,
-    ///    bytecode,
-    ///    datastore,
-    /// };
-    /// let mut serialized = Vec::new();
-    /// let mut changes = LedgerChanges::default();
-    /// changes.0.insert(
-    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///    SetUpdateOrDelete::Set(ledger_entry),
-    /// );
-    /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();
-    /// let (rest, changes_deser) = LedgerChangesDeserializer::new(255, 255, 10000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
-    /// assert!(rest.is_empty());
-    /// assert_eq!(changes, changes_deser);
-    /// ```
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], LedgerChanges, E> {
-        context(
-            "Failed LedgerChanges deserialization",
-            length_count(
-                context("Failed length deserialization", |input| {
-                    self.length_deserializer.deserialize(input)
-                }),
-                tuple((
-                    context("Failed address deserialization", |input| {
-                        self.address_deserializer.deserialize(input)
-                    }),
-                    context("Failed entry deserialization", |input| {
-                        self.entry_deserializer.deserialize(input)
-                    }),
-                )),
-            ),
-        )
-        .map(|res| LedgerChanges(res.into_iter().collect()))
-        .parse(buffer)
-    }
-}
 
 impl Applicable<LedgerChanges> for LedgerChanges {
     /// extends the current `LedgerChanges` with another one

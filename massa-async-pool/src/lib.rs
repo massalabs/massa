@@ -89,7 +89,7 @@ mod changes;
 mod config;
 mod pool;
 
-pub use changes::{AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer};
+pub use changes::AsyncPoolChanges;
 pub use config::AsyncPoolConfig;
 pub use pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
 

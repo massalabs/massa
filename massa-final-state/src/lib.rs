@@ -102,7 +102,7 @@ pub use controller_trait::FinalStateController;
 pub use error::FinalStateError;
 pub use final_state::FinalState;
 use num as _;
-pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
+pub use state_changes::StateChanges;
 
 #[cfg(feature = "test-exports")]
 pub use controller_trait::MockFinalStateController;

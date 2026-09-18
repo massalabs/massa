@@ -20,7 +20,7 @@ use nom::{
 };
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use std::ops::Bound::Included;
 
 /// State of a cycle for all threads
@@ -385,93 +385,6 @@ impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
     }
 }
 
-#[derive(Clone)]
-#[allow(missing_docs)]
-/// Serializer for cycle history
-pub struct CycleHistorySerializer {
-    pub u64_serializer: U64VarIntSerializer,
-    pub cycle_info_serializer: CycleInfoSerializer,
-}
-
-impl CycleHistorySerializer {
-    /// Creates a new `CycleHistory` serializer
-    pub fn new() -> Self {
-        Self {
-            u64_serializer: U64VarIntSerializer::new(),
-            cycle_info_serializer: CycleInfoSerializer::new(),
-        }
-    }
-}
-
-impl Default for CycleHistorySerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Serializer<VecDeque<CycleInfo>> for CycleHistorySerializer {
-    fn serialize(
-        &self,
-        value: &VecDeque<CycleInfo>,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
-        self.u64_serializer
-            .serialize(&(value.len() as u64), buffer)?;
-        for cycle_info in value.iter() {
-            self.cycle_info_serializer.serialize(cycle_info, buffer)?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Clone)]
-#[allow(missing_docs)]
-/// Deserializer for cycle history, useful when restarting from a snapshot
-pub struct CycleHistoryDeserializer {
-    pub u64_deserializer: U64VarIntDeserializer,
-    pub cycle_info_deserializer: CycleInfoDeserializer,
-}
-
-impl CycleHistoryDeserializer {
-    /// Creates a new `CycleHistory` deserializer
-    pub fn new(
-        max_cycle_history_length: u64,
-        max_rolls_length: u64,
-        max_production_stats_length: u64,
-    ) -> Self {
-        Self {
-            u64_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_cycle_history_length),
-            ),
-            cycle_info_deserializer: CycleInfoDeserializer::new(
-                max_rolls_length,
-                max_production_stats_length,
-            ),
-        }
-    }
-}
-
-impl Deserializer<Vec<CycleInfo>> for CycleHistoryDeserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Vec<CycleInfo>, E> {
-        context(
-            "Failed cycle_history deserialization",
-            length_count(
-                context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
-                }),
-                context("Failed cycle_info deserialization", |input| {
-                    self.cycle_info_deserializer.deserialize(input)
-                }),
-            ),
-        )
-        .parse(buffer)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -532,37 +445,5 @@ mod test {
         serializer.serialize(&cycle_info1, &mut buf).unwrap();
         let res3 = deserializer3.deserialize::<DeserializeError>(&buf);
         assert!(res3.is_err());
-    }
-
-    #[test]
-    fn test_cycle_history_ser_der() {
-        let (mut cycle_info1, _addr1, _addr2) = create_cycle_info();
-        let mut cycle_info2 = cycle_info1.clone();
-        cycle_info2.cycle += 1;
-        cycle_info1.complete = true;
-
-        let serializer = CycleHistorySerializer::new();
-        let deserializer =
-            CycleHistoryDeserializer::new(2, MAX_ROLLS_COUNT_LENGTH, MAX_PRODUCTION_STATS_LENGTH);
-        let deserializer2 =
-            CycleHistoryDeserializer::new(1, MAX_ROLLS_COUNT_LENGTH, MAX_PRODUCTION_STATS_LENGTH);
-        let cycle_history = VecDeque::from([cycle_info1, cycle_info2]);
-
-        let mut buf = Vec::new();
-        serializer.serialize(&cycle_history, &mut buf).unwrap();
-        let (rem, cycle_history_der) = deserializer.deserialize::<DeserializeError>(&buf).unwrap();
-        assert!(rem.is_empty());
-        assert_eq!(
-            cycle_history_der,
-            cycle_history
-                .clone()
-                .into_iter()
-                .collect::<Vec<CycleInfo>>()
-        );
-
-        buf.clear();
-        serializer.serialize(&cycle_history, &mut buf).unwrap();
-        let res2 = deserializer2.deserialize::<DeserializeError>(&buf);
-        assert!(res2.is_err());
     }
 }
