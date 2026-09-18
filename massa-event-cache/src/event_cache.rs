@@ -468,18 +468,31 @@ impl EventCache {
         &self,
         filter: &EventFilter,
     ) -> (Vec<u64>, Vec<SCOutputEvent>) {
+        // All events stored in this cache are final: a query for non-final
+        // events can never match anything here
+        if filter.is_final == Some(false) {
+            return (vec![], vec![]);
+        }
+
         // Step 1
         // Build a (sorted) map with key: (counter value, indent), value: filter
         // Will be used to iterate from the lower count index to the highest count index
         // e.g. if index for emitter address is 10 (index count), and origin operation id is 20
         //      iter over emitter address index then origin operation id index
 
-        let filter_items = from_event_filter(filter);
+        let mut filter_items = from_event_filter(filter);
 
         if filter_items.is_empty() {
-            // Note: will return too many event - user should restrict the filter
-            warn!("Filter item only on is final field, please add more filter parameters");
-            return (vec![], vec![]);
+            if filter.is_final == Some(true) {
+                // Explicit request for all finalized events with no other
+                // criteria: scan the whole event column (bounded below by
+                // max_events_per_query) instead of matching nothing
+                filter_items.push((KeyIndent::Event, FilterItem::SlotStart(Slot::new(0, 0))));
+            } else {
+                // Note: will return too many event - user should restrict the filter
+                warn!("No filter parameter provided, please add filter parameters");
+                return (vec![], vec![]);
+            }
         }
 
         let it = filter_items.iter().map(|(key_indent, filter_item)| {
