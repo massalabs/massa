@@ -755,7 +755,7 @@ mod tests {
             enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
         ));
 
         let mut selector = Box::new(MockSelectorControllerWrapper::new());
