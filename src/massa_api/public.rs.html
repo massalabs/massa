@@ -1453,7 +1453,7 @@
 <a href=#1453 id=1453 data-nosnippet>1453</a>                        .into());
 <a href=#1454 id=1454 data-nosnippet>1454</a>                    }
 <a href=#1455 id=1455 data-nosnippet>1455</a>
-<a href=#1456 id=1456 data-nosnippet>1456</a>                    <span class="kw">let </span>_verify_signature = <span class="kw">match </span>operation.verify_signature() {
+<a href=#1456 id=1456 data-nosnippet>1456</a>                    <span class="kw">let </span>_verify_signature = <span class="kw">match </span>operation.verify_signature(<span class="prelude-val">None</span>) {
 <a href=#1457 id=1457 data-nosnippet>1457</a>                        <span class="prelude-val">Ok</span>(()) =&gt; (),
 <a href=#1458 id=1458 data-nosnippet>1458</a>                        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
 <a href=#1459 id=1459 data-nosnippet>1459</a>                    };
