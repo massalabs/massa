@@ -92,9 +92,9 @@ pub struct BootstrapConfig {
     /// max bootstrap versioning new_elements
     pub max_versioning_elements_size: u32,
     /// max bootstrap final state new_elements entry count
-    pub max_final_state_elements_count: u32,
+    pub max_final_state_batch_allocation: u64,
     /// max bootstrap versioning new_elements entry count
-    pub max_versioning_elements_count: u32,
+    pub max_versioning_batch_allocation: u64,
     /// max datastore entry count
     pub max_datastore_entry_count: u64,
     /// max datastore value length
@@ -167,8 +167,8 @@ pub struct BootstrapClientConfig {
     pub max_bootstrap_error_length: u64,
     pub max_final_state_elements_size: u32,
     pub max_versioning_elements_size: u32,
-    pub max_final_state_elements_count: u32,
-    pub max_versioning_elements_count: u32,
+    pub max_final_state_batch_allocation: u64,
+    pub max_versioning_batch_allocation: u64,
     pub max_datastore_entry_count: u64,
     pub max_datastore_key_length: u8,
     pub max_datastore_value_length: u64,
@@ -198,8 +198,8 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub max_operations_per_block: u32,
     pub max_final_state_elements_size: u32,
     pub max_versioning_elements_size: u32,
-    pub max_final_state_elements_count: u32,
-    pub max_versioning_elements_count: u32,
+    pub max_final_state_batch_allocation: u64,
+    pub max_versioning_batch_allocation: u64,
     pub max_ledger_changes_count: u64,
     pub max_datastore_key_length: u8,
     pub max_datastore_value_length: u64,

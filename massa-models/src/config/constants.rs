@@ -352,30 +352,36 @@ pub const MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT: u32 = 100_000;
 /// Max number of `(key, value)` entries in a versioning bootstrap `new_elements` batch we send
 pub const MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT: u32 = 100_000;
 
-/// Smallest number of wire bytes a `(key, value)` entry of a `new_elements` batch can take: a
-/// length-prefixed key and a length-prefixed value, each at minimum a one-byte varint announcing
-/// an empty buffer.
-const MIN_BOOTSTRAP_ELEMENT_WIRE_SIZE: u32 = 2;
+/// Rough in-memory cost of one `(key, value)` entry of a received bootstrap batch, on top of the
+/// bytes it carries: the `BTreeMap` node slot it occupies, the two `Vec` headers, and allocator
+/// rounding. Deliberately an over-estimate, so that the budget below is reached before the
+/// allocator actually is.
+pub const BOOTSTRAP_BATCH_ENTRY_OVERHEAD: usize = 96;
 
-/// Max number of `(key, value)` entries we accept in a *received* final-state `new_elements`
-/// batch.
+/// Smallest wire size a *real* `(key, value)` entry of a bootstrap batch is expected to have.
 ///
-/// This is deliberately looser than the count we ourselves send. Bootstrap servers up to
-/// `MAIN.5.0` bound a batch by size only, so a conforming 5.0 server routinely packs far more
-/// than [`MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT`] small entries into one part; enforcing the
-/// sending count on the receiving side would reject every part such a server streams and break
-/// bootstrap across the 5.0 boundary. Derived from the size bound the section already carries,
-/// it stays a hard cap on how many entries we will ever allocate while remaining unreachable by
-/// any conforming peer.
+/// Every state key carries a column-family prefix (`ledger/`, `versioning/`, ...) plus its own
+/// identifying bytes, so real entries run to several tens of bytes; this is a deliberately
+/// pessimistic floor, well under the smallest key any component actually writes, because
+/// under-estimating it would reject honest batches.
+pub const MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE: usize = 8;
+
+/// Budget for the in-memory footprint of one received bootstrap batch section, derived from the
+/// wire size that section is already bounded by.
 ///
-/// TODO: tighten back to [`MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT`] in the first release that
-/// no longer has to bootstrap from a `MAIN.5.0` server.
-pub const MAX_RECEIVED_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT: u32 =
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE / MIN_BOOTSTRAP_ELEMENT_WIRE_SIZE;
-/// Max number of `(key, value)` entries we accept in a *received* versioning `new_elements`
-/// batch. See [`MAX_RECEIVED_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT`].
-pub const MAX_RECEIVED_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT: u32 =
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE / MIN_BOOTSTRAP_ELEMENT_WIRE_SIZE;
+/// Counting entries is not a sufficient bound on its own, and neither is the wire size: a batch is
+/// bounded in bytes on the wire, but an entry that costs two bytes there costs
+/// [`BOOTSTRAP_BATCH_ENTRY_OVERHEAD`] bytes once it is a map node, so a batch of tiny entries
+/// amplifies far beyond the size it announced. This budget charges each entry the bytes it carries
+/// *plus* that overhead, which bounds the amplification directly instead of bounding the wire and
+/// hoping. It is calibrated so that any batch a conforming peer can build fits comfortably —
+/// including one from a `MAIN.5.0` server, which bounds a batch by size only.
+pub const fn bootstrap_batch_allocation_budget(section_wire_size: usize) -> usize {
+    section_wire_size.saturating_add(
+        (section_wire_size / MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE)
+            .saturating_mul(BOOTSTRAP_BATCH_ENTRY_OVERHEAD),
+    )
+}
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import

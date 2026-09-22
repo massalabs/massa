@@ -91,7 +91,7 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    handle_disclaimer, BASE_OPERATION_GAS_COST, CHAINID,
+    bootstrap_batch_allocation_budget, handle_disclaimer, BASE_OPERATION_GAS_COST, CHAINID,
     DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_CST_GAS_COST,
     DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_MAX_ASYNC_GAS,
     DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST, DEFERRED_CALL_MIN_GAS_INCREMENT,
@@ -99,10 +99,9 @@ use massa_models::config::{
     MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
     MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_EVENT_DATA_SIZE, MAX_EVENT_DATA_SIZE_V0, MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE,
-    MAX_RECEIVED_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
-    MAX_RECEIVED_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_RECURSIVE_CALLS_DEPTH,
-    MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN, MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN,
-    MAX_RUNTIME_MODULE_EXPORTS, MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
+    MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
+    MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
+    MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
     MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
     MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
     MAX_RUNTIME_MODULE_PASSIVE_ELEMENT, MAX_RUNTIME_MODULE_SIGNATURE_LEN, MAX_RUNTIME_MODULE_TABLE,
@@ -394,10 +393,15 @@ async fn launch(
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-        // These two bound what we *accept* while bootstrapping, not what we send: a MAIN.5.0
-        // server bounds a batch by size only, so the tighter sending counts do not apply here.
-        max_final_state_elements_count: MAX_RECEIVED_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
-        max_versioning_elements_count: MAX_RECEIVED_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+        // Bound the in-memory footprint of a batch we *receive*. This is not the count we send
+        // (MAX_BOOTSTRAP_*_ELEMENTS_COUNT, enforced in MassaDBConfig above): a MAIN.5.0 server
+        // bounds a batch by size only, so the sending count cannot be enforced on this side.
+        max_final_state_batch_allocation: bootstrap_batch_allocation_budget(
+            MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+        ) as u64,
+        max_versioning_batch_allocation: bootstrap_batch_allocation_budget(
+            MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
+        ) as u64,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,

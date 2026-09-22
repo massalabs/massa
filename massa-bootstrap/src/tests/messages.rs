@@ -6,7 +6,7 @@ use crate::settings::BootstrapClientConfig;
 use crate::tests::tools::{
     indexed_kv_map, minimal_bootstrap_part_message, parametric_test,
     serialize_minimal_bootstrap_part_with_crafted_state_new_elements,
-    serialize_state_new_elements_section, BootstrapClientMessageFaultyPart,
+    serialize_state_new_elements_section, state_shaped_kv_map, BootstrapClientMessageFaultyPart,
     BootstrapServerMessageFaultyPart,
 };
 use crate::{
@@ -30,8 +30,12 @@ fn test_serialize_bootstrap_server_message() {
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
-        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+        max_final_state_batch_allocation: bootstrap_batch_allocation_budget(
+            MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+        ) as u64,
+        max_versioning_batch_allocation: bootstrap_batch_allocation_budget(
+            MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
+        ) as u64,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -152,7 +156,7 @@ fn test_serialize_error_cases_clientmsg() {
     }
 }
 
-fn bootstrap_client_config_with_new_elements_limit(max: u32) -> BootstrapClientConfig {
+fn bootstrap_client_config_with_batch_allocation(budget: u64) -> BootstrapClientConfig {
     BootstrapClientConfig {
         rate_limit: u64::MAX,
         max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
@@ -165,8 +169,8 @@ fn bootstrap_client_config_with_new_elements_limit(max: u32) -> BootstrapClientC
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-        max_final_state_elements_count: max,
-        max_versioning_elements_count: max,
+        max_final_state_batch_allocation: budget,
+        max_versioning_batch_allocation: budget,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -184,41 +188,72 @@ fn bootstrap_client_config_with_new_elements_limit(max: u32) -> BootstrapClientC
     }
 }
 
-fn assert_too_many_new_elements_error(bytes: &[u8], config: &BootstrapClientConfig) {
+fn assert_batch_over_budget_error(bytes: &[u8], config: &BootstrapClientConfig) {
     let deser = BootstrapServerMessageDeserializer::with_last_start_period(config.into(), None);
     let res = deser.deserialize::<DeserializeError>(bytes);
     assert!(res.is_err(), "expected deserialization to fail");
     let err_msg = format!("{:?}", res.unwrap_err());
     assert!(
-        err_msg.contains("too many new_elements entries"),
+        err_msg.contains("bootstrap batch over its allocation budget"),
         "unexpected error: {err_msg}"
     );
 }
 
+/// [F9]: a batch of entries that are tiny on the wire must still be rejected once the memory it
+/// would take to hold them exceeds the budget. `indexed_kv_map` entries cost 3 bytes on the wire
+/// and `BOOTSTRAP_BATCH_ENTRY_OVERHEAD` in the map, so a budget of four entries' overhead admits
+/// three of them and rejects the fourth, whatever they carry.
 #[test]
-fn test_reject_too_many_new_elements_entries() {
-    const MAX_ENTRIES: u32 = 3;
-    let config = bootstrap_client_config_with_new_elements_limit(MAX_ENTRIES);
+fn test_reject_batch_over_allocation_budget() {
+    const BUDGET: u64 = 4 * BOOTSTRAP_BATCH_ENTRY_OVERHEAD as u64;
+    let config = bootstrap_client_config_with_batch_allocation(BUDGET);
     let ser = BootstrapServerMessageSerializer::new();
-    let over_limit = (MAX_ENTRIES + 1) as usize;
+    let over_limit = 4;
 
     // State `new_elements`: distinct keys (BTreeMap-safe path).
     let mut bytes = Vec::new();
     let msg = minimal_bootstrap_part_message(indexed_kv_map(over_limit), BTreeMap::new());
     ser.serialize(&msg, &mut bytes).unwrap();
-    assert_too_many_new_elements_error(&bytes, &config);
+    assert_batch_over_budget_error(&bytes, &config);
 
     // Versioning `new_elements`: distinct keys.
     let mut bytes = Vec::new();
     let msg = minimal_bootstrap_part_message(BTreeMap::new(), indexed_kv_map(over_limit));
     ser.serialize(&msg, &mut bytes).unwrap();
-    assert_too_many_new_elements_error(&bytes, &config);
+    assert_batch_over_budget_error(&bytes, &config);
 
-    // State `new_elements`: duplicate empty keys (F9-style wire flood).
+    // State `new_elements`: duplicate empty keys (F9-style wire flood). Charged as parsed, not as
+    // inserted, so collapsing to one map entry does not buy the sender anything.
     let bytes = serialize_minimal_bootstrap_part_with_crafted_state_new_elements(
         serialize_state_new_elements_section(over_limit, true),
     );
-    assert_too_many_new_elements_error(&bytes, &config);
+    assert_batch_over_budget_error(&bytes, &config);
+}
+
+/// A `MAIN.5.0` server bounds a `new_elements` batch by size only, so it streams far more entries
+/// per part than the count we ourselves send (`MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT`). Under
+/// the production budget such a batch must parse, otherwise a new node cannot bootstrap from any
+/// existing 5.0 peer.
+#[test]
+fn test_accepts_batch_larger_than_the_count_we_send() {
+    let config = bootstrap_client_config_with_batch_allocation(bootstrap_batch_allocation_budget(
+        MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+    ) as u64);
+    let entries = MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize + 50_000;
+
+    let mut bytes = Vec::new();
+    let msg = minimal_bootstrap_part_message(state_shaped_kv_map(entries), BTreeMap::new());
+    BootstrapServerMessageSerializer::new()
+        .serialize(&msg, &mut bytes)
+        .unwrap();
+
+    let deser = BootstrapServerMessageDeserializer::with_last_start_period((&config).into(), None);
+    let res = deser.deserialize::<DeserializeError>(&bytes);
+    assert!(
+        res.is_ok(),
+        "a batch of {entries} state-shaped entries must parse: {:?}",
+        res.err()
+    );
 }
 
 #[test]
@@ -235,8 +270,12 @@ fn test_serialize_error_cases_servermsg() {
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
-        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+        max_final_state_batch_allocation: bootstrap_batch_allocation_budget(
+            MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+        ) as u64,
+        max_versioning_batch_allocation: bootstrap_batch_allocation_budget(
+            MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
+        ) as u64,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
