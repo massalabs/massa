@@ -42,7 +42,7 @@ use parking_lot::Mutex;
 use rand::Rng;
 use rand::RngCore;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, ops::Bound};
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
@@ -484,9 +484,9 @@ impl Interface for InterfaceImpl {
         let addr = context.get_current_address().map_err(|e| e.to_string())?;
 
         // TODO update when implementing the ABI key limits
-        let start_key = std::ops::Bound::Unbounded;
+        let start_key = Bound::Unbounded;
         // TODO update when implementing the ABI key limits
-        let end_key = std::ops::Bound::Unbounded;
+        let end_key = Bound::Unbounded;
         // TODO update when implementing the ABI key limits
         let count = None;
 
@@ -515,9 +515,9 @@ impl Interface for InterfaceImpl {
         let addr = &Address::from_str(address).map_err(|e| e.to_string())?;
         let context = context_guard!(self);
         // TODO update when implementing the ABI key limits
-        let start_key = std::ops::Bound::Unbounded;
+        let start_key = Bound::Unbounded;
         // TODO update when implementing the ABI key limits
-        let end_key = std::ops::Bound::Unbounded;
+        let end_key = Bound::Unbounded;
         // TODO update when implementing the ABI key limits
         let count = None;
 
@@ -528,6 +528,67 @@ impl Interface for InterfaceImpl {
                 start_key,
                 end_key,
                 count,
+            )
+            .map_err(|e| e.to_string())?
+        {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
+        }
+    }
+
+    /// Get the datastore keys (aka entries) for a given address, paginated
+    /// (bounded replacement for `get_keys`, see #5284)
+    fn get_keys_paginated(
+        &self,
+        prefix_opt: Option<&[u8]>,
+        start_after_opt: Option<&[u8]>,
+        count: u32,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
+        let start_key = match start_after_opt {
+            Some(k) => Bound::Excluded(k.to_vec()),
+            None => Bound::Unbounded,
+        };
+
+        match context
+            .get_keys(
+                &addr,
+                prefix_opt.unwrap_or_default(),
+                start_key,
+                Bound::Unbounded,
+                Some(count),
+            )
+            .map_err(|e| e.to_string())?
+        {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
+        }
+    }
+
+    /// Get the datastore keys (aka entries) for a given address, paginated
+    /// (bounded replacement for `get_keys_for`, see #5284)
+    fn get_keys_for_paginated(
+        &self,
+        address: &str,
+        prefix_opt: Option<&[u8]>,
+        start_after_opt: Option<&[u8]>,
+        count: u32,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let addr = &Address::from_str(address).map_err(|e| e.to_string())?;
+        let context = context_guard!(self);
+        let start_key = match start_after_opt {
+            Some(k) => Bound::Excluded(k.to_vec()),
+            None => Bound::Unbounded,
+        };
+
+        match context
+            .get_keys(
+                addr,
+                prefix_opt.unwrap_or_default(),
+                start_key,
+                Bound::Unbounded,
+                Some(count),
             )
             .map_err(|e| e.to_string())?
         {
@@ -549,9 +610,9 @@ impl Interface for InterfaceImpl {
         let address = get_address_from_opt_or_context(&context, address)?;
 
         // TODO update when implementing the ABI key limits
-        let start_key = std::ops::Bound::Unbounded;
+        let start_key = Bound::Unbounded;
         // TODO update when implementing the ABI key limits
-        let end_key = std::ops::Bound::Unbounded;
+        let end_key = Bound::Unbounded;
         // TODO update when implementing the ABI key limits
         let count = None;
 
@@ -2197,6 +2258,7 @@ impl Interface for InterfaceImpl {
 mod tests {
     use super::*;
     use massa_models::address::Address;
+    use massa_models::config::MAX_SC_DATASTORE_KEY_COUNT;
     use massa_signature::KeyPair;
 
     // An async message asking for more gas than any slot can ever schedule is admitted
@@ -2251,6 +2313,81 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert!(keys.contains(b"k1".as_slice()));
         assert!(keys.contains(b"k2".as_slice()));
+    }
+
+    // Tests the paginated get-keys interface methods (#5284): pages chain
+    // without dupes or skips, and `start_after` is exclusive.
+    #[test]
+    fn test_get_keys_paginated_pages() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+
+        for i in 0..10u32 {
+            let k = format!("key{:02}", i);
+            interface
+                .set_ds_value_wasmv1(k.as_bytes(), b"v", Some(sender_addr.to_string()))
+                .unwrap();
+        }
+
+        let page1 = interface.get_keys_paginated(None, None, 4).unwrap();
+        assert_eq!(page1.len(), 4);
+        let last1 = page1.iter().next_back().unwrap().clone();
+        let page2 = interface.get_keys_paginated(None, Some(&last1), 4).unwrap();
+        assert_eq!(page2.len(), 4);
+        assert!(page1.is_disjoint(&page2));
+        let last2 = page2.iter().next_back().unwrap().clone();
+        let page3 = interface.get_keys_paginated(None, Some(&last2), 4).unwrap();
+        assert_eq!(page3.len(), 2);
+
+        let mut all: Vec<Vec<u8>> = page1.into_iter().chain(page2).chain(page3).collect();
+        all.sort();
+        let expected: Vec<Vec<u8>> = (0..10u32)
+            .map(|i| format!("key{:02}", i).into_bytes())
+            .collect();
+        assert_eq!(all, expected);
+
+        // `_for` variant scoped to the address
+        let one = interface
+            .get_keys_for_paginated(&sender_addr.to_string(), None, None, 1)
+            .unwrap();
+        assert_eq!(one.len(), 1);
+    }
+
+    // Tests the SC datastore-key cap (#5284): post-activation, an unbounded
+    // query matching more than MAX_SC_DATASTORE_KEY_COUNT keys fails loudly
+    // instead of truncating; pre-activation stays uncapped.
+    #[test]
+    fn test_sc_datastore_key_cap() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let addr_str = sender_addr.to_string();
+
+        for i in 0..=MAX_SC_DATASTORE_KEY_COUNT {
+            let k = format!("k{:06}", i);
+            interface
+                .set_ds_value_wasmv1(k.as_bytes(), b"v", Some(addr_str.clone()))
+                .unwrap();
+        }
+
+        // pre-activation: uncapped, every key comes back
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        let keys = interface.get_keys(Some(b"")).unwrap();
+        assert_eq!(keys.len(), MAX_SC_DATASTORE_KEY_COUNT as usize + 1);
+
+        // post-activation: unbounded query over the cap is a hard error
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(interface.get_keys(Some(b"")).is_err());
+
+        // explicit over-cap count is a hard error too
+        assert!(interface
+            .get_keys_paginated(None, None, MAX_SC_DATASTORE_KEY_COUNT + 1)
+            .is_err());
+
+        // exactly at the cap still passes
+        let keys = interface
+            .get_keys_paginated(None, None, MAX_SC_DATASTORE_KEY_COUNT)
+            .unwrap();
+        assert_eq!(keys.len(), MAX_SC_DATASTORE_KEY_COUNT as usize);
     }
 
     // Tests the get_op_keys_wasmv1 interface method used by the updated get_op_keys abi.

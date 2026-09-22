@@ -34,6 +34,7 @@ use massa_models::async_msg::AsyncMessage;
 use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
+use massa_models::config::MAX_SC_DATASTORE_KEY_COUNT;
 use massa_models::datastore::cleanup_datastore_key_range_query;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
@@ -673,9 +674,18 @@ impl ExecutionContext {
         end_key: std::ops::Bound<Vec<u8>>,
         count: Option<u32>,
     ) -> Result<Option<BTreeSet<Vec<u8>>>, ExecutionError> {
-        // TODO when updating the ABI, make sure to set this value to a maximum defined as a CONSTANT for determinism
-        // The API will use a different, user-configurable max value
-        let max_datastore_query = None;
+        // From Execution v2 (MIP-0002), the SC datastore-key path is bounded by
+        // a protocol constant (massa #5284). Below v2 the query stays uncapped.
+        let v2 = self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION);
+        // `count = None` (the only query the deprecated ABI can express) is
+        // probed at `cap + 1` so that matching more than `cap` keys fails
+        // loudly instead of being silently truncated. An explicit over-cap
+        // count is rejected by the cleanup below.
+        let (effective_count, max_query) = match (v2, count) {
+            (false, _) => (None, None),
+            (true, Some(_)) => (count, Some(MAX_SC_DATASTORE_KEY_COUNT)),
+            (true, None) => (Some(MAX_SC_DATASTORE_KEY_COUNT.saturating_add(1)), None),
+        };
 
         // cleanup bounds
         let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
@@ -684,12 +694,27 @@ impl ExecutionContext {
             end_key,
             count,
             self.config.max_datastore_key_length,
-            max_datastore_query,
+            max_query,
         )?;
 
-        Ok(self
-            .speculative_ledger
-            .get_keys(addr, &prefix, start_key, end_key, count))
+        let keys =
+            self.speculative_ledger
+                .get_keys(addr, &prefix, start_key, end_key, effective_count);
+
+        // over-cap probe: more matches than the cap is a hard error, never a
+        // silent truncation
+        if v2 && count.is_none() {
+            if let Some(keys) = keys.as_ref() {
+                if keys.len() > MAX_SC_DATASTORE_KEY_COUNT as usize {
+                    return Err(ExecutionError::RuntimeError(format!(
+                        "datastore key query matched more than the maximum of {} keys",
+                        MAX_SC_DATASTORE_KEY_COUNT
+                    )));
+                }
+            }
+        }
+
+        Ok(keys)
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
