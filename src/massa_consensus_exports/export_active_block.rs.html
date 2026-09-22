@@ -216,119 +216,116 @@
 <a href=#216 id=216 data-nosnippet>216</a>    ///                 },
 <a href=#217 id=217 data-nosnippet>217</a>    ///                 EndorsementSerializer::new(),
 <a href=#218 id=218 data-nosnippet>218</a>    ///                 &amp;keypair,
-<a href=#219 id=219 data-nosnippet>219</a>    ///                 *CHAINID,
-<a href=#220 id=220 data-nosnippet>220</a>    ///                 None
-<a href=#221 id=221 data-nosnippet>221</a>    ///             )
-<a href=#222 id=222 data-nosnippet>222</a>    ///             .unwrap(),
-<a href=#223 id=223 data-nosnippet>223</a>    ///             Endorsement::new_verifiable(
-<a href=#224 id=224 data-nosnippet>224</a>    ///                 Endorsement {
-<a href=#225 id=225 data-nosnippet>225</a>    ///                     slot: Slot::new(1, 1),
-<a href=#226 id=226 data-nosnippet>226</a>    ///                     index: 3,
-<a href=#227 id=227 data-nosnippet>227</a>    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&amp;[1])),
-<a href=#228 id=228 data-nosnippet>228</a>    ///                 },
-<a href=#229 id=229 data-nosnippet>229</a>    ///                 EndorsementSerializer::new(),
-<a href=#230 id=230 data-nosnippet>230</a>    ///                 &amp;keypair,
-<a href=#231 id=231 data-nosnippet>231</a>    ///                 *CHAINID,
-<a href=#232 id=232 data-nosnippet>232</a>    ///                 None
-<a href=#233 id=233 data-nosnippet>233</a>    ///             )
-<a href=#234 id=234 data-nosnippet>234</a>    ///             .unwrap(),
-<a href=#235 id=235 data-nosnippet>235</a>    ///         ],
-<a href=#236 id=236 data-nosnippet>236</a>    ///     denunciations: vec![],},
-<a href=#237 id=237 data-nosnippet>237</a>    ///     BlockHeaderSerializer::new(),
-<a href=#238 id=238 data-nosnippet>238</a>    ///     &amp;keypair,
-<a href=#239 id=239 data-nosnippet>239</a>    ///     *CHAINID,
-<a href=#240 id=240 data-nosnippet>240</a>    ///     None
-<a href=#241 id=241 data-nosnippet>241</a>    /// )
-<a href=#242 id=242 data-nosnippet>242</a>    /// .unwrap();
-<a href=#243 id=243 data-nosnippet>243</a>    ///
-<a href=#244 id=244 data-nosnippet>244</a>    /// // create block
-<a href=#245 id=245 data-nosnippet>245</a>    /// let orig_block = Block {
-<a href=#246 id=246 data-nosnippet>246</a>    ///     header: orig_header,
-<a href=#247 id=247 data-nosnippet>247</a>    ///     operations: Vec::new(),
-<a href=#248 id=248 data-nosnippet>248</a>    /// };
-<a href=#249 id=249 data-nosnippet>249</a>    ///
-<a href=#250 id=250 data-nosnippet>250</a>    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &amp;keypair, *CHAINID, None).unwrap();
-<a href=#251 id=251 data-nosnippet>251</a>    /// let export_parents = full_block
-<a href=#252 id=252 data-nosnippet>252</a>    ///     .content
-<a href=#253 id=253 data-nosnippet>253</a>    ///     .header
-<a href=#254 id=254 data-nosnippet>254</a>    ///     .content
-<a href=#255 id=255 data-nosnippet>255</a>    ///     .parents
-<a href=#256 id=256 data-nosnippet>256</a>    ///     .iter()
-<a href=#257 id=257 data-nosnippet>257</a>    ///     .enumerate()
-<a href=#258 id=258 data-nosnippet>258</a>    ///     .map(|(n, id)| (*id, n as u64))
-<a href=#259 id=259 data-nosnippet>259</a>    ///     .collect();
-<a href=#260 id=260 data-nosnippet>260</a>    /// let export_active_block = ExportActiveBlock {
-<a href=#261 id=261 data-nosnippet>261</a>    ///    block: full_block.clone(),
-<a href=#262 id=262 data-nosnippet>262</a>    ///    parents: export_parents,
-<a href=#263 id=263 data-nosnippet>263</a>    ///    is_final: false,
-<a href=#264 id=264 data-nosnippet>264</a>    /// };
-<a href=#265 id=265 data-nosnippet>265</a>    ///
-<a href=#266 id=266 data-nosnippet>266</a>    /// let mut serialized = Vec::new();
-<a href=#267 id=267 data-nosnippet>267</a>    /// ExportActiveBlockSerializer::new().serialize(&amp;export_active_block, &amp;mut serialized).unwrap();
-<a href=#268 id=268 data-nosnippet>268</a>    /// let args = BlockDeserializerArgs {
-<a href=#269 id=269 data-nosnippet>269</a>    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000,max_denunciations_per_block_header: 128,last_start_period: Some(0),chain_id: *CHAINID};
-<a href=#270 id=270 data-nosnippet>270</a>    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
-<a href=#271 id=271 data-nosnippet>271</a>    /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
-<a href=#272 id=272 data-nosnippet>272</a>    /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
-<a href=#273 id=273 data-nosnippet>273</a>    /// assert_eq!(export_deserialized.parents, export_active_block.parents);
-<a href=#274 id=274 data-nosnippet>274</a>    /// assert_eq!(rest.len(), 0);
-<a href=#275 id=275 data-nosnippet>275</a>    /// ```
-<a href=#276 id=276 data-nosnippet>276</a>    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
-<a href=#277 id=277 data-nosnippet>277</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#278 id=278 data-nosnippet>278</a>        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
-<a href=#279 id=279 data-nosnippet>279</a>    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], ExportActiveBlock, E&gt; {
-<a href=#280 id=280 data-nosnippet>280</a>        <span class="kw">let </span>(rest, (block, parents, is_final)) = context(
-<a href=#281 id=281 data-nosnippet>281</a>            <span class="string">"Failed ExportActiveBlock deserialization"</span>,
-<a href=#282 id=282 data-nosnippet>282</a>            tuple((
-<a href=#283 id=283 data-nosnippet>283</a>                <span class="comment">// block
-<a href=#284 id=284 data-nosnippet>284</a>                </span>context(<span class="string">"Failed block deserialization"</span>, |input| {
-<a href=#285 id=285 data-nosnippet>285</a>                    <span class="self">self</span>.sec_share_block_deserializer.deserialize(input)
-<a href=#286 id=286 data-nosnippet>286</a>                }),
-<a href=#287 id=287 data-nosnippet>287</a>                <span class="comment">// parents
-<a href=#288 id=288 data-nosnippet>288</a>                </span>context(
-<a href=#289 id=289 data-nosnippet>289</a>                    <span class="string">"Failed parents deserialization"</span>,
-<a href=#290 id=290 data-nosnippet>290</a>                    alt((
-<a href=#291 id=291 data-nosnippet>291</a>                        value(Vec::new(), tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>])),
-<a href=#292 id=292 data-nosnippet>292</a>                        preceded(
-<a href=#293 id=293 data-nosnippet>293</a>                            tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-<a href=#294 id=294 data-nosnippet>294</a>                            count(
-<a href=#295 id=295 data-nosnippet>295</a>                                tuple((
-<a href=#296 id=296 data-nosnippet>296</a>                                    context(<span class="string">"Failed block_id deserialization"</span>, |input| {
-<a href=#297 id=297 data-nosnippet>297</a>                                        <span class="self">self</span>.block_id_deserializer.deserialize(input)
+<a href=#219 id=219 data-nosnippet>219</a>    ///                 *CHAINID
+<a href=#220 id=220 data-nosnippet>220</a>    ///             )
+<a href=#221 id=221 data-nosnippet>221</a>    ///             .unwrap(),
+<a href=#222 id=222 data-nosnippet>222</a>    ///             Endorsement::new_verifiable(
+<a href=#223 id=223 data-nosnippet>223</a>    ///                 Endorsement {
+<a href=#224 id=224 data-nosnippet>224</a>    ///                     slot: Slot::new(1, 1),
+<a href=#225 id=225 data-nosnippet>225</a>    ///                     index: 3,
+<a href=#226 id=226 data-nosnippet>226</a>    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&amp;[1])),
+<a href=#227 id=227 data-nosnippet>227</a>    ///                 },
+<a href=#228 id=228 data-nosnippet>228</a>    ///                 EndorsementSerializer::new(),
+<a href=#229 id=229 data-nosnippet>229</a>    ///                 &amp;keypair,
+<a href=#230 id=230 data-nosnippet>230</a>    ///                 *CHAINID
+<a href=#231 id=231 data-nosnippet>231</a>    ///             )
+<a href=#232 id=232 data-nosnippet>232</a>    ///             .unwrap(),
+<a href=#233 id=233 data-nosnippet>233</a>    ///         ],
+<a href=#234 id=234 data-nosnippet>234</a>    ///     denunciations: vec![],},
+<a href=#235 id=235 data-nosnippet>235</a>    ///     BlockHeaderSerializer::new(),
+<a href=#236 id=236 data-nosnippet>236</a>    ///     &amp;keypair,
+<a href=#237 id=237 data-nosnippet>237</a>    ///     *CHAINID
+<a href=#238 id=238 data-nosnippet>238</a>    /// )
+<a href=#239 id=239 data-nosnippet>239</a>    /// .unwrap();
+<a href=#240 id=240 data-nosnippet>240</a>    ///
+<a href=#241 id=241 data-nosnippet>241</a>    /// // create block
+<a href=#242 id=242 data-nosnippet>242</a>    /// let orig_block = Block {
+<a href=#243 id=243 data-nosnippet>243</a>    ///     header: orig_header,
+<a href=#244 id=244 data-nosnippet>244</a>    ///     operations: Vec::new(),
+<a href=#245 id=245 data-nosnippet>245</a>    /// };
+<a href=#246 id=246 data-nosnippet>246</a>    ///
+<a href=#247 id=247 data-nosnippet>247</a>    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &amp;keypair, *CHAINID).unwrap();
+<a href=#248 id=248 data-nosnippet>248</a>    /// let export_parents = full_block
+<a href=#249 id=249 data-nosnippet>249</a>    ///     .content
+<a href=#250 id=250 data-nosnippet>250</a>    ///     .header
+<a href=#251 id=251 data-nosnippet>251</a>    ///     .content
+<a href=#252 id=252 data-nosnippet>252</a>    ///     .parents
+<a href=#253 id=253 data-nosnippet>253</a>    ///     .iter()
+<a href=#254 id=254 data-nosnippet>254</a>    ///     .enumerate()
+<a href=#255 id=255 data-nosnippet>255</a>    ///     .map(|(n, id)| (*id, n as u64))
+<a href=#256 id=256 data-nosnippet>256</a>    ///     .collect();
+<a href=#257 id=257 data-nosnippet>257</a>    /// let export_active_block = ExportActiveBlock {
+<a href=#258 id=258 data-nosnippet>258</a>    ///    block: full_block.clone(),
+<a href=#259 id=259 data-nosnippet>259</a>    ///    parents: export_parents,
+<a href=#260 id=260 data-nosnippet>260</a>    ///    is_final: false,
+<a href=#261 id=261 data-nosnippet>261</a>    /// };
+<a href=#262 id=262 data-nosnippet>262</a>    ///
+<a href=#263 id=263 data-nosnippet>263</a>    /// let mut serialized = Vec::new();
+<a href=#264 id=264 data-nosnippet>264</a>    /// ExportActiveBlockSerializer::new().serialize(&amp;export_active_block, &amp;mut serialized).unwrap();
+<a href=#265 id=265 data-nosnippet>265</a>    /// let args = BlockDeserializerArgs {
+<a href=#266 id=266 data-nosnippet>266</a>    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000,max_denunciations_per_block_header: 128,last_start_period: Some(0),chain_id: *CHAINID};
+<a href=#267 id=267 data-nosnippet>267</a>    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+<a href=#268 id=268 data-nosnippet>268</a>    /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
+<a href=#269 id=269 data-nosnippet>269</a>    /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
+<a href=#270 id=270 data-nosnippet>270</a>    /// assert_eq!(export_deserialized.parents, export_active_block.parents);
+<a href=#271 id=271 data-nosnippet>271</a>    /// assert_eq!(rest.len(), 0);
+<a href=#272 id=272 data-nosnippet>272</a>    /// ```
+<a href=#273 id=273 data-nosnippet>273</a>    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
+<a href=#274 id=274 data-nosnippet>274</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#275 id=275 data-nosnippet>275</a>        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+<a href=#276 id=276 data-nosnippet>276</a>    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], ExportActiveBlock, E&gt; {
+<a href=#277 id=277 data-nosnippet>277</a>        <span class="kw">let </span>(rest, (block, parents, is_final)) = context(
+<a href=#278 id=278 data-nosnippet>278</a>            <span class="string">"Failed ExportActiveBlock deserialization"</span>,
+<a href=#279 id=279 data-nosnippet>279</a>            tuple((
+<a href=#280 id=280 data-nosnippet>280</a>                <span class="comment">// block
+<a href=#281 id=281 data-nosnippet>281</a>                </span>context(<span class="string">"Failed block deserialization"</span>, |input| {
+<a href=#282 id=282 data-nosnippet>282</a>                    <span class="self">self</span>.sec_share_block_deserializer.deserialize(input)
+<a href=#283 id=283 data-nosnippet>283</a>                }),
+<a href=#284 id=284 data-nosnippet>284</a>                <span class="comment">// parents
+<a href=#285 id=285 data-nosnippet>285</a>                </span>context(
+<a href=#286 id=286 data-nosnippet>286</a>                    <span class="string">"Failed parents deserialization"</span>,
+<a href=#287 id=287 data-nosnippet>287</a>                    alt((
+<a href=#288 id=288 data-nosnippet>288</a>                        value(Vec::new(), tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>])),
+<a href=#289 id=289 data-nosnippet>289</a>                        preceded(
+<a href=#290 id=290 data-nosnippet>290</a>                            tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+<a href=#291 id=291 data-nosnippet>291</a>                            count(
+<a href=#292 id=292 data-nosnippet>292</a>                                tuple((
+<a href=#293 id=293 data-nosnippet>293</a>                                    context(<span class="string">"Failed block_id deserialization"</span>, |input| {
+<a href=#294 id=294 data-nosnippet>294</a>                                        <span class="self">self</span>.block_id_deserializer.deserialize(input)
+<a href=#295 id=295 data-nosnippet>295</a>                                    }),
+<a href=#296 id=296 data-nosnippet>296</a>                                    context(<span class="string">"Failed period deserialization"</span>, |input| {
+<a href=#297 id=297 data-nosnippet>297</a>                                        <span class="self">self</span>.period_deserializer.deserialize(input)
 <a href=#298 id=298 data-nosnippet>298</a>                                    }),
-<a href=#299 id=299 data-nosnippet>299</a>                                    context(<span class="string">"Failed period deserialization"</span>, |input| {
-<a href=#300 id=300 data-nosnippet>300</a>                                        <span class="self">self</span>.period_deserializer.deserialize(input)
-<a href=#301 id=301 data-nosnippet>301</a>                                    }),
-<a href=#302 id=302 data-nosnippet>302</a>                                )),
-<a href=#303 id=303 data-nosnippet>303</a>                                <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
-<a href=#304 id=304 data-nosnippet>304</a>                            ),
-<a href=#305 id=305 data-nosnippet>305</a>                        ),
-<a href=#306 id=306 data-nosnippet>306</a>                    )),
-<a href=#307 id=307 data-nosnippet>307</a>                ),
-<a href=#308 id=308 data-nosnippet>308</a>                <span class="comment">// finality
-<a href=#309 id=309 data-nosnippet>309</a>                </span>context(
-<a href=#310 id=310 data-nosnippet>310</a>                    <span class="string">"Failed is_final deserialization"</span>,
-<a href=#311 id=311 data-nosnippet>311</a>                    alt((value(<span class="bool-val">true</span>, tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>])), value(<span class="bool-val">false</span>, tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>])))),
-<a href=#312 id=312 data-nosnippet>312</a>                ),
-<a href=#313 id=313 data-nosnippet>313</a>            )),
-<a href=#314 id=314 data-nosnippet>314</a>        )
-<a href=#315 id=315 data-nosnippet>315</a>        .parse(buffer)<span class="question-mark">?</span>;
-<a href=#316 id=316 data-nosnippet>316</a>
-<a href=#317 id=317 data-nosnippet>317</a>        <span class="kw">let </span>export = ExportActiveBlock {
-<a href=#318 id=318 data-nosnippet>318</a>            block,
-<a href=#319 id=319 data-nosnippet>319</a>            parents,
-<a href=#320 id=320 data-nosnippet>320</a>            is_final,
-<a href=#321 id=321 data-nosnippet>321</a>        };
-<a href=#322 id=322 data-nosnippet>322</a>        <span class="kw">if </span>export
-<a href=#323 id=323 data-nosnippet>323</a>            .check_parents_match_header(<span class="self">self</span>.thread_count)
-<a href=#324 id=324 data-nosnippet>324</a>            .is_err()
-<a href=#325 id=325 data-nosnippet>325</a>        {
-<a href=#326 id=326 data-nosnippet>326</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
-<a href=#327 id=327 data-nosnippet>327</a>                rest,
-<a href=#328 id=328 data-nosnippet>328</a>                <span class="string">"ExportActiveBlock parents must match signed header parents"</span>,
-<a href=#329 id=329 data-nosnippet>329</a>                ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
-<a href=#330 id=330 data-nosnippet>330</a>            )));
-<a href=#331 id=331 data-nosnippet>331</a>        }
-<a href=#332 id=332 data-nosnippet>332</a>        <span class="prelude-val">Ok</span>((rest, export))
-<a href=#333 id=333 data-nosnippet>333</a>    }
-<a href=#334 id=334 data-nosnippet>334</a>}</code></pre></div></section></main></body></html>
+<a href=#299 id=299 data-nosnippet>299</a>                                )),
+<a href=#300 id=300 data-nosnippet>300</a>                                <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
+<a href=#301 id=301 data-nosnippet>301</a>                            ),
+<a href=#302 id=302 data-nosnippet>302</a>                        ),
+<a href=#303 id=303 data-nosnippet>303</a>                    )),
+<a href=#304 id=304 data-nosnippet>304</a>                ),
+<a href=#305 id=305 data-nosnippet>305</a>                <span class="comment">// finality
+<a href=#306 id=306 data-nosnippet>306</a>                </span>context(
+<a href=#307 id=307 data-nosnippet>307</a>                    <span class="string">"Failed is_final deserialization"</span>,
+<a href=#308 id=308 data-nosnippet>308</a>                    alt((value(<span class="bool-val">true</span>, tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>])), value(<span class="bool-val">false</span>, tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>])))),
+<a href=#309 id=309 data-nosnippet>309</a>                ),
+<a href=#310 id=310 data-nosnippet>310</a>            )),
+<a href=#311 id=311 data-nosnippet>311</a>        )
+<a href=#312 id=312 data-nosnippet>312</a>        .parse(buffer)<span class="question-mark">?</span>;
+<a href=#313 id=313 data-nosnippet>313</a>
+<a href=#314 id=314 data-nosnippet>314</a>        <span class="kw">let </span>export = ExportActiveBlock {
+<a href=#315 id=315 data-nosnippet>315</a>            block,
+<a href=#316 id=316 data-nosnippet>316</a>            parents,
+<a href=#317 id=317 data-nosnippet>317</a>            is_final,
+<a href=#318 id=318 data-nosnippet>318</a>        };
+<a href=#319 id=319 data-nosnippet>319</a>        <span class="kw">if </span>export
+<a href=#320 id=320 data-nosnippet>320</a>            .check_parents_match_header(<span class="self">self</span>.thread_count)
+<a href=#321 id=321 data-nosnippet>321</a>            .is_err()
+<a href=#322 id=322 data-nosnippet>322</a>        {
+<a href=#323 id=323 data-nosnippet>323</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
+<a href=#324 id=324 data-nosnippet>324</a>                rest,
+<a href=#325 id=325 data-nosnippet>325</a>                <span class="string">"ExportActiveBlock parents must match signed header parents"</span>,
+<a href=#326 id=326 data-nosnippet>326</a>                ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
+<a href=#327 id=327 data-nosnippet>327</a>            )));
+<a href=#328 id=328 data-nosnippet>328</a>        }
+<a href=#329 id=329 data-nosnippet>329</a>        <span class="prelude-val">Ok</span>((rest, export))
+<a href=#330 id=330 data-nosnippet>330</a>    }
+<a href=#331 id=331 data-nosnippet>331</a>}</code></pre></div></section></main></body></html>
