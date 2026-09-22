@@ -1,9 +1,9 @@
 (function() {
-    var implementors = Object.fromEntries([["massa_ledger_worker",[["impl LedgerController for <a class=\"struct\" href=\"massa_ledger_worker/struct.FinalLedger.html\" title=\"struct massa_ledger_worker::FinalLedger\">FinalLedger</a>"]]]]);
+    var implementors = Object.fromEntries([["massa_ledger_worker",[["impl <a class=\"trait\" href=\"massa_ledger_exports/controller/trait.LedgerController.html\" title=\"trait massa_ledger_exports::controller::LedgerController\">LedgerController</a> for <a class=\"struct\" href=\"massa_ledger_worker/struct.FinalLedger.html\" title=\"struct massa_ledger_worker::FinalLedger\">FinalLedger</a>"]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
         window.pending_implementors = implementors;
     }
 })()
-//{"start":57,"fragment_lengths":[194]}
+//{"start":57,"fragment_lengths":[353]}

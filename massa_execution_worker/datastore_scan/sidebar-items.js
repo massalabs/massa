@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["scan_datastore"]};
+window.SIDEBAR_ITEMS = {"fn":["merge_set_case_keys","scan_datastore"]};
