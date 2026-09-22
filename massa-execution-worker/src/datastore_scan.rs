@@ -2,6 +2,7 @@
 //! It is shared between execution.rs and speculative_ledger.rs.
 
 use std::{
+    cmp::Ordering,
     collections::{BTreeMap, BTreeSet, VecDeque},
     ops::Bound,
     sync::Arc,
@@ -11,12 +12,90 @@ use massa_final_state::FinalStateController;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::{
     address::Address,
-    datastore::{get_prefix_bounds, range_intersection},
+    datastore::{get_prefix_bounds, range_intersection, Datastore},
     types::{SetOrDelete, SetUpdateOrDelete},
 };
 use parking_lot::RwLock;
 
 use crate::active_history::ActiveHistory;
+
+/// Builds the bounded result for a `Set` reset by streaming the absolute
+/// datastore in key order and overlaying the newer-layer updates, stopping as
+/// soon as `count` surviving keys are collected. A naive truncation of the
+/// absolute range would be wrong: a newer update may delete one of the first
+/// `count` keys, which must then be replaced by the next key.
+#[allow(clippy::type_complexity)]
+fn merge_set_case_keys(
+    absolute_set_datastore: Option<&Datastore>,
+    key_updates: &BTreeMap<Vec<u8>, bool>,
+    key_range: Option<&(Bound<Vec<u8>>, Bound<Vec<u8>>)>,
+    count: Option<u32>,
+) -> BTreeSet<Vec<u8>> {
+    let mut out = BTreeSet::new();
+    match absolute_set_datastore {
+        Some(abs) => {
+            if let Some(k_range) = key_range {
+                let mut abs_it = abs.range(k_range.clone()).peekable();
+                let mut upd_it = key_updates.iter().peekable();
+                loop {
+                    if let Some(cnt) = count {
+                        if out.len() >= cnt as usize {
+                            break;
+                        }
+                    }
+                    match (abs_it.peek(), upd_it.peek()) {
+                        (Some((abs_key, _)), Some((upd_key, is_set))) => {
+                            match abs_key.cmp(upd_key) {
+                                Ordering::Less => {
+                                    out.insert(abs_key.to_vec());
+                                    abs_it.next();
+                                }
+                                Ordering::Equal => {
+                                    if **is_set {
+                                        out.insert(abs_key.to_vec());
+                                    }
+                                    abs_it.next();
+                                    upd_it.next();
+                                }
+                                Ordering::Greater => {
+                                    if **is_set {
+                                        out.insert(upd_key.to_vec());
+                                    }
+                                    upd_it.next();
+                                }
+                            }
+                        }
+                        (Some((abs_key, _)), None) => {
+                            out.insert(abs_key.to_vec());
+                            abs_it.next();
+                        }
+                        (None, Some((upd_key, is_set))) => {
+                            if **is_set {
+                                out.insert(upd_key.to_vec());
+                            }
+                            upd_it.next();
+                        }
+                        (None, None) => break,
+                    }
+                }
+            }
+        }
+        None => {
+            // reset after a speculative delete: updates are the only source
+            for (k, is_set) in key_updates.iter() {
+                if let Some(cnt) = count {
+                    if out.len() >= cnt as usize {
+                        break;
+                    }
+                }
+                if *is_set {
+                    out.insert(k.clone());
+                }
+            }
+        }
+    }
+    out
+}
 
 /// Gets a copy of a datastore keys for a given address
 ///
@@ -66,6 +145,12 @@ pub fn scan_datastore(
     // process speculative history
     let mut speculative_reset = SpeculativeResetType::None;
     let mut key_updates = BTreeMap::new();
+    // For a `Set` reset, the absolute datastore is streamed and merged with the newer
+    // updates below instead of being copied here, so a bounded query cannot
+    // materialise a whole large datastore.
+    let mut absolute_set_datastore: Option<&Datastore> = None;
+    // Bounded result for a `Set` reset, computed below.
+    let mut set_case_keys = None;
     {
         let mut update_indices = VecDeque::new();
         let history_lock = active_history.read();
@@ -84,13 +169,7 @@ pub fn scan_datastore(
 
                 // address ledger entry being reset to an absolute new list of keys
                 Some(SetUpdateOrDelete::Set(v)) => {
-                    if let Some(k_range) = key_range.as_ref() {
-                        key_updates = v
-                            .datastore
-                            .range(k_range.clone())
-                            .map(|(k, _v)| (k.clone(), true))
-                            .collect();
-                    }
+                    absolute_set_datastore = Some(&v.datastore);
                     speculative_reset = SpeculativeResetType::Set;
                     break;
                 }
@@ -146,6 +225,15 @@ pub fn scan_datastore(
                 panic!("unexpected state change");
             }
         }
+
+        if matches!(speculative_reset, SpeculativeResetType::Set) {
+            set_case_keys = Some(merge_set_case_keys(
+                absolute_set_datastore,
+                &key_updates,
+                key_range.as_ref(),
+                count,
+            ));
+        }
     }
 
     // process reset-related edge cases
@@ -155,15 +243,9 @@ pub fn scan_datastore(
             return (final_keys, None);
         }
         SpeculativeResetType::Set => {
-            // the address was reset in the speculative history
-            let filter_it = key_updates
-                .into_iter()
-                .filter_map(|(k, is_set)| if is_set { Some(k) } else { None });
-            if let Some(cnt) = count {
-                return (final_keys, Some(filter_it.take(cnt as usize).collect()));
-            } else {
-                return (final_keys, Some(filter_it.collect()));
-            }
+            // the address was reset in the speculative history: the bounded result
+            // was computed while the history lock was held
+            return (final_keys, set_case_keys);
         }
         SpeculativeResetType::None => {
             // there was no reset
@@ -218,14 +300,14 @@ pub fn scan_datastore(
             (Some(f), Some((u, _is_set))) => {
                 // key present both in the final state and as a speculative update
                 match f.cmp(u) {
-                    std::cmp::Ordering::Less => {
+                    Ordering::Less => {
                         // take into account final only
                         let k = final_keys_queue
                             .pop_front()
                             .expect("expected final key queue to be non-empty");
                         speculative_keys.insert(k);
                     }
-                    std::cmp::Ordering::Equal => {
+                    Ordering::Equal => {
                         // take into account the change but pop both
                         let (k, is_set) = key_updates_it
                             .next()
@@ -235,7 +317,7 @@ pub fn scan_datastore(
                             speculative_keys.insert(k);
                         }
                     }
-                    std::cmp::Ordering::Greater => {
+                    Ordering::Greater => {
                         // take into account the update only
                         let (k, is_set) = key_updates_it
                             .next()
@@ -263,7 +345,9 @@ pub fn scan_datastore(
 
         if final_keys_queue.is_empty() {
             if let Some(last_k) = last_final_batch_key.take() {
-                // the last final item was consumed: replenish the queue by querying more
+                // the last final item was consumed: replenish the queue by querying
+                // only what is still missing to reach `count`, not a full batch
+                let remaining = count.map(|cnt| cnt.saturating_sub(speculative_keys.len() as u32));
                 final_keys_queue = final_state
                     .read()
                     .get_ledger()
@@ -272,7 +356,7 @@ pub fn scan_datastore(
                         prefix,
                         std::ops::Bound::Excluded(last_k),
                         end_key.clone(),
-                        count,
+                        remaining,
                     )
                     .expect("address expected to exist in final state")
                     .iter()
