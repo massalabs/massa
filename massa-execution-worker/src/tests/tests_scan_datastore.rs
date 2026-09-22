@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, BTreeSet, VecDeque},
     ops::Bound,
     sync::Arc,
 };
@@ -514,4 +514,304 @@ fn test_scan_datastore_count_none_is_unbounded() {
 
     // No cap applied: all 2000 keys come back in one item.
     assert_eq!(candidate_keys.unwrap().len(), 2000);
+}
+
+/// Builds foreign controllers whose final ledger exposes no datastore keys
+/// (all keys come from the speculative history).
+fn controllers_without_final_keys() -> ExecutionForeignControllers {
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_datastore_keys()
+                .returning(move |_, _, _, _, _| None);
+        });
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_ledger()
+        .return_const(Box::new(foreign_controllers.ledger_controller.clone()));
+    foreign_controllers
+}
+
+/// Builds foreign controllers whose final ledger returns the given keys, honouring
+/// the queried start/end bounds and count (mirroring the ledger contract).
+fn controllers_with_final_keys(keys: Vec<Vec<u8>>) -> ExecutionForeignControllers {
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(move |ledger_controller| {
+            ledger_controller.expect_get_datastore_keys().returning(
+                move |_addr, _prefix, start_key, end_key, count| {
+                    let mut out: BTreeSet<Vec<u8>> = keys
+                        .iter()
+                        .filter(|&k| match &start_key {
+                            Bound::Included(sk) => k >= sk,
+                            Bound::Excluded(sk) => k > sk,
+                            Bound::Unbounded => true,
+                        })
+                        .filter(|&k| match &end_key {
+                            Bound::Included(ek) => k <= ek,
+                            Bound::Excluded(ek) => k < ek,
+                            Bound::Unbounded => true,
+                        })
+                        .cloned()
+                        .collect();
+                    if let Some(cnt) = count {
+                        out = out.into_iter().take(cnt as usize).collect();
+                    }
+                    Some(out)
+                },
+            );
+        });
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_ledger()
+        .return_const(Box::new(foreign_controllers.ledger_controller.clone()));
+    foreign_controllers
+}
+
+fn exec_output_with_changes(slot: Slot, ledger_changes: LedgerChanges) -> ExecutionOutput {
+    ExecutionOutput {
+        slot,
+        block_info: None,
+        state_changes: StateChanges {
+            ledger_changes,
+            async_pool_changes: Default::default(),
+            deferred_call_changes: Default::default(),
+            pos_changes: Default::default(),
+            executed_ops_changes: Default::default(),
+            executed_denunciations_changes: Default::default(),
+            execution_trail_hash_change: Default::default(),
+        },
+        events: Default::default(),
+        #[cfg(feature = "execution-trace")]
+        slot_trace: Default::default(),
+        #[cfg(feature = "dump-block")]
+        storage: None,
+        deferred_credits_execution: Default::default(),
+        cancel_async_message_execution: Default::default(),
+        auto_sell_execution: Default::default(),
+        transfers_history: Default::default(),
+        execution_info: None,
+    }
+}
+
+/// Builds an execution output carrying a full ledger-entry `Set` for `addr`.
+fn set_output(slot: Slot, addr: Address, datastore: BTreeMap<Vec<u8>, Vec<u8>>) -> ExecutionOutput {
+    let mut changes = PreHashMap::default();
+    changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Set(LedgerEntry {
+            datastore,
+            ..Default::default()
+        }),
+    );
+    exec_output_with_changes(slot, LedgerChanges(changes))
+}
+
+/// Builds an execution output carrying a ledger-entry `Update` for `addr`.
+fn update_output(
+    slot: Slot,
+    addr: Address,
+    datastore: BTreeMap<Vec<u8>, massa_models::types::SetOrDelete<Vec<u8>>>,
+) -> ExecutionOutput {
+    let mut changes = PreHashMap::default();
+    changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Update(LedgerEntryUpdate {
+            datastore,
+            ..Default::default()
+        }),
+    );
+    exec_output_with_changes(slot, LedgerChanges(changes))
+}
+
+/// A `count`ed query over a datastore much larger than `count` returns exactly the
+/// first `count` keys, without copying the whole range.
+#[test]
+fn test_scan_datastore_set_branch_is_count_bounded() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let foreign_controllers = controllers_without_final_keys();
+
+    let data: BTreeMap<Vec<u8>, Vec<u8>> = (0..2000usize)
+        .map(|i| (format!("key{:05}", i).into_bytes(), b"v".to_vec()))
+        .collect();
+
+    let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([set_output(
+        Slot::new(1, 0),
+        addr,
+        data,
+    )]))));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        Some(10),
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    let expected: BTreeSet<Vec<u8>> = (0..10usize)
+        .map(|i| format!("key{:05}", i).into_bytes())
+        .collect();
+    assert_eq!(candidate_keys.unwrap(), expected);
+}
+
+/// Regression for the ordered-merge bound: a newer update deleting one of the first
+/// `count` keys must be replaced by the next key, not silently drop the result.
+#[test]
+fn test_scan_datastore_set_then_newer_delete_keeps_count() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let foreign_controllers = controllers_without_final_keys();
+
+    let mut data = BTreeMap::new();
+    data.insert(b"a".to_vec(), b"va".to_vec());
+    data.insert(b"b".to_vec(), b"vb".to_vec());
+    data.insert(b"c".to_vec(), b"vc".to_vec());
+
+    let mut deletion = BTreeMap::new();
+    deletion.insert(b"a".to_vec(), massa_models::types::SetOrDelete::Delete);
+
+    // oldest first: a full Set, then a newer Update deleting "a"
+    let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([
+        set_output(Slot::new(1, 0), addr, data),
+        update_output(Slot::new(2, 0), addr, deletion),
+    ]))));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        Some(2),
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    // "a" is deleted, so the first two surviving keys are "b" and "c"
+    let expected: BTreeSet<Vec<u8>> = [b"b".to_vec(), b"c".to_vec()].into_iter().collect();
+    assert_eq!(candidate_keys.unwrap(), expected);
+}
+
+/// The merge branch must not drop deletions: a final key deleted in the speculative
+/// history is absent from the result even with a small `count`, and the missing slot
+/// is filled from the remaining final keys.
+#[test]
+fn test_scan_datastore_merge_keeps_delete_and_fills_count() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let final_keys = vec![b"1".to_vec(), b"2".to_vec(), b"3".to_vec()];
+    let foreign_controllers = controllers_with_final_keys(final_keys);
+
+    let mut deletion = BTreeMap::new();
+    deletion.insert(b"2".to_vec(), massa_models::types::SetOrDelete::Delete);
+
+    let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([update_output(
+        Slot::new(1, 0),
+        addr,
+        deletion,
+    )]))));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        Some(2),
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    // "2" is deleted; "1" and "3" fill the two requested keys
+    let expected: BTreeSet<Vec<u8>> = [b"1".to_vec(), b"3".to_vec()].into_iter().collect();
+    assert_eq!(candidate_keys.unwrap(), expected);
+}
+
+/// Builds an execution output carrying a full ledger-entry `Delete` for `addr`.
+fn delete_output(slot: Slot, addr: Address) -> ExecutionOutput {
+    let mut changes = PreHashMap::default();
+    changes.insert(addr, massa_models::types::SetUpdateOrDelete::Delete);
+    exec_output_with_changes(slot, LedgerChanges(changes))
+}
+
+/// Keys set by updates following a full entry delete (oldest first).
+fn updates_after_delete(addr: Address) -> ActiveHistory {
+    let mut sets = BTreeMap::new();
+    sets.insert(
+        b"x".to_vec(),
+        massa_models::types::SetOrDelete::Set(b"vx".to_vec()),
+    );
+    sets.insert(
+        b"y".to_vec(),
+        massa_models::types::SetOrDelete::Set(b"vy".to_vec()),
+    );
+    // a full entry delete, then updates: promoted to `Set` with no absolute
+    // datastore (updates-only source)
+    ActiveHistory(VecDeque::from([
+        delete_output(Slot::new(1, 0), addr),
+        update_output(Slot::new(2, 0), addr, sets),
+    ]))
+}
+
+/// Regression (review #5286): with `count == Some(0)`, the updates-only `Set`
+/// path (reset after a speculative delete) must return no keys — like the old
+/// `take(0)` code and every other branch — instead of leaking one key.
+#[test]
+fn test_scan_datastore_reset_after_delete_count_zero_is_empty() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let foreign_controllers = controllers_without_final_keys();
+    let active_history = Arc::new(RwLock::new(updates_after_delete(addr)));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        Some(0),
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    assert_eq!(candidate_keys.unwrap(), BTreeSet::new());
+}
+
+/// The updates-only `Set` path (delete entry promoted by newer updates)
+/// returns the updated keys with a normal `count`.
+#[test]
+fn test_scan_datastore_reset_after_delete_returns_updates() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let foreign_controllers = controllers_without_final_keys();
+    let active_history = Arc::new(RwLock::new(updates_after_delete(addr)));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        Some(10),
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    let expected: BTreeSet<Vec<u8>> = [b"x".to_vec(), b"y".to_vec()].into_iter().collect();
+    assert_eq!(candidate_keys.unwrap(), expected);
 }
