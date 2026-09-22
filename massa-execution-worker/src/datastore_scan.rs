@@ -83,13 +83,13 @@ fn merge_set_case_keys(
         None => {
             // reset after a speculative delete: updates are the only source
             for (k, is_set) in key_updates.iter() {
+                if let Some(cnt) = count {
+                    if out.len() >= cnt as usize {
+                        break;
+                    }
+                }
                 if *is_set {
                     out.insert(k.clone());
-                    if let Some(cnt) = count {
-                        if out.len() >= cnt as usize {
-                            break;
-                        }
-                    }
                 }
             }
         }

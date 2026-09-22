@@ -739,3 +739,79 @@ fn test_scan_datastore_merge_keeps_delete_and_fills_count() {
     let expected: BTreeSet<Vec<u8>> = [b"1".to_vec(), b"3".to_vec()].into_iter().collect();
     assert_eq!(candidate_keys.unwrap(), expected);
 }
+
+/// Builds an execution output carrying a full ledger-entry `Delete` for `addr`.
+fn delete_output(slot: Slot, addr: Address) -> ExecutionOutput {
+    let mut changes = PreHashMap::default();
+    changes.insert(addr, massa_models::types::SetUpdateOrDelete::Delete);
+    exec_output_with_changes(slot, LedgerChanges(changes))
+}
+
+/// Keys set by updates following a full entry delete (oldest first).
+fn updates_after_delete(addr: Address) -> ActiveHistory {
+    let mut sets = BTreeMap::new();
+    sets.insert(
+        b"x".to_vec(),
+        massa_models::types::SetOrDelete::Set(b"vx".to_vec()),
+    );
+    sets.insert(
+        b"y".to_vec(),
+        massa_models::types::SetOrDelete::Set(b"vy".to_vec()),
+    );
+    // a full entry delete, then updates: promoted to `Set` with no absolute
+    // datastore (updates-only source)
+    ActiveHistory(VecDeque::from([
+        delete_output(Slot::new(1, 0), addr),
+        update_output(Slot::new(2, 0), addr, sets),
+    ]))
+}
+
+/// Regression (review #5286): with `count == Some(0)`, the updates-only `Set`
+/// path (reset after a speculative delete) must return no keys — like the old
+/// `take(0)` code and every other branch — instead of leaking one key.
+#[test]
+fn test_scan_datastore_reset_after_delete_count_zero_is_empty() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let foreign_controllers = controllers_without_final_keys();
+    let active_history = Arc::new(RwLock::new(updates_after_delete(addr)));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        Some(0),
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    assert_eq!(candidate_keys.unwrap(), BTreeSet::new());
+}
+
+/// The updates-only `Set` path (delete entry promoted by newer updates)
+/// returns the updated keys with a normal `count`.
+#[test]
+fn test_scan_datastore_reset_after_delete_returns_updates() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let foreign_controllers = controllers_without_final_keys();
+    let active_history = Arc::new(RwLock::new(updates_after_delete(addr)));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        Some(10),
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    let expected: BTreeSet<Vec<u8>> = [b"x".to_vec(), b"y".to_vec()].into_iter().collect();
+    assert_eq!(candidate_keys.unwrap(), expected);
+}
