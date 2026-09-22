@@ -9,8 +9,8 @@ use crate::messages::{
 use crate::settings::BootstrapClientConfig;
 use massa_hash::Hash;
 use massa_models::config::{
-    MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES,
-    MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE_BYTES,
+    BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX, BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES,
+    MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE,
     SIGNATURE_DESER_SIZE,
 };
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
@@ -34,7 +34,7 @@ pub struct BootstrapClientBinder {
 }
 
 const KNOWN_PREFIX_FROM_SERVER_LEN: usize =
-    SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE_BYTES;
+    SIGNATURE_DESER_SIZE + BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES;
 /// The known-length component of a message to be received.
 struct ServerMessageLeader {
     sig: Signature,
@@ -198,12 +198,17 @@ impl BootstrapClientBinder {
             self.prev_message = Some(Hash::compute_from(&msg_bytes));
         }
 
-        // Fixed-width length prefix: server reads exactly MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES
-        // after the hash (see BootstrapServerBinder::next_timeout).
-        let enc = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE)?;
-        let mut len_field = [0u8; MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES];
-        len_field[..enc.len()].copy_from_slice(&enc);
-        write_buf.extend(len_field.as_slice());
+        // Enforce the client-side cap on the value, but encode the prefix against
+        // BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX: the width is part of the wire format and the server
+        // reads exactly BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES after the hash
+        // (see BootstrapServerBinder::next_timeout).
+        if msg_len > MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE {
+            return Err(BootstrapError::GeneralError(format!(
+                "bootstrap message too large to send: {} > {}",
+                msg_len, MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE
+            )));
+        }
+        write_buf.extend(msg_len.to_be_bytes_min(BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX)?);
 
         // Provide the message
         write_buf.extend(&msg_bytes);
@@ -218,7 +223,7 @@ impl BootstrapClientBinder {
     /// and makes error-type management cleaner
     fn decode_msg_leader(
         &self,
-        leader_buff: &[u8; SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE_BYTES],
+        leader_buff: &[u8; KNOWN_PREFIX_FROM_SERVER_LEN],
     ) -> Result<ServerMessageLeader, BootstrapError> {
         let sig = Signature::from_bytes(leader_buff)?;
 

@@ -10,8 +10,8 @@ use crate::settings::BootstrapSrvBindCfg;
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::config::{
-    MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES,
-    MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE,
+    BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX, BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES,
+    MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE,
 };
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
@@ -69,7 +69,7 @@ impl Drop for ErrorSendSlot {
 }
 
 const KNOWN_PREFIX_FROM_CLIENT_LEN: usize =
-    HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES;
+    HASH_SIZE_BYTES + BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES;
 /// The known-length component of a message to be received.
 struct ClientMessageLeader {
     received_prev_hash: Option<Hash>,
@@ -375,14 +375,20 @@ impl BootstrapServerBinder {
             }
         };
 
-        // construct msg-len
-        let msg_len = {
-            u32::from_be_bytes_min(
-                &leader_buf[HASH_SIZE_BYTES..],
-                MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE,
-            )?
-            .0
-        };
+        // The prefix is decoded against the wire-format bound, then the tighter client-side cap
+        // is applied to the value: the two are deliberately distinct, as the encoding width is
+        // shared with every peer while the cap is ours to tighten.
+        let msg_len = u32::from_be_bytes_min(
+            &leader_buf[HASH_SIZE_BYTES..],
+            BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX,
+        )?
+        .0;
+        if msg_len > MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE {
+            return Err(BootstrapError::GeneralError(format!(
+                "client announced a message of {} bytes, over the {} bytes limit",
+                msg_len, MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE
+            )));
+        }
         Ok(ClientMessageLeader {
             received_prev_hash,
             msg_len,
