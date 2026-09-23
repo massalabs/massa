@@ -483,16 +483,9 @@ impl EventCache {
         let mut filter_items = from_event_filter(filter);
 
         if filter_items.is_empty() {
-            if filter.is_final == Some(true) {
-                // Explicit request for all finalized events with no other
-                // criteria: scan the whole event column (bounded below by
-                // max_events_per_query) instead of matching nothing
-                filter_items.push((KeyIndent::Event, FilterItem::SlotStart(Slot::new(0, 0))));
-            } else {
-                // Note: will return too many event - user should restrict the filter
-                warn!("No filter parameter provided, please add filter parameters");
-                return (vec![], vec![]);
-            }
+            // No criteria (is_final is None or Some(true)): scan the whole event
+            // column, bounded below by max_events_per_query
+            filter_items.push((KeyIndent::Event, FilterItem::SlotStart(Slot::new(0, 0))));
         }
 
         let it = filter_items.iter().map(|(key_indent, filter_item)| {
