@@ -263,7 +263,7 @@ impl Interface for InterfaceImpl {
     }
 
     fn get_interface_version(&self) -> Result<u32> {
-        bail!("get_interface_version has been called but no versioning is in progress")
+        Ok(context_guard!(self).execution_component_version)
     }
 
     fn increment_recursion_counter(&self) -> Result<()> {
@@ -537,7 +537,10 @@ impl Interface for InterfaceImpl {
     }
 
     /// Get the datastore keys (aka entries) for a given address, paginated
-    /// (bounded replacement for `get_keys`, see #5284)
+    /// (bounded replacement for `get_keys`, see #5284).
+    /// MIP-gated: the sc-runtime only resolves this import from Execution v2,
+    /// and calling it before activation is a hard error (defense in depth, in
+    /// case the import was resolved through another path).
     fn get_keys_paginated(
         &self,
         prefix_opt: Option<&[u8]>,
@@ -545,6 +548,9 @@ impl Interface for InterfaceImpl {
         count: u32,
     ) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
+        if context.execution_component_version < MIP_0002_EXECUTION_VERSION {
+            bail!("paginated datastore-key queries are only available from Execution v2");
+        }
         let addr = context.get_current_address().map_err(|e| e.to_string())?;
         let start_key = match start_after_opt {
             Some(k) => Bound::Excluded(k.to_vec()),
@@ -567,7 +573,8 @@ impl Interface for InterfaceImpl {
     }
 
     /// Get the datastore keys (aka entries) for a given address, paginated
-    /// (bounded replacement for `get_keys_for`, see #5284)
+    /// (bounded replacement for `get_keys_for`, see #5284).
+    /// Same MIP gating as `get_keys_paginated`.
     fn get_keys_for_paginated(
         &self,
         address: &str,
@@ -577,6 +584,9 @@ impl Interface for InterfaceImpl {
     ) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address).map_err(|e| e.to_string())?;
         let context = context_guard!(self);
+        if context.execution_component_version < MIP_0002_EXECUTION_VERSION {
+            bail!("paginated datastore-key queries are only available from Execution v2");
+        }
         let start_key = match start_after_opt {
             Some(k) => Bound::Excluded(k.to_vec()),
             None => Bound::Unbounded,
@@ -2329,6 +2339,12 @@ mod tests {
                 .unwrap();
         }
 
+        // pre-activation: the paginated import would not resolve, and a direct
+        // call is a hard error
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        assert!(interface.get_keys_paginated(None, None, 4).is_err());
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
         let page1 = interface.get_keys_paginated(None, None, 4).unwrap();
         assert_eq!(page1.len(), 4);
         let last1 = page1.iter().next_back().unwrap().clone();
