@@ -28,7 +28,7 @@ pub enum ModelsError {
     ThreadOverflowError,
     /// period overflow error
     PeriodOverflowError,
-    /// amount parse error
+    /// amount parse error: {0}
     AmountParseError(String),
     /// address parsing error: {0}
     AddressParseError(String),
