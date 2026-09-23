@@ -134,7 +134,7 @@ fn call_registry_get_slot_calls() {
 }
 
 #[test]
-fn uninitialized_slot_base_fee_uses_min_gas_cost() {
+fn uninitialized_slot_base_fee_is_zero() {
     let temp_dir = tempdir().expect("Unable to create a temp folder");
     let db_config = MassaDBConfig {
         path: temp_dir.path().to_path_buf(),
@@ -157,8 +157,6 @@ fn uninitialized_slot_base_fee_uses_min_gas_cost() {
         period: 42,
     };
 
-    assert_eq!(
-        registry.get_slot_base_fee(&slot),
-        Amount::from_raw(config.min_gas_cost)
-    );
+    // the `min_gas_cost` fallback is applied by the speculative layer, not here
+    assert_eq!(registry.get_slot_base_fee(&slot), Amount::zero());
 }

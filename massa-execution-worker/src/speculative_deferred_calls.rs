@@ -115,7 +115,17 @@ impl SpeculativeDeferredCallRegistry {
             .get_slot_gas(slot);
     }
 
-    pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
+    /// Returns the base fee for a slot.
+    ///
+    /// With `min_gas_cost_fallback`, an uninitialized slot (no entry, or zero) falls back to
+    /// `min_gas_cost` instead of zero: this is exactly what `advance_slot` would have written
+    /// for it from an empty registry (0 booked gas puts the controller in its "decrease"
+    /// branch, which floors at `min_gas_cost`), so the fallback is the missing initialization,
+    /// not a different pricing rule. It only fires on a registry that has not been advancing
+    /// for `max_future_slots` slots yet -- a fresh network, or the gap left by a restart from
+    /// snapshot -- so it is gated on `MIP_0002_EXECUTION_VERSION` to keep pre-activation nodes
+    /// charging the same fee.
+    pub fn get_slot_base_fee(&self, slot: &Slot, min_gas_cost_fallback: bool) -> Amount {
         // get slot base fee from current changes
         if let Some(v) = self.deferred_calls_changes.get_slot_base_fee(slot) {
             if !v.is_zero() {
@@ -139,16 +149,27 @@ impl SpeculativeDeferredCallRegistry {
             }
         }
 
-        // check in final state (applies the min_gas_cost fallback for uninitialized slots)
-        self.final_state
+        // check in final state
+        let base_fee = self
+            .final_state
             .read()
             .get_deferred_call_registry()
-            .get_slot_base_fee(slot)
+            .get_slot_base_fee(slot);
+
+        if min_gas_cost_fallback && base_fee.is_zero() {
+            Amount::from_raw(self.config.min_gas_cost)
+        } else {
+            base_fee
+        }
     }
 
     /// Consumes and deletes the current slot, prepares a new slot in the future
     /// and returns the calls that need to be executed in the current slot
-    pub fn advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
+    pub fn advance_slot(
+        &mut self,
+        current_slot: Slot,
+        min_gas_cost_fallback: bool,
+    ) -> DeferredSlotCalls {
         // get the state of the current slot
         let slot_calls = self.get_calls_by_slot(current_slot);
         let total_booked_gas_before = self.get_effective_total_gas();
@@ -165,8 +186,7 @@ impl SpeculativeDeferredCallRegistry {
             .get_prev_slot(self.config.thread_count)
             .expect("cannot get prev slot");
 
-        // uninitialized slots fall back to `min_gas_cost`, so we can use the `get_slot_base_fee` method directly
-        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot);
+        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot, min_gas_cost_fallback);
 
         let new_slot_base_fee = match avg_booked_gas.cmp(&TARGET_BOOKING) {
             // the previous booking rate was exactly the expected one: do not adjust the base fee
@@ -363,6 +383,7 @@ impl SpeculativeDeferredCallRegistry {
         max_gas_request: u64,
         current_slot: Slot,
         params_size: u64,
+        min_gas_cost_fallback: bool,
     ) -> Result<Amount, ExecutionError> {
         // Check that the slot is not in the past
         if target_slot <= current_slot {
@@ -406,7 +427,7 @@ impl SpeculativeDeferredCallRegistry {
 
         // Integral fee
         let integral_fee = self
-            .get_slot_base_fee(&target_slot)
+            .get_slot_base_fee(&target_slot, min_gas_cost_fallback)
             .saturating_mul_u64(max_gas_request);
 
         // The integral fee is not enough to respond to quick demand surges within the long booking period `deferred_call_max_future_slots`. Proportional regulation is also necessary.
@@ -595,7 +616,8 @@ mod tests {
                     period: 1,
                     thread: 1,
                 },
-                1_000
+                1_000,
+                true,
             )
             .is_err());
 
@@ -611,7 +633,8 @@ mod tests {
                     period: 5,
                     thread: 1,
                 },
-                1000
+                1000,
+                true,
             )
             .is_err());
 
@@ -628,7 +651,8 @@ mod tests {
                     period: 1,
                     thread: 1,
                 },
-                1000
+                1000,
+                true,
             )
             .is_err());
 
@@ -641,11 +665,12 @@ mod tests {
                     period: 1,
                     thread: 1,
                 },
-                50_000_000
+                50_000_000,
+                true,
             )
             .is_err());
 
-        // no params: uninitialized slots must still charge the integral fee
+        // no params, before MIP-0002: an uninitialized slot has a zero integral fee
         assert_eq!(
             speculative
                 .compute_call_fee(
@@ -656,6 +681,24 @@ mod tests {
                         thread: 1,
                     },
                     0,
+                    false,
+                )
+                .unwrap(),
+            Amount::from_str("0.036600079").unwrap()
+        );
+
+        // no params, from MIP-0002 on: uninitialized slots must still charge the integral fee
+        assert_eq!(
+            speculative
+                .compute_call_fee(
+                    good_slot,
+                    200_000,
+                    Slot {
+                        period: 1,
+                        thread: 1,
+                    },
+                    0,
+                    true,
                 )
                 .unwrap(),
             Amount::from_str("0.038600079").unwrap()
@@ -672,6 +715,7 @@ mod tests {
                         thread: 1,
                     },
                     10_000,
+                    true,
                 )
                 .unwrap(),
             Amount::from_str("1.038600079").unwrap()
@@ -716,8 +760,12 @@ mod tests {
             thread: 1,
         };
 
+        // before MIP-0002 activation, an uninitialized slot keeps its zero base fee
+        assert_eq!(speculative.get_slot_base_fee(&slot, false), Amount::zero());
+
+        // from MIP-0002 on, it falls back to `min_gas_cost`
         assert_eq!(
-            speculative.get_slot_base_fee(&slot),
+            speculative.get_slot_base_fee(&slot, true),
             Amount::from_raw(config.min_gas_cost)
         );
     }
