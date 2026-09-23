@@ -247,6 +247,38 @@ fn get_address_from_opt_or_context(
     }
 }
 
+/// Shared body of the paginated datastore-key ABIs.
+///
+/// `start_key` is an **exclusive** cursor so that a contract resumes by passing back the last key
+/// it received, which is the only form that composes with the caps in `ExecutionContext::get_keys`:
+/// an inclusive cursor would re-return the boundary key and let a page overlap the previous one.
+fn get_keys_page(
+    context: &ExecutionContext,
+    addr: &Address,
+    prefix: Option<&[u8]>,
+    start_key: Option<&[u8]>,
+    count: Option<u32>,
+) -> Result<BTreeSet<Vec<u8>>> {
+    let start_key = match start_key {
+        Some(key) => std::ops::Bound::Excluded(key.to_vec()),
+        None => std::ops::Bound::Unbounded,
+    };
+
+    match context
+        .get_keys(
+            addr,
+            prefix.unwrap_or_default(),
+            start_key,
+            std::ops::Bound::Unbounded,
+            count,
+        )
+        .map_err(|e| e.to_string())?
+    {
+        Some(value) => Ok(value),
+        _ => bail!("data entry not found"),
+    }
+}
+
 /// Implementation of the Interface trait providing functions for massa-sc-runtime to call
 /// in order to interact with the execution context during bytecode execution.
 /// See the massa-sc-runtime crate for a functional description of the trait and its methods.
@@ -483,11 +515,13 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let addr = context.get_current_address().map_err(|e| e.to_string())?;
 
-        // TODO update when implementing the ABI key limits
+        // This ABI has no pagination parameters, so the range stays unbounded and the key count
+        // unspecified. From MIP_0002_EXECUTION_VERSION on, `Context::get_keys` caps an unspecified
+        // count at MAX_DATASTORE_KEYS_QUERY_ABI and fails rather than truncating, so a contract
+        // over the cap has to move to the paginated ABI (TODO(#5284): pending the massa-sc-runtime
+        // interface change that introduces it).
         let start_key = std::ops::Bound::Unbounded;
-        // TODO update when implementing the ABI key limits
         let end_key = std::ops::Bound::Unbounded;
-        // TODO update when implementing the ABI key limits
         let count = None;
 
         match context
@@ -514,11 +548,13 @@ impl Interface for InterfaceImpl {
     fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address).map_err(|e| e.to_string())?;
         let context = context_guard!(self);
-        // TODO update when implementing the ABI key limits
+        // This ABI has no pagination parameters, so the range stays unbounded and the key count
+        // unspecified. From MIP_0002_EXECUTION_VERSION on, `Context::get_keys` caps an unspecified
+        // count at MAX_DATASTORE_KEYS_QUERY_ABI and fails rather than truncating, so a contract
+        // over the cap has to move to the paginated ABI (TODO(#5284): pending the massa-sc-runtime
+        // interface change that introduces it).
         let start_key = std::ops::Bound::Unbounded;
-        // TODO update when implementing the ABI key limits
         let end_key = std::ops::Bound::Unbounded;
-        // TODO update when implementing the ABI key limits
         let count = None;
 
         match context
@@ -536,6 +572,42 @@ impl Interface for InterfaceImpl {
         }
     }
 
+    /// Get one page of datastore keys for the current address.
+    ///
+    /// `start_key` is an exclusive resume cursor: pass the last key of the previous page to get the
+    /// next one. `count` is the page size; leaving it unset keeps the capped, fail-over-the-cap
+    /// behaviour of the deprecated ABIs.
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    fn get_keys_paginated(
+        &self,
+        prefix: Option<&[u8]>,
+        start_key: Option<&[u8]>,
+        count: Option<u32>,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
+        get_keys_page(&context, &addr, prefix, start_key, count)
+    }
+
+    /// Get one page of datastore keys for a given address.
+    /// See [`InterfaceImpl::get_keys_paginated`] for the argument semantics.
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    fn get_keys_for_paginated(
+        &self,
+        address: &str,
+        prefix: Option<&[u8]>,
+        start_key: Option<&[u8]>,
+        count: Option<u32>,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let addr = &Address::from_str(address).map_err(|e| e.to_string())?;
+        let context = context_guard!(self);
+        get_keys_page(&context, addr, prefix, start_key, count)
+    }
+
     /// Get the datastore keys (aka entries) for a given address, or the current address if none is provided
     ///
     /// # Returns
@@ -548,11 +620,13 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
-        // TODO update when implementing the ABI key limits
+        // This ABI has no pagination parameters, so the range stays unbounded and the key count
+        // unspecified. From MIP_0002_EXECUTION_VERSION on, `Context::get_keys` caps an unspecified
+        // count at MAX_DATASTORE_KEYS_QUERY_ABI and fails rather than truncating, so a contract
+        // over the cap has to move to the paginated ABI (TODO(#5284): pending the massa-sc-runtime
+        // interface change that introduces it).
         let start_key = std::ops::Bound::Unbounded;
-        // TODO update when implementing the ABI key limits
         let end_key = std::ops::Bound::Unbounded;
-        // TODO update when implementing the ABI key limits
         let count = None;
 
         match context
@@ -2197,6 +2271,7 @@ impl Interface for InterfaceImpl {
 mod tests {
     use super::*;
     use massa_models::address::Address;
+    use massa_models::config::MAX_DATASTORE_KEYS_QUERY_ABI;
     use massa_signature::KeyPair;
 
     // An async message asking for more gas than any slot can ever schedule is admitted
@@ -2251,6 +2326,124 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert!(keys.contains(b"k1".as_slice()));
         assert!(keys.contains(b"k2".as_slice()));
+    }
+
+    /// [F42](a): an unbounded datastore-key query is capped by a protocol constant, and going over
+    /// it is a hard error rather than a silent truncation — a contract written against the uncapped
+    /// ABI has to fail visibly instead of computing on a short key set. Gated on MIP-0002, since
+    /// failing a call that used to succeed changes execution results.
+    #[test]
+    fn test_datastore_keys_query_cap_gated_on_mip_0002() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let addr = sender_addr.to_string();
+
+        for i in 0..=MAX_DATASTORE_KEYS_QUERY_ABI {
+            interface
+                .set_ds_value_wasmv1(format!("k{i:06}").as_bytes(), b"v", Some(addr.clone()))
+                .unwrap();
+        }
+
+        // pre-activation: the whole range is walked and returned, the behaviour being replaced
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        assert_eq!(
+            interface.get_ds_keys_wasmv1(b"k", None).unwrap().len(),
+            MAX_DATASTORE_KEYS_QUERY_ABI as usize + 1,
+            "the uncapped ABI should still return every key before activation"
+        );
+
+        // post-activation: all three datastore-key ABIs fail rather than truncate
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        for (name, res) in [
+            (
+                "get_ds_keys_wasmv1",
+                interface.get_ds_keys_wasmv1(b"k", None),
+            ),
+            ("get_keys", interface.get_keys(Some(b"k"))),
+            ("get_keys_for", interface.get_keys_for(&addr, Some(b"k"))),
+        ] {
+            let err = res.expect_err(&format!("{name} should fail over the cap"));
+            assert!(
+                err.to_string().contains("more than the maximum"),
+                "{name}: unexpected error: {err}"
+            );
+        }
+    }
+
+    /// The paginated ABI is the migration path out of the cap: an explicit page size is honoured
+    /// post-activation where the unbounded call fails, and the exclusive cursor walks the whole
+    /// datastore without ever returning a key twice.
+    #[test]
+    fn test_paginated_datastore_keys_walk_past_the_cap() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let addr = sender_addr.to_string();
+
+        let total = MAX_DATASTORE_KEYS_QUERY_ABI as usize + 1;
+        for i in 0..total {
+            interface
+                .set_ds_value_wasmv1(format!("k{i:06}").as_bytes(), b"v", Some(addr.clone()))
+                .unwrap();
+        }
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+
+        // the unbounded call over the cap fails, the paginated one does not
+        assert!(interface.get_ds_keys_wasmv1(b"k", None).is_err());
+
+        let page_size = 4_096;
+        let mut seen: Vec<Vec<u8>> = Vec::new();
+        let mut cursor: Option<Vec<u8>> = None;
+        loop {
+            let page = interface
+                .get_keys_paginated(Some(b"k"), cursor.as_deref(), Some(page_size))
+                .unwrap();
+            if page.is_empty() {
+                break;
+            }
+            assert!(
+                page.len() <= page_size as usize,
+                "a page must never exceed the requested count"
+            );
+            cursor = page.iter().next_back().cloned();
+            seen.extend(page);
+        }
+
+        assert_eq!(
+            seen.len(),
+            total,
+            "pagination must cover every key exactly once"
+        );
+        let mut deduped = seen.clone();
+        deduped.sort();
+        deduped.dedup();
+        assert_eq!(deduped.len(), total, "pages must not overlap");
+
+        // the address-taking variant reaches the same datastore
+        let first = interface
+            .get_keys_for_paginated(&addr, Some(b"k"), None, Some(2))
+            .unwrap();
+        assert_eq!(first.len(), 2);
+    }
+
+    /// The cap is the largest key set that still succeeds, not one short of it.
+    #[test]
+    fn test_datastore_keys_query_at_the_cap_succeeds() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let addr = sender_addr.to_string();
+
+        for i in 0..MAX_DATASTORE_KEYS_QUERY_ABI {
+            interface
+                .set_ds_value_wasmv1(format!("k{i:06}").as_bytes(), b"v", Some(addr.clone()))
+                .unwrap();
+        }
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert_eq!(
+            interface.get_ds_keys_wasmv1(b"k", None).unwrap().len(),
+            MAX_DATASTORE_KEYS_QUERY_ABI as usize,
+            "a key set exactly at the cap must still be returned"
+        );
     }
 
     // Tests the get_op_keys_wasmv1 interface method used by the updated get_op_keys abi.

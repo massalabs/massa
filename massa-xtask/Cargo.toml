@@ -14,3 +14,9 @@ walkdir = {workspace = true}
 # check_gas_costs dependencies
 massa-sc-runtime = {workspace = true}
 serde_json = {workspace = true}
+# scan_datastore_sizes dependencies
+massa_db_exports = {workspace = true}
+massa_ledger_exports = {workspace = true}
+massa_hash = {workspace = true}
+massa_serialization = {workspace = true}
+rocksdb = {workspace = true}

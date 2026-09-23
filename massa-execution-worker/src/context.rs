@@ -34,6 +34,7 @@ use massa_models::async_msg::AsyncMessage;
 use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
+use massa_models::config::MAX_DATASTORE_KEYS_QUERY_ABI;
 use massa_models::datastore::cleanup_datastore_key_range_query;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
@@ -673,9 +674,12 @@ impl ExecutionContext {
         end_key: std::ops::Bound<Vec<u8>>,
         count: Option<u32>,
     ) -> Result<Option<BTreeSet<Vec<u8>>>, ExecutionError> {
-        // TODO when updating the ABI, make sure to set this value to a maximum defined as a CONSTANT for determinism
-        // The API will use a different, user-configurable max value
-        let max_datastore_query = None;
+        // The SC path is bounded by a protocol constant, never by node config: the bound decides
+        // whether a call succeeds, so every node has to apply the same one or they disagree on
+        // execution results. The API paths keep their own, operator-tunable bound. Gated, because
+        // capping a call that used to succeed is itself a change of execution results.
+        let capped = self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION);
+        let max_datastore_query = capped.then_some(MAX_DATASTORE_KEYS_QUERY_ABI);
 
         // cleanup bounds
         let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
@@ -687,9 +691,32 @@ impl ExecutionContext {
             max_datastore_query,
         )?;
 
-        Ok(self
+        // Pre-activation, or a caller that asked for a bounded page: return what was asked for. An
+        // explicit count was already checked against the cap by the cleanup above, so a page can
+        // never exceed it.
+        if !capped || count.is_some() {
+            return Ok(self
+                .speculative_ledger
+                .get_keys(addr, &prefix, start_key, end_key, count));
+        }
+
+        // An unbounded request must not come back silently truncated, so probe one key past the
+        // cap and fail if the real key set is larger. `scan_datastore` bounds its internals to the
+        // requested count (#5286), so the probe costs one extra key rather than a full walk.
+        let probe = MAX_DATASTORE_KEYS_QUERY_ABI.saturating_add(1);
+        match self
             .speculative_ledger
-            .get_keys(addr, &prefix, start_key, end_key, count))
+            .get_keys(addr, &prefix, start_key, end_key, Some(probe))
+        {
+            Some(keys) if keys.len() > MAX_DATASTORE_KEYS_QUERY_ABI as usize => {
+                Err(ExecutionError::RuntimeError(format!(
+                    "datastore key query returned more than the maximum of {} keys; \
+                     use the paginated datastore-keys ABI instead",
+                    MAX_DATASTORE_KEYS_QUERY_ABI
+                )))
+            }
+            keys => Ok(keys),
+        }
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None

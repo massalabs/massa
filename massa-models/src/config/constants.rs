@@ -241,6 +241,21 @@ pub const MAX_LEDGER_CHANGES_COUNT: u64 =
     100_u32.saturating_mul(MAX_LEDGER_CHANGES_PER_SLOT) as u64;
 /// Maximum number of key/values in the datastore of a ledger entry
 pub const MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
+/// Maximum number of datastore keys a single smart-contract datastore-key ABI call may return.
+///
+/// This is a *protocol* constant, never a node setting: the number of keys a call returns decides
+/// whether it succeeds or aborts, so two nodes disagreeing on it would disagree on execution
+/// results. The JSON-RPC and gRPC paths keep their own, operator-tunable bound
+/// (`max_datastore_query_config`); only the SC path is bounded by this one.
+///
+/// A call whose key set would exceed it fails outright rather than returning a truncated set, so a
+/// contract written against the uncapped ABI breaks visibly instead of computing on a silently
+/// short answer.
+///
+/// TODO(#5284): provisional value. The final number comes from a targeted gas-calibration campaign
+/// on `abi_get_ds_keys` — how many keys the current flat price can be guaranteed to cover — and
+/// must be settled before this ships.
+pub const MAX_DATASTORE_KEYS_QUERY_ABI: u32 = 10_000;
 /// Maximum number of key/values in the datastore of a `ExecuteSC` operation
 pub const MAX_OPERATION_DATASTORE_ENTRY_COUNT: u64 = 128;
 /// Maximum length function name in call SC

@@ -2916,7 +2916,6 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=3594369cebbb98667d8f8c1457da488af4b2b127#3594369cebbb98667d8f8c1457da488af4b2b127"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -3827,7 +3826,12 @@ name = "massa_xtask"
 version = "5.0.0"
 dependencies = [
  "massa-sc-runtime",
+ "massa_db_exports",
+ "massa_hash",
+ "massa_ledger_exports",
  "massa_models",
+ "massa_serialization",
+ "rust-rocksdb",
  "serde_json",
  "toml_edit 0.21.1",
  "walkdir",
