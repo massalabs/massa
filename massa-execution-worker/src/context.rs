@@ -1312,7 +1312,10 @@ impl ExecutionContext {
     }
 
     pub fn deferred_calls_advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
-        self.speculative_deferred_calls.advance_slot(current_slot)
+        self.speculative_deferred_calls.advance_slot(
+            current_slot,
+            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
+        )
     }
 
     /// Get the price it would cost to reserve "gas" with params at target slot "slot".
@@ -1328,6 +1331,7 @@ impl ExecutionContext {
             max_gas_request,
             current_slot,
             params_size,
+            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         )
     }
 
