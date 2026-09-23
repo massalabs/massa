@@ -6,6 +6,7 @@ use massa_db_exports::{
 };
 use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
+    config::{bootstrap_batch_allocation_budget, BOOTSTRAP_BATCH_ENTRY_OVERHEAD},
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -170,6 +171,15 @@ where
 
         let mut new_elements = BTreeMap::new();
         let mut new_elements_size = 0;
+        // Bound the in-memory footprint of the batch as well as its wire size, with the same
+        // accounting the receiving side applies (see `bootstrap_batch_allocation_budget`): a
+        // section of tiny entries costs far more as a map than the bytes it announces. For
+        // real state entries the size limit is the binding one, so parts still fill up to
+        // `max_final_state_elements_size`; deriving both bounds from that same size means a
+        // batch we accept to build is a batch a peer of this version accepts to parse.
+        let mut new_elements_footprint = 0;
+        let batch_allocation_budget =
+            bootstrap_batch_allocation_budget(self.config.max_final_state_elements_size);
 
         if !last_state_step.finished() {
             let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -215,8 +225,14 @@ where
                 // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
                 // in order to make deserialization easier
                 new_elements_size += key_len + value_len + buffer.len();
+                new_elements_footprint +=
+                    key_len + value_len + buffer.len() + BOOTSTRAP_BATCH_ENTRY_OVERHEAD;
+                // The first entry is always taken, whatever it costs: a batch that admits no
+                // entry at all would stall the stream, since the client advances its cursor by
+                // what it receives.
                 if new_elements_size <= self.config.max_final_state_elements_size
-                    && new_elements.len() < self.config.max_final_state_elements_count
+                    && (new_elements_footprint <= batch_allocation_budget
+                        || new_elements.is_empty())
                 {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
@@ -312,6 +328,10 @@ where
 
         let mut new_elements = BTreeMap::new();
         let mut new_elements_size = 0;
+        // Same footprint bound as the state batch above.
+        let mut new_elements_footprint = 0;
+        let batch_allocation_budget =
+            bootstrap_batch_allocation_budget(self.config.max_versioning_elements_size);
 
         if !last_versioning_step.finished() {
             let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
@@ -356,8 +376,14 @@ where
                 // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
                 // in order to make deserialization easier
                 new_elements_size += key_len + value_len + buffer.len();
+                new_elements_footprint +=
+                    key_len + value_len + buffer.len() + BOOTSTRAP_BATCH_ENTRY_OVERHEAD;
+                // The first entry is always taken, whatever it costs: a batch that admits no
+                // entry at all would stall the stream, since the client advances its cursor by
+                // what it receives.
                 if new_elements_size <= self.config.max_versioning_elements_size
-                    && new_elements.len() < self.config.max_versioning_elements_count
+                    && (new_elements_footprint <= batch_allocation_budget
+                        || new_elements.is_empty())
                 {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
@@ -1045,10 +1071,7 @@ mod test {
     use tempfile::tempdir;
 
     use massa_hash::Hash;
-    use massa_models::config::{
-        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
-        THREAD_COUNT,
-    };
+    use massa_models::config::THREAD_COUNT;
     use massa_models::streaming_step::StreamingStep;
 
     use super::*;
@@ -1090,8 +1113,6 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1123,8 +1144,6 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1210,8 +1229,6 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1298,8 +1315,6 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1350,8 +1365,6 @@ mod test {
                 max_history_length: 100,
                 max_final_state_elements_size: 100,
                 max_versioning_elements_size: 100,
-                max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-                max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
                 enable_metrics: false,
@@ -1377,8 +1390,6 @@ mod test {
                 max_history_length: 100,
                 max_final_state_elements_size: 100,
                 max_versioning_elements_size: 100,
-                max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-                max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
                 enable_metrics: false,
@@ -1413,8 +1424,6 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1463,8 +1472,6 @@ mod test {
                 max_history_length: 100,
                 max_final_state_elements_size: 100,
                 max_versioning_elements_size: 100,
-                max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-                max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
                 enable_metrics: false,
@@ -1515,8 +1522,6 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1600,6 +1605,60 @@ mod test {
         assert_matches!(stream_batch, Err(TimeError(..)));
     }
 
+    /// The batch we build is bounded by its in-memory footprint as well as by its wire size, so a
+    /// column full of tiny entries stops on the allocation budget instead of filling the size
+    /// limit. Entry counts are asserted as literals rather than recomputed from the constants the
+    /// code uses, so that moving one of them fails this test instead of silently agreeing with it.
+    #[test]
+    fn test_db_stream_stops_on_allocation_budget() {
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            // Budget: 10_000 + (10_000 / 16) * 96 = 70_000 bytes.
+            max_final_state_elements_size: 10_000,
+            max_versioning_elements_size: 10_000,
+            thread_count: THREAD_COUNT,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        db_opts.set_paranoid_checks(true);
+
+        let db = Arc::new(RwLock::new(Box::new(
+            MassaDB::new_with_options(db_config, db_opts).unwrap(),
+        )
+            as Box<dyn MassaDBController + 'static>));
+
+        // 1_000 entries of 3-byte key + 1-byte value: 6 bytes each on the wire (both length
+        // varints are one byte), 102 bytes each once charged the map overhead.
+        const ENTRIES: usize = 1_000;
+        let batch = DBBatch::from_iter(
+            (0..ENTRIES as u16).map(|i| (vec![1, (i >> 8) as u8, i as u8], Some(vec![7u8]))),
+        );
+        let slot = Slot::new(1, 0);
+        db.write().write_batch(batch, DBBatch::new(), Some(slot));
+
+        let stream_batch = db
+            .read()
+            .get_batch_to_stream(&StreamingStep::Started, None)
+            .unwrap();
+
+        // 6 * 1_000 = 6_000 bytes of wire, well inside the 10_000-byte size limit, so the size
+        // bound is not what stops the batch here: 102 * 686 = 69_972 fits the budget and one more
+        // entry would not.
+        assert_eq!(stream_batch.new_elements.len(), 686);
+        let wire_size: usize = stream_batch
+            .new_elements
+            .iter()
+            .map(|(k, v)| k.len() + v.len() + 2)
+            .sum();
+        assert!(
+            wire_size < 10_000,
+            "the size limit must not be the binding bound in this test, got {wire_size}"
+        );
+    }
+
     #[test]
     fn test_db_stream_versioning() {
         // Same as test_db_stream but for versioning
@@ -1611,8 +1670,6 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1702,8 +1759,6 @@ mod test {
             max_history_length: 100,
             max_final_state_elements_size: 10,
             max_versioning_elements_size: 10,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1788,10 +1843,11 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_final_state_elements_size: 20,
-            max_versioning_elements_size: 20,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
+            // Large enough that a batch holds the whole (tiny) db: the allocation budget this
+            // size derives is what admits both entries, the entries themselves being far below
+            // `MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE`.
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
@@ -1903,10 +1959,11 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 4,
-            max_final_state_elements_size: 20,
-            max_versioning_elements_size: 20,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
+            // Large enough that a batch holds the whole (tiny) db: the allocation budget this
+            // size derives is what admits both entries, the entries themselves being far below
+            // `MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE`.
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,

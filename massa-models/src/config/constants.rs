@@ -347,10 +347,6 @@ pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
 pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = 100_000_000;
 /// Max bytes in final states parts
 pub const MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = 10_000_000;
-/// Max number of `(key, value)` entries in a final-state bootstrap `new_elements` batch we send
-pub const MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT: u32 = 100_000;
-/// Max number of `(key, value)` entries in a versioning bootstrap `new_elements` batch we send
-pub const MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT: u32 = 100_000;
 
 /// Rough in-memory cost of one `(key, value)` entry of a received bootstrap batch, on top of the
 /// bytes it carries: the `BTreeMap` node slot it occupies, the two `Vec` headers, and allocator
@@ -361,10 +357,12 @@ pub const BOOTSTRAP_BATCH_ENTRY_OVERHEAD: usize = 96;
 /// Smallest wire size a *real* `(key, value)` entry of a bootstrap batch is expected to have.
 ///
 /// Every state key carries a column-family prefix (`ledger/`, `versioning/`, ...) plus its own
-/// identifying bytes, so real entries run to several tens of bytes; this is a deliberately
-/// pessimistic floor, well under the smallest key any component actually writes, because
-/// under-estimating it would reject honest batches.
-pub const MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE: usize = 8;
+/// identifying bytes, so real entries run to several tens of bytes. Measured over a full mainnet
+/// bootstrap (33 state parts of 100 MB): the smallest entry seen was 22 bytes on the wire, and the
+/// densest part held ~3.57M entries, i.e. a ~443 MB in-memory footprint against the ~700 MB budget
+/// this value yields for a state part. Lowering it loosens the bound for no gain; raising it past
+/// the measured floor would start rejecting honest batches.
+pub const MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE: usize = 16;
 
 /// Budget for the in-memory footprint of one received bootstrap batch section, derived from the
 /// wire size that section is already bounded by.

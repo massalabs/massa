@@ -230,16 +230,16 @@ fn test_reject_batch_over_allocation_budget() {
     assert_batch_over_budget_error(&bytes, &config);
 }
 
-/// A `MAIN.5.0` server bounds a `new_elements` batch by size only, so it streams far more entries
-/// per part than the count we ourselves send (`MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT`). Under
-/// the production budget such a batch must parse, otherwise a new node cannot bootstrap from any
-/// existing 5.0 peer.
+/// A `MAIN.5.0` server bounds a `new_elements` batch by size only, so a real part holds entries by
+/// the million (measured on mainnet: up to ~3.57M per 100 MB part) rather than the 100 000 an
+/// element-count cap would allow. Under the production budget such a batch must parse, otherwise a
+/// new node cannot bootstrap from any existing 5.0 peer.
 #[test]
-fn test_accepts_batch_larger_than_the_count_we_send() {
+fn test_accepts_batch_far_denser_than_an_element_count_cap() {
     let config = bootstrap_client_config_with_batch_allocation(bootstrap_batch_allocation_budget(
         MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
     ) as u64);
-    let entries = MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize + 50_000;
+    let entries = 150_000;
 
     let mut bytes = Vec::new();
     let msg = minimal_bootstrap_part_message(state_shaped_kv_map(entries), BTreeMap::new());

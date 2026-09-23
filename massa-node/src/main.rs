@@ -96,8 +96,7 @@ use massa_models::config::{
     DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_MAX_ASYNC_GAS,
     DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST, DEFERRED_CALL_MIN_GAS_INCREMENT,
     DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-    MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_EVENT_DATA_SIZE, MAX_EVENT_DATA_SIZE_V0, MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE,
     MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
     MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
@@ -274,10 +273,6 @@ async fn launch(
         max_history_length: SETTINGS.ledger.final_history_length,
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE.try_into().unwrap(),
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE.try_into().unwrap(),
-        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT
-            .try_into()
-            .unwrap(),
-        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT.try_into().unwrap(),
         thread_count: THREAD_COUNT,
         max_ledger_backups: SETTINGS.ledger.max_ledger_backups,
         enable_metrics: SETTINGS.metrics.enabled,
@@ -393,9 +388,9 @@ async fn launch(
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-        // Bound the in-memory footprint of a batch we *receive*. This is not the count we send
-        // (MAX_BOOTSTRAP_*_ELEMENTS_COUNT, enforced in MassaDBConfig above): a MAIN.5.0 server
-        // bounds a batch by size only, so the sending count cannot be enforced on this side.
+        // Bound the in-memory footprint of a batch we *receive*. The sending side applies the
+        // same accounting to the batches it builds (see `get_batch_to_stream`), so a batch any
+        // peer of this version sends fits the budget a peer of this version parses with.
         max_final_state_batch_allocation: bootstrap_batch_allocation_budget(
             MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
         ) as u64,
