@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Consensus signature layout gating (F90 / PDF #11)."><title>massa_versioning::consensus_signature - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-e56847b5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_versioning" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.1 (ed61e7d7e 2025-11-07)" data-channel="1.91.1" data-search-js="search-e256b49e.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-6dc2a7f3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Module consensus_signature</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../massa_versioning/index.html">massa_<wbr>versioning</a><span class="version">5.0.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module consensus_<wbr>signature</a></h2><h3><a href="#functions">Module Items</a></h3><ul class="block"><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate massa_<wbr>versioning</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">massa_versioning</a></div><h1>Module <span>consensus_<wbr>signature</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/massa_versioning/consensus_signature.rs.html#1-214">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Consensus signature layout gating (F90 / PDF #11).</p>
+<p>Endorsements and block headers used to be signed with a chain-agnostic
+hash: the signed hash did not include the chain id, so two legitimate
+same-(slot, index) signatures produced by the same validator on two
+different chains (e.g. MAINNET + LABNET) could be combined into a
+denunciation on either chain and slash the validator for entirely normal
+cross-chain operation.</p>
+<p>The fix folds the chain id into the signed hash, deployed through the
+existing MIP-0002 network-versioning mechanism (the release that bumps
+<code>MipComponent::Execution</code> to <code>MIP_0002_EXECUTION_VERSION</code>), so
+upgraded and un-upgraded nodes keep agreeing on signature validity
+across the activation boundary - no flag-day change.</p>
+<p>This module exposes the single helper that decides, for a given slot,
+which signed-hash layout to use:</p>
+<ul>
+<li><code>None</code>  -&gt; legacy (chain-agnostic) layout, identical to the pre-fix one.</li>
+<li><code>Some(chain_id)</code> -&gt; chain-scoped layout, folding <code>chain_id</code> into the
+signed hash.</li>
+</ul>
+<p>The decision is based on the network-agreed active <code>Execution</code> component
+version at the message’s slot timestamp - not any self-claimed header
+field. Signing, on-receive verification, denunciation creation and
+denunciation execution must all call this with the same
+<code>(mip_store, chain_id, slot_ts)</code> so they flip layouts together at the
+deterministic activation slot.</p>
+</div></details><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><dl class="item-table"><dt><a class="fn" href="fn.sig_chain_id_for_slot.html" title="fn massa_versioning::consensus_signature::sig_chain_id_for_slot">sig_<wbr>chain_<wbr>id_<wbr>for_<wbr>slot</a></dt><dd>Returns the <code>sig_chain_id</code> to use for signing / verifying an endorsement
+or block header whose slot timestamp is <code>slot_ts</code> on the local chain
+identified by <code>chain_id</code>.</dd></dl></section></div></main></body></html>

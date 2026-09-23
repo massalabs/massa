@@ -243,281 +243,244 @@
 <a href=#243 id=243 data-nosnippet>243</a></span><span class="kw">pub const </span>MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
 <a href=#244 id=244 data-nosnippet>244</a><span class="doccomment">/// Maximum number of key/values in the datastore of a `ExecuteSC` operation
 <a href=#245 id=245 data-nosnippet>245</a></span><span class="kw">pub const </span>MAX_OPERATION_DATASTORE_ENTRY_COUNT: u64 = <span class="number">128</span>;
-<a href=#246 id=246 data-nosnippet>246</a><span class="doccomment">/// Maximum length function name in call SC
-<a href=#247 id=247 data-nosnippet>247</a></span><span class="kw">pub const </span>MAX_FUNCTION_NAME_LENGTH: u16 = <span class="number">255</span>;
-<a href=#248 id=248 data-nosnippet>248</a><span class="doccomment">/// Maximum size of parameters in call SC
-<a href=#249 id=249 data-nosnippet>249</a></span><span class="kw">pub const </span>MAX_PARAMETERS_SIZE: u32 = <span class="number">10_000_000</span>;
-<a href=#250 id=250 data-nosnippet>250</a><span class="doccomment">/// Maximum length of `rng_seed` in thread cycle
-<a href=#251 id=251 data-nosnippet>251</a></span><span class="kw">pub const </span>MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT <span class="kw">as </span>u64) <span class="kw">as </span>u32;
-<a href=#252 id=252 data-nosnippet>252</a>
-<a href=#253 id=253 data-nosnippet>253</a><span class="doccomment">/// CondomMiddleware limits
-<a href=#254 id=254 data-nosnippet>254</a>/// see test_condom_middleware_calibrate in massa-sc-runtime for origin of
-<a href=#255 id=255 data-nosnippet>255</a>/// values.
-<a href=#256 id=256 data-nosnippet>256</a>/// Maximum number of function defined in a smart contract
-<a href=#257 id=257 data-nosnippet>257</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS: usize = <span class="number">512</span>;
-<a href=#258 id=258 data-nosnippet>258</a><span class="doccomment">/// Maximum number of function used by a smart contract
-<a href=#259 id=259 data-nosnippet>259</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_FUNCTIONS: usize =
-<a href=#260 id=260 data-nosnippet>260</a>    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_FUNCTION_IMPORTS;
-<a href=#261 id=261 data-nosnippet>261</a><span class="doccomment">/// Maximum number of arguments to a function
-<a href=#262 id=262 data-nosnippet>262</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_FUNCTION_ARGS: usize = <span class="number">64</span>;
-<a href=#263 id=263 data-nosnippet>263</a><span class="doccomment">/// Maximum number of value a function can return
-<a href=#264 id=264 data-nosnippet>264</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES: usize = <span class="number">8</span>;
-<a href=#265 id=265 data-nosnippet>265</a><span class="doccomment">/// Maximum signature length (total number of arguments and return values) for a
-<a href=#266 id=266 data-nosnippet>266</a>/// function of a smart contract module
-<a href=#267 id=267 data-nosnippet>267</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_SIGNATURE_LEN: usize =
-<a href=#268 id=268 data-nosnippet>268</a>    MAX_RUNTIME_MODULE_FUNCTION_ARGS + MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES;
-<a href=#269 id=269 data-nosnippet>269</a><span class="doccomment">/// Maximum length for the name of a function defined in a smart contract
-<a href=#270 id=270 data-nosnippet>270</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN: usize = <span class="number">256</span>;
-<a href=#271 id=271 data-nosnippet>271</a><span class="doccomment">/// Maximum length for the name of a smart contract
-<a href=#272 id=272 data-nosnippet>272</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_NAME_LEN: usize = <span class="number">256</span>;
-<a href=#273 id=273 data-nosnippet>273</a><span class="doccomment">/// Maximum number of custom section data
-<a href=#274 id=274 data-nosnippet>274</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN: usize = <span class="number">1</span>;
-<a href=#275 id=275 data-nosnippet>275</a><span class="doccomment">/// Maximum length for the custom section data
-<a href=#276 id=276 data-nosnippet>276</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN: usize = <span class="number">1_000_000</span>;
-<a href=#277 id=277 data-nosnippet>277</a><span class="doccomment">/// Maximum number of functions a module can import
-<a href=#278 id=278 data-nosnippet>278</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_FUNCTION_IMPORTS: usize = <span class="number">256</span>;
-<a href=#279 id=279 data-nosnippet>279</a><span class="doccomment">/// Maximum number of memory a module can import
-<a href=#280 id=280 data-nosnippet>280</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_MEMORY_IMPORTS: usize = <span class="number">1</span>;
-<a href=#281 id=281 data-nosnippet>281</a><span class="doccomment">/// Maximum number of elements a module can import
-<a href=#282 id=282 data-nosnippet>282</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_IMPORTS: usize =
-<a href=#283 id=283 data-nosnippet>283</a>    MAX_RUNTIME_MODULE_FUNCTION_IMPORTS + MAX_RUNTIME_MODULE_MEMORY_IMPORTS;
-<a href=#284 id=284 data-nosnippet>284</a><span class="doccomment">/// Maximum number of table initializer in a smart contract
-<a href=#285 id=285 data-nosnippet>285</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_TABLE_INITIALIZER: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
-<a href=#286 id=286 data-nosnippet>286</a><span class="doccomment">/// Maximum number of passive element in a smart contract
-<a href=#287 id=287 data-nosnippet>287</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_PASSIVE_ELEMENT: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
-<a href=#288 id=288 data-nosnippet>288</a><span class="doccomment">/// Maximum number of passive data in a smart contract
-<a href=#289 id=289 data-nosnippet>289</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_PASSIVE_DATA: usize = <span class="number">512</span>;
-<a href=#290 id=290 data-nosnippet>290</a><span class="doccomment">/// Maximum number of global initializer in a smart contract
-<a href=#291 id=291 data-nosnippet>291</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER: usize = <span class="number">512</span>;
-<a href=#292 id=292 data-nosnippet>292</a><span class="doccomment">/// Maximum number of table in a smart contract
-<a href=#293 id=293 data-nosnippet>293</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_TABLE: usize = <span class="number">16</span>;
-<a href=#294 id=294 data-nosnippet>294</a><span class="doccomment">/// Maximum number of memories in a smart contract
-<a href=#295 id=295 data-nosnippet>295</a>/// - only 1 supported so far (cf specification)
-<a href=#296 id=296 data-nosnippet>296</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_MEMORIES: usize = <span class="number">1</span>;
-<a href=#297 id=297 data-nosnippet>297</a><span class="doccomment">/// Maximum number of exports for a smart contract module (function and globals)
-<a href=#298 id=298 data-nosnippet>298</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_EXPORTS: usize =
-<a href=#299 id=299 data-nosnippet>299</a>    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER;
-<a href=#300 id=300 data-nosnippet>300</a>
-<a href=#301 id=301 data-nosnippet>301</a><span class="comment">// ***********************
-<a href=#302 id=302 data-nosnippet>302</a>// Bootstrap constants
-<a href=#303 id=303 data-nosnippet>303</a>//
-<a href=#304 id=304 data-nosnippet>304</a>
-<a href=#305 id=305 data-nosnippet>305</a></span><span class="doccomment">/// Max message size for bootstrap
-<a href=#306 id=306 data-nosnippet>306</a>/// Note: Update sizes are not limited, the 190Mb constant is to take them into account.
-<a href=#307 id=307 data-nosnippet>307</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE: u32 = MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE
-<a href=#308 id=308 data-nosnippet>308</a>    .saturating_add(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE)
-<a href=#309 id=309 data-nosnippet>309</a>    .saturating_add(<span class="number">190_000_000_u32</span>);
-<a href=#310 id=310 data-nosnippet>310</a><span class="doccomment">/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE`]
-<a href=#311 id=311 data-nosnippet>311</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE_BYTES: usize =
-<a href=#312 id=312 data-nosnippet>312</a>    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE);
-<a href=#313 id=313 data-nosnippet>313</a><span class="doccomment">/// Max message size for bootstrap coming from client
-<a href=#314 id=314 data-nosnippet>314</a>/// The worst case is a AskBootstrapPart with mostly 2 keys and MAX_CONSENSUS_BLOCKS_IDS blocks_ids.
-<a href=#315 id=315 data-nosnippet>315</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE: u32 = <span class="number">1024 </span>* <span class="number">1024</span>;
-<a href=#316 id=316 data-nosnippet>316</a>
-<a href=#317 id=317 data-nosnippet>317</a><span class="doccomment">/// Bound the bootstrap message length prefix is *encoded* against, in both directions.
-<a href=#318 id=318 data-nosnippet>318</a>///
-<a href=#319 id=319 data-nosnippet>319</a>/// This is part of the wire format, not a policy knob: `to_be_bytes_min` derives the width of
-<a href=#320 id=320 data-nosnippet>320</a>/// the prefix from the bound it is given, and the frame header is fixed-width, so lowering this
-<a href=#321 id=321 data-nosnippet>321</a>/// narrows the header and leaves any peer built against the wider one blocked forever on bytes
-<a href=#322 id=322 data-nosnippet>322</a>/// that never arrive. It stays pinned to the server-to-client bound, which is the encoding that
-<a href=#323 id=323 data-nosnippet>323</a>/// has been on the wire since before `MAIN.5.0`. The tighter per-direction caps are enforced as
-<a href=#324 id=324 data-nosnippet>324</a>/// value checks on the decoded length instead of by the encoding width.
-<a href=#325 id=325 data-nosnippet>325</a></span><span class="kw">pub const </span>BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX: u32 = MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE;
-<a href=#326 id=326 data-nosnippet>326</a><span class="doccomment">/// The number of bytes needed to encode [`BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX`]
-<a href=#327 id=327 data-nosnippet>327</a></span><span class="kw">pub const </span>BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES: usize =
-<a href=#328 id=328 data-nosnippet>328</a>    u32_be_bytes_min_length(BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX);
-<a href=#329 id=329 data-nosnippet>329</a><span class="kw">const _</span>: () = <span class="macro">assert!</span>(
-<a href=#330 id=330 data-nosnippet>330</a>    BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES == <span class="number">4</span>,
-<a href=#331 id=331 data-nosnippet>331</a>    <span class="string">"the bootstrap length prefix has been 4 bytes wide since before MAIN.5.0; changing its width \
-<a href=#332 id=332 data-nosnippet>332</a>     breaks bootstrap against every deployed node"
-<a href=#333 id=333 data-nosnippet>333</a></span>);
-<a href=#334 id=334 data-nosnippet>334</a><span class="doccomment">/// Max number of blocks we provide/ take into account while bootstrapping
-<a href=#335 id=335 data-nosnippet>335</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_BLOCKS: u32 = <span class="number">1000000</span>;
-<a href=#336 id=336 data-nosnippet>336</a><span class="doccomment">/// max bootstrapped cliques
-<a href=#337 id=337 data-nosnippet>337</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_CLIQUES: u32 = <span class="number">1000</span>;
-<a href=#338 id=338 data-nosnippet>338</a><span class="doccomment">/// max bootstrapped dependencies
-<a href=#339 id=339 data-nosnippet>339</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_DEPS: u32 = <span class="number">1000</span>;
-<a href=#340 id=340 data-nosnippet>340</a><span class="doccomment">/// Max number of child nodes
-<a href=#341 id=341 data-nosnippet>341</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_CHILDREN: u32 = <span class="number">1000</span>;
-<a href=#342 id=342 data-nosnippet>342</a><span class="doccomment">/// Max number of cycles in PoS bootstrap
-<a href=#343 id=343 data-nosnippet>343</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_POS_CYCLES: u32 = <span class="number">5</span>;
-<a href=#344 id=344 data-nosnippet>344</a><span class="doccomment">/// Max async pool changes
-<a href=#345 id=345 data-nosnippet>345</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = <span class="number">100_000</span>;
-<a href=#346 id=346 data-nosnippet>346</a><span class="doccomment">/// Max bytes in final states parts
-<a href=#347 id=347 data-nosnippet>347</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = <span class="number">100_000_000</span>;
-<a href=#348 id=348 data-nosnippet>348</a><span class="doccomment">/// Max bytes in final states parts
-<a href=#349 id=349 data-nosnippet>349</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = <span class="number">10_000_000</span>;
-<a href=#350 id=350 data-nosnippet>350</a>
-<a href=#351 id=351 data-nosnippet>351</a><span class="doccomment">/// Rough in-memory cost of one `(key, value)` entry of a received bootstrap batch, on top of the
-<a href=#352 id=352 data-nosnippet>352</a>/// bytes it carries: the `BTreeMap` node slot it occupies, the two `Vec` headers, and allocator
-<a href=#353 id=353 data-nosnippet>353</a>/// rounding. Deliberately an over-estimate, so that the budget below is reached before the
-<a href=#354 id=354 data-nosnippet>354</a>/// allocator actually is.
-<a href=#355 id=355 data-nosnippet>355</a></span><span class="kw">pub const </span>BOOTSTRAP_BATCH_ENTRY_OVERHEAD: usize = <span class="number">96</span>;
-<a href=#356 id=356 data-nosnippet>356</a>
-<a href=#357 id=357 data-nosnippet>357</a><span class="doccomment">/// Smallest wire size a *real* `(key, value)` entry of a bootstrap batch is expected to have.
-<a href=#358 id=358 data-nosnippet>358</a>///
-<a href=#359 id=359 data-nosnippet>359</a>/// Every state key carries a column-family prefix (`ledger/`, `versioning/`, ...) plus its own
-<a href=#360 id=360 data-nosnippet>360</a>/// identifying bytes, so real entries run to several tens of bytes. Measured over a full mainnet
-<a href=#361 id=361 data-nosnippet>361</a>/// bootstrap (33 state parts of 100 MB): the smallest entry seen was 22 bytes on the wire, and the
-<a href=#362 id=362 data-nosnippet>362</a>/// densest part held ~3.57M entries, i.e. a ~443 MB in-memory footprint against the ~700 MB budget
-<a href=#363 id=363 data-nosnippet>363</a>/// this value yields for a state part. Lowering it loosens the bound for no gain; raising it past
-<a href=#364 id=364 data-nosnippet>364</a>/// the measured floor would start rejecting honest batches.
-<a href=#365 id=365 data-nosnippet>365</a></span><span class="kw">pub const </span>MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE: usize = <span class="number">16</span>;
-<a href=#366 id=366 data-nosnippet>366</a>
-<a href=#367 id=367 data-nosnippet>367</a><span class="doccomment">/// Budget for the in-memory footprint of one received bootstrap batch section, derived from the
-<a href=#368 id=368 data-nosnippet>368</a>/// wire size that section is already bounded by.
-<a href=#369 id=369 data-nosnippet>369</a>///
-<a href=#370 id=370 data-nosnippet>370</a>/// Counting entries is not a sufficient bound on its own, and neither is the wire size: a batch is
-<a href=#371 id=371 data-nosnippet>371</a>/// bounded in bytes on the wire, but an entry that costs two bytes there costs
-<a href=#372 id=372 data-nosnippet>372</a>/// [`BOOTSTRAP_BATCH_ENTRY_OVERHEAD`] bytes once it is a map node, so a batch of tiny entries
-<a href=#373 id=373 data-nosnippet>373</a>/// amplifies far beyond the size it announced. This budget charges each entry the bytes it carries
-<a href=#374 id=374 data-nosnippet>374</a>/// *plus* that overhead, which bounds the amplification directly instead of bounding the wire and
-<a href=#375 id=375 data-nosnippet>375</a>/// hoping. It is calibrated so that any batch a conforming peer can build fits comfortably —
-<a href=#376 id=376 data-nosnippet>376</a>/// including one from a `MAIN.5.0` server, which bounds a batch by size only.
-<a href=#377 id=377 data-nosnippet>377</a></span><span class="kw">pub const fn </span>bootstrap_batch_allocation_budget(section_wire_size: usize) -&gt; usize {
-<a href=#378 id=378 data-nosnippet>378</a>    section_wire_size.saturating_add(
-<a href=#379 id=379 data-nosnippet>379</a>        (section_wire_size / MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE)
-<a href=#380 id=380 data-nosnippet>380</a>            .saturating_mul(BOOTSTRAP_BATCH_ENTRY_OVERHEAD),
-<a href=#381 id=381 data-nosnippet>381</a>    )
-<a href=#382 id=382 data-nosnippet>382</a>}
-<a href=#383 id=383 data-nosnippet>383</a><span class="doccomment">/// Max size of the IP list
-<a href=#384 id=384 data-nosnippet>384</a></span><span class="kw">pub const </span>IP_LIST_MAX_SIZE: usize = <span class="number">10000</span>;
-<a href=#385 id=385 data-nosnippet>385</a><span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import
-<a href=#386 id=386 data-nosnippet>386</a></span><span class="kw">pub const </span>BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = <span class="number">32</span>;
-<a href=#387 id=387 data-nosnippet>387</a><span class="doccomment">/// Max size of the printed error
-<a href=#388 id=388 data-nosnippet>388</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_ERROR_LENGTH: u64 = <span class="number">10000</span>;
-<a href=#389 id=389 data-nosnippet>389</a>
-<a href=#390 id=390 data-nosnippet>390</a><span class="doccomment">/// Protocol controller channel size
-<a href=#391 id=391 data-nosnippet>391</a></span><span class="kw">pub const </span>PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">1024</span>;
-<a href=#392 id=392 data-nosnippet>392</a><span class="doccomment">/// Protocol event channel size
-<a href=#393 id=393 data-nosnippet>393</a></span><span class="kw">pub const </span>PROTOCOL_EVENT_CHANNEL_SIZE: usize = <span class="number">1024</span>;
-<a href=#394 id=394 data-nosnippet>394</a>
-<a href=#395 id=395 data-nosnippet>395</a><span class="comment">// ***********************
-<a href=#396 id=396 data-nosnippet>396</a>// Constants used for execution module (injected from ConsensusConfig)
-<a href=#397 id=397 data-nosnippet>397</a>//
-<a href=#398 id=398 data-nosnippet>398</a>
-<a href=#399 id=399 data-nosnippet>399</a></span><span class="doccomment">/// Maximum of GAS allowed for a block
-<a href=#400 id=400 data-nosnippet>400</a></span><span class="kw">pub const </span>MAX_GAS_PER_BLOCK: u64 = u32::MAX <span class="kw">as </span>u64;
-<a href=#401 id=401 data-nosnippet>401</a><span class="doccomment">/// Base GAS budget for asynchronous messages execution on one slot.
-<a href=#402 id=402 data-nosnippet>402</a>/// This is not a strict per-slot cap: since MIP-0001, `execute_slot` tops this budget
-<a href=#403 id=403 data-nosnippet>403</a>/// up with the gas left unused by the block at that slot (and subtracts the gas booked
-<a href=#404 id=404 data-nosnippet>404</a>/// by deferred calls), so async execution can exceed this value on underfilled slots.
-<a href=#405 id=405 data-nosnippet>405</a>/// The bound that always holds is `MAX_GAS_PER_BLOCK + MAX_ASYNC_GAS` for the whole slot.
-<a href=#406 id=406 data-nosnippet>406</a></span><span class="kw">pub const </span>MAX_ASYNC_GAS: u64 = <span class="number">1_000_000_000</span>;
-<a href=#407 id=407 data-nosnippet>407</a><span class="doccomment">/// Constant cost applied to asynchronous messages (to take into account some costs related to snapshot)
-<a href=#408 id=408 data-nosnippet>408</a></span><span class="kw">pub const </span>ASYNC_MSG_CST_GAS_COST: u64 = <span class="number">1_000_000</span>;
-<a href=#409 id=409 data-nosnippet>409</a><span class="doccomment">/// Gas used by a base operation (transaction, roll buy, roll sell)
-<a href=#410 id=410 data-nosnippet>410</a></span><span class="kw">pub const </span>BASE_OPERATION_GAS_COST: u64 = <span class="number">800_000</span>; <span class="comment">// approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
-<a href=#411 id=411 data-nosnippet>411</a></span><span class="doccomment">/// Maximum event size in bytes
-<a href=#412 id=412 data-nosnippet>412</a></span><span class="kw">pub const </span>MAX_EVENT_DATA_SIZE_V0: usize = <span class="number">50_000</span>;
-<a href=#413 id=413 data-nosnippet>413</a><span class="doccomment">/// Maximum event size in bytes
-<a href=#414 id=414 data-nosnippet>414</a></span><span class="kw">pub const </span>MAX_EVENT_DATA_SIZE: usize = <span class="number">1024</span>;
-<a href=#415 id=415 data-nosnippet>415</a><span class="doccomment">/// Maximum event number that can be emitted for an operation
-<a href=#416 id=416 data-nosnippet>416</a></span><span class="kw">pub const </span>MAX_EVENT_PER_OPERATION: usize = <span class="number">25</span>;
-<a href=#417 id=417 data-nosnippet>417</a><span class="doccomment">/// Maximum number of recursion for calls
-<a href=#418 id=418 data-nosnippet>418</a></span><span class="kw">pub const </span>MAX_RECURSIVE_CALLS_DEPTH: u16 = <span class="number">25</span>;
-<a href=#419 id=419 data-nosnippet>419</a>
-<a href=#420 id=420 data-nosnippet>420</a><span class="comment">//
-<a href=#421 id=421 data-nosnippet>421</a>// Constants used in network
-<a href=#422 id=422 data-nosnippet>422</a>//
-<a href=#423 id=423 data-nosnippet>423</a>
-<a href=#424 id=424 data-nosnippet>424</a></span><span class="doccomment">/// Max number of endorsements per message
-<a href=#425 id=425 data-nosnippet>425</a></span><span class="kw">pub const </span>MAX_ENDORSEMENTS_PER_MESSAGE: u32 = <span class="number">1024</span>;
-<a href=#426 id=426 data-nosnippet>426</a><span class="doccomment">/// node send channel size
-<a href=#427 id=427 data-nosnippet>427</a></span><span class="kw">pub const </span>NODE_SEND_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
-<a href=#428 id=428 data-nosnippet>428</a><span class="doccomment">/// max duplex buffer size
-<a href=#429 id=429 data-nosnippet>429</a></span><span class="kw">pub const </span>MAX_DUPLEX_BUFFER_SIZE: usize = <span class="number">1024</span>;
-<a href=#430 id=430 data-nosnippet>430</a><span class="doccomment">/// network controller communication channel size
-<a href=#431 id=431 data-nosnippet>431</a></span><span class="kw">pub const </span>NETWORK_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
-<a href=#432 id=432 data-nosnippet>432</a><span class="doccomment">/// network event channel size
-<a href=#433 id=433 data-nosnippet>433</a></span><span class="kw">pub const </span>NETWORK_EVENT_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
-<a href=#434 id=434 data-nosnippet>434</a><span class="doccomment">/// network node command channel size
-<a href=#435 id=435 data-nosnippet>435</a></span><span class="kw">pub const </span>NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
-<a href=#436 id=436 data-nosnippet>436</a><span class="doccomment">/// network node event channel size
-<a href=#437 id=437 data-nosnippet>437</a></span><span class="kw">pub const </span>NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
-<a href=#438 id=438 data-nosnippet>438</a>
-<a href=#439 id=439 data-nosnippet>439</a><span class="comment">//
-<a href=#440 id=440 data-nosnippet>440</a>// Constants used in protocol
-<a href=#441 id=441 data-nosnippet>441</a>//
-<a href=#442 id=442 data-nosnippet>442</a></span><span class="doccomment">/// Maximum of time we keep the operations in the storage of the propagation thread
-<a href=#443 id=443 data-nosnippet>443</a></span><span class="kw">pub const </span>MAX_OPERATION_STORAGE_TIME: MassaTime = MassaTime::from_millis(<span class="number">60000</span>);
-<a href=#444 id=444 data-nosnippet>444</a><span class="doccomment">/// Maximum size of channel used for commands in retrieval thread of operations
-<a href=#445 id=445 data-nosnippet>445</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS: usize = <span class="number">10000</span>;
-<a href=#446 id=446 data-nosnippet>446</a><span class="doccomment">/// Maximum size of channel used for commands in propagation thread of operations
-<a href=#447 id=447 data-nosnippet>447</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS: usize = <span class="number">10000</span>;
-<a href=#448 id=448 data-nosnippet>448</a><span class="doccomment">/// Maximum size of channel used for commands in retrieval thread of block
-<a href=#449 id=449 data-nosnippet>449</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS: usize = <span class="number">10000</span>;
-<a href=#450 id=450 data-nosnippet>450</a><span class="doccomment">/// Maximum size of channel used for commands in propagation thread of block
-<a href=#451 id=451 data-nosnippet>451</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS: usize = <span class="number">10000</span>;
-<a href=#452 id=452 data-nosnippet>452</a><span class="doccomment">/// Maximum size of channel used for commands in retrieval thread of endorsements
-<a href=#453 id=453 data-nosnippet>453</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS: usize = <span class="number">10000</span>;
-<a href=#454 id=454 data-nosnippet>454</a><span class="doccomment">/// Maximum size of channel used for commands in propagation thread of endorsements
-<a href=#455 id=455 data-nosnippet>455</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS: usize = <span class="number">10000</span>;
-<a href=#456 id=456 data-nosnippet>456</a><span class="doccomment">/// Maximum size of channel used for commands in connectivity thread
-<a href=#457 id=457 data-nosnippet>457</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY: usize = <span class="number">10000</span>;
-<a href=#458 id=458 data-nosnippet>458</a><span class="doccomment">/// Maximum size of channel used for commands in peers management thread
-<a href=#459 id=459 data-nosnippet>459</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PEERS: usize = <span class="number">10000</span>;
-<a href=#460 id=460 data-nosnippet>460</a><span class="doccomment">/// Maximum size of channel used for commands in peer testers thread
-<a href=#461 id=461 data-nosnippet>461</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS: usize = <span class="number">10000</span>;
-<a href=#462 id=462 data-nosnippet>462</a><span class="doccomment">/// Maximum size of channel used to send network events to the operation handler
-<a href=#463 id=463 data-nosnippet>463</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER: usize = <span class="number">10000</span>;
-<a href=#464 id=464 data-nosnippet>464</a><span class="doccomment">/// Maximum size of channel used to send network events to the block handler
-<a href=#465 id=465 data-nosnippet>465</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER: usize = <span class="number">10000</span>;
-<a href=#466 id=466 data-nosnippet>466</a><span class="doccomment">/// Maximum size of channel used to send network events to the endorsement handler
-<a href=#467 id=467 data-nosnippet>467</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER: usize = <span class="number">10000</span>;
-<a href=#468 id=468 data-nosnippet>468</a><span class="doccomment">/// Maximum size of channel used to send network events to the peer handler
-<a href=#469 id=469 data-nosnippet>469</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER: usize = <span class="number">10000</span>;
-<a href=#470 id=470 data-nosnippet>470</a><span class="doccomment">/// Maximum number of peer in a announcement list of peer
-<a href=#471 id=471 data-nosnippet>471</a></span><span class="kw">pub const </span>MAX_PEERS_IN_ANNOUNCEMENT_LIST: u64 = <span class="number">100</span>;
-<a href=#472 id=472 data-nosnippet>472</a><span class="doccomment">/// Maximum number of listeners for a peer
-<a href=#473 id=473 data-nosnippet>473</a></span><span class="kw">pub const </span>MAX_LISTENERS_PER_PEER: u64 = <span class="number">100</span>;
-<a href=#474 id=474 data-nosnippet>474</a><span class="comment">//
-<a href=#475 id=475 data-nosnippet>475</a>// Constants used in versioning
-<a href=#476 id=476 data-nosnippet>476</a>//
-<a href=#477 id=477 data-nosnippet>477</a></span><span class="doccomment">/// Threshold to accept a new versioning
-<a href=#478 id=478 data-nosnippet>478</a></span><span class="kw">pub const </span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio&lt;u64&gt; = Ratio::new_raw(<span class="number">50</span>, <span class="number">100</span>);
-<a href=#479 id=479 data-nosnippet>479</a><span class="doccomment">/// Block count to process in MipStoreStats (for state change threshold)
-<a href=#480 id=480 data-nosnippet>480</a></span><span class="kw">pub const </span>MIP_STORE_STATS_BLOCK_CONSIDERED: usize = <span class="number">1000</span>;
-<a href=#481 id=481 data-nosnippet>481</a><span class="doccomment">/// Minimum value allowed for activation delay (in MIP info)
-<a href=#482 id=482 data-nosnippet>482</a></span><span class="kw">pub const </span>VERSIONING_ACTIVATION_DELAY_MIN: MassaTime = T0.saturating_mul(PERIODS_PER_CYCLE);
-<a href=#483 id=483 data-nosnippet>483</a>
-<a href=#484 id=484 data-nosnippet>484</a><span class="comment">//
-<a href=#485 id=485 data-nosnippet>485</a>// Constants for denunciation factory
-<a href=#486 id=486 data-nosnippet>486</a>//
-<a href=#487 id=487 data-nosnippet>487</a>
-<a href=#488 id=488 data-nosnippet>488</a></span><span class="doccomment">/// denunciation expiration delta
-<a href=#489 id=489 data-nosnippet>489</a></span><span class="kw">pub const </span>DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
-<a href=#490 id=490 data-nosnippet>490</a><span class="doccomment">/// Max number of denunciations that can be included in a block header
-<a href=#491 id=491 data-nosnippet>491</a></span><span class="kw">pub const </span>MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = <span class="number">128</span>;
-<a href=#492 id=492 data-nosnippet>492</a><span class="doccomment">/// Number of roll to remove per denunciation
-<a href=#493 id=493 data-nosnippet>493</a></span><span class="kw">pub const </span>ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = <span class="number">1</span>;
-<a href=#494 id=494 data-nosnippet>494</a><span class="doccomment">/// Maximum size of executed denunciations
-<a href=#495 id=495 data-nosnippet>495</a></span><span class="kw">pub const </span>MAX_DENUNCIATION_CHANGES_LENGTH: u64 = <span class="number">1_000</span>;
-<a href=#496 id=496 data-nosnippet>496</a><span class="doccomment">/// Maximum size of deferred call pool changes
-<a href=#497 id=497 data-nosnippet>497</a></span><span class="comment">// TODO define this value
-<a href=#498 id=498 data-nosnippet>498</a>// TODO: set to a reasonable value max pool changes
-<a href=#499 id=499 data-nosnippet>499</a></span><span class="kw">pub const </span>DEFERRED_CALL_MAX_POOL_CHANGES: u64 = <span class="number">100_000</span>;
-<a href=#500 id=500 data-nosnippet>500</a><span class="doccomment">/// Maximum size of deferred call future slots (1 week)
-<a href=#501 id=501 data-nosnippet>501</a></span><span class="kw">pub const </span>DEFERRED_CALL_MAX_FUTURE_SLOTS: u64 = <span class="number">1209600</span>;
-<a href=#502 id=502 data-nosnippet>502</a><span class="doccomment">/// maximum gas for deferred call
-<a href=#503 id=503 data-nosnippet>503</a></span><span class="kw">pub const </span>DEFERRED_CALL_MAX_ASYNC_GAS: u64 = MAX_ASYNC_GAS;
-<a href=#504 id=504 data-nosnippet>504</a><span class="doccomment">/// max change denominator  
-<a href=#505 id=505 data-nosnippet>505</a></span><span class="kw">pub const </span>DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = <span class="number">1250</span>;
-<a href=#506 id=506 data-nosnippet>506</a><span class="doccomment">/// deferred call min gas increment (1 nanomassa)
-<a href=#507 id=507 data-nosnippet>507</a></span><span class="kw">pub const </span>DEFERRED_CALL_MIN_GAS_INCREMENT: u64 = <span class="number">1</span>;
-<a href=#508 id=508 data-nosnippet>508</a><span class="doccomment">/// deferred call min gas cost (10 nanomassa)
-<a href=#509 id=509 data-nosnippet>509</a></span><span class="kw">pub const </span>DEFERRED_CALL_MIN_GAS_COST: u64 = <span class="number">10</span>;
-<a href=#510 id=510 data-nosnippet>510</a><span class="doccomment">/// deferred call global overbooking penalty
-<a href=#511 id=511 data-nosnippet>511</a></span><span class="kw">pub const </span>DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY: Amount = Amount::from_raw(<span class="number">1_000_000_000</span>);
-<a href=#512 id=512 data-nosnippet>512</a><span class="doccomment">/// deferred call slot overbooking penalty
-<a href=#513 id=513 data-nosnippet>513</a></span><span class="kw">pub const </span>DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(<span class="number">1_000_000_000 </span>/ <span class="number">10_000</span>);
-<a href=#514 id=514 data-nosnippet>514</a><span class="doccomment">/// deferred call call gas cost
-<a href=#515 id=515 data-nosnippet>515</a></span><span class="kw">pub const </span>DEFERRED_CALL_CST_GAS_COST: u64 = <span class="number">750_000</span>;
-<a href=#516 id=516 data-nosnippet>516</a>
-<a href=#517 id=517 data-nosnippet>517</a><span class="comment">// Some checks at compile time that should not be ignored!
-<a href=#518 id=518 data-nosnippet>518</a></span><span class="attr">#[allow(clippy::assertions_on_constants)]
-<a href=#519 id=519 data-nosnippet>519</a></span><span class="kw">const _</span>: () = {
-<a href=#520 id=520 data-nosnippet>520</a>    <span class="macro">assert!</span>(THREAD_COUNT &gt; <span class="number">1</span>);
-<a href=#521 id=521 data-nosnippet>521</a>    <span class="macro">assert!</span>((T0).as_millis() &gt;= <span class="number">1</span>);
-<a href=#522 id=522 data-nosnippet>522</a>    <span class="macro">assert!</span>((T0).as_millis().is_multiple_of(THREAD_COUNT <span class="kw">as </span>u64));
-<a href=#523 id=523 data-nosnippet>523</a>};</code></pre></div></section></main></body></html>
+<a href=#246 id=246 data-nosnippet>246</a><span class="doccomment">/// Maximum number of datastore keys returned per smart-contract call.
+<a href=#247 id=247 data-nosnippet>247</a>/// Enforced on the SC datastore-key path from Execution v2 (MIP-0002, see
+<a href=#248 id=248 data-nosnippet>248</a>/// massa #5284). Queries matching more keys fail loudly instead of being
+<a href=#249 id=249 data-nosnippet>249</a>/// silently truncated.
+<a href=#250 id=250 data-nosnippet>250</a>/// TODO(calibration): provisional value for local sandbox testing. The final
+<a href=#251 id=251 data-nosnippet>251</a>/// value comes from the targeted gas-calibration campaign shared with #5285.
+<a href=#252 id=252 data-nosnippet>252</a></span><span class="kw">pub const </span>MAX_SC_DATASTORE_KEY_COUNT: u32 = <span class="number">1000</span>;
+<a href=#253 id=253 data-nosnippet>253</a><span class="doccomment">/// Maximum length function name in call SC
+<a href=#254 id=254 data-nosnippet>254</a></span><span class="kw">pub const </span>MAX_FUNCTION_NAME_LENGTH: u16 = <span class="number">255</span>;
+<a href=#255 id=255 data-nosnippet>255</a><span class="doccomment">/// Maximum size of parameters in call SC
+<a href=#256 id=256 data-nosnippet>256</a></span><span class="kw">pub const </span>MAX_PARAMETERS_SIZE: u32 = <span class="number">10_000_000</span>;
+<a href=#257 id=257 data-nosnippet>257</a><span class="doccomment">/// Maximum length of `rng_seed` in thread cycle
+<a href=#258 id=258 data-nosnippet>258</a></span><span class="kw">pub const </span>MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT <span class="kw">as </span>u64) <span class="kw">as </span>u32;
+<a href=#259 id=259 data-nosnippet>259</a>
+<a href=#260 id=260 data-nosnippet>260</a><span class="doccomment">/// CondomMiddleware limits
+<a href=#261 id=261 data-nosnippet>261</a>/// see test_condom_middleware_calibrate in massa-sc-runtime for origin of
+<a href=#262 id=262 data-nosnippet>262</a>/// values.
+<a href=#263 id=263 data-nosnippet>263</a>/// Maximum number of function defined in a smart contract
+<a href=#264 id=264 data-nosnippet>264</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS: usize = <span class="number">512</span>;
+<a href=#265 id=265 data-nosnippet>265</a><span class="doccomment">/// Maximum number of function used by a smart contract
+<a href=#266 id=266 data-nosnippet>266</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_FUNCTIONS: usize =
+<a href=#267 id=267 data-nosnippet>267</a>    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_FUNCTION_IMPORTS;
+<a href=#268 id=268 data-nosnippet>268</a><span class="doccomment">/// Maximum number of arguments to a function
+<a href=#269 id=269 data-nosnippet>269</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_FUNCTION_ARGS: usize = <span class="number">64</span>;
+<a href=#270 id=270 data-nosnippet>270</a><span class="doccomment">/// Maximum number of value a function can return
+<a href=#271 id=271 data-nosnippet>271</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES: usize = <span class="number">8</span>;
+<a href=#272 id=272 data-nosnippet>272</a><span class="doccomment">/// Maximum signature length (total number of arguments and return values) for a
+<a href=#273 id=273 data-nosnippet>273</a>/// function of a smart contract module
+<a href=#274 id=274 data-nosnippet>274</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_SIGNATURE_LEN: usize =
+<a href=#275 id=275 data-nosnippet>275</a>    MAX_RUNTIME_MODULE_FUNCTION_ARGS + MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES;
+<a href=#276 id=276 data-nosnippet>276</a><span class="doccomment">/// Maximum length for the name of a function defined in a smart contract
+<a href=#277 id=277 data-nosnippet>277</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN: usize = <span class="number">256</span>;
+<a href=#278 id=278 data-nosnippet>278</a><span class="doccomment">/// Maximum length for the name of a smart contract
+<a href=#279 id=279 data-nosnippet>279</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_NAME_LEN: usize = <span class="number">256</span>;
+<a href=#280 id=280 data-nosnippet>280</a><span class="doccomment">/// Maximum number of custom section data
+<a href=#281 id=281 data-nosnippet>281</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN: usize = <span class="number">1</span>;
+<a href=#282 id=282 data-nosnippet>282</a><span class="doccomment">/// Maximum length for the custom section data
+<a href=#283 id=283 data-nosnippet>283</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN: usize = <span class="number">1_000_000</span>;
+<a href=#284 id=284 data-nosnippet>284</a><span class="doccomment">/// Maximum number of functions a module can import
+<a href=#285 id=285 data-nosnippet>285</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_FUNCTION_IMPORTS: usize = <span class="number">256</span>;
+<a href=#286 id=286 data-nosnippet>286</a><span class="doccomment">/// Maximum number of memory a module can import
+<a href=#287 id=287 data-nosnippet>287</a></span><span class="kw">const </span>MAX_RUNTIME_MODULE_MEMORY_IMPORTS: usize = <span class="number">1</span>;
+<a href=#288 id=288 data-nosnippet>288</a><span class="doccomment">/// Maximum number of elements a module can import
+<a href=#289 id=289 data-nosnippet>289</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_IMPORTS: usize =
+<a href=#290 id=290 data-nosnippet>290</a>    MAX_RUNTIME_MODULE_FUNCTION_IMPORTS + MAX_RUNTIME_MODULE_MEMORY_IMPORTS;
+<a href=#291 id=291 data-nosnippet>291</a><span class="doccomment">/// Maximum number of table initializer in a smart contract
+<a href=#292 id=292 data-nosnippet>292</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_TABLE_INITIALIZER: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
+<a href=#293 id=293 data-nosnippet>293</a><span class="doccomment">/// Maximum number of passive element in a smart contract
+<a href=#294 id=294 data-nosnippet>294</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_PASSIVE_ELEMENT: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
+<a href=#295 id=295 data-nosnippet>295</a><span class="doccomment">/// Maximum number of passive data in a smart contract
+<a href=#296 id=296 data-nosnippet>296</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_PASSIVE_DATA: usize = <span class="number">512</span>;
+<a href=#297 id=297 data-nosnippet>297</a><span class="doccomment">/// Maximum number of global initializer in a smart contract
+<a href=#298 id=298 data-nosnippet>298</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER: usize = <span class="number">512</span>;
+<a href=#299 id=299 data-nosnippet>299</a><span class="doccomment">/// Maximum number of table in a smart contract
+<a href=#300 id=300 data-nosnippet>300</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_TABLE: usize = <span class="number">16</span>;
+<a href=#301 id=301 data-nosnippet>301</a><span class="doccomment">/// Maximum number of memories in a smart contract
+<a href=#302 id=302 data-nosnippet>302</a>/// - only 1 supported so far (cf specification)
+<a href=#303 id=303 data-nosnippet>303</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_MEMORIES: usize = <span class="number">1</span>;
+<a href=#304 id=304 data-nosnippet>304</a><span class="doccomment">/// Maximum number of exports for a smart contract module (function and globals)
+<a href=#305 id=305 data-nosnippet>305</a></span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_EXPORTS: usize =
+<a href=#306 id=306 data-nosnippet>306</a>    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER;
+<a href=#307 id=307 data-nosnippet>307</a>
+<a href=#308 id=308 data-nosnippet>308</a><span class="comment">// ***********************
+<a href=#309 id=309 data-nosnippet>309</a>// Bootstrap constants
+<a href=#310 id=310 data-nosnippet>310</a>//
+<a href=#311 id=311 data-nosnippet>311</a>
+<a href=#312 id=312 data-nosnippet>312</a></span><span class="doccomment">/// Max message size for bootstrap
+<a href=#313 id=313 data-nosnippet>313</a>/// Note: Update sizes are not limited, the 190Mb constant is to take them into account.
+<a href=#314 id=314 data-nosnippet>314</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE: u32 = MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE
+<a href=#315 id=315 data-nosnippet>315</a>    .saturating_add(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE)
+<a href=#316 id=316 data-nosnippet>316</a>    .saturating_add(<span class="number">190_000_000_u32</span>);
+<a href=#317 id=317 data-nosnippet>317</a><span class="doccomment">/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
+<a href=#318 id=318 data-nosnippet>318</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE_BYTES: usize =
+<a href=#319 id=319 data-nosnippet>319</a>    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE);
+<a href=#320 id=320 data-nosnippet>320</a><span class="doccomment">/// Max message size for bootstrap coming from client
+<a href=#321 id=321 data-nosnippet>321</a>/// The worst case is a AskBootstrapPart with mostly 2 keys and MAX_CONSENSUS_BLOCKS_IDS blocks_ids.
+<a href=#322 id=322 data-nosnippet>322</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE: u32 = <span class="number">1024 </span>* <span class="number">1024</span>;
+<a href=#323 id=323 data-nosnippet>323</a><span class="doccomment">/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE`]
+<a href=#324 id=324 data-nosnippet>324</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES: usize =
+<a href=#325 id=325 data-nosnippet>325</a>    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE);
+<a href=#326 id=326 data-nosnippet>326</a><span class="doccomment">/// Max number of blocks we provide/ take into account while bootstrapping
+<a href=#327 id=327 data-nosnippet>327</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_BLOCKS: u32 = <span class="number">1000000</span>;
+<a href=#328 id=328 data-nosnippet>328</a><span class="doccomment">/// max bootstrapped cliques
+<a href=#329 id=329 data-nosnippet>329</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_CLIQUES: u32 = <span class="number">1000</span>;
+<a href=#330 id=330 data-nosnippet>330</a><span class="doccomment">/// max bootstrapped dependencies
+<a href=#331 id=331 data-nosnippet>331</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_DEPS: u32 = <span class="number">1000</span>;
+<a href=#332 id=332 data-nosnippet>332</a><span class="doccomment">/// Max number of child nodes
+<a href=#333 id=333 data-nosnippet>333</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_CHILDREN: u32 = <span class="number">1000</span>;
+<a href=#334 id=334 data-nosnippet>334</a><span class="doccomment">/// Max number of cycles in PoS bootstrap
+<a href=#335 id=335 data-nosnippet>335</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_POS_CYCLES: u32 = <span class="number">5</span>;
+<a href=#336 id=336 data-nosnippet>336</a><span class="doccomment">/// Max async pool changes
+<a href=#337 id=337 data-nosnippet>337</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = <span class="number">100_000</span>;
+<a href=#338 id=338 data-nosnippet>338</a><span class="doccomment">/// Max bytes in final states parts
+<a href=#339 id=339 data-nosnippet>339</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = <span class="number">100_000_000</span>;
+<a href=#340 id=340 data-nosnippet>340</a><span class="doccomment">/// Max bytes in final states parts
+<a href=#341 id=341 data-nosnippet>341</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = <span class="number">10_000_000</span>;
+<a href=#342 id=342 data-nosnippet>342</a><span class="doccomment">/// Max number of `(key, value)` entries in a final-state bootstrap `new_elements` batch
+<a href=#343 id=343 data-nosnippet>343</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT: u32 = <span class="number">100_000</span>;
+<a href=#344 id=344 data-nosnippet>344</a><span class="doccomment">/// Max number of `(key, value)` entries in a versioning bootstrap `new_elements` batch
+<a href=#345 id=345 data-nosnippet>345</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT: u32 = <span class="number">100_000</span>;
+<a href=#346 id=346 data-nosnippet>346</a><span class="doccomment">/// Max size of the IP list
+<a href=#347 id=347 data-nosnippet>347</a></span><span class="kw">pub const </span>IP_LIST_MAX_SIZE: usize = <span class="number">10000</span>;
+<a href=#348 id=348 data-nosnippet>348</a><span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import
+<a href=#349 id=349 data-nosnippet>349</a></span><span class="kw">pub const </span>BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = <span class="number">32</span>;
+<a href=#350 id=350 data-nosnippet>350</a><span class="doccomment">/// Max size of the printed error
+<a href=#351 id=351 data-nosnippet>351</a></span><span class="kw">pub const </span>MAX_BOOTSTRAP_ERROR_LENGTH: u64 = <span class="number">10000</span>;
+<a href=#352 id=352 data-nosnippet>352</a>
+<a href=#353 id=353 data-nosnippet>353</a><span class="doccomment">/// Protocol controller channel size
+<a href=#354 id=354 data-nosnippet>354</a></span><span class="kw">pub const </span>PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+<a href=#355 id=355 data-nosnippet>355</a><span class="doccomment">/// Protocol event channel size
+<a href=#356 id=356 data-nosnippet>356</a></span><span class="kw">pub const </span>PROTOCOL_EVENT_CHANNEL_SIZE: usize = <span class="number">1024</span>;
+<a href=#357 id=357 data-nosnippet>357</a>
+<a href=#358 id=358 data-nosnippet>358</a><span class="comment">// ***********************
+<a href=#359 id=359 data-nosnippet>359</a>// Constants used for execution module (injected from ConsensusConfig)
+<a href=#360 id=360 data-nosnippet>360</a>//
+<a href=#361 id=361 data-nosnippet>361</a>
+<a href=#362 id=362 data-nosnippet>362</a></span><span class="doccomment">/// Maximum of GAS allowed for a block
+<a href=#363 id=363 data-nosnippet>363</a></span><span class="kw">pub const </span>MAX_GAS_PER_BLOCK: u64 = u32::MAX <span class="kw">as </span>u64;
+<a href=#364 id=364 data-nosnippet>364</a><span class="doccomment">/// Base GAS budget for asynchronous messages execution on one slot.
+<a href=#365 id=365 data-nosnippet>365</a>/// This is not a strict per-slot cap: since MIP-0001, `execute_slot` tops this budget
+<a href=#366 id=366 data-nosnippet>366</a>/// up with the gas left unused by the block at that slot (and subtracts the gas booked
+<a href=#367 id=367 data-nosnippet>367</a>/// by deferred calls), so async execution can exceed this value on underfilled slots.
+<a href=#368 id=368 data-nosnippet>368</a>/// The bound that always holds is `MAX_GAS_PER_BLOCK + MAX_ASYNC_GAS` for the whole slot.
+<a href=#369 id=369 data-nosnippet>369</a></span><span class="kw">pub const </span>MAX_ASYNC_GAS: u64 = <span class="number">1_000_000_000</span>;
+<a href=#370 id=370 data-nosnippet>370</a><span class="doccomment">/// Constant cost applied to asynchronous messages (to take into account some costs related to snapshot)
+<a href=#371 id=371 data-nosnippet>371</a></span><span class="kw">pub const </span>ASYNC_MSG_CST_GAS_COST: u64 = <span class="number">1_000_000</span>;
+<a href=#372 id=372 data-nosnippet>372</a><span class="doccomment">/// Gas used by a base operation (transaction, roll buy, roll sell)
+<a href=#373 id=373 data-nosnippet>373</a></span><span class="kw">pub const </span>BASE_OPERATION_GAS_COST: u64 = <span class="number">800_000</span>; <span class="comment">// approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
+<a href=#374 id=374 data-nosnippet>374</a></span><span class="doccomment">/// Maximum event size in bytes
+<a href=#375 id=375 data-nosnippet>375</a></span><span class="kw">pub const </span>MAX_EVENT_DATA_SIZE_V0: usize = <span class="number">50_000</span>;
+<a href=#376 id=376 data-nosnippet>376</a><span class="doccomment">/// Maximum event size in bytes
+<a href=#377 id=377 data-nosnippet>377</a></span><span class="kw">pub const </span>MAX_EVENT_DATA_SIZE: usize = <span class="number">1024</span>;
+<a href=#378 id=378 data-nosnippet>378</a><span class="doccomment">/// Maximum event number that can be emitted for an operation
+<a href=#379 id=379 data-nosnippet>379</a></span><span class="kw">pub const </span>MAX_EVENT_PER_OPERATION: usize = <span class="number">25</span>;
+<a href=#380 id=380 data-nosnippet>380</a><span class="doccomment">/// Maximum number of recursion for calls
+<a href=#381 id=381 data-nosnippet>381</a></span><span class="kw">pub const </span>MAX_RECURSIVE_CALLS_DEPTH: u16 = <span class="number">25</span>;
+<a href=#382 id=382 data-nosnippet>382</a>
+<a href=#383 id=383 data-nosnippet>383</a><span class="comment">//
+<a href=#384 id=384 data-nosnippet>384</a>// Constants used in network
+<a href=#385 id=385 data-nosnippet>385</a>//
+<a href=#386 id=386 data-nosnippet>386</a>
+<a href=#387 id=387 data-nosnippet>387</a></span><span class="doccomment">/// Max number of endorsements per message
+<a href=#388 id=388 data-nosnippet>388</a></span><span class="kw">pub const </span>MAX_ENDORSEMENTS_PER_MESSAGE: u32 = <span class="number">1024</span>;
+<a href=#389 id=389 data-nosnippet>389</a><span class="doccomment">/// node send channel size
+<a href=#390 id=390 data-nosnippet>390</a></span><span class="kw">pub const </span>NODE_SEND_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
+<a href=#391 id=391 data-nosnippet>391</a><span class="doccomment">/// max duplex buffer size
+<a href=#392 id=392 data-nosnippet>392</a></span><span class="kw">pub const </span>MAX_DUPLEX_BUFFER_SIZE: usize = <span class="number">1024</span>;
+<a href=#393 id=393 data-nosnippet>393</a><span class="doccomment">/// network controller communication channel size
+<a href=#394 id=394 data-nosnippet>394</a></span><span class="kw">pub const </span>NETWORK_CONTROLLER_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
+<a href=#395 id=395 data-nosnippet>395</a><span class="doccomment">/// network event channel size
+<a href=#396 id=396 data-nosnippet>396</a></span><span class="kw">pub const </span>NETWORK_EVENT_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
+<a href=#397 id=397 data-nosnippet>397</a><span class="doccomment">/// network node command channel size
+<a href=#398 id=398 data-nosnippet>398</a></span><span class="kw">pub const </span>NETWORK_NODE_COMMAND_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
+<a href=#399 id=399 data-nosnippet>399</a><span class="doccomment">/// network node event channel size
+<a href=#400 id=400 data-nosnippet>400</a></span><span class="kw">pub const </span>NETWORK_NODE_EVENT_CHANNEL_SIZE: usize = <span class="number">10_000</span>;
+<a href=#401 id=401 data-nosnippet>401</a>
+<a href=#402 id=402 data-nosnippet>402</a><span class="comment">//
+<a href=#403 id=403 data-nosnippet>403</a>// Constants used in protocol
+<a href=#404 id=404 data-nosnippet>404</a>//
+<a href=#405 id=405 data-nosnippet>405</a></span><span class="doccomment">/// Maximum of time we keep the operations in the storage of the propagation thread
+<a href=#406 id=406 data-nosnippet>406</a></span><span class="kw">pub const </span>MAX_OPERATION_STORAGE_TIME: MassaTime = MassaTime::from_millis(<span class="number">60000</span>);
+<a href=#407 id=407 data-nosnippet>407</a><span class="doccomment">/// Maximum size of channel used for commands in retrieval thread of operations
+<a href=#408 id=408 data-nosnippet>408</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS: usize = <span class="number">10000</span>;
+<a href=#409 id=409 data-nosnippet>409</a><span class="doccomment">/// Maximum size of channel used for commands in propagation thread of operations
+<a href=#410 id=410 data-nosnippet>410</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS: usize = <span class="number">10000</span>;
+<a href=#411 id=411 data-nosnippet>411</a><span class="doccomment">/// Maximum size of channel used for commands in retrieval thread of block
+<a href=#412 id=412 data-nosnippet>412</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS: usize = <span class="number">10000</span>;
+<a href=#413 id=413 data-nosnippet>413</a><span class="doccomment">/// Maximum size of channel used for commands in propagation thread of block
+<a href=#414 id=414 data-nosnippet>414</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS: usize = <span class="number">10000</span>;
+<a href=#415 id=415 data-nosnippet>415</a><span class="doccomment">/// Maximum size of channel used for commands in retrieval thread of endorsements
+<a href=#416 id=416 data-nosnippet>416</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS: usize = <span class="number">10000</span>;
+<a href=#417 id=417 data-nosnippet>417</a><span class="doccomment">/// Maximum size of channel used for commands in propagation thread of endorsements
+<a href=#418 id=418 data-nosnippet>418</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS: usize = <span class="number">10000</span>;
+<a href=#419 id=419 data-nosnippet>419</a><span class="doccomment">/// Maximum size of channel used for commands in connectivity thread
+<a href=#420 id=420 data-nosnippet>420</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY: usize = <span class="number">10000</span>;
+<a href=#421 id=421 data-nosnippet>421</a><span class="doccomment">/// Maximum size of channel used for commands in peers management thread
+<a href=#422 id=422 data-nosnippet>422</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PEERS: usize = <span class="number">10000</span>;
+<a href=#423 id=423 data-nosnippet>423</a><span class="doccomment">/// Maximum size of channel used for commands in peer testers thread
+<a href=#424 id=424 data-nosnippet>424</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS: usize = <span class="number">10000</span>;
+<a href=#425 id=425 data-nosnippet>425</a><span class="doccomment">/// Maximum size of channel used to send network events to the operation handler
+<a href=#426 id=426 data-nosnippet>426</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER: usize = <span class="number">10000</span>;
+<a href=#427 id=427 data-nosnippet>427</a><span class="doccomment">/// Maximum size of channel used to send network events to the block handler
+<a href=#428 id=428 data-nosnippet>428</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER: usize = <span class="number">10000</span>;
+<a href=#429 id=429 data-nosnippet>429</a><span class="doccomment">/// Maximum size of channel used to send network events to the endorsement handler
+<a href=#430 id=430 data-nosnippet>430</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER: usize = <span class="number">10000</span>;
+<a href=#431 id=431 data-nosnippet>431</a><span class="doccomment">/// Maximum size of channel used to send network events to the peer handler
+<a href=#432 id=432 data-nosnippet>432</a></span><span class="kw">pub const </span>MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER: usize = <span class="number">10000</span>;
+<a href=#433 id=433 data-nosnippet>433</a><span class="doccomment">/// Maximum number of peer in a announcement list of peer
+<a href=#434 id=434 data-nosnippet>434</a></span><span class="kw">pub const </span>MAX_PEERS_IN_ANNOUNCEMENT_LIST: u64 = <span class="number">100</span>;
+<a href=#435 id=435 data-nosnippet>435</a><span class="doccomment">/// Maximum number of listeners for a peer
+<a href=#436 id=436 data-nosnippet>436</a></span><span class="kw">pub const </span>MAX_LISTENERS_PER_PEER: u64 = <span class="number">100</span>;
+<a href=#437 id=437 data-nosnippet>437</a><span class="comment">//
+<a href=#438 id=438 data-nosnippet>438</a>// Constants used in versioning
+<a href=#439 id=439 data-nosnippet>439</a>//
+<a href=#440 id=440 data-nosnippet>440</a></span><span class="doccomment">/// Threshold to accept a new versioning
+<a href=#441 id=441 data-nosnippet>441</a></span><span class="kw">pub const </span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio&lt;u64&gt; = Ratio::new_raw(<span class="number">50</span>, <span class="number">100</span>);
+<a href=#442 id=442 data-nosnippet>442</a><span class="doccomment">/// Block count to process in MipStoreStats (for state change threshold)
+<a href=#443 id=443 data-nosnippet>443</a></span><span class="kw">pub const </span>MIP_STORE_STATS_BLOCK_CONSIDERED: usize = <span class="number">1000</span>;
+<a href=#444 id=444 data-nosnippet>444</a><span class="doccomment">/// Minimum value allowed for activation delay (in MIP info)
+<a href=#445 id=445 data-nosnippet>445</a></span><span class="kw">pub const </span>VERSIONING_ACTIVATION_DELAY_MIN: MassaTime = T0.saturating_mul(PERIODS_PER_CYCLE);
+<a href=#446 id=446 data-nosnippet>446</a>
+<a href=#447 id=447 data-nosnippet>447</a><span class="comment">//
+<a href=#448 id=448 data-nosnippet>448</a>// Constants for denunciation factory
+<a href=#449 id=449 data-nosnippet>449</a>//
+<a href=#450 id=450 data-nosnippet>450</a>
+<a href=#451 id=451 data-nosnippet>451</a></span><span class="doccomment">/// denunciation expiration delta
+<a href=#452 id=452 data-nosnippet>452</a></span><span class="kw">pub const </span>DENUNCIATION_EXPIRE_PERIODS: u64 = PERIODS_PER_CYCLE;
+<a href=#453 id=453 data-nosnippet>453</a><span class="doccomment">/// Max number of denunciations that can be included in a block header
+<a href=#454 id=454 data-nosnippet>454</a></span><span class="kw">pub const </span>MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = <span class="number">128</span>;
+<a href=#455 id=455 data-nosnippet>455</a><span class="doccomment">/// Number of roll to remove per denunciation
+<a href=#456 id=456 data-nosnippet>456</a></span><span class="kw">pub const </span>ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = <span class="number">1</span>;
+<a href=#457 id=457 data-nosnippet>457</a><span class="doccomment">/// Maximum size of executed denunciations
+<a href=#458 id=458 data-nosnippet>458</a></span><span class="kw">pub const </span>MAX_DENUNCIATION_CHANGES_LENGTH: u64 = <span class="number">1_000</span>;
+<a href=#459 id=459 data-nosnippet>459</a><span class="doccomment">/// Maximum size of deferred call pool changes
+<a href=#460 id=460 data-nosnippet>460</a></span><span class="comment">// TODO define this value
+<a href=#461 id=461 data-nosnippet>461</a>// TODO: set to a reasonable value max pool changes
+<a href=#462 id=462 data-nosnippet>462</a></span><span class="kw">pub const </span>DEFERRED_CALL_MAX_POOL_CHANGES: u64 = <span class="number">100_000</span>;
+<a href=#463 id=463 data-nosnippet>463</a><span class="doccomment">/// Maximum size of deferred call future slots (1 week)
+<a href=#464 id=464 data-nosnippet>464</a></span><span class="kw">pub const </span>DEFERRED_CALL_MAX_FUTURE_SLOTS: u64 = <span class="number">1209600</span>;
+<a href=#465 id=465 data-nosnippet>465</a><span class="doccomment">/// maximum gas for deferred call
+<a href=#466 id=466 data-nosnippet>466</a></span><span class="kw">pub const </span>DEFERRED_CALL_MAX_ASYNC_GAS: u64 = MAX_ASYNC_GAS;
+<a href=#467 id=467 data-nosnippet>467</a><span class="doccomment">/// max change denominator  
+<a href=#468 id=468 data-nosnippet>468</a></span><span class="kw">pub const </span>DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = <span class="number">1250</span>;
+<a href=#469 id=469 data-nosnippet>469</a><span class="doccomment">/// deferred call min gas increment (1 nanomassa)
+<a href=#470 id=470 data-nosnippet>470</a></span><span class="kw">pub const </span>DEFERRED_CALL_MIN_GAS_INCREMENT: u64 = <span class="number">1</span>;
+<a href=#471 id=471 data-nosnippet>471</a><span class="doccomment">/// deferred call min gas cost (10 nanomassa)
+<a href=#472 id=472 data-nosnippet>472</a></span><span class="kw">pub const </span>DEFERRED_CALL_MIN_GAS_COST: u64 = <span class="number">10</span>;
+<a href=#473 id=473 data-nosnippet>473</a><span class="doccomment">/// deferred call global overbooking penalty
+<a href=#474 id=474 data-nosnippet>474</a></span><span class="kw">pub const </span>DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY: Amount = Amount::from_raw(<span class="number">1_000_000_000</span>);
+<a href=#475 id=475 data-nosnippet>475</a><span class="doccomment">/// deferred call slot overbooking penalty
+<a href=#476 id=476 data-nosnippet>476</a></span><span class="kw">pub const </span>DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(<span class="number">1_000_000_000 </span>/ <span class="number">10_000</span>);
+<a href=#477 id=477 data-nosnippet>477</a><span class="doccomment">/// deferred call call gas cost
+<a href=#478 id=478 data-nosnippet>478</a></span><span class="kw">pub const </span>DEFERRED_CALL_CST_GAS_COST: u64 = <span class="number">750_000</span>;
+<a href=#479 id=479 data-nosnippet>479</a>
+<a href=#480 id=480 data-nosnippet>480</a><span class="comment">// Some checks at compile time that should not be ignored!
+<a href=#481 id=481 data-nosnippet>481</a></span><span class="attr">#[allow(clippy::assertions_on_constants)]
+<a href=#482 id=482 data-nosnippet>482</a></span><span class="kw">const _</span>: () = {
+<a href=#483 id=483 data-nosnippet>483</a>    <span class="macro">assert!</span>(THREAD_COUNT &gt; <span class="number">1</span>);
+<a href=#484 id=484 data-nosnippet>484</a>    <span class="macro">assert!</span>((T0).as_millis() &gt;= <span class="number">1</span>);
+<a href=#485 id=485 data-nosnippet>485</a>    <span class="macro">assert!</span>((T0).as_millis().is_multiple_of(THREAD_COUNT <span class="kw">as </span>u64));
+<a href=#486 id=486 data-nosnippet>486</a>};</code></pre></div></section></main></body></html>
