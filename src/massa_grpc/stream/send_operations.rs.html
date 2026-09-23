@@ -126,7 +126,7 @@
 <a href=#126 id=126 data-nosnippet>126</a>                                            }
 <a href=#127 id=127 data-nosnippet>127</a>
 <a href=#128 id=128 data-nosnippet>128</a>                                            <span class="kw">if </span>rest.is_empty() {
-<a href=#129 id=129 data-nosnippet>129</a>                                                res_operation.verify_signature(<span class="prelude-val">None</span>)
+<a href=#129 id=129 data-nosnippet>129</a>                                                res_operation.verify_signature()
 <a href=#130 id=130 data-nosnippet>130</a>                                                    .map(|<span class="kw">_</span>| (res_operation.id.to_string(), res_operation))
 <a href=#131 id=131 data-nosnippet>131</a>                                                    .map_err(|e| e.into())
 <a href=#132 id=132 data-nosnippet>132</a>                                            } <span class="kw">else </span>{
