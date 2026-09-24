@@ -307,15 +307,30 @@ pub const MAX_RUNTIME_MODULE_EXPORTS: usize =
 pub const MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE: u32 = MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE
     .saturating_add(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE)
     .saturating_add(190_000_000_u32);
-/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
+/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE`]
 pub const MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE_BYTES: usize =
     u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE);
 /// Max message size for bootstrap coming from client
 /// The worst case is a AskBootstrapPart with mostly 2 keys and MAX_CONSENSUS_BLOCKS_IDS blocks_ids.
 pub const MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE: u32 = 1024 * 1024;
-/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE`]
-pub const MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES: usize =
-    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE);
+
+/// Bound the bootstrap message length prefix is *encoded* against, in both directions.
+///
+/// This is part of the wire format, not a policy knob: `to_be_bytes_min` derives the width of
+/// the prefix from the bound it is given, and the frame header is fixed-width, so lowering this
+/// narrows the header and leaves any peer built against the wider one blocked forever on bytes
+/// that never arrive. It stays pinned to the server-to-client bound, which is the encoding that
+/// has been on the wire since before `MAIN.5.0`. The tighter per-direction caps are enforced as
+/// value checks on the decoded length instead of by the encoding width.
+pub const BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX: u32 = MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE;
+/// The number of bytes needed to encode [`BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX`]
+pub const BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES: usize =
+    u32_be_bytes_min_length(BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX);
+const _: () = assert!(
+    BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES == 4,
+    "the bootstrap length prefix has been 4 bytes wide since before MAIN.5.0; changing its width \
+     breaks bootstrap against every deployed node"
+);
 /// Max number of blocks we provide/ take into account while bootstrapping
 pub const MAX_BOOTSTRAP_BLOCKS: u32 = 1000000;
 /// max bootstrapped cliques
@@ -332,10 +347,39 @@ pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
 pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = 100_000_000;
 /// Max bytes in final states parts
 pub const MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = 10_000_000;
-/// Max number of `(key, value)` entries in a final-state bootstrap `new_elements` batch
-pub const MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT: u32 = 100_000;
-/// Max number of `(key, value)` entries in a versioning bootstrap `new_elements` batch
-pub const MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT: u32 = 100_000;
+
+/// Rough in-memory cost of one `(key, value)` entry of a received bootstrap batch, on top of the
+/// bytes it carries: the `BTreeMap` node slot it occupies, the two `Vec` headers, and allocator
+/// rounding. Deliberately an over-estimate, so that the budget below is reached before the
+/// allocator actually is.
+pub const BOOTSTRAP_BATCH_ENTRY_OVERHEAD: usize = 96;
+
+/// Smallest wire size a *real* `(key, value)` entry of a bootstrap batch is expected to have.
+///
+/// Every state key carries a column-family prefix (`ledger/`, `versioning/`, ...) plus its own
+/// identifying bytes, so real entries run to several tens of bytes. Measured over a full mainnet
+/// bootstrap (33 state parts of 100 MB): the smallest entry seen was 22 bytes on the wire, and the
+/// densest part held ~3.57M entries, i.e. a ~443 MB in-memory footprint against the ~700 MB budget
+/// this value yields for a state part. Lowering it loosens the bound for no gain; raising it past
+/// the measured floor would start rejecting honest batches.
+pub const MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE: usize = 16;
+
+/// Budget for the in-memory footprint of one received bootstrap batch section, derived from the
+/// wire size that section is already bounded by.
+///
+/// Counting entries is not a sufficient bound on its own, and neither is the wire size: a batch is
+/// bounded in bytes on the wire, but an entry that costs two bytes there costs
+/// [`BOOTSTRAP_BATCH_ENTRY_OVERHEAD`] bytes once it is a map node, so a batch of tiny entries
+/// amplifies far beyond the size it announced. This budget charges each entry the bytes it carries
+/// *plus* that overhead, which bounds the amplification directly instead of bounding the wire and
+/// hoping. It is calibrated so that any batch a conforming peer can build fits comfortably —
+/// including one from a `MAIN.5.0` server, which bounds a batch by size only.
+pub const fn bootstrap_batch_allocation_budget(section_wire_size: usize) -> usize {
+    section_wire_size.saturating_add(
+        (section_wire_size / MIN_EXPECTED_BOOTSTRAP_ELEMENT_WIRE_SIZE)
+            .saturating_mul(BOOTSTRAP_BATCH_ENTRY_OVERHEAD),
+    )
+}
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import

@@ -22,18 +22,17 @@ use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHAINID, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
-    GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
-    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER,
-    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
-    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    PERIODS_PER_CYCLE, T0, THREAD_COUNT,
+    bootstrap_batch_allocation_budget, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHAINID,
+    CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
+    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+    MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, PERIODS_PER_CYCLE, T0, THREAD_COUNT,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
@@ -375,8 +374,12 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
-        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+        max_final_state_batch_allocation: bootstrap_batch_allocation_budget(
+            MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+        ) as u64,
+        max_versioning_batch_allocation: bootstrap_batch_allocation_budget(
+            MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
+        ) as u64,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -661,6 +664,20 @@ pub(crate) fn minimal_bootstrap_part_message(
 /// `(key, value)` map with single-byte distinct keys and empty values.
 pub(crate) fn indexed_kv_map(count: usize) -> BTreeMap<Vec<u8>, Vec<u8>> {
     (0..count).map(|i| (vec![i as u8], Vec::new())).collect()
+}
+
+/// `(key, value)` map shaped like real state entries: a column-family prefix, an address-sized
+/// body, and a small value. Used to check that a batch of the size a `MAIN.5.0` server actually
+/// streams is accepted.
+pub(crate) fn state_shaped_kv_map(count: usize) -> BTreeMap<Vec<u8>, Vec<u8>> {
+    (0..count)
+        .map(|i| {
+            let mut key = b"ledger/".to_vec();
+            key.extend_from_slice(&(i as u64).to_be_bytes());
+            key.resize(42, 0u8);
+            (key, vec![0u8; 8])
+        })
+        .collect()
 }
 
 /// Serialized `length_value` section for state `new_elements` (length prefix + pair bytes).

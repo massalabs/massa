@@ -14,19 +14,19 @@ use massa_db_exports::{MassaDBConfig, MassaDBController, StreamBatch};
 use massa_db_worker::MassaDB;
 use massa_final_state::{FinalStateConfig, MockFinalStateController};
 use massa_hash::Hash;
+use massa_hash::HASH_SIZE_BYTES;
 use massa_models::block_id::BlockId;
 use massa_models::config::{
-    BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHAINID, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
-    MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE, MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES,
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
-    MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK,
-    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    THREAD_COUNT,
+    bootstrap_batch_allocation_budget, BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX,
+    BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHAINID,
+    CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS,
+    MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_LEDGER_CHANGES_COUNT,
+    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, SIGNATURE_DESER_SIZE, THREAD_COUNT,
 };
 use massa_models::node::NodeId;
 use massa_models::prehash::{CapacityAllocator, PreHashSet};
@@ -58,13 +58,35 @@ use super::tools::{gen_export_active_blocks, get_random_final_state_bootstrap, p
 /// Fixed-width length slot written by [`BootstrapClientBinder::send_timeout`].
 fn padded_client_bootstrap_length_field(
     msg_len: u32,
-) -> [u8; MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES] {
+) -> [u8; BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES] {
     let enc = msg_len
-        .to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE)
-        .expect("msg_len within client bootstrap max");
-    let mut out = [0u8; MAX_BOOTSTRAP_MESSAGE_FROM_CLIENT_SIZE_BYTES];
+        .to_be_bytes_min(BOOTSTRAP_MESSAGE_LEN_PREFIX_MAX)
+        .expect("msg_len within bootstrap length prefix max");
+    let mut out = [0u8; BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES];
     out[..enc.len()].copy_from_slice(&enc);
     out
+}
+
+/// The bootstrap frame header is fixed-width and has to stay byte-identical across releases:
+/// a peer that reads a wider header than its counterpart writes blocks forever on bytes that
+/// never arrive, with no error and no timeout. The numbers are spelled out on purpose so that
+/// changing any of the constants they derive from trips here instead of on a live network.
+#[test]
+fn test_bootstrap_frame_header_widths_are_stable() {
+    assert_eq!(
+        BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES, 4,
+        "bootstrap length prefix width changed"
+    );
+    assert_eq!(
+        HASH_SIZE_BYTES + BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES,
+        36,
+        "client-to-server frame header width changed"
+    );
+    assert_eq!(
+        SIGNATURE_DESER_SIZE + BOOTSTRAP_MESSAGE_LEN_PREFIX_SIZE_BYTES,
+        69,
+        "server-to-client frame header width changed"
+    );
 }
 
 lazy_static::lazy_static! {
@@ -92,8 +114,12 @@ impl BootstrapClientBinder {
             max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
             max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
             max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
+            max_final_state_batch_allocation: bootstrap_batch_allocation_budget(
+                MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+            ) as u64,
+            max_versioning_batch_allocation: bootstrap_batch_allocation_budget(
+                MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
+            ) as u64,
             max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -480,8 +506,6 @@ fn test_staying_connected_without_message_trigger_read_timeout() {
         max_history_length: 10,
         max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
-        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
         thread_count: THREAD_COUNT,
         max_ledger_backups: 10,
         enable_metrics: false,
@@ -581,8 +605,6 @@ fn test_staying_connected_pass_handshake_but_deadline_after() {
         max_history_length: 10,
         max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
-        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
         thread_count: THREAD_COUNT,
         max_ledger_backups: 10,
         enable_metrics: false,
@@ -682,8 +704,6 @@ fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
         max_history_length: 10,
         max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
-        max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-        max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
         thread_count: THREAD_COUNT,
         max_ledger_backups: 10,
         enable_metrics: false,
