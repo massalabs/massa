@@ -272,9 +272,21 @@ impl BlockFactoryWorker {
         timings.push(("add operations END", MassaTime::now()));
 
         // create header
+        let slot_ts = get_block_slot_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            slot,
+        )
+        .expect("could not get block slot timestamp");
         timings.push(("mip data START", MassaTime::now()));
-        let current_version = self.mip_store.get_network_version_current();
-        let announced_version = self.mip_store.get_network_version_to_announce();
+        // Versions of *this slot*, not of the store's current state: the store only
+        // turns Active once finality reaches the activation slot, and stamping the
+        // current state would put the old version on every block produced during that
+        // lag -- blocks that nodes already Active then reject. Validation checks the
+        // header against get_network_version_active_at(slot_ts) too.
+        let current_version = self.mip_store.get_network_version_active_at(slot_ts);
+        let announced_version = self.mip_store.get_network_version_to_announce_at(slot_ts);
         timings.push(("mip data END", MassaTime::now()));
 
         timings.push(("get_block_denunciations START", MassaTime::now()));
@@ -297,13 +309,6 @@ impl BlockFactoryWorker {
         timings.push(("get_block_denunciations END", MassaTime::now()));
 
         timings.push(("block creation START", MassaTime::now()));
-        let slot_ts = get_block_slot_timestamp(
-            self.cfg.thread_count,
-            self.cfg.t0,
-            self.cfg.genesis_timestamp,
-            slot,
-        )
-        .expect("could not get block slot timestamp");
         let sig_chain_id = sig_chain_id_for_slot(&self.mip_store, self.cfg.chain_id, slot_ts);
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
