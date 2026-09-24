@@ -571,7 +571,11 @@ pub enum StateAtError {
 pub struct MipStore(pub Arc<RwLock<MipStoreRaw>>);
 
 impl MipStore {
-    /// Retrieve the current network version to set in block header
+    /// Retrieve the current network version, as the store's state says right now.
+    ///
+    /// This follows the store's *current* state, which only reaches Active once
+    /// finality has processed the activation slot. Block headers must not use it:
+    /// see [`MipStore::get_network_version_active_at`].
     pub fn get_network_version_current(&self) -> u32 {
         let lock = self.0.read();
         let store = lock.deref();
@@ -584,7 +588,22 @@ impl MipStore {
             .unwrap_or(0)
     }
 
-    /// Retrieve the last active version at the given timestamp
+    /// Retrieve the last active version at the given timestamp (e.g. a slot's).
+    ///
+    /// A MIP still `LockedIn` in this store counts as active at `ts` once
+    /// `ts > locked_at + activation_delay`. That is exactly when
+    /// `LockedIn::on_advance` activates it, and every node advances the store on
+    /// every final slot, so `Active.at` is always the first slot timestamp past
+    /// that instant. Answering from the instant rather than from the state means a
+    /// node whose finality has not yet reached the activation slot agrees with a
+    /// node that is already Active -- and with the version the producer stamped --
+    /// for every slot. Otherwise the blocks produced during the finality lag carry
+    /// the old version, and any node that is already Active (e.g. one that just
+    /// bootstrapped) rejects them.
+    ///
+    /// Requires `activation_delay` to exceed the finality lag, so that nodes know a
+    /// MIP is LockedIn before its activation instant (guaranteed on real networks by
+    /// `VERSIONING_ACTIVATION_DELAY_MIN`, one cycle).
     pub fn get_network_version_active_at(&self, ts: MassaTime) -> u32 {
         let lock = self.0.read();
         let store = lock.deref();
@@ -594,9 +613,34 @@ impl MipStore {
             .rev()
             .find_map(|(k, v)| match v.state {
                 ComponentState::Active(Active { at }) if at <= ts => Some(k.version),
+                ComponentState::LockedIn(LockedIn { at })
+                    if ts > at.saturating_add(k.activation_delay) =>
+                {
+                    Some(k.version)
+                }
                 _ => None,
             })
             .unwrap_or(0)
+    }
+
+    /// Retrieve the network version to announce in the header of a block at `ts`.
+    ///
+    /// Same as [`MipStore::get_network_version_to_announce`], except that a MIP
+    /// already active at `ts` (see [`MipStore::get_network_version_active_at`]) is
+    /// no longer announced: it is the header's current version from then on, and
+    /// announcing it as well would make the header invalid.
+    pub fn get_network_version_to_announce_at(&self, ts: MassaTime) -> Option<u32> {
+        let lock = self.0.read();
+        let store = lock.deref();
+        store.store.iter().rev().find_map(|(k, v)| match v.state {
+            ComponentState::Started(_) => Some(k.version),
+            ComponentState::LockedIn(LockedIn { at })
+                if ts <= at.saturating_add(k.activation_delay) =>
+            {
+                Some(k.version)
+            }
+            _ => None,
+        })
     }
 
     /// Retrieve the network version number to announce in block header
@@ -2792,6 +2836,106 @@ mod test {
         // First announced version 1 was removed and so the counter decremented
         assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&1));
         assert_eq!(mip_store.stats.network_version_counters.get(&2), Some(&1));
+    }
+
+    /// A node still in LockedIn must agree with an Active peer on the *network*
+    /// version of a slot past the activation instant: block headers are stamped
+    /// and checked with it, and a mismatch makes one side reject the other's blocks.
+    #[test]
+    fn test_get_network_version_active_at_locked_in_matches_active() {
+        let mi = MipInfo {
+            name: "MIP-test-LockedIn-net".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Execution, 2)]),
+            start: MassaTime::from_millis(10_000),
+            timeout: MassaTime::from_millis(100_000),
+            activation_delay: MassaTime::from_millis(5_000),
+        };
+        let stats = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        };
+        let store_locked = MipStore::try_from((
+            [(
+                mi.clone(),
+                advance_state_until(ComponentState::locked_in(MassaTime::from_millis(0)), &mi),
+            )],
+            stats.clone(),
+        ))
+        .expect("locked store");
+        let store_active = MipStore::try_from((
+            [(
+                mi.clone(),
+                advance_state_until(ComponentState::active(MassaTime::from_millis(0)), &mi),
+            )],
+            stats,
+        ))
+        .expect("active store");
+
+        let locked_in_at = match store_locked.0.read().store.get(&mi).unwrap().state {
+            ComponentState::LockedIn(LockedIn { at }) => at,
+            other => panic!("expected LockedIn, got {:?}", other),
+        };
+        let instant = locked_in_at.saturating_add(mi.activation_delay);
+        let after = instant.saturating_add(MassaTime::from_millis(1));
+
+        // Up to and including the instant: not yet active, still announced.
+        for ts in [locked_in_at, instant] {
+            assert_eq!(store_locked.get_network_version_active_at(ts), 0);
+            assert_eq!(store_active.get_network_version_active_at(ts), 0);
+            assert_eq!(store_locked.get_network_version_to_announce_at(ts), Some(2));
+        }
+        // Past it: active for both, and no longer announced.
+        assert_eq!(store_locked.get_network_version_active_at(after), 2);
+        assert_eq!(store_active.get_network_version_active_at(after), 2);
+        assert_eq!(store_locked.get_network_version_to_announce_at(after), None);
+        assert_eq!(store_active.get_network_version_to_announce_at(after), None);
+
+        // The store-state based answers still lag until the store itself flips.
+        assert_eq!(store_locked.get_network_version_current(), 0);
+        assert_eq!(store_locked.get_network_version_to_announce(), Some(2));
+    }
+
+    /// Every header built from `get_network_version_active_at` and
+    /// `get_network_version_to_announce_at` at the same timestamp must pass the
+    /// protocol check `announced > current`, whatever state the store is in.
+    #[test]
+    fn test_header_versions_at_are_always_consistent() {
+        let mi = MipInfo {
+            name: "MIP-test-header".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Execution, 2)]),
+            start: MassaTime::from_millis(10_000),
+            timeout: MassaTime::from_millis(100_000),
+            activation_delay: MassaTime::from_millis(5_000),
+        };
+        let stats = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        };
+        for state in [
+            ComponentState::started(Ratio::zero()),
+            ComponentState::locked_in(MassaTime::from_millis(0)),
+            ComponentState::active(MassaTime::from_millis(0)),
+        ] {
+            let store = MipStore::try_from((
+                [(mi.clone(), advance_state_until(state, &mi))],
+                stats.clone(),
+            ))
+            .expect("store");
+            for ts in (0..40_000u64).step_by(500).map(MassaTime::from_millis) {
+                let current = store.get_network_version_active_at(ts);
+                if let Some(announced) = store.get_network_version_to_announce_at(ts) {
+                    assert!(
+                        announced > current,
+                        "ts {}: announced {} <= current {}",
+                        ts.as_millis(),
+                        announced,
+                        current
+                    );
+                }
+            }
+        }
     }
 
     /// A node still in LockedIn must agree with an Active peer on the component
