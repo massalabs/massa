@@ -183,6 +183,39 @@ pub(crate) fn stream_final_state_and_consensus(
                 BootstrapServerMessage::BootstrapFinished => {
                     info!("State bootstrap complete");
 
+                    // Refuse a server that predates a MIP whose vote has already started: it
+                    // cannot provide that MIP's state, and replaying the MIP locally from our
+                    // first processed slot would record a different history (and, past lock-in,
+                    // a different activation) than the rest of the network -- a history that
+                    // becomes part of the hashed final state once the MIP is Active. Restart
+                    // from scratch with the next server rather than resume on top of its state.
+                    let missing = {
+                        let guard = global_bootstrap_state.final_state.read();
+                        let bootstrapped_at = get_block_slot_timestamp(
+                            cfg.thread_count,
+                            cfg.t0,
+                            cfg.genesis_timestamp,
+                            guard.get_slot(),
+                        )?;
+                        guard.get_mip_store().started_mips_missing_from_db(
+                            &guard.get_database().clone(),
+                            bootstrapped_at,
+                        )
+                    };
+                    if !missing.is_empty() {
+                        let names: Vec<_> = missing.iter().map(|mi| mi.name.as_str()).collect();
+                        restart_state_streaming(
+                            client,
+                            next_bootstrap_message,
+                            global_bootstrap_state,
+                        );
+                        return Err(BootstrapError::GeneralError(format!(
+                            "bootstrap server does not know {}, whose vote has already started: \
+                             it cannot provide its state",
+                            names.join(", ")
+                        )));
+                    }
+
                     // Update MIP store by reading from the disk
                     let mut guard = global_bootstrap_state.final_state.write();
                     let db = guard.get_database().clone();
@@ -229,26 +262,7 @@ pub(crate) fn stream_final_state_and_consensus(
                 }
                 BootstrapServerMessage::SlotTooOld => {
                     info!("Slot is too old retry bootstrap from scratch");
-                    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
-                        last_slot: None,
-                        last_state_step: StreamingStep::Started,
-                        last_versioning_step: StreamingStep::Started,
-                        last_consensus_step: StreamingStep::Started,
-                        send_last_start_period: true,
-                    };
-                    let mut write_final_state = global_bootstrap_state.final_state.write();
-                    write_final_state.reset();
-                    // `reset()` does not clear restart metadata; drop values from the
-                    // aborted server so the next one defines them from the wire again.
-                    write_final_state.set_last_start_period(0);
-                    write_final_state.set_last_slot_before_downtime(None);
-                    drop(write_final_state);
-                    client.set_last_start_period(None);
-                    // The cursor above restarts the consensus stream from `Started`, for which the
-                    // server reports no outdated ids: blocks kept from the aborted attempt would
-                    // never be pruned and would be merged into the next attempt's graph.
-                    global_bootstrap_state.graph = None;
-                    global_bootstrap_state.peers = None;
+                    restart_state_streaming(client, next_bootstrap_message, global_bootstrap_state);
                     return Err(BootstrapError::GeneralError(String::from("Slot too old")));
                 }
                 // At this point, we have successfully received the next message from the server, and it's an error-message String
@@ -268,6 +282,35 @@ pub(crate) fn stream_final_state_and_consensus(
             next_bootstrap_message
         )))
     }
+}
+
+/// Drop everything streamed from the current server so that the next attempt streams the
+/// state again from scratch, instead of resuming on top of what this server sent.
+fn restart_state_streaming(
+    client: &mut BootstrapClientBinder,
+    next_bootstrap_message: &mut BootstrapClientMessage,
+    global_bootstrap_state: &mut GlobalBootstrapState,
+) {
+    *next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
+        last_slot: None,
+        last_state_step: StreamingStep::Started,
+        last_versioning_step: StreamingStep::Started,
+        last_consensus_step: StreamingStep::Started,
+        send_last_start_period: true,
+    };
+    let mut write_final_state = global_bootstrap_state.final_state.write();
+    write_final_state.reset();
+    // `reset()` does not clear restart metadata; drop values from the
+    // aborted server so the next one defines them from the wire again.
+    write_final_state.set_last_start_period(0);
+    write_final_state.set_last_slot_before_downtime(None);
+    drop(write_final_state);
+    client.set_last_start_period(None);
+    // The cursor above restarts the consensus stream from `Started`, for which the
+    // server reports no outdated ids: blocks kept from the aborted attempt would
+    // never be pruned and would be merged into the next attempt's graph.
+    global_bootstrap_state.graph = None;
+    global_bootstrap_state.peers = None;
 }
 
 /// Gets the state from a bootstrap server (internal private function)

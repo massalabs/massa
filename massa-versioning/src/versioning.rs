@@ -738,6 +738,24 @@ impl MipStore {
         guard.extend_from_db(db)
     }
 
+    /// MIPs of this store that a bootstrap server's streamed state (`db`) does not contain, and
+    /// whose `start` is at or before `at`, the timestamp of the bootstrapped final slot.
+    ///
+    /// Such a server runs a release that predates the MIP, so it cannot provide the MIP's state.
+    /// Accepting it would leave this node replaying the MIP from its compiled-in `Defined` state,
+    /// starting at its own first processed slot: the history it records (and, past lock-in, its
+    /// activation) would differ from the rest of the network's, and once the MIP is Active that
+    /// history is part of the hashed final state. Before `start` nobody has recorded anything for
+    /// the MIP yet, so replaying it locally is deterministic and such a server is still usable.
+    pub fn started_mips_missing_from_db(
+        &self,
+        db: &ShareableMassaDBController,
+        at: MassaTime,
+    ) -> Vec<MipInfo> {
+        let guard = self.0.read();
+        guard.started_mips_missing_from_db(db, at)
+    }
+
     pub fn reset_db(&self, db: ShareableMassaDBController) {
         {
             let mut guard = db.write();
@@ -1531,6 +1549,38 @@ impl MipStoreRaw {
         }
 
         Ok((updated, added))
+    }
+
+    /// See [`MipStore::started_mips_missing_from_db`].
+    fn started_mips_missing_from_db(
+        &self,
+        db: &ShareableMassaDBController,
+        at: MassaTime,
+    ) -> Vec<MipInfo> {
+        let mip_info_deser = MipInfoDeserializer::new();
+        let db = db.read();
+
+        // Active MIPs live in STATE_CF, the others in VERSIONING_CF: the db knows a MIP if
+        // either holds an entry for it.
+        let mut in_db: HashSet<String> = HashSet::new();
+        for cf in [STATE_CF, VERSIONING_CF] {
+            for (ser_mip_info, _) in db.prefix_iterator_cf(cf, MIP_STORE_PREFIX.as_bytes()) {
+                if !ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                    break;
+                }
+                if let Ok((_, mip_info)) = mip_info_deser
+                    .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
+                {
+                    in_db.insert(mip_info.name);
+                }
+            }
+        }
+
+        self.store
+            .keys()
+            .filter(|mip_info| mip_info.start <= at && !in_db.contains(&mip_info.name))
+            .cloned()
+            .collect()
     }
 
     /// Create a MIP store raw with what is written on the disk
@@ -2550,6 +2600,103 @@ mod test {
                 ComponentStateTypeId::Defined
             );
         }
+    }
+
+    #[test]
+    fn test_started_mips_missing_from_db() {
+        // A bootstrap server on an older release streams a MIP store without the newest MIP.
+        // The client must flag that MIP once its vote has started by the bootstrapped slot,
+        // and only then: before `start`, replaying it locally is deterministic.
+
+        let genesis_timestamp = MassaTime::from_millis(0);
+        let get_slot_ts =
+            |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
+
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: THREAD_COUNT,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
+        ));
+
+        // Known to both releases, Active: streamed through STATE_CF.
+        let mi_old = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: get_slot_ts(Slot::new(2, 0)),
+            timeout: get_slot_ts(Slot::new(3, 0)),
+            activation_delay: MassaTime::from_millis(10),
+        };
+        let ms_old = advance_state_until(
+            ComponentState::active(get_slot_ts(Slot::new(2, 5))),
+            &mi_old,
+        );
+        // Known only to the newer (client) release.
+        let mi_new = MipInfo {
+            name: "MIP-0003".to_string(),
+            version: 3,
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
+            start: get_slot_ts(Slot::new(4, 2)),
+            timeout: get_slot_ts(Slot::new(7, 2)),
+            activation_delay: MassaTime::from_millis(10),
+        };
+        let ms_new = advance_state_until(ComponentState::defined(), &mi_new);
+
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        };
+
+        // What the old server streams: its own store, which never heard of MIP-0003.
+        let server_store =
+            MipStore::try_from(([(mi_old.clone(), ms_old)], mip_stats_config.clone()))
+                .expect("Cannot create the server MIP store");
+        let mut db_batch = DBBatch::new();
+        let mut db_versioning_batch = DBBatch::new();
+        server_store
+            .update_batches(&mut db_batch, &mut db_versioning_batch, None)
+            .unwrap();
+        db.write()
+            .write_batch(db_batch, db_versioning_batch, Some(Slot::new(3, 0)));
+
+        let client_store = MipStore::try_from((
+            [
+                (
+                    mi_old.clone(),
+                    advance_state_until(ComponentState::defined(), &mi_old),
+                ),
+                (mi_new.clone(), ms_new),
+            ],
+            mip_stats_config,
+        ))
+        .expect("Cannot create the client MIP store");
+
+        // Bootstrapped before MIP-0003 starts: nothing recorded yet anywhere, fine.
+        let before_start = get_slot_ts(Slot::new(4, 1));
+        assert!(client_store
+            .started_mips_missing_from_db(&db, before_start)
+            .is_empty());
+
+        // Bootstrapped at or after its start: the server cannot provide its state.
+        for at in [mi_new.start, get_slot_ts(Slot::new(5, 0))] {
+            assert_eq!(
+                client_store.started_mips_missing_from_db(&db, at),
+                vec![mi_new.clone()]
+            );
+        }
+
+        // A MIP the server does stream is never reported, however late the bootstrap.
+        assert!(!client_store
+            .started_mips_missing_from_db(&db, get_slot_ts(Slot::new(9, 0)))
+            .contains(&mi_old));
     }
 
     #[test]

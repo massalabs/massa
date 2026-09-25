@@ -11,6 +11,7 @@ use massa_models::{
         MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, THREAD_COUNT,
     },
     node::NodeId,
+    slot::Slot,
     streaming_step::StreamingStep,
 };
 use massa_test_framework::TestUniverse;
@@ -98,6 +99,20 @@ impl TestUniverse for BootstrapClientTestUniverse {
             },
         )
         .unwrap();
+        // The client checks, before merging the bootstrapped MIP store, that the
+        // server did not omit a MIP whose vote had already started by the
+        // bootstrapped slot. The client's own store is built from its (empty)
+        // database here, so it knows no MIP and the check passes.
+        controllers
+            .final_state_controller
+            .write()
+            .expect_get_slot()
+            .return_const(Slot::new(0, 0));
+        controllers
+            .final_state_controller
+            .write()
+            .expect_get_mip_store()
+            .return_const(client_mip_store.clone());
         controllers
             .final_state_controller
             .write()
