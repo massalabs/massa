@@ -49,7 +49,7 @@ Otherwise ordering follows the stored <a href="../../massa_models/async_msg_id/t
 </div></details><details class="toggle method-toggle" open><summary><section id="method.settle_slot" class="method"><a class="src rightside" href="../../src/massa_execution_worker/speculative_async_pool.rs.html#188-294">Source</a><h4 class="code-header">pub fn <a href="#method.settle_slot" class="fn">settle_slot</a>(
     &amp;mut self,
     slot: &amp;<a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
-    ledger_changes: &amp;LedgerChanges,
+    ledger_changes: &amp;<a class="struct" href="../../massa_ledger_exports/ledger_changes/struct.LedgerChanges.html" title="struct massa_ledger_exports::ledger_changes::LedgerChanges">LedgerChanges</a>,
     async_msg_cst_gas_cost: <a class="primitive" href="https://doc.rust-lang.org/1.91.1/std/primitive.u64.html">u64</a>,
     rank_by_effective_gas: <a class="primitive" href="https://doc.rust-lang.org/1.91.1/std/primitive.bool.html">bool</a>,
 ) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.91.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;(<a class="type" href="../../massa_models/async_msg_id/type.AsyncMessageId.html" title="type massa_models::async_msg_id::AsyncMessageId">AsyncMessageId</a>, <a class="struct" href="../../massa_models/async_msg/struct.AsyncMessage.html" title="struct massa_models::async_msg::AsyncMessage">AsyncMessage</a>)&gt;</h4></section></summary><div class="docblock"><p>Settle a slot.
