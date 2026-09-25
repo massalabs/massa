@@ -113,7 +113,9 @@ mockall_wrap = { path = "./massa-mockall-wrap" }
 
 # Massa projects dependencies
 massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", "rev" = "0bcc52f40d2d7d596eeaf8f8713364bd7c15594b" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "3594369cebbb98667d8f8c1457da488af4b2b127" }
+# Pinned to the exploratory paginated-ABI branch (massa-sc-runtime#361) for #5284.
+# Re-pin to a merged rev once the sc-runtime side lands.
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "8c4e6ed" }
 
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "c26659997602386d3c9883361d8867139d8de246" }
 # Dev only - use local dependencies

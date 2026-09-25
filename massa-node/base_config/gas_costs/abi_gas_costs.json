@@ -30,6 +30,8 @@
   "assembly_script_get_data_for": 1240,
   "assembly_script_get_keys": 1000,
   "assembly_script_get_keys_for": 1195,
+  "assembly_script_get_keys_paginated": 1000,
+  "assembly_script_get_keys_for_paginated": 1195,
   "assembly_script_get_op_data": 50000,
   "assembly_script_get_op_keys": 1400,
   "assembly_script_get_op_keys_prefix": 1400,
