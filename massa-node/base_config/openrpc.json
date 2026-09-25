@@ -3315,6 +3315,10 @@
                     },
                     "fee": {
                         "$ref": "#/components/schemas/AmountOption"
+                    },
+                    "simulate_initial_caller_balance": {
+                        "description": "Optional simulated initial balance for the caller address in the read-only context",
+                        "$ref": "#/components/schemas/AmountOption"
                     }
                 },
                 "additionalProperties": false
@@ -3329,7 +3333,8 @@
                     "parameter",
                     "caller_address",
                     "coins",
-                    "fee"
+                    "fee",
+                    "simulate_initial_caller_balance"
                 ],
                 "type": "object",
                 "properties": {
@@ -3358,6 +3363,10 @@
                         "$ref": "#/components/schemas/AmountOption"
                     },
                     "fee": {
+                        "$ref": "#/components/schemas/AmountOption"
+                    },
+                    "simulate_initial_caller_balance": {
+                        "description": "Optional simulated initial balance for the caller address in the read-only context",
                         "$ref": "#/components/schemas/AmountOption"
                     }
                 },
