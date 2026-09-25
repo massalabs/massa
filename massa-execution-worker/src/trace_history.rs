@@ -70,12 +70,11 @@ impl TraceHistory {
         self.op_per_slot
             .peek(op_id)
             .and_then(|slot| self.transfer_per_slot.peek(slot).cloned())
-            .map(|transfers| {
+            .and_then(|transfers| {
                 transfers
                     .into_iter()
                     .find(|transfer| transfer.op_id == *op_id)
             })
-            .flatten()
     }
 
     /// Remove traces, transfers and reverse-index entries for a slot.

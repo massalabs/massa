@@ -718,8 +718,8 @@ mod tests {
     use massa_final_state::MockFinalStateController;
     use massa_models::address::Address;
     use massa_models::config::{
-        MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT,
-        ROLL_PRICE, THREAD_COUNT,
+        MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, ROLL_PRICE,
+        THREAD_COUNT,
     };
     use massa_models::prehash::PreHashMap;
     use massa_models::slot::Slot;
@@ -746,10 +746,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: disk_ledger.path().to_path_buf(),
             max_history_length: 10,
-            max_final_state_elements_size: 100_000,
-            max_versioning_elements_size: 100_000,
-            max_final_state_elements_count: MAX_BOOTSTRAP_FINAL_STATE_ELEMENTS_COUNT as usize,
-            max_versioning_elements_count: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_COUNT as usize,
+            max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+            max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
             enable_metrics: false,
