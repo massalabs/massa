@@ -115,7 +115,17 @@ impl SpeculativeDeferredCallRegistry {
             .get_slot_gas(slot);
     }
 
-    pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
+    /// Returns the base fee for a slot.
+    ///
+    /// With `min_gas_cost_fallback`, an uninitialized slot (no entry, or zero) falls back to
+    /// `min_gas_cost` instead of zero: this is exactly what `advance_slot` would have written
+    /// for it from an empty registry (0 booked gas puts the controller in its "decrease"
+    /// branch, which floors at `min_gas_cost`), so the fallback is the missing initialization,
+    /// not a different pricing rule. It only fires on a registry that has not been advancing
+    /// for `max_future_slots` slots yet -- a fresh network, or the gap left by a restart from
+    /// snapshot -- so it is gated on `MIP_0002_EXECUTION_VERSION` to keep pre-activation nodes
+    /// charging the same fee.
+    pub fn get_slot_base_fee(&self, slot: &Slot, min_gas_cost_fallback: bool) -> Amount {
         // get slot base fee from current changes
         if let Some(v) = self.deferred_calls_changes.get_slot_base_fee(slot) {
             if !v.is_zero() {
@@ -139,16 +149,27 @@ impl SpeculativeDeferredCallRegistry {
             }
         }
 
-        // check in final state (applies the min_gas_cost fallback for uninitialized slots)
-        self.final_state
+        // check in final state
+        let base_fee = self
+            .final_state
             .read()
             .get_deferred_call_registry()
-            .get_slot_base_fee(slot)
+            .get_slot_base_fee(slot);
+
+        if min_gas_cost_fallback && base_fee.is_zero() {
+            Amount::from_raw(self.config.min_gas_cost)
+        } else {
+            base_fee
+        }
     }
 
     /// Consumes and deletes the current slot, prepares a new slot in the future
     /// and returns the calls that need to be executed in the current slot
-    pub fn advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
+    pub fn advance_slot(
+        &mut self,
+        current_slot: Slot,
+        min_gas_cost_fallback: bool,
+    ) -> DeferredSlotCalls {
         // get the state of the current slot
         let slot_calls = self.get_calls_by_slot(current_slot);
         let total_booked_gas_before = self.get_effective_total_gas();
@@ -165,8 +186,7 @@ impl SpeculativeDeferredCallRegistry {
             .get_prev_slot(self.config.thread_count)
             .expect("cannot get prev slot");
 
-        // uninitialized slots fall back to `min_gas_cost`, so we can use the `get_slot_base_fee` method directly
-        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot);
+        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot, min_gas_cost_fallback);
 
         let new_slot_base_fee = match avg_booked_gas.cmp(&TARGET_BOOKING) {
             // the previous booking rate was exactly the expected one: do not adjust the base fee
@@ -363,6 +383,7 @@ impl SpeculativeDeferredCallRegistry {
         max_gas_request: u64,
         current_slot: Slot,
         params_size: u64,
+        min_gas_cost_fallback: bool,
     ) -> Result<Amount, ExecutionError> {
         // Check that the slot is not in the past
         if target_slot <= current_slot {
@@ -406,7 +427,7 @@ impl SpeculativeDeferredCallRegistry {
 
         // Integral fee
         let integral_fee = self
-            .get_slot_base_fee(&target_slot)
+            .get_slot_base_fee(&target_slot, min_gas_cost_fallback)
             .saturating_mul_u64(max_gas_request);
 
         // The integral fee is not enough to respond to quick demand surges within the long booking period `deferred_call_max_future_slots`. Proportional regulation is also necessary.
@@ -456,26 +477,33 @@ impl SpeculativeDeferredCallRegistry {
         &mut self,
         call: DeferredCall,
         trail_hash: massa_hash::Hash,
+        use_effective_index: bool,
     ) -> Result<DeferredCallId, ExecutionError> {
-        let mut index = 0;
+        let index = if use_effective_index {
+            self.get_calls_by_slot(call.target_slot).slot_calls.len()
+        } else {
+            let mut index = 0;
 
-        if let Some(val) = self
-            .deferred_calls_changes
-            .slots_change
-            .get(&call.target_slot)
-        {
-            index += val.calls_len();
-        }
+            if let Some(val) = self
+                .deferred_calls_changes
+                .slots_change
+                .get(&call.target_slot)
+            {
+                index += val.calls_len();
+            }
 
-        {
-            // final state
-            let slots_call = self
-                .final_state
-                .read()
-                .get_deferred_call_registry()
-                .get_slot_calls(call.target_slot);
-            index += slots_call.slot_calls.len();
-        }
+            {
+                // final state
+                let slots_call = self
+                    .final_state
+                    .read()
+                    .get_deferred_call_registry()
+                    .get_slot_calls(call.target_slot);
+                index += slots_call.slot_calls.len();
+            }
+
+            index
+        };
 
         let id = DeferredCallId::new(0, call.target_slot, index as u64, trail_hash.to_bytes())?;
 
@@ -507,13 +535,28 @@ impl SpeculativeDeferredCallRegistry {
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, sync::Arc};
+    use std::{collections::VecDeque, str::FromStr, sync::Arc};
 
+    use crate::active_history::ActiveHistory;
     use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_db_worker::MassaDB;
-    use massa_deferred_calls::{config::DeferredCallsConfig, DeferredCallRegistry};
-    use massa_final_state::MockFinalStateController;
-    use massa_models::{amount::Amount, config::THREAD_COUNT, slot::Slot};
+    use massa_deferred_calls::{
+        config::DeferredCallsConfig, registry_changes::DeferredCallRegistryChanges, DeferredCall,
+        DeferredCallRegistry,
+    };
+    use massa_execution_exports::ExecutionOutput;
+    use massa_final_state::{MockFinalStateController, StateChanges};
+    use massa_hash::Hash;
+    use massa_models::{
+        address::Address,
+        amount::Amount,
+        config::{
+            MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+            THREAD_COUNT,
+        },
+        deferred_calls::DeferredCallId,
+        slot::Slot,
+    };
     use parking_lot::RwLock;
     use tempfile::TempDir;
 
@@ -573,7 +616,8 @@ mod tests {
                     period: 1,
                     thread: 1,
                 },
-                1_000
+                1_000,
+                true,
             )
             .is_err());
 
@@ -589,7 +633,8 @@ mod tests {
                     period: 5,
                     thread: 1,
                 },
-                1000
+                1000,
+                true,
             )
             .is_err());
 
@@ -606,7 +651,8 @@ mod tests {
                     period: 1,
                     thread: 1,
                 },
-                1000
+                1000,
+                true,
             )
             .is_err());
 
@@ -619,11 +665,12 @@ mod tests {
                     period: 1,
                     thread: 1,
                 },
-                50_000_000
+                50_000_000,
+                true,
             )
             .is_err());
 
-        // no params: uninitialized slots must still charge the integral fee
+        // no params, before MIP-0002: an uninitialized slot has a zero integral fee
         assert_eq!(
             speculative
                 .compute_call_fee(
@@ -634,6 +681,24 @@ mod tests {
                         thread: 1,
                     },
                     0,
+                    false,
+                )
+                .unwrap(),
+            Amount::from_str("0.036600079").unwrap()
+        );
+
+        // no params, from MIP-0002 on: uninitialized slots must still charge the integral fee
+        assert_eq!(
+            speculative
+                .compute_call_fee(
+                    good_slot,
+                    200_000,
+                    Slot {
+                        period: 1,
+                        thread: 1,
+                    },
+                    0,
+                    true,
                 )
                 .unwrap(),
             Amount::from_str("0.038600079").unwrap()
@@ -650,6 +715,7 @@ mod tests {
                         thread: 1,
                     },
                     10_000,
+                    true,
                 )
                 .unwrap(),
             Amount::from_str("1.038600079").unwrap()
@@ -694,9 +760,178 @@ mod tests {
             thread: 1,
         };
 
+        // before MIP-0002 activation, an uninitialized slot keeps its zero base fee
+        assert_eq!(speculative.get_slot_base_fee(&slot, false), Amount::zero());
+
+        // from MIP-0002 on, it falls back to `min_gas_cost`
         assert_eq!(
-            speculative.get_slot_base_fee(&slot),
+            speculative.get_slot_base_fee(&slot, true),
             Amount::from_raw(config.min_gas_cost)
         );
+    }
+
+    fn sample_deferred_call(target_slot: Slot) -> DeferredCall {
+        DeferredCall::new(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            target_slot,
+            Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
+            "receive".to_string(),
+            vec![42],
+            Amount::from_raw(100),
+            300_000,
+            Amount::from_raw(1),
+            false,
+        )
+    }
+
+    fn deferred_call_index(id: &DeferredCallId) -> u64 {
+        use massa_models::config::THREAD_COUNT;
+        use massa_serialization::{DeserializeError, Deserializer, U64VarIntDeserializer};
+        use std::ops::Bound;
+
+        let version_deserializer =
+            U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX));
+        let slot_deser = massa_models::slot::SlotDeserializer::new(
+            (Bound::Included(0), Bound::Included(u64::MAX)),
+            (Bound::Included(0), Bound::Excluded(THREAD_COUNT)),
+        );
+        let (rest, _) = version_deserializer
+            .deserialize::<DeserializeError>(id.as_bytes())
+            .unwrap();
+        let (rest, _) = slot_deser.deserialize::<DeserializeError>(rest).unwrap();
+        let mut index_bytes = [0u8; 8];
+        index_bytes.copy_from_slice(&rest[..8]);
+        u64::from_be_bytes(index_bytes)
+    }
+
+    fn registry_with_history_call(
+        target_slot: Slot,
+        history_call_id: DeferredCallId,
+    ) -> SpeculativeDeferredCallRegistry {
+        let disk_ledger = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: disk_ledger.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+            max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
+            thread_count: THREAD_COUNT,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
+        ));
+        let mock_final_state = Arc::new(RwLock::new(MockFinalStateController::new()));
+        let deferred_call_registry =
+            DeferredCallRegistry::new(db.clone(), DeferredCallsConfig::default());
+
+        mock_final_state
+            .write()
+            .expect_get_deferred_call_registry()
+            .return_const(deferred_call_registry);
+
+        let mut history_changes = DeferredCallRegistryChanges::default();
+        history_changes.set_call(history_call_id, sample_deferred_call(target_slot));
+
+        let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([
+            ExecutionOutput {
+                slot: Slot::new(1, 0),
+                block_info: None,
+                state_changes: StateChanges {
+                    deferred_call_changes: history_changes,
+                    ..Default::default()
+                },
+                events: Default::default(),
+                #[cfg(feature = "execution-trace")]
+                slot_trace: Default::default(),
+                #[cfg(feature = "dump-block")]
+                storage: None,
+                deferred_credits_execution: Default::default(),
+                cancel_async_message_execution: Default::default(),
+                auto_sell_execution: Default::default(),
+                transfers_history: Default::default(),
+                execution_info: None,
+            },
+        ]))));
+
+        SpeculativeDeferredCallRegistry::new(
+            mock_final_state,
+            active_history,
+            DeferredCallsConfig::default(),
+        )
+    }
+
+    // Before MIP-0002, active-history deferred calls are not counted when allocating
+    // the per-slot index, which can assign an already-used index.
+    #[test]
+    fn register_call_legacy_index_ignores_active_history() {
+        let target_slot = Slot::new(10, 1);
+        let history_id =
+            DeferredCallId::new(0, target_slot, 0, Hash::compute_from(b"history").to_bytes())
+                .unwrap();
+        let mut registry = registry_with_history_call(target_slot, history_id);
+
+        let id = registry
+            .register_call(
+                sample_deferred_call(target_slot),
+                Hash::compute_from(b"new-call"),
+                false,
+            )
+            .unwrap();
+
+        assert_eq!(deferred_call_index(&id), 0);
+    }
+
+    // From MIP-0002 on, index allocation uses the same effective view as execution.
+    #[test]
+    fn register_call_effective_index_includes_active_history() {
+        let target_slot = Slot::new(10, 1);
+        let history_id =
+            DeferredCallId::new(0, target_slot, 0, Hash::compute_from(b"history").to_bytes())
+                .unwrap();
+        let mut registry = registry_with_history_call(target_slot, history_id);
+
+        assert_eq!(registry.get_calls_by_slot(target_slot).slot_calls.len(), 1);
+
+        let id = registry
+            .register_call(
+                sample_deferred_call(target_slot),
+                Hash::compute_from(b"new-call"),
+                true,
+            )
+            .unwrap();
+
+        assert_eq!(deferred_call_index(&id), 1);
+    }
+
+    // Two registrations for the same slot must get strictly increasing indices.
+    #[test]
+    fn register_call_effective_index_is_monotonic_for_same_slot() {
+        let target_slot = Slot::new(10, 1);
+        let mut registry = registry_with_history_call(
+            target_slot,
+            DeferredCallId::new(0, target_slot, 0, Hash::compute_from(b"history").to_bytes())
+                .unwrap(),
+        );
+
+        let id1 = registry
+            .register_call(
+                sample_deferred_call(target_slot),
+                Hash::compute_from(b"first"),
+                true,
+            )
+            .unwrap();
+        let id2 = registry
+            .register_call(
+                sample_deferred_call(target_slot),
+                Hash::compute_from(b"second"),
+                true,
+            )
+            .unwrap();
+
+        assert_eq!(deferred_call_index(&id1), 1);
+        assert_eq!(deferred_call_index(&id2), 2);
+        assert!(id1 < id2);
     }
 }

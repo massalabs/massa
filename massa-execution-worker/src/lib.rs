@@ -99,6 +99,8 @@ mod stats;
 /// Provide abstraction and implementations of a storage backend for the the
 /// dump-block feature
 pub mod storage_backend;
+mod wmas_bytecode;
+mod wmas_patch;
 mod worker;
 
 #[cfg(feature = "execution-trace")]

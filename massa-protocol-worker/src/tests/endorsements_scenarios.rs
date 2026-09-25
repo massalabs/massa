@@ -1,6 +1,6 @@
 use massa_hash::Hash;
 use massa_models::block_id::BlockId;
-use massa_models::config::MAX_ENDORSEMENTS_PER_SLOT_INDEX;
+use massa_models::config::{CHAINID, MAX_ENDORSEMENTS_PER_SLOT_INDEX};
 use massa_models::endorsement::{Endorsement, EndorsementSerializer};
 use massa_models::secure_share::SecureShareContent;
 use massa_models::slot::Slot;
@@ -417,7 +417,8 @@ fn test_protocol_bounds_conflicting_endorsements_for_the_same_draw() {
                 endorsement.content,
                 EndorsementSerializer::new(),
                 &endorsement_creator,
-                0,
+                *CHAINID,
+                Some(*CHAINID),
             )
             .unwrap()
         })
