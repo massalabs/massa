@@ -257,8 +257,10 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
+    /// Execution component version active at the current slot. massa-sc-runtime gates runtime
+    /// changes on it: from MIP_0002_EXECUTION_VERSION on, wasmv1 modules are no longer executed.
     fn get_interface_version(&self) -> Result<u32> {
-        bail!("get_interface_version has been called but no versioning is in progress")
+        Ok(context_guard!(self).execution_component_version)
     }
 
     fn increment_recursion_counter(&self) -> Result<()> {
@@ -2223,6 +2225,27 @@ mod tests {
             "oversized message should be rejected after activation"
         );
         send(ceiling).expect("a message exactly at the ceiling is still schedulable");
+    }
+
+    // The runtime gates changes on the reported version (e.g. it stops executing wasmv1 modules
+    // from MIP_0002_EXECUTION_VERSION on): it must follow the execution component version active
+    // at the current slot, on both sides of the activation.
+    #[test]
+    fn test_get_interface_version_follows_execution_component_version() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        assert_eq!(
+            interface.get_interface_version().unwrap(),
+            MIP_0002_EXECUTION_VERSION - 1
+        );
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert_eq!(
+            interface.get_interface_version().unwrap(),
+            MIP_0002_EXECUTION_VERSION
+        );
     }
 
     // Tests the get_keys_wasmv1 interface method used by the updated get_keys abi.
