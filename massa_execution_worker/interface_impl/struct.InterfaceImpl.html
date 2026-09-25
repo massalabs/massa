@@ -412,7 +412,7 @@ it can be both predicted and manipulated before the execution</p>
 <li><code>validity_end</code>: Tuple containing the period and thread of the validity end slot</li>
 <li><code>max_gas</code>: Maximum gas for the message execution.
 Bounded below by <code>max_instance_cost</code>, and — from execution component version
-<a href="../../massa_versioning/mips/constant.MIP_0002_EXECUTION_VERSION.html" title="constant massa_versioning::mips::MIP_0002_EXECUTION_VERSION"><code>MIP_0002_EXECUTION_VERSION</code></a> on — above by the largest budget any slot
+[<code>MIP_0002_EXECUTION_VERSION</code>] on — above by the largest budget any slot
 can ever offer. <code>take_batch_to_execute</code> only schedules a message when
 <code>max_gas + async_msg_cst_gas_cost</code> fits the slot’s async gas budget, which never
 exceeds <code>max_async_gas + max_gas_per_block</code> (see <code>execute_slot</code>). Before that
