@@ -242,6 +242,47 @@ fn get_address_from_opt_or_context(
     }
 }
 
+/// One page of datastore keys. `start_key` is exclusive. Rejected before
+/// execution version 2, and when `count` is outside `1..=MAX_DATASTORE_KEYS_PAGE`.
+fn paginated_datastore_keys(
+    context: &ExecutionContext,
+    addr: &Address,
+    prefix: Option<&[u8]>,
+    start_key: Option<&[u8]>,
+    count: u32,
+) -> Result<BTreeSet<Vec<u8>>> {
+    if !context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
+        bail!(
+            "paginated datastore-key queries are only available from execution version {}",
+            MIP_0002_EXECUTION_VERSION
+        );
+    }
+    if !(1..=massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE).contains(&count) {
+        bail!(
+            "datastore key page size must be between 1 and {}, got {}",
+            massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE,
+            count
+        );
+    }
+    let start_key = match start_key {
+        Some(key) => std::ops::Bound::Excluded(key.to_vec()),
+        None => std::ops::Bound::Unbounded,
+    };
+    match context
+        .get_keys(
+            addr,
+            prefix.unwrap_or_default(),
+            start_key,
+            std::ops::Bound::Unbounded,
+            Some(count),
+        )
+        .map_err(|e| e.to_string())?
+    {
+        Some(keys) => Ok(keys),
+        None => bail!("data entry not found"),
+    }
+}
+
 /// Implementation of the Interface trait providing functions for massa-sc-runtime to call
 /// in order to interact with the execution context during bytecode execution.
 /// See the massa-sc-runtime crate for a functional description of the trait and its methods.
@@ -531,6 +572,35 @@ impl Interface for InterfaceImpl {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
+    }
+
+    /// One page of datastore keys for the current address.
+    ///
+    /// `start_key` is an exclusive cursor. `count` must be in
+    /// `1..=MAX_DATASTORE_KEYS_PAGE`. Available from execution version 2
+    /// (MIP-0002); the runtime does not resolve the import before that.
+    fn get_keys_paginated(
+        &self,
+        prefix: Option<&[u8]>,
+        start_key: Option<&[u8]>,
+        count: u32,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
+        paginated_datastore_keys(&context, &addr, prefix, start_key, count)
+    }
+
+    /// One page of datastore keys for `address`. See [`Interface::get_keys_paginated`].
+    fn get_keys_for_paginated(
+        &self,
+        address: &str,
+        prefix: Option<&[u8]>,
+        start_key: Option<&[u8]>,
+        count: u32,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let addr = Address::from_str(address).map_err(|e| e.to_string())?;
+        let context = context_guard!(self);
+        paginated_datastore_keys(&context, &addr, prefix, start_key, count)
     }
 
     /// Get the datastore keys (aka entries) for a given address, or the current address if none is provided
@@ -2269,6 +2339,84 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert!(keys.contains(b"k1".as_slice()));
         assert!(keys.contains(b"k2".as_slice()));
+    }
+
+    /// Pages chain without gaps or duplicates. `start_key` is exclusive.
+    /// The call is rejected before execution version 2 and when `count` is out of range.
+    #[test]
+    fn test_get_keys_paginated_pages() {
+        use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
+
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+
+        for i in 0..10u32 {
+            let key = format!("key{i:02}");
+            interface
+                .set_ds_value_wasmv1(key.as_bytes(), b"v", Some(sender_addr.to_string()))
+                .unwrap();
+        }
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        assert!(interface.get_keys_paginated(None, None, 4).is_err());
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(interface.get_keys_paginated(None, None, 0).is_err());
+        assert!(interface
+            .get_keys_paginated(None, None, MAX_DATASTORE_KEYS_PAGE + 1)
+            .is_err());
+
+        let page1 = interface.get_keys_paginated(None, None, 4).unwrap();
+        assert_eq!(page1.len(), 4);
+        let last1 = page1.iter().next_back().unwrap().clone();
+        let page2 = interface.get_keys_paginated(None, Some(&last1), 4).unwrap();
+        assert_eq!(page2.len(), 4);
+        assert!(page1.is_disjoint(&page2));
+        let last2 = page2.iter().next_back().unwrap().clone();
+        let page3 = interface.get_keys_paginated(None, Some(&last2), 4).unwrap();
+        assert_eq!(page3.len(), 2);
+
+        let mut all: Vec<Vec<u8>> = page1.into_iter().chain(page2).chain(page3).collect();
+        all.sort();
+        let expected: Vec<Vec<u8>> = (0..10u32)
+            .map(|i| format!("key{i:02}").into_bytes())
+            .collect();
+        assert_eq!(all, expected);
+
+        let one = interface
+            .get_keys_for_paginated(&sender_addr.to_string(), None, None, 1)
+            .unwrap();
+        assert_eq!(one.len(), 1);
+    }
+
+    /// From execution version 2, an unbounded `get_keys` that matches more than one
+    /// page fails. Before that version the same query returns every key.
+    #[test]
+    fn test_get_keys_capped_at_execution_v2() {
+        use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
+
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let addr = sender_addr.to_string();
+
+        for i in 0..=MAX_DATASTORE_KEYS_PAGE {
+            let key = format!("k{i:06}");
+            interface
+                .set_ds_value_wasmv1(key.as_bytes(), b"v", Some(addr.clone()))
+                .unwrap();
+        }
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        let keys = interface.get_keys(Some(b"")).unwrap();
+        assert_eq!(keys.len(), MAX_DATASTORE_KEYS_PAGE as usize + 1);
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(interface.get_keys(Some(b"")).is_err());
+
+        let page = interface
+            .get_keys_paginated(None, None, MAX_DATASTORE_KEYS_PAGE)
+            .unwrap();
+        assert_eq!(page.len(), MAX_DATASTORE_KEYS_PAGE as usize);
     }
 
     // Tests the get_op_keys_wasmv1 interface method used by the updated get_op_keys abi.
