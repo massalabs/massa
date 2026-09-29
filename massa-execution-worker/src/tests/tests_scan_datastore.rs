@@ -12,7 +12,10 @@ use massa_signature::KeyPair;
 use parking_lot::RwLock;
 use rand::{distributions::Alphanumeric, seq::SliceRandom, thread_rng, Rng};
 
-use crate::{active_history::ActiveHistory, datastore_scan::scan_datastore};
+use crate::{
+    active_history::ActiveHistory,
+    datastore_scan::{scan_datastore, MIN_FINAL_KEYS_REFILL},
+};
 
 use super::universe::ExecutionForeignControllers;
 
@@ -538,12 +541,24 @@ fn controllers_without_final_keys() -> ExecutionForeignControllers {
 /// Builds foreign controllers whose final ledger returns the given keys, honouring
 /// the queried start/end bounds and count (mirroring the ledger contract).
 fn controllers_with_final_keys(keys: Vec<Vec<u8>>) -> ExecutionForeignControllers {
+    controllers_with_final_keys_recording(keys, Default::default())
+}
+
+/// Same as [`controllers_with_final_keys`], also recording the `count` of every final-ledger
+/// query, in order.
+fn controllers_with_final_keys_recording(
+    keys: Vec<Vec<u8>>,
+    requested_counts: Arc<std::sync::Mutex<Vec<Option<u32>>>>,
+) -> ExecutionForeignControllers {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     foreign_controllers
         .ledger_controller
         .set_expectations(move |ledger_controller| {
+            let requested_counts = requested_counts.clone();
+            let keys = keys.clone();
             ledger_controller.expect_get_datastore_keys().returning(
                 move |_addr, _prefix, start_key, end_key, count| {
+                    requested_counts.lock().unwrap().push(count);
                     let mut out: BTreeSet<Vec<u8>> = keys
                         .iter()
                         .filter(|&k| match &start_key {
@@ -738,6 +753,70 @@ fn test_scan_datastore_merge_keeps_delete_and_fills_count() {
     // "2" is deleted; "1" and "3" fill the two requested keys
     let expected: BTreeSet<Vec<u8>> = [b"1".to_vec(), b"3".to_vec()].into_iter().collect();
     assert_eq!(candidate_keys.unwrap(), expected);
+}
+
+/// When many final keys ahead are speculatively deleted, refilling the final-key queue must
+/// not degrade to one single-key ledger query per deleted key: each refill fetches at least
+/// MIN_FINAL_KEYS_REFILL keys. The result is still exactly the first live key.
+#[test]
+fn test_scan_datastore_refill_is_batched_past_deleted_final_keys() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let nb_final = 300usize;
+    let nb_deleted = 200usize;
+    let key = |i: usize| format!("k{:04}", i).into_bytes();
+
+    let requested_counts: Arc<std::sync::Mutex<Vec<Option<u32>>>> = Default::default();
+    let foreign_controllers = controllers_with_final_keys_recording(
+        (0..nb_final).map(key).collect(),
+        requested_counts.clone(),
+    );
+
+    // the first `nb_deleted` final keys are deleted in the speculative history
+    let deletions: BTreeMap<_, _> = (0..nb_deleted)
+        .map(|i| (key(i), massa_models::types::SetOrDelete::Delete))
+        .collect();
+    let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([update_output(
+        Slot::new(1, 0),
+        addr,
+        deletions,
+    )]))));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        Some(1),
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    let expected: BTreeSet<Vec<u8>> = [key(nb_deleted)].into_iter().collect();
+    assert_eq!(candidate_keys.unwrap(), expected);
+
+    let requested = requested_counts.lock().unwrap().clone();
+    // the first query asks for `count`; every refill after it for at least the floor
+    assert_eq!(requested.first(), Some(&Some(1)));
+    assert!(
+        requested[1..]
+            .iter()
+            .all(|c| c.is_some_and(|c| c >= MIN_FINAL_KEYS_REFILL)),
+        "refills below the floor: {:?}",
+        requested
+    );
+    // one query for the first key, then ceil(deleted / floor) refills to get past the
+    // deleted keys: far from the one query per deleted key the refill used to make
+    let max_queries = 1 + nb_deleted.div_ceil(MIN_FINAL_KEYS_REFILL as usize) + 1;
+    assert!(
+        requested.len() <= max_queries,
+        "{} final-ledger queries for {} deleted keys (expected at most {})",
+        requested.len(),
+        nb_deleted,
+        max_queries
+    );
 }
 
 /// Builds an execution output carrying a full ledger-entry `Delete` for `addr`.
