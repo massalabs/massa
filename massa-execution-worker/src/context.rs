@@ -660,7 +660,7 @@ impl ExecutionContext {
         let max_datastore_query = None;
 
         // cleanup bounds
-        let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+        let (prefix, start_key, end_key, count) = cleanup_datastore_key_range_query(
             prefix,
             start_key,
             end_key,
