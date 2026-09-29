@@ -1453,7 +1453,7 @@
 <a href=#1453 id=1453 data-nosnippet>1453</a>                        .into());
 <a href=#1454 id=1454 data-nosnippet>1454</a>                    }
 <a href=#1455 id=1455 data-nosnippet>1455</a>
-<a href=#1456 id=1456 data-nosnippet>1456</a>                    <span class="kw">let </span>_verify_signature = <span class="kw">match </span>operation.verify_signature(<span class="prelude-val">None</span>) {
+<a href=#1456 id=1456 data-nosnippet>1456</a>                    <span class="kw">let </span>_verify_signature = <span class="kw">match </span>operation.verify_signature() {
 <a href=#1457 id=1457 data-nosnippet>1457</a>                        <span class="prelude-val">Ok</span>(()) =&gt; (),
 <a href=#1458 id=1458 data-nosnippet>1458</a>                        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
 <a href=#1459 id=1459 data-nosnippet>1459</a>                    };
@@ -1661,7 +1661,7 @@
 <a href=#1661 id=1661 data-nosnippet>1661</a>        (<span class="prelude-val">Some</span>(k), <span class="bool-val">false</span>) =&gt; std::ops::Bound::Excluded(k),
 <a href=#1662 id=1662 data-nosnippet>1662</a>    };
 <a href=#1663 id=1663 data-nosnippet>1663</a>
-<a href=#1664 id=1664 data-nosnippet>1664</a>    <span class="kw">let </span>(prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+<a href=#1664 id=1664 data-nosnippet>1664</a>    <span class="kw">let </span>(prefix, start_key, end_key, count) = cleanup_datastore_key_range_query(
 <a href=#1665 id=1665 data-nosnippet>1665</a>        <span class="kw-2">&amp;</span>value.prefix,
 <a href=#1666 id=1666 data-nosnippet>1666</a>        start_key,
 <a href=#1667 id=1667 data-nosnippet>1667</a>        end_key,
@@ -1682,7 +1682,7 @@
 <a href=#1682 id=1682 data-nosnippet>1682</a>            prefix,
 <a href=#1683 id=1683 data-nosnippet>1683</a>            start_key,
 <a href=#1684 id=1684 data-nosnippet>1684</a>            end_key,
-<a href=#1685 id=1685 data-nosnippet>1685</a>            count: value.count,
+<a href=#1685 id=1685 data-nosnippet>1685</a>            count,
 <a href=#1686 id=1686 data-nosnippet>1686</a>        })
 <a href=#1687 id=1687 data-nosnippet>1687</a>    } <span class="kw">else </span>{
 <a href=#1688 id=1688 data-nosnippet>1688</a>        <span class="prelude-val">Ok</span>(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
@@ -1690,7 +1690,7 @@
 <a href=#1690 id=1690 data-nosnippet>1690</a>            prefix,
 <a href=#1691 id=1691 data-nosnippet>1691</a>            start_key,
 <a href=#1692 id=1692 data-nosnippet>1692</a>            end_key,
-<a href=#1693 id=1693 data-nosnippet>1693</a>            count: value.count,
+<a href=#1693 id=1693 data-nosnippet>1693</a>            count,
 <a href=#1694 id=1694 data-nosnippet>1694</a>        })
 <a href=#1695 id=1695 data-nosnippet>1695</a>    }
 <a href=#1696 id=1696 data-nosnippet>1696</a>}</code></pre></div></section></main></body></html>
