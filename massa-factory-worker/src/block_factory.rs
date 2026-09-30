@@ -1,5 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::get_first_slot_at_or_after_timestamp;
 use massa_channel::receiver::MassaReceiver;
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
@@ -59,37 +60,7 @@ impl BlockFactoryWorker {
     /// Slots can be skipped if we waited too much in-between.
     /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
-        // get current absolute time
-        let now = MassaTime::now();
-
-        // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
-        let base_time = if previous_slot.is_none() {
-            now.saturating_add(self.cfg.initial_delay)
-        } else {
-            now
-        };
-
-        // get closest slot according to the current absolute time
-        let mut next_slot = get_closest_slot_to_timestamp(
-            self.cfg.thread_count,
-            self.cfg.t0,
-            self.cfg.genesis_timestamp,
-            base_time,
-        );
-
-        // ignore genesis
-        if next_slot.period <= self.cfg.last_start_period {
-            next_slot = Slot::new(self.cfg.last_start_period + 1, 0);
-        }
-
-        // protection against double-production on unexpected system clock adjustment
-        if let Some(prev_slot) = previous_slot {
-            if next_slot <= prev_slot {
-                next_slot = prev_slot
-                    .get_next_slot(self.cfg.thread_count)
-                    .expect("could not compute next slot");
-            }
-        }
+        let next_slot = compute_next_block_slot(&self.cfg, previous_slot, MassaTime::now());
 
         // get the timestamp of the target slot
         let next_instant = get_block_slot_timestamp(
@@ -390,4 +361,42 @@ impl BlockFactoryWorker {
             prev_slot = Some(slot);
         }
     }
+}
+
+/// Computes the next slot to produce a block for at time `now`, see `BlockFactoryWorker::get_next_slot`.
+pub(crate) fn compute_next_block_slot(
+    cfg: &FactoryConfig,
+    previous_slot: Option<Slot>,
+    now: MassaTime,
+) -> Slot {
+    let mut next_slot = if previous_slot.is_none() {
+        // First computed slot: only consider slots at least `initial_delay` ahead of us.
+        // The slots before are already past: a previous instance of this node may have produced
+        // them right before a restart, and producing them again is double-staking.
+        get_first_slot_at_or_after_timestamp(
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+            now.saturating_add(cfg.initial_delay),
+        )
+    } else {
+        // get closest slot according to the current absolute time
+        get_closest_slot_to_timestamp(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, now)
+    };
+
+    // ignore genesis
+    if next_slot.period <= cfg.last_start_period {
+        next_slot = Slot::new(cfg.last_start_period + 1, 0);
+    }
+
+    // protection against double-production on unexpected system clock adjustment
+    if let Some(prev_slot) = previous_slot {
+        if next_slot <= prev_slot {
+            next_slot = prev_slot
+                .get_next_slot(cfg.thread_count)
+                .expect("could not compute next slot");
+        }
+    }
+
+    next_slot
 }
