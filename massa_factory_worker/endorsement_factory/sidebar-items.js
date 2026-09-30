@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["compute_next_endorsement_slot"],"struct":["EndorsementFactoryWorker"]};
+window.SIDEBAR_ITEMS = {"struct":["EndorsementFactoryWorker"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_first_slot_at_or_after_timestamp","start_factory"],"mod":["block_factory","endorsement_factory","manager","run"]};
+window.SIDEBAR_ITEMS = {"fn":["start_factory"],"mod":["block_factory","endorsement_factory","manager","run"]};

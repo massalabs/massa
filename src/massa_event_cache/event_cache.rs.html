@@ -430,7 +430,7 @@
 <a href=#430 id=430 data-nosnippet>430</a>
 <a href=#431 id=431 data-nosnippet>431</a>        <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
 <a href=#432 id=432 data-nosnippet>432</a>        <span class="self">self</span>.insert_into_batch(event, <span class="kw-2">&amp;mut </span>batch);
-<a href=#433 id=433 data-nosnippet>433</a>        <span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
+<a href=#433 id=433 data-nosnippet>433</a>        <span class="self">self</span>.db.write(<span class="kw-2">&amp;</span>batch).expect(CRUD_ERROR);
 <a href=#434 id=434 data-nosnippet>434</a>
 <a href=#435 id=435 data-nosnippet>435</a>        <span class="comment">// Note:
 <a href=#436 id=436 data-nosnippet>436</a>        // This assumes that events are always added, never overwritten
@@ -455,7 +455,7 @@
 <a href=#455 id=455 data-nosnippet>455</a>        <span class="kw">for </span>event <span class="kw">in </span>events {
 <a href=#456 id=456 data-nosnippet>456</a>            <span class="self">self</span>.insert_into_batch(event, <span class="kw-2">&amp;mut </span>batch);
 <a href=#457 id=457 data-nosnippet>457</a>        }
-<a href=#458 id=458 data-nosnippet>458</a>        <span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
+<a href=#458 id=458 data-nosnippet>458</a>        <span class="self">self</span>.db.write(<span class="kw-2">&amp;</span>batch).expect(CRUD_ERROR);
 <a href=#459 id=459 data-nosnippet>459</a>        <span class="comment">// Note:
 <a href=#460 id=460 data-nosnippet>460</a>        // This assumes that events are always added, never overwritten
 <a href=#461 id=461 data-nosnippet>461</a>        </span><span class="self">self</span>.entry_count = <span class="self">self</span>.entry_count.saturating_add(events_len);
@@ -840,7 +840,7 @@
 <a href=#840 id=840 data-nosnippet>840</a>        }
 <a href=#841 id=841 data-nosnippet>841</a>
 <a href=#842 id=842 data-nosnippet>842</a>        <span class="comment">// delete the key and reduce entry_count
-<a href=#843 id=843 data-nosnippet>843</a>        </span><span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
+<a href=#843 id=843 data-nosnippet>843</a>        </span><span class="self">self</span>.db.write(<span class="kw-2">&amp;</span>batch).expect(CRUD_ERROR);
 <a href=#844 id=844 data-nosnippet>844</a>        <span class="self">self</span>.entry_count = <span class="self">self</span>.entry_count.saturating_sub(snipped_count);
 <a href=#845 id=845 data-nosnippet>845</a>
 <a href=#846 id=846 data-nosnippet>846</a>        <span class="comment">// delete key counters where value == 0
@@ -853,7 +853,7 @@
 <a href=#853 id=853 data-nosnippet>853</a>                }
 <a href=#854 id=854 data-nosnippet>854</a>            }
 <a href=#855 id=855 data-nosnippet>855</a>        }
-<a href=#856 id=856 data-nosnippet>856</a>        <span class="self">self</span>.db.write(batch_counters).expect(CRUD_ERROR);
+<a href=#856 id=856 data-nosnippet>856</a>        <span class="self">self</span>.db.write(<span class="kw-2">&amp;</span>batch_counters).expect(CRUD_ERROR);
 <a href=#857 id=857 data-nosnippet>857</a>
 <a href=#858 id=858 data-nosnippet>858</a>        <span class="comment">// Update first_slot / last_slot in the DB
 <a href=#859 id=859 data-nosnippet>859</a>        </span><span class="kw">if </span><span class="self">self</span>.entry_count == <span class="number">0 </span>{

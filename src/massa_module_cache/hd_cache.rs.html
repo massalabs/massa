@@ -136,7 +136,7 @@
 <a href=#136 id=136 data-nosnippet>136</a>        <span class="self">self</span>.db
 <a href=#137 id=137 data-nosnippet>137</a>            .as_ref()
 <a href=#138 id=138 data-nosnippet>138</a>            .expect(CRUD_ERROR)
-<a href=#139 id=139 data-nosnippet>139</a>            .write(batch)
+<a href=#139 id=139 data-nosnippet>139</a>            .write(<span class="kw-2">&amp;</span>batch)
 <a href=#140 id=140 data-nosnippet>140</a>            .expect(CRUD_ERROR);
 <a href=#141 id=141 data-nosnippet>141</a>
 <a href=#142 id=142 data-nosnippet>142</a>        <span class="self">self</span>.entry_count = <span class="self">self</span>.entry_count.saturating_add(<span class="number">1</span>);
@@ -265,7 +265,7 @@
 <a href=#265 id=265 data-nosnippet>265</a>        </span><span class="self">self</span>.db
 <a href=#266 id=266 data-nosnippet>266</a>            .as_ref()
 <a href=#267 id=267 data-nosnippet>267</a>            .expect(CRUD_ERROR)
-<a href=#268 id=268 data-nosnippet>268</a>            .write(batch)
+<a href=#268 id=268 data-nosnippet>268</a>            .write(<span class="kw-2">&amp;</span>batch)
 <a href=#269 id=269 data-nosnippet>269</a>            .expect(CRUD_ERROR);
 <a href=#270 id=270 data-nosnippet>270</a>        <span class="self">self</span>.entry_count -= snipped_count;
 <a href=#271 id=271 data-nosnippet>271</a>    }
