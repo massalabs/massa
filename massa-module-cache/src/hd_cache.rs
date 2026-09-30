@@ -136,7 +136,7 @@ impl HDCache {
         self.db
             .as_ref()
             .expect(CRUD_ERROR)
-            .write(batch)
+            .write(&batch)
             .expect(CRUD_ERROR);
 
         self.entry_count = self.entry_count.saturating_add(1);
@@ -265,7 +265,7 @@ impl HDCache {
         self.db
             .as_ref()
             .expect(CRUD_ERROR)
-            .write(batch)
+            .write(&batch)
             .expect(CRUD_ERROR);
         self.entry_count -= snipped_count;
     }
