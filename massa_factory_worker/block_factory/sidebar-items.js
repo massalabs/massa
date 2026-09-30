@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BlockFactoryWorker"]};
+window.SIDEBAR_ITEMS = {"fn":["compute_next_block_slot"],"struct":["BlockFactoryWorker"]};
