@@ -685,7 +685,7 @@ impl ExecutionContext {
             (true, None) => (Some(MAX_DATASTORE_KEYS_PAGE.saturating_add(1)), None),
         };
 
-        let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+        let (prefix, start_key, end_key, _) = cleanup_datastore_key_range_query(
             prefix,
             start_key,
             end_key,

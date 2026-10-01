@@ -512,7 +512,7 @@ where
             let batch = WriteBatch::from_data(current_batch_guard.data());
             current_batch_guard.clear();
 
-            self.db.write(batch).map_err(|e| {
+            self.db.write(&batch).map_err(|e| {
                 MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
             })?;
         }
@@ -590,7 +590,7 @@ where
             batch = WriteBatch::from_data(current_batch_guard.data());
             current_batch_guard.clear();
 
-            self.db.write(batch).expect(CRUD_ERROR);
+            self.db.write(&batch).expect(CRUD_ERROR);
         }
     }
 

@@ -19,6 +19,12 @@ use parking_lot::RwLock;
 
 use crate::active_history::ActiveHistory;
 
+/// Smallest batch of final keys fetched when the final-key queue runs dry during the
+/// speculative merge. Fetching only what is still missing to reach `count` degrades to one
+/// lock + RocksDB seek per speculatively-deleted final key once the result is one key short;
+/// the floor amortizes those seeks. The result is unaffected: the merge still stops at `count`.
+pub(crate) const MIN_FINAL_KEYS_REFILL: u32 = 64;
+
 /// Builds the bounded result for a `Set` reset by streaming the absolute
 /// datastore in key order and overlaying the newer-layer updates, stopping as
 /// soon as `count` surviving keys are collected. A naive truncation of the
@@ -345,9 +351,13 @@ pub fn scan_datastore(
 
         if final_keys_queue.is_empty() {
             if let Some(last_k) = last_final_batch_key.take() {
-                // the last final item was consumed: replenish the queue by querying
-                // only what is still missing to reach `count`, not a full batch
-                let remaining = count.map(|cnt| cnt.saturating_sub(speculative_keys.len() as u32));
+                // the last final item was consumed: replenish the queue by querying what is
+                // still missing to reach `count`, but at least MIN_FINAL_KEYS_REFILL keys so
+                // that speculatively-deleted final keys ahead are not fetched one seek each
+                let remaining = count.map(|cnt| {
+                    cnt.saturating_sub(speculative_keys.len() as u32)
+                        .max(MIN_FINAL_KEYS_REFILL)
+                });
                 final_keys_queue = final_state
                     .read()
                     .get_ledger()

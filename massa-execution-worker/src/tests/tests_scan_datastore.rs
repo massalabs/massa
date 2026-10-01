@@ -12,7 +12,10 @@ use massa_signature::KeyPair;
 use parking_lot::RwLock;
 use rand::{distributions::Alphanumeric, seq::SliceRandom, thread_rng, Rng};
 
-use crate::{active_history::ActiveHistory, datastore_scan::scan_datastore};
+use crate::{
+    active_history::ActiveHistory,
+    datastore_scan::{scan_datastore, MIN_FINAL_KEYS_REFILL},
+};
 
 use super::universe::ExecutionForeignControllers;
 
@@ -538,12 +541,24 @@ fn controllers_without_final_keys() -> ExecutionForeignControllers {
 /// Builds foreign controllers whose final ledger returns the given keys, honouring
 /// the queried start/end bounds and count (mirroring the ledger contract).
 fn controllers_with_final_keys(keys: Vec<Vec<u8>>) -> ExecutionForeignControllers {
+    controllers_with_final_keys_recording(keys, Default::default())
+}
+
+/// Same as [`controllers_with_final_keys`], also recording the `count` of every final-ledger
+/// query, in order.
+fn controllers_with_final_keys_recording(
+    keys: Vec<Vec<u8>>,
+    requested_counts: Arc<std::sync::Mutex<Vec<Option<u32>>>>,
+) -> ExecutionForeignControllers {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     foreign_controllers
         .ledger_controller
         .set_expectations(move |ledger_controller| {
+            let requested_counts = requested_counts.clone();
+            let keys = keys.clone();
             ledger_controller.expect_get_datastore_keys().returning(
                 move |_addr, _prefix, start_key, end_key, count| {
+                    requested_counts.lock().unwrap().push(count);
                     let mut out: BTreeSet<Vec<u8>> = keys
                         .iter()
                         .filter(|&k| match &start_key {
@@ -740,6 +755,70 @@ fn test_scan_datastore_merge_keeps_delete_and_fills_count() {
     assert_eq!(candidate_keys.unwrap(), expected);
 }
 
+/// When many final keys ahead are speculatively deleted, refilling the final-key queue must
+/// not degrade to one single-key ledger query per deleted key: each refill fetches at least
+/// MIN_FINAL_KEYS_REFILL keys. The result is still exactly the first live key.
+#[test]
+fn test_scan_datastore_refill_is_batched_past_deleted_final_keys() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let nb_final = 300usize;
+    let nb_deleted = 200usize;
+    let key = |i: usize| format!("k{:04}", i).into_bytes();
+
+    let requested_counts: Arc<std::sync::Mutex<Vec<Option<u32>>>> = Default::default();
+    let foreign_controllers = controllers_with_final_keys_recording(
+        (0..nb_final).map(key).collect(),
+        requested_counts.clone(),
+    );
+
+    // the first `nb_deleted` final keys are deleted in the speculative history
+    let deletions: BTreeMap<_, _> = (0..nb_deleted)
+        .map(|i| (key(i), massa_models::types::SetOrDelete::Delete))
+        .collect();
+    let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([update_output(
+        Slot::new(1, 0),
+        addr,
+        deletions,
+    )]))));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Unbounded,
+        Bound::Unbounded,
+        Some(1),
+        foreign_controllers.final_state.clone(),
+        active_history,
+        None,
+    );
+
+    let expected: BTreeSet<Vec<u8>> = [key(nb_deleted)].into_iter().collect();
+    assert_eq!(candidate_keys.unwrap(), expected);
+
+    let requested = requested_counts.lock().unwrap().clone();
+    // the first query asks for `count`; every refill after it for at least the floor
+    assert_eq!(requested.first(), Some(&Some(1)));
+    assert!(
+        requested[1..]
+            .iter()
+            .all(|c| c.is_some_and(|c| c >= MIN_FINAL_KEYS_REFILL)),
+        "refills below the floor: {:?}",
+        requested
+    );
+    // one query for the first key, then ceil(deleted / floor) refills to get past the
+    // deleted keys: far from the one query per deleted key the refill used to make
+    let max_queries = 1 + nb_deleted.div_ceil(MIN_FINAL_KEYS_REFILL as usize) + 1;
+    assert!(
+        requested.len() <= max_queries,
+        "{} final-ledger queries for {} deleted keys (expected at most {})",
+        requested.len(),
+        nb_deleted,
+        max_queries
+    );
+}
+
 /// Builds an execution output carrying a full ledger-entry `Delete` for `addr`.
 fn delete_output(slot: Slot, addr: Address) -> ExecutionOutput {
     let mut changes = PreHashMap::default();
@@ -814,4 +893,142 @@ fn test_scan_datastore_reset_after_delete_returns_updates() {
 
     let expected: BTreeSet<Vec<u8>> = [b"x".to_vec(), b"y".to_vec()].into_iter().collect();
     assert_eq!(candidate_keys.unwrap(), expected);
+}
+
+/// Bounding the speculative scan must not change what is returned: for any `count`,
+/// the result has to be exactly the first `count` keys of the unbounded result.
+///
+/// The reset (`Set`) path is the interesting one, because deletions applied on top of
+/// the reset entry mean the scan has to look past the first `count` entry keys to
+/// still produce `count` keys.
+#[test]
+fn test_scan_datastore_count_is_a_prefix_of_unbounded() {
+    let mut rng = thread_rng();
+    for _ in 0..20 {
+        scan_datastore_count_prefix_case(rng.gen_range(20..60));
+    }
+}
+
+fn scan_datastore_count_prefix_case(nb_keys: usize) {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_datastore_keys()
+                .returning(move |_, _, _, _, _| None);
+        });
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_ledger()
+        .return_const(Box::new(foreign_controllers.ledger_controller.clone()));
+
+    let mut rng = thread_rng();
+
+    // the reset entry
+    let mut data = BTreeMap::new();
+    for i in 0..nb_keys {
+        // fixed-width keys so that byte order matches the generation order
+        let key = format!("key{:04}", i).into_bytes();
+        let value: Vec<u8> = (0..rng.gen_range(1..10))
+            .map(|_| rng.sample(Alphanumeric) as u8)
+            .collect();
+        data.insert(key, value);
+    }
+    let existing_keys: Vec<_> = data.keys().cloned().collect();
+
+    let mut changes = PreHashMap::default();
+    changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Set(LedgerEntry {
+            datastore: data.clone(),
+            ..Default::default()
+        }),
+    );
+
+    // updates newer than the reset: deletions concentrated on the lowest keys, so a
+    // naive `take(count)` on the entry would come up short, plus a few added keys
+    let mut datastore_updates = BTreeMap::new();
+    for key in existing_keys.iter().take(nb_keys / 3) {
+        datastore_updates.insert(key.clone(), massa_models::types::SetOrDelete::Delete);
+    }
+    for i in 0..5 {
+        // "add" sorts before "key", so these land at the front of the range
+        datastore_updates.insert(
+            format!("add{:04}", i).into_bytes(),
+            massa_models::types::SetOrDelete::Set(vec![1, 2, 3]),
+        );
+    }
+
+    let mut update_changes = PreHashMap::default();
+    update_changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Update(LedgerEntryUpdate {
+            datastore: datastore_updates.clone(),
+            ..Default::default()
+        }),
+    );
+
+    let mk_output = |slot, ledger_changes| ExecutionOutput {
+        slot,
+        block_info: None,
+        state_changes: StateChanges {
+            ledger_changes,
+            async_pool_changes: Default::default(),
+            deferred_call_changes: Default::default(),
+            pos_changes: Default::default(),
+            executed_ops_changes: Default::default(),
+            executed_denunciations_changes: Default::default(),
+            execution_trail_hash_change: Default::default(),
+        },
+        events: Default::default(),
+        #[cfg(feature = "execution-trace")]
+        slot_trace: Default::default(),
+        #[cfg(feature = "dump-block")]
+        storage: None,
+        deferred_credits_execution: Default::default(),
+        cancel_async_message_execution: Default::default(),
+        auto_sell_execution: Default::default(),
+        transfers_history: Default::default(),
+        execution_info: None,
+    };
+
+    let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([
+        mk_output(Slot::new(1, 0), LedgerChanges(changes)),
+        mk_output(Slot::new(2, 0), LedgerChanges(update_changes)),
+    ]))));
+
+    let scan = |count| {
+        scan_datastore(
+            &addr,
+            &[],
+            Bound::Unbounded,
+            Bound::Unbounded,
+            count,
+            foreign_controllers.final_state.clone(),
+            active_history.clone(),
+            None,
+        )
+        .1
+        .expect("expected candidate keys")
+    };
+
+    let unbounded: Vec<_> = scan(None).into_iter().collect();
+
+    // sanity: the deletions really do force the scan past the first keys of the entry
+    assert!(unbounded.len() > nb_keys / 2);
+
+    for count in 0..=(unbounded.len() + 2) {
+        let bounded: Vec<_> = scan(Some(count as u32)).into_iter().collect();
+        let expected: Vec<_> = unbounded.iter().take(count).cloned().collect();
+        assert_eq!(
+            bounded, expected,
+            "count={} produced a different result than the unbounded scan",
+            count
+        );
+    }
 }

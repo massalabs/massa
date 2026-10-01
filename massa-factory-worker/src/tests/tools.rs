@@ -17,6 +17,7 @@ use massa_pos_exports::MockSelectorController;
 use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_time::MassaTime;
 
 use crate::block_factory::BlockFactoryWorker;
 use crate::endorsement_factory::EndorsementFactoryWorker;
@@ -132,10 +133,6 @@ impl EndorsementTestFactory {
         protocol_controller: Box<MockProtocolController>,
     ) -> EndorsementTestFactory {
         let mut factory_config = FactoryConfig::default();
-        factory_config.genesis_timestamp = factory_config
-            .genesis_timestamp
-            .checked_sub(factory_config.t0.checked_div_u64(2).unwrap())
-            .unwrap();
         let producer_keypair = default_keypair;
         let producer_address = Address::from_public_key(&producer_keypair.get_public_key());
         let mut accounts = PreHashMap::default();
@@ -157,6 +154,19 @@ impl EndorsementTestFactory {
             .expect("Cannot create MIP store");
 
         let wallet = create_test_wallet(Some(accounts));
+        // the endorsements of slot (1, 0) are made one slot duration after the factory starts
+        // (wallet creation is slow, so this is set right before the start):
+        // the factory never endorses a slot whose endorsement instant is already past when it starts
+        factory_config.genesis_timestamp = MassaTime::now()
+            .checked_sub(factory_config.t0.checked_div_u64(2).unwrap())
+            .unwrap()
+            .checked_add(
+                factory_config
+                    .t0
+                    .checked_div_u64(factory_config.thread_count as u64)
+                    .unwrap(),
+            )
+            .unwrap();
         let (tx, rx) = MassaChannel::new(String::from("test_block_factory"), None);
         let join_handle = EndorsementFactoryWorker::spawn(
             factory_config.clone(),

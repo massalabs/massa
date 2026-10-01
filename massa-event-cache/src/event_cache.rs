@@ -430,7 +430,7 @@ impl EventCache {
 
         let mut batch = WriteBatch::default();
         self.insert_into_batch(event, &mut batch);
-        self.db.write(batch).expect(CRUD_ERROR);
+        self.db.write(&batch).expect(CRUD_ERROR);
 
         // Note:
         // This assumes that events are always added, never overwritten
@@ -455,7 +455,7 @@ impl EventCache {
         for event in events {
             self.insert_into_batch(event, &mut batch);
         }
-        self.db.write(batch).expect(CRUD_ERROR);
+        self.db.write(&batch).expect(CRUD_ERROR);
         // Note:
         // This assumes that events are always added, never overwritten
         self.entry_count = self.entry_count.saturating_add(events_len);
@@ -840,7 +840,7 @@ impl EventCache {
         }
 
         // delete the key and reduce entry_count
-        self.db.write(batch).expect(CRUD_ERROR);
+        self.db.write(&batch).expect(CRUD_ERROR);
         self.entry_count = self.entry_count.saturating_sub(snipped_count);
 
         // delete key counters where value == 0
@@ -853,7 +853,7 @@ impl EventCache {
                 }
             }
         }
-        self.db.write(batch_counters).expect(CRUD_ERROR);
+        self.db.write(&batch_counters).expect(CRUD_ERROR);
 
         // Update first_slot / last_slot in the DB
         if self.entry_count == 0 {
