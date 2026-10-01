@@ -13,7 +13,8 @@ pub struct FactoryConfig {
     pub genesis_timestamp: MassaTime,
     /// period duration
     pub t0: MassaTime,
-    /// initial delay before starting production, to avoid double-production on node restart
+    /// minimal delay between the start of the factories and their first production instant
+    /// (slot time for blocks, slot time - t0/2 for endorsements), to avoid double-production on node restart
     pub initial_delay: MassaTime,
     /// maximal block size in bytes
     pub max_block_size: u64,
