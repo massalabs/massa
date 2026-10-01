@@ -13,28 +13,29 @@
 <a href=#13 id=13 data-nosnippet>13</a>    </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
 <a href=#14 id=14 data-nosnippet>14</a>    <span class="doccomment">/// period duration
 <a href=#15 id=15 data-nosnippet>15</a>    </span><span class="kw">pub </span>t0: MassaTime,
-<a href=#16 id=16 data-nosnippet>16</a>    <span class="doccomment">/// initial delay before starting production, to avoid double-production on node restart
-<a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">pub </span>initial_delay: MassaTime,
-<a href=#18 id=18 data-nosnippet>18</a>    <span class="doccomment">/// maximal block size in bytes
-<a href=#19 id=19 data-nosnippet>19</a>    </span><span class="kw">pub </span>max_block_size: u64,
-<a href=#20 id=20 data-nosnippet>20</a>    <span class="doccomment">/// maximal block gas
-<a href=#21 id=21 data-nosnippet>21</a>    </span><span class="kw">pub </span>max_block_gas: u64,
-<a href=#22 id=22 data-nosnippet>22</a>    <span class="doccomment">/// maximum number of operation ids in block
-<a href=#23 id=23 data-nosnippet>23</a>    </span><span class="kw">pub </span>max_operations_per_block: u32,
-<a href=#24 id=24 data-nosnippet>24</a>    <span class="doccomment">/// max number of endorsements per block
-<a href=#25 id=25 data-nosnippet>25</a>    </span><span class="kw">pub </span>endorsement_count: u32,
-<a href=#26 id=26 data-nosnippet>26</a>    <span class="doccomment">/// last start period, to deduce genesis blocks
-<a href=#27 id=27 data-nosnippet>27</a>    </span><span class="kw">pub </span>last_start_period: u64,
-<a href=#28 id=28 data-nosnippet>28</a>    <span class="doccomment">/// cycle duration in periods
-<a href=#29 id=29 data-nosnippet>29</a>    </span><span class="kw">pub </span>periods_per_cycle: u64,
-<a href=#30 id=30 data-nosnippet>30</a>    <span class="doccomment">/// denunciation expiration as periods
-<a href=#31 id=31 data-nosnippet>31</a>    </span><span class="kw">pub </span>denunciation_expire_periods: u64,
-<a href=#32 id=32 data-nosnippet>32</a>    <span class="doccomment">/// choose whether to stop production when zero connections on protocol
-<a href=#33 id=33 data-nosnippet>33</a>    </span><span class="kw">pub </span>stop_production_when_zero_connections: bool,
-<a href=#34 id=34 data-nosnippet>34</a>    <span class="doccomment">/// chain id
-<a href=#35 id=35 data-nosnippet>35</a>    </span><span class="kw">pub </span>chain_id: u64,
-<a href=#36 id=36 data-nosnippet>36</a>    <span class="doccomment">/// warn if block production is delayed by more than this
-<a href=#37 id=37 data-nosnippet>37</a>    </span><span class="kw">pub </span>block_delay_warn: MassaTime,
-<a href=#38 id=38 data-nosnippet>38</a>    <span class="doccomment">/// timeout for optional channel calls in block production
-<a href=#39 id=39 data-nosnippet>39</a>    </span><span class="kw">pub </span>block_opt_channel_timeout: MassaTime,
-<a href=#40 id=40 data-nosnippet>40</a>}</code></pre></div></section></main></body></html>
+<a href=#16 id=16 data-nosnippet>16</a>    <span class="doccomment">/// minimal delay between the start of the factories and their first production instant
+<a href=#17 id=17 data-nosnippet>17</a>    /// (slot time for blocks, slot time - t0/2 for endorsements), to avoid double-production on node restart
+<a href=#18 id=18 data-nosnippet>18</a>    </span><span class="kw">pub </span>initial_delay: MassaTime,
+<a href=#19 id=19 data-nosnippet>19</a>    <span class="doccomment">/// maximal block size in bytes
+<a href=#20 id=20 data-nosnippet>20</a>    </span><span class="kw">pub </span>max_block_size: u64,
+<a href=#21 id=21 data-nosnippet>21</a>    <span class="doccomment">/// maximal block gas
+<a href=#22 id=22 data-nosnippet>22</a>    </span><span class="kw">pub </span>max_block_gas: u64,
+<a href=#23 id=23 data-nosnippet>23</a>    <span class="doccomment">/// maximum number of operation ids in block
+<a href=#24 id=24 data-nosnippet>24</a>    </span><span class="kw">pub </span>max_operations_per_block: u32,
+<a href=#25 id=25 data-nosnippet>25</a>    <span class="doccomment">/// max number of endorsements per block
+<a href=#26 id=26 data-nosnippet>26</a>    </span><span class="kw">pub </span>endorsement_count: u32,
+<a href=#27 id=27 data-nosnippet>27</a>    <span class="doccomment">/// last start period, to deduce genesis blocks
+<a href=#28 id=28 data-nosnippet>28</a>    </span><span class="kw">pub </span>last_start_period: u64,
+<a href=#29 id=29 data-nosnippet>29</a>    <span class="doccomment">/// cycle duration in periods
+<a href=#30 id=30 data-nosnippet>30</a>    </span><span class="kw">pub </span>periods_per_cycle: u64,
+<a href=#31 id=31 data-nosnippet>31</a>    <span class="doccomment">/// denunciation expiration as periods
+<a href=#32 id=32 data-nosnippet>32</a>    </span><span class="kw">pub </span>denunciation_expire_periods: u64,
+<a href=#33 id=33 data-nosnippet>33</a>    <span class="doccomment">/// choose whether to stop production when zero connections on protocol
+<a href=#34 id=34 data-nosnippet>34</a>    </span><span class="kw">pub </span>stop_production_when_zero_connections: bool,
+<a href=#35 id=35 data-nosnippet>35</a>    <span class="doccomment">/// chain id
+<a href=#36 id=36 data-nosnippet>36</a>    </span><span class="kw">pub </span>chain_id: u64,
+<a href=#37 id=37 data-nosnippet>37</a>    <span class="doccomment">/// warn if block production is delayed by more than this
+<a href=#38 id=38 data-nosnippet>38</a>    </span><span class="kw">pub </span>block_delay_warn: MassaTime,
+<a href=#39 id=39 data-nosnippet>39</a>    <span class="doccomment">/// timeout for optional channel calls in block production
+<a href=#40 id=40 data-nosnippet>40</a>    </span><span class="kw">pub </span>block_opt_channel_timeout: MassaTime,
+<a href=#41 id=41 data-nosnippet>41</a>}</code></pre></div></section></main></body></html>

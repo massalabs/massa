@@ -7,5 +7,37 @@
 <a href=#7 id=7 data-nosnippet>7</a>
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">pub use </span>run::start_factory;
 <a href=#9 id=9 data-nosnippet>9</a>
-<a href=#10 id=10 data-nosnippet>10</a><span class="attr">#[cfg(test)]
-<a href=#11 id=11 data-nosnippet>11</a></span><span class="kw">mod </span>tests;</code></pre></div></section></main></body></html>
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>massa_models::{
+<a href=#11 id=11 data-nosnippet>11</a>    slot::Slot,
+<a href=#12 id=12 data-nosnippet>12</a>    timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
+<a href=#13 id=13 data-nosnippet>13</a>};
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span>massa_time::MassaTime;
+<a href=#15 id=15 data-nosnippet>15</a>
+<a href=#16 id=16 data-nosnippet>16</a><span class="doccomment">/// Returns the first slot whose timestamp is at or after `timestamp`.
+<a href=#17 id=17 data-nosnippet>17</a></span><span class="kw">fn </span>get_first_slot_at_or_after_timestamp(
+<a href=#18 id=18 data-nosnippet>18</a>    thread_count: u8,
+<a href=#19 id=19 data-nosnippet>19</a>    t0: MassaTime,
+<a href=#20 id=20 data-nosnippet>20</a>    genesis_timestamp: MassaTime,
+<a href=#21 id=21 data-nosnippet>21</a>    timestamp: MassaTime,
+<a href=#22 id=22 data-nosnippet>22</a>) -&gt; Slot {
+<a href=#23 id=23 data-nosnippet>23</a>    <span class="kw">let </span><span class="prelude-val">Some</span>(latest_slot) =
+<a href=#24 id=24 data-nosnippet>24</a>        get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, timestamp)
+<a href=#25 id=25 data-nosnippet>25</a>            .expect(<span class="string">"could not get latest block slot at timestamp"</span>)
+<a href=#26 id=26 data-nosnippet>26</a>    <span class="kw">else </span>{
+<a href=#27 id=27 data-nosnippet>27</a>        <span class="comment">// we are before genesis
+<a href=#28 id=28 data-nosnippet>28</a>        </span><span class="kw">return </span>Slot::new(<span class="number">0</span>, <span class="number">0</span>);
+<a href=#29 id=29 data-nosnippet>29</a>    };
+<a href=#30 id=30 data-nosnippet>30</a>    <span class="kw">let </span>latest_slot_timestamp =
+<a href=#31 id=31 data-nosnippet>31</a>        get_block_slot_timestamp(thread_count, t0, genesis_timestamp, latest_slot)
+<a href=#32 id=32 data-nosnippet>32</a>            .expect(<span class="string">"could not get block slot timestamp"</span>);
+<a href=#33 id=33 data-nosnippet>33</a>    <span class="kw">if </span>latest_slot_timestamp == timestamp {
+<a href=#34 id=34 data-nosnippet>34</a>        latest_slot
+<a href=#35 id=35 data-nosnippet>35</a>    } <span class="kw">else </span>{
+<a href=#36 id=36 data-nosnippet>36</a>        latest_slot
+<a href=#37 id=37 data-nosnippet>37</a>            .get_next_slot(thread_count)
+<a href=#38 id=38 data-nosnippet>38</a>            .expect(<span class="string">"could not compute next slot"</span>)
+<a href=#39 id=39 data-nosnippet>39</a>    }
+<a href=#40 id=40 data-nosnippet>40</a>}
+<a href=#41 id=41 data-nosnippet>41</a>
+<a href=#42 id=42 data-nosnippet>42</a><span class="attr">#[cfg(test)]
+<a href=#43 id=43 data-nosnippet>43</a></span><span class="kw">mod </span>tests;</code></pre></div></section></main></body></html>
