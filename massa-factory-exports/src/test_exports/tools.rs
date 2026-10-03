@@ -23,6 +23,7 @@ pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> SecureShareBlock {
         BlockHeaderSerializer::new(),
         keypair,
         *CHAINID,
+        Some(*CHAINID),
     )
     .unwrap();
 
@@ -34,6 +35,7 @@ pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> SecureShareBlock {
         BlockSerializer::new(),
         keypair,
         *CHAINID,
+        None,
     )
     .unwrap()
 }

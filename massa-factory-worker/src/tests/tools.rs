@@ -2,6 +2,7 @@ use massa_channel::sender::MassaSender;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::MockConsensusController;
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::MipStatsConfig;
 use massa_versioning::versioning::MipStore;
 use num::rational::Ratio;
@@ -68,13 +69,12 @@ impl BlockTestFactory {
 
         accounts.insert(producer_address, producer_keypair.clone());
 
-        // create an empty default store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
-        let mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config))
+            .expect("Cannot create MIP store");
 
         let wallet = create_test_wallet(Some(accounts));
         let (tx, rx) = MassaChannel::new(String::from("test_block_factory"), None);
@@ -146,6 +146,13 @@ impl EndorsementTestFactory {
 
         accounts.insert(producer_address, producer_keypair.clone());
 
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        };
+        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config))
+            .expect("Cannot create MIP store");
+
         let wallet = create_test_wallet(Some(accounts));
         // the endorsements of slot (1, 0) are made one slot duration after the factory starts
         // (wallet creation is slow, so this is set right before the start):
@@ -172,6 +179,7 @@ impl EndorsementTestFactory {
                 storage: storage.clone_without_refs(),
             },
             rx,
+            mip_store,
         );
 
         EndorsementTestFactory {

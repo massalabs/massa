@@ -100,11 +100,22 @@ impl BlockHeader {
 pub type SecuredHeader = SecureShare<BlockHeader, BlockId>;
 
 impl SecureShareContent for BlockHeader {
-    /// compute the signed hash
-    fn compute_signed_hash(&self, public_key: &PublicKey, content_hash: &Hash) -> Hash {
+    /// Compute the signed hash. `sig_chain_id` selects the layout:
+    /// * `None` -> legacy (chain-agnostic) layout, byte-for-byte identical to the
+    ///   pre-fix layout (used pre MIP-0002 activation).
+    /// * `Some(chain_id)` -> chain-scoped layout: `chain_id` is folded into the
+    ///   signed hash so the same block header signed on two different chains
+    ///   produces two different signed hashes. This prevents cross-chain replay
+    ///   of block headers as denunciations (F90 / PDF #11).
+    fn compute_signed_hash(
+        &self,
+        public_key: &PublicKey,
+        content_hash: &Hash,
+        sig_chain_id: Option<u64>,
+    ) -> Hash {
         let mut signed_data: Vec<u8> = Vec::new();
         signed_data.extend(public_key.to_bytes());
-        signed_data.extend(BlockHeaderDenunciationData::new(self.slot).to_bytes());
+        signed_data.extend(BlockHeaderDenunciationData::new(self.slot, sig_chain_id).to_bytes());
         signed_data.extend(content_hash.to_bytes());
         Hash::compute_from(&signed_data)
     }
@@ -125,7 +136,7 @@ impl SecuredHeader {
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.content
             .assert_invariants(thread_count, endorsement_count)?;
-        self.verify_signature()
+        self.verify_signature(Some(*crate::config::CHAINID))
             .map_err(|er| format!("{}", er).into())
     }
 }
@@ -193,7 +204,8 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///        },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     ///     )
     ///     .unwrap(),
     ///     Endorsement::new_verifiable(
@@ -204,7 +216,8 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///       },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     ///     )
     ///     .unwrap(),
     ///    ],
@@ -359,7 +372,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///        },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     ///     )
     ///     .unwrap(),
     ///     Endorsement::new_verifiable(
@@ -370,7 +384,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///       },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
-    ///     *CHAINID
+    ///     *CHAINID,
+    ///     None
     ///     )
     ///     .unwrap(),
     ///    ],
@@ -594,18 +609,36 @@ impl std::fmt::Display for BlockHeader {
 #[derive(Debug)]
 pub struct BlockHeaderDenunciationData {
     slot: Slot,
+    /// `None` for the legacy (chain-agnostic) signed-hash layout.
+    /// `Some(chain_id)` for the chain-scoped layout (post MIP-0002 `Execution` v2).
+    chain_id: Option<u64>,
 }
 
 impl BlockHeaderDenunciationData {
-    /// Create a new DenunciationData for block hedader
-    pub fn new(slot: Slot) -> Self {
-        Self { slot }
+    /// Create a new DenunciationData for block header. Pass `None` for the legacy
+    /// layout, `Some(chain_id)` for the chain-scoped layout.
+    pub fn new(slot: Slot, chain_id: Option<u64>) -> Self {
+        Self { slot, chain_id }
+    }
+
+    /// Legacy layout: bytes are byte-for-byte identical to the pre-fix layout, so
+    /// block headers signed before MIP-0002 activation keep verifying.
+    /// Equivalent to `Self::new(slot, None)`.
+    #[allow(dead_code)]
+    pub fn new_legacy(slot: Slot) -> Self {
+        Self {
+            slot,
+            chain_id: None,
+        }
     }
 
     /// Get byte array
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
         buf.extend(self.slot.to_bytes_key());
+        if let Some(chain_id) = self.chain_id {
+            buf.extend(chain_id.to_be_bytes());
+        }
         buf
     }
 }
@@ -658,15 +691,16 @@ mod test {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
         let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation(None, None);
         assert!(slot_a < slot);
-        let de_a = Denunciation::try_from((&s_header_1, &s_header_2)).unwrap();
+        let de_a = Denunciation::try_from((&s_header_1, &s_header_2, Some(*CHAINID))).unwrap();
         let (slot_b, _, s_endo_1, s_endo_2, _) = gen_endorsements_for_denunciation(None, None);
         assert!(slot_b < slot);
-        let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2)).unwrap();
+        let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2, Some(*CHAINID))).unwrap();
 
         let block_header_1 = BlockHeader {
             current_version: 0,
@@ -732,7 +766,7 @@ mod test {
 
         // Test with batch len == 1 (no // verif)
         let batch_1 = [(
-            secured_header_1.compute_signed_hash(),
+            secured_header_1.compute_signed_hash(Some(*CHAINID)),
             secured_header_1.signature,
             secured_header_1.content_creator_pub_key,
         )];
@@ -741,17 +775,17 @@ mod test {
         // Test with batch len > 1 (// verif)
         let batch_2 = [
             (
-                secured_header_1.compute_signed_hash(),
+                secured_header_1.compute_signed_hash(Some(*CHAINID)),
                 secured_header_1.signature,
                 secured_header_1.content_creator_pub_key,
             ),
             (
-                secured_header_2.compute_signed_hash(),
+                secured_header_2.compute_signed_hash(Some(*CHAINID)),
                 secured_header_2.signature,
                 secured_header_2.content_creator_pub_key,
             ),
             (
-                secured_header_3.compute_signed_hash(),
+                secured_header_3.compute_signed_hash(Some(*CHAINID)),
                 secured_header_3.signature,
                 secured_header_3.content_creator_pub_key,
             ),
@@ -781,15 +815,16 @@ mod test {
             EndorsementSerializer::new(),
             &keypair,
             *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
         let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation(None, None);
         assert!(slot_a < slot);
-        let de_a = Denunciation::try_from((&s_header_1, &s_header_2)).unwrap();
+        let de_a = Denunciation::try_from((&s_header_1, &s_header_2, Some(*CHAINID))).unwrap();
         let (slot_b, _, s_endo_1, s_endo_2, _) = gen_endorsements_for_denunciation(None, None);
         assert!(slot_b < slot);
-        let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2)).unwrap();
+        let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2, Some(*CHAINID))).unwrap();
 
         let block_header_1 = BlockHeader {
             current_version: 0,

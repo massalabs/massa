@@ -30,6 +30,7 @@ use massa_proto_rs::massa::model::v1::{
 use massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, Result, RuntimeModule};
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
+use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
@@ -114,7 +115,7 @@ impl InterfaceImpl {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config)).unwrap();
         let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
             .expect("could not start selector controller");
         let disk_ledger = TempDir::new().expect("cannot create temp directory");
@@ -241,6 +242,47 @@ fn get_address_from_opt_or_context(
     }
 }
 
+/// One page of datastore keys. `start_key` is exclusive. Rejected before
+/// execution version 2, and when `count` is outside `1..=MAX_DATASTORE_KEYS_PAGE`.
+fn paginated_datastore_keys(
+    context: &ExecutionContext,
+    addr: &Address,
+    prefix: Option<&[u8]>,
+    start_key: Option<&[u8]>,
+    count: u32,
+) -> Result<BTreeSet<Vec<u8>>> {
+    if !context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
+        bail!(
+            "paginated datastore-key queries are only available from execution version {}",
+            MIP_0002_EXECUTION_VERSION
+        );
+    }
+    if !(1..=massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE).contains(&count) {
+        bail!(
+            "datastore key page size must be between 1 and {}, got {}",
+            massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE,
+            count
+        );
+    }
+    let start_key = match start_key {
+        Some(key) => std::ops::Bound::Excluded(key.to_vec()),
+        None => std::ops::Bound::Unbounded,
+    };
+    match context
+        .get_keys(
+            addr,
+            prefix.unwrap_or_default(),
+            start_key,
+            std::ops::Bound::Unbounded,
+            Some(count),
+        )
+        .map_err(|e| e.to_string())?
+    {
+        Some(keys) => Ok(keys),
+        None => bail!("data entry not found"),
+    }
+}
+
 /// Implementation of the Interface trait providing functions for massa-sc-runtime to call
 /// in order to interact with the execution context during bytecode execution.
 /// See the massa-sc-runtime crate for a functional description of the trait and its methods.
@@ -256,8 +298,10 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
+    /// Execution component version active at the current slot. massa-sc-runtime gates runtime
+    /// changes on it: from MIP_0002_EXECUTION_VERSION on, wasmv1 modules are no longer executed.
     fn get_interface_version(&self) -> Result<u32> {
-        bail!("get_interface_version has been called but no versioning is in progress")
+        Ok(context_guard!(self).execution_component_version)
     }
 
     fn increment_recursion_counter(&self) -> Result<()> {
@@ -528,6 +572,35 @@ impl Interface for InterfaceImpl {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
+    }
+
+    /// One page of datastore keys for the current address.
+    ///
+    /// `start_key` is an exclusive cursor. `count` must be in
+    /// `1..=MAX_DATASTORE_KEYS_PAGE`. Available from execution version 2
+    /// (MIP-0002); the runtime does not resolve the import before that.
+    fn get_keys_paginated(
+        &self,
+        prefix: Option<&[u8]>,
+        start_key: Option<&[u8]>,
+        count: u32,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
+        paginated_datastore_keys(&context, &addr, prefix, start_key, count)
+    }
+
+    /// One page of datastore keys for `address`. See [`Interface::get_keys_paginated`].
+    fn get_keys_for_paginated(
+        &self,
+        address: &str,
+        prefix: Option<&[u8]>,
+        start_key: Option<&[u8]>,
+        count: u32,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let addr = Address::from_str(address).map_err(|e| e.to_string())?;
+        let context = context_guard!(self);
+        paginated_datastore_keys(&context, &addr, prefix, start_key, count)
     }
 
     /// Get the datastore keys (aka entries) for a given address, or the current address if none is provided
@@ -1426,7 +1499,15 @@ impl Interface for InterfaceImpl {
     /// * `target_function`: Name of the message handling function
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
-    /// * `max_gas`: Maximum gas for the message execution
+    /// * `max_gas`: Maximum gas for the message execution.
+    ///   Bounded below by `max_instance_cost`, and — from execution component version
+    ///   [`MIP_0002_EXECUTION_VERSION`] on — above by the largest budget any slot
+    ///   can ever offer. `take_batch_to_execute` only schedules a message when
+    ///   `max_gas + async_msg_cst_gas_cost` fits the slot's async gas budget, which never
+    ///   exceeds `max_async_gas + max_gas_per_block` (see `execute_slot`). Before that
+    ///   version, a message above the ceiling was accepted but permanently unschedulable:
+    ///   it occupied async pool capacity until its validity end, and on expiry
+    ///   `cancel_async_message` refunded `raw_coins` but not `raw_fee`.
     /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
@@ -1469,6 +1550,21 @@ impl Interface for InterfaceImpl {
 
         if max_gas < self.config.gas_costs.max_instance_cost {
             bail!("max gas is lower than the minimum instance cost")
+        }
+        // Reject messages that no slot could ever schedule. Gated: rejecting here changes
+        // execution results, so it only applies once the MIP has activated.
+        if execution_context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
+            let max_schedulable_gas = self
+                .config
+                .max_async_gas
+                .saturating_add(self.config.max_gas_per_block)
+                .saturating_sub(self.config.async_msg_cst_gas_cost);
+            if max_gas > max_schedulable_gas {
+                bail!(
+                    "max gas is higher than the maximum schedulable async gas ({})",
+                    max_schedulable_gas
+                )
+            }
         }
         if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
         {
@@ -2170,6 +2266,58 @@ mod tests {
     use massa_models::address::Address;
     use massa_signature::KeyPair;
 
+    // An async message asking for more gas than any slot can ever schedule is admitted
+    // before the MIP activates, and rejected from MIP_0002_EXECUTION_VERSION on.
+    #[test]
+    fn test_send_message_max_gas_ceiling() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let target = "AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy";
+
+        let config = ExecutionConfig::default();
+        let ceiling = config
+            .max_async_gas
+            .saturating_add(config.max_gas_per_block)
+            .saturating_sub(config.async_msg_cst_gas_cost);
+
+        let send = |max_gas: u64| {
+            interface.send_message(target, "receive", (0, 0), (10, 0), max_gas, 0, 0, &[], None)
+        };
+
+        // pre-activation: the oversized message is accepted, which is the bug being fixed
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        send(ceiling + 1).expect("oversized message should be admitted before activation");
+
+        // post-activation: rejected, while a message exactly at the ceiling still passes
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(
+            send(ceiling + 1).is_err(),
+            "oversized message should be rejected after activation"
+        );
+        send(ceiling).expect("a message exactly at the ceiling is still schedulable");
+    }
+
+    // The runtime gates changes on the reported version (e.g. it stops executing wasmv1 modules
+    // from MIP_0002_EXECUTION_VERSION on): it must follow the execution component version active
+    // at the current slot, on both sides of the activation.
+    #[test]
+    fn test_get_interface_version_follows_execution_component_version() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        assert_eq!(
+            interface.get_interface_version().unwrap(),
+            MIP_0002_EXECUTION_VERSION - 1
+        );
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert_eq!(
+            interface.get_interface_version().unwrap(),
+            MIP_0002_EXECUTION_VERSION
+        );
+    }
+
     // Tests the get_keys_wasmv1 interface method used by the updated get_keys abi.
     #[test]
     fn test_get_keys() {
@@ -2191,6 +2339,84 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert!(keys.contains(b"k1".as_slice()));
         assert!(keys.contains(b"k2".as_slice()));
+    }
+
+    /// Pages chain without gaps or duplicates. `start_key` is exclusive.
+    /// The call is rejected before execution version 2 and when `count` is out of range.
+    #[test]
+    fn test_get_keys_paginated_pages() {
+        use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
+
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+
+        for i in 0..10u32 {
+            let key = format!("key{i:02}");
+            interface
+                .set_ds_value_wasmv1(key.as_bytes(), b"v", Some(sender_addr.to_string()))
+                .unwrap();
+        }
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        assert!(interface.get_keys_paginated(None, None, 4).is_err());
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(interface.get_keys_paginated(None, None, 0).is_err());
+        assert!(interface
+            .get_keys_paginated(None, None, MAX_DATASTORE_KEYS_PAGE + 1)
+            .is_err());
+
+        let page1 = interface.get_keys_paginated(None, None, 4).unwrap();
+        assert_eq!(page1.len(), 4);
+        let last1 = page1.iter().next_back().unwrap().clone();
+        let page2 = interface.get_keys_paginated(None, Some(&last1), 4).unwrap();
+        assert_eq!(page2.len(), 4);
+        assert!(page1.is_disjoint(&page2));
+        let last2 = page2.iter().next_back().unwrap().clone();
+        let page3 = interface.get_keys_paginated(None, Some(&last2), 4).unwrap();
+        assert_eq!(page3.len(), 2);
+
+        let mut all: Vec<Vec<u8>> = page1.into_iter().chain(page2).chain(page3).collect();
+        all.sort();
+        let expected: Vec<Vec<u8>> = (0..10u32)
+            .map(|i| format!("key{i:02}").into_bytes())
+            .collect();
+        assert_eq!(all, expected);
+
+        let one = interface
+            .get_keys_for_paginated(&sender_addr.to_string(), None, None, 1)
+            .unwrap();
+        assert_eq!(one.len(), 1);
+    }
+
+    /// From execution version 2, an unbounded `get_keys` that matches more than one
+    /// page fails. Before that version the same query returns every key.
+    #[test]
+    fn test_get_keys_capped_at_execution_v2() {
+        use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
+
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let addr = sender_addr.to_string();
+
+        for i in 0..=MAX_DATASTORE_KEYS_PAGE {
+            let key = format!("k{i:06}");
+            interface
+                .set_ds_value_wasmv1(key.as_bytes(), b"v", Some(addr.clone()))
+                .unwrap();
+        }
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        let keys = interface.get_keys(Some(b"")).unwrap();
+        assert_eq!(keys.len(), MAX_DATASTORE_KEYS_PAGE as usize + 1);
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(interface.get_keys(Some(b"")).is_err());
+
+        let page = interface
+            .get_keys_paginated(None, None, MAX_DATASTORE_KEYS_PAGE)
+            .unwrap();
+        assert_eq!(page.len(), MAX_DATASTORE_KEYS_PAGE as usize);
     }
 
     // Tests the get_op_keys_wasmv1 interface method used by the updated get_op_keys abi.
