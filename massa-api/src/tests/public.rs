@@ -28,10 +28,10 @@ use massa_consensus_exports::{
 use massa_pool_exports::MockPoolController;
 use massa_pos_exports::MockSelectorController;
 
-use crate::{tests::mock::start_public_api, RpcServer};
+use crate::{tests::mock::start_public_api, MassaRpcServer, RpcServer};
 use massa_execution_exports::{
-    ExecutionAddressInfo, ExecutionQueryResponse, ExecutionQueryResponseItem,
-    MockExecutionController, ReadOnlyExecutionOutput,
+    ExecutionAddressInfo, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
+    ExecutionQueryResponseItem, MockExecutionController, ReadOnlyExecutionOutput,
 };
 use massa_models::{
     address::Address,
@@ -959,6 +959,122 @@ async fn get_addresses_bytecode() {
     assert!(response.len() == 1);
 
     api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn query_state_response_budget_jsonrpc_settings_and_error() {
+    let addr: SocketAddr = "[::]:0".parse().unwrap();
+    let (mut api_public, mut config) = start_public_api(addr);
+    config.max_response_body_size = 10;
+    config.max_event_per_query = 1;
+    config.query_state_deadline_ms = Some(0);
+    config.max_arguments = 2;
+    api_public.0.api_settings = config;
+
+    let address =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    let expected_address = address;
+    let mut call_count = 0;
+    let mut exec_ctrl = MockExecutionController::new();
+    exec_ctrl
+        .expect_query_state()
+        .times(2)
+        .returning(move |request: ExecutionQueryRequest| {
+            call_count += 1;
+            assert_eq!(request.max_response_size, 10);
+            assert_eq!(request.max_event_count, Some(1));
+            assert_eq!(request.query_state_deadline_ms, Some(0));
+            assert!(matches!(
+                request.requests.as_slice(),
+                [
+                    ExecutionQueryRequestItem::AddressBytecodeFinal(final_address),
+                    ExecutionQueryRequestItem::AddressBytecodeCandidate(candidate_address)
+                ] if final_address == &expected_address && candidate_address == &expected_address
+            ));
+
+            let cursor = Slot::new(1, 2);
+            let bytecode = Bytecode(b"abcdef".to_vec());
+            ExecutionQueryResponse {
+                responses: if call_count == 1 {
+                    vec![
+                        Ok(ExecutionQueryResponseItem::Bytecode(bytecode)),
+                        Err(
+                            massa_execution_exports::ExecutionQueryError::TooLargeResponse(
+                                "fixture budget exceeded".to_string(),
+                            ),
+                        ),
+                    ]
+                } else {
+                    vec![
+                        Ok(ExecutionQueryResponseItem::Bytecode(bytecode)),
+                        Ok(ExecutionQueryResponseItem::Bytecode(Bytecode(
+                            b"1234".to_vec(),
+                        ))),
+                    ]
+                },
+                candidate_cursor: cursor,
+                final_cursor: cursor,
+                final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
+            }
+        });
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+
+    let filters = vec![
+        AddressFilter {
+            address,
+            is_final: true,
+        },
+        AddressFilter {
+            address,
+            is_final: false,
+        },
+    ];
+    let error = api_public
+        .get_addresses_bytecode(filters.clone())
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), -32001);
+    assert_eq!(
+        error.message(),
+        "Internal server error: Cumulative response size limit exceeded: fixture budget exceeded"
+    );
+
+    let success = api_public.get_addresses_bytecode(filters).await.unwrap();
+    assert_eq!(success, vec![b"abcdef".to_vec(), b"1234".to_vec()]);
+}
+
+#[tokio::test]
+async fn query_state_response_budget_jsonrpc_input_limit() {
+    let addr: SocketAddr = "[::]:0".parse().unwrap();
+    let (mut api_public, mut config) = start_public_api(addr);
+    config.max_arguments = 2;
+    api_public.0.api_settings = config;
+
+    let mut exec_ctrl = MockExecutionController::new();
+    exec_ctrl.expect_query_state().times(0);
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+
+    let error = api_public.get_addresses_bytecode(vec![]).await.unwrap_err();
+    assert_eq!(error.code(), -32000);
+    assert_eq!(error.message(), "Bad request: no arguments specified");
+
+    let address =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    let error = api_public
+        .get_addresses_bytecode(vec![
+            AddressFilter {
+                address,
+                is_final: true,
+            };
+            3
+        ])
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), -32000);
+    assert_eq!(
+        error.message(),
+        "Bad request: too many arguments received. Only a maximum of 2 arguments are accepted per request"
+    );
 }
 
 #[tokio::test]
