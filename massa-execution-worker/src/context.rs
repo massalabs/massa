@@ -90,9 +90,6 @@ pub struct ExecutionContextSnapshot {
     /// counter of newly created addresses so far for this slot (does not reset after each execution)
     pub created_addr_index: u64,
 
-    /// counter of newly created events so far for this slot (does not reset after each execution)
-    pub created_event_index: u64,
-
     /// counter of async messages emitted so far for this slot (does not reset after each execution)
     pub created_message_index: u64,
 
@@ -347,7 +344,6 @@ impl ExecutionContext {
             executed_ops: self.speculative_executed_ops.get_snapshot(),
             executed_denunciations: self.speculative_executed_denunciations.get_snapshot(),
             created_addr_index: self.created_addr_index,
-            created_event_index: self.created_event_index,
             created_message_index: self.created_message_index,
             stack: self.stack.clone(),
             event_count: self.events.0.len(),
@@ -395,7 +391,11 @@ impl ExecutionContext {
         self.speculative_executed_denunciations
             .reset_to_snapshot(snapshot.executed_denunciations);
         self.created_addr_index = snapshot.created_addr_index;
-        self.created_event_index = snapshot.created_event_index;
+        // `created_event_index` is deliberately NOT restored: the events emitted
+        // since the snapshot are kept (flagged as errors below), so rewinding the
+        // counter would make later events reuse their `index_in_slot`. Duplicate
+        // (slot, index) keys overwrite each other in the event cache and leave
+        // orphan index keys behind.
         self.created_message_index = snapshot.created_message_index;
         self.stack = snapshot.stack;
         self.unsafe_rng = snapshot.unsafe_rng;

@@ -536,13 +536,23 @@ impl EventCache {
 
         let events = res
             .into_iter()
-            .map(|value| {
-                let value = value.unwrap().unwrap();
-                let (_, event) = self
+            .filter_map(|value| match value {
+                Ok(Some(value)) => self
                     .event_deser
                     .deserialize::<DeserializeError>(&value)
-                    .unwrap();
-                event
+                    .map(|(_, event)| event)
+                    .map_err(|e| warn!("Event cache: cannot deserialize event: {}", e))
+                    .ok(),
+                // An index key without its event (orphan index) must not kill
+                // the node: skip it
+                Ok(None) => {
+                    warn!("Event cache: index key points to a missing event, skipping");
+                    None
+                }
+                Err(e) => {
+                    warn!("Event cache: cannot read event: {}", e);
+                    None
+                }
             })
             .collect::<Vec<SCOutputEvent>>();
 
@@ -1743,6 +1753,47 @@ mod tests {
         assert!(filtered_events_1[0].context.is_error);
         assert_eq!(filtered_events_1[0].context.slot, slot_2);
         assert_eq!(filtered_events_1[0].context.index_in_slot, index_2_2);
+    }
+
+    #[test]
+    #[serial]
+    fn test_orphan_index_key_does_not_panic() {
+        // An index key whose event is missing (e.g. event key overwritten by a
+        // duplicate (slot, index) then snipped) used to panic on unwrap()
+
+        let mut cache = setup();
+        let emitter =
+            Address::from_str("AU12qePoXhNbYWE1jZuafqJong7bbq1jw3k89RgbMawbrdZpaasoA").unwrap();
+        let event = SCOutputEvent {
+            context: EventExecutionContext {
+                slot: Slot::new(1, 0),
+                block: None,
+                read_only: false,
+                index_in_slot: 0,
+                call_stack: VecDeque::from(vec![emitter]),
+                origin_operation_id: None,
+                is_final: true,
+                is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
+            },
+            data: "message foo bar".to_string(),
+        };
+        cache.insert(event.clone());
+
+        // Remove the event value but keep its index keys
+        let event_key = cache
+            .key_builder
+            .key_from_event(&event, &KeyIndent::Event, &KeyKind::Regular)
+            .unwrap();
+        cache.db.delete(event_key).unwrap();
+
+        let filter = EventFilter {
+            emitter_address: Some(emitter),
+            ..Default::default()
+        };
+        let (_, events) = cache.get_filtered_sc_output_events(&filter);
+        assert!(events.is_empty());
     }
 
     #[test]
