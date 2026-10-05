@@ -6314,4 +6314,132 @@ mod query_state_resource_regressions {
         assert_eq!(response.final_cursor, Slot::new(0, 0));
         assert_eq!(response.final_state_fingerprint, fingerprint);
     }
+
+    #[test]
+    fn batch_atomicity_preserved_lock_held_for_the_whole_batch() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::mpsc;
+        use std::thread;
+        use std::time::Instant;
+
+        // Watchdogs detect a stalled test; elapsed time is never the consistency oracle.
+        const WATCHDOG: Duration = Duration::from_secs(30);
+        let epoch_b = Arc::new(AtomicBool::new(false));
+        let mut foreign = ExecutionForeignControllers::new_with_mocks();
+        let fingerprint_epoch = epoch_b.clone();
+        foreign
+            .final_state
+            .write()
+            .expect_get_fingerprint()
+            .returning(move || {
+                Hash::compute_from(if fingerprint_epoch.load(Ordering::SeqCst) {
+                    b"snapshot-b"
+                } else {
+                    b"snapshot-a"
+                })
+            });
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (resume_tx, resume_rx) = mpsc::channel();
+        let resume_rx = Mutex::new(resume_rx);
+        let first = AtomicBool::new(true);
+        let ledger_epoch = epoch_b.clone();
+        foreign.ledger_controller.set_expectations(|ledger| {
+            ledger.expect_get_bytecode().returning(move |_| {
+                let byte = if ledger_epoch.load(Ordering::SeqCst) {
+                    2
+                } else {
+                    1
+                };
+                if first.swap(false, Ordering::SeqCst) {
+                    entered_tx.send(()).unwrap();
+                    resume_rx
+                        .lock()
+                        .recv_timeout(WATCHDOG)
+                        .expect("first getter was not resumed");
+                }
+                Some(Bytecode(vec![byte]))
+            });
+        });
+        let controller = Arc::new(controller(foreign));
+        let address = Address::from_str(ADDRESS_A).unwrap();
+        let requests = move || {
+            query(
+                vec![
+                    ExecutionQueryRequestItem::AddressBytecodeFinal(address),
+                    ExecutionQueryRequestItem::AddressBytecodeFinal(address),
+                ],
+                2,
+                None,
+                None,
+            )
+        };
+        let (result_tx, result_rx) = mpsc::channel();
+        let reader_controller = controller.clone();
+        let reader = thread::spawn(move || {
+            result_tx
+                .send(reader_controller.query_state(requests()))
+                .unwrap();
+        });
+        entered_rx
+            .recv_timeout(WATCHDOG)
+            .expect("query never entered its first getter");
+
+        let writer_state = controller.execution_state.clone();
+        let (written_tx, written_rx) = mpsc::channel();
+        let writer = thread::spawn(move || {
+            let mut state = writer_state.write();
+            state.active_cursor = Slot::new(2, 1);
+            state.final_cursor = Slot::new(2, 0);
+            // All mock data/fingerprint changes obey the same real state write lock.
+            epoch_b.store(true, Ordering::SeqCst);
+            drop(state);
+            written_tx.send(()).unwrap();
+        });
+        let watchdog = Instant::now() + WATCHDOG;
+        // The getter retains a reader. parking_lot blocks new readers once a writer
+        // is pending, so None proves the writer is queued before the getter resumes.
+        while controller.execution_state.try_read().is_some() {
+            assert!(Instant::now() < watchdog, "writer never became pending");
+            thread::yield_now();
+        }
+        resume_tx.send(()).unwrap();
+        let before = result_rx
+            .recv_timeout(WATCHDOG)
+            .expect("query did not finish");
+        written_rx
+            .recv_timeout(WATCHDOG)
+            .expect("writer did not finish");
+        reader.join().unwrap();
+        writer.join().unwrap();
+        let after = controller.query_state(requests());
+        for (response, byte, candidate, final_cursor, fingerprint) in [
+            (
+                before,
+                1,
+                Slot::new(0, 0),
+                Slot::new(0, 0),
+                Hash::compute_from(b"snapshot-a"),
+            ),
+            (
+                after,
+                2,
+                Slot::new(2, 1),
+                Slot::new(2, 0),
+                Hash::compute_from(b"snapshot-b"),
+            ),
+        ] {
+            assert_eq!(response.responses.len(), 2);
+            for item in response.responses {
+                match item {
+                    Ok(ExecutionQueryResponseItem::Bytecode(Bytecode(bytes))) => {
+                        assert_eq!(bytes, vec![byte])
+                    }
+                    _ => panic!("expected a complete bytecode response"),
+                }
+            }
+            assert_eq!(response.candidate_cursor, candidate);
+            assert_eq!(response.final_cursor, final_cursor);
+            assert_eq!(response.final_state_fingerprint, fingerprint);
+        }
+    }
 }
