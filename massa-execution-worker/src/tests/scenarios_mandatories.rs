@@ -5745,3 +5745,573 @@ fn test_dump_block() {
     assert_eq!(header_content.endorsements.len(), 0);
     assert_eq!(filled_block.operations.len(), 1);
 }
+
+mod query_state_resource_regressions {
+    use super::*;
+    use crate::controller::{ExecutionControllerImpl, ExecutionInputData};
+    use crate::execution::ExecutionState;
+    use massa_event_cache::controller::EventCacheController;
+    use massa_execution_exports::{ExecutionChannels, ExecutionController};
+    use massa_final_state::FinalStateController;
+    use massa_metrics::MassaMetrics;
+    use massa_models::output_event::{EventExecutionContext, SCOutputEvent};
+    use massa_pos_exports::SelectorController;
+    use massa_wallet::test_exports::create_test_wallet;
+    use parking_lot::{Condvar, Mutex};
+    use std::collections::{BTreeSet, VecDeque};
+    use std::ops::Bound;
+
+    const ADDRESS_A: &str = "AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA";
+    const ADDRESS_B: &str = "AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ";
+    const CALLER: &str = "AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi";
+    const BYTECODE: [u8; 2] = [0xca, 0xfe];
+    const VALUE: [u8; 2] = [0x10, 0x20];
+
+    /// Construct a synchronous query controller without starting the worker thread.
+    /// Callers configure fingerprint and ledger expectations before passing mocks here.
+    fn controller(mut foreign: ExecutionForeignControllers) -> ExecutionControllerImpl {
+        let config = ExecutionConfig::default();
+        selector_boilerplate(&mut foreign.selector_controller);
+        final_state_boilerplate(
+            &mut foreign.final_state,
+            foreign.db.clone(),
+            &foreign.selector_controller,
+            &mut foreign.ledger_controller,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        let final_state: Arc<RwLock<dyn FinalStateController>> = foreign.final_state;
+        let mip_store = MipStore::try_from((
+            get_mip_list(),
+            MipStatsConfig {
+                block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                warn_announced_version_ratio: Ratio::new_raw(30, 100),
+            },
+        ))
+        .expect("mip store creation failed");
+        let (slot_tx, _) = tokio::sync::broadcast::channel(1);
+        #[cfg(feature = "execution-trace")]
+        let (trace_tx, _) = tokio::sync::broadcast::channel(1);
+        #[cfg(feature = "execution-info")]
+        let (info_tx, _) = tokio::sync::broadcast::channel(1);
+        let channels = ExecutionChannels {
+            slot_execution_output_sender: slot_tx,
+            #[cfg(feature = "execution-trace")]
+            slot_execution_traces_sender: trace_tx,
+            #[cfg(feature = "execution-info")]
+            slot_execution_info_sender: info_tx,
+        };
+        let wallet = Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default()))));
+        let metrics = MassaMetrics::new(
+            false,
+            "0.0.0.0:9898".parse().unwrap(),
+            32,
+            Duration::from_secs(5),
+        )
+        .0;
+        #[cfg(feature = "dump-block")]
+        let block_storage_backend: Arc<RwLock<dyn crate::storage_backend::StorageBackend>> =
+            Arc::new(RwLock::new(
+                crate::storage_backend::RocksDBStorageBackend::new(
+                    config.block_dump_folder_path.clone(),
+                    10,
+                ),
+            ));
+        let event_cache: Box<dyn massa_event_cache::controller::EventCacheController> =
+            foreign.event_cache_controller;
+        let selector: Box<dyn SelectorController> = foreign.selector_controller;
+        let state = ExecutionState::new(
+            config.clone(),
+            final_state,
+            mip_store,
+            selector,
+            channels,
+            wallet,
+            metrics,
+            event_cache,
+            #[cfg(feature = "dump-block")]
+            block_storage_backend,
+        );
+        ExecutionControllerImpl {
+            input_data: Arc::new((Condvar::new(), Mutex::new(ExecutionInputData::new(config)))),
+            execution_state: Arc::new(RwLock::new(state)),
+        }
+    }
+
+    fn event(emitter: Address, slot: Slot, index: u64, data: &str) -> SCOutputEvent {
+        SCOutputEvent {
+            context: EventExecutionContext {
+                slot,
+                block: None,
+                read_only: false,
+                index_in_slot: index,
+                call_stack: VecDeque::from([Address::from_str(CALLER).unwrap(), emitter]),
+                origin_operation_id: None,
+                is_final: true,
+                is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
+            },
+            data: data.to_string(),
+        }
+    }
+
+    fn fixture() -> (ExecutionControllerImpl, Hash, Vec<SCOutputEvent>) {
+        let mut foreign = ExecutionForeignControllers::new_with_mocks();
+        let address_a = Address::from_str(ADDRESS_A).unwrap();
+        let address_b = Address::from_str(ADDRESS_B).unwrap();
+        let keys_a = BTreeSet::from([b"aa".to_vec(), b"bbbb".to_vec()]);
+        let keys_b = BTreeSet::new();
+        let bytecode = Bytecode(BYTECODE.to_vec());
+        foreign
+            .ledger_controller
+            .set_expectations(|ledger_controller| {
+                ledger_controller.expect_get_datastore_keys().returning(
+                    move |address, prefix, start_key, end_key, count| {
+                        let keys = if *address == address_a {
+                            &keys_a
+                        } else {
+                            &keys_b
+                        };
+                        Some(
+                            keys.range((start_key, end_key))
+                                .filter(|key| key.starts_with(prefix))
+                                .take(count.map_or(usize::MAX, |count| count as usize))
+                                .cloned()
+                                .collect(),
+                        )
+                    },
+                );
+                ledger_controller
+                    .expect_get_data_entry()
+                    .returning(move |address, key| {
+                        (*address == address_a && key == &b"value"[..]).then(|| VALUE.to_vec())
+                    });
+                ledger_controller
+                    .expect_get_bytecode()
+                    .returning(move |_| Some(bytecode.clone()));
+            });
+
+        let fingerprint = Hash::compute_from(b"snapshot-a");
+        foreign
+            .final_state
+            .write()
+            .expect_get_fingerprint()
+            .return_const(fingerprint);
+
+        let events = vec![
+            event(address_a, Slot::new(1, 0), 0, "alpha"),
+            event(address_b, Slot::new(1, 1), 1, "é"),
+        ];
+        foreign
+            .event_cache_controller
+            .save_events(VecDeque::from(events.clone()));
+        (controller(foreign), fingerprint, events)
+    }
+
+    fn query(
+        requests: Vec<ExecutionQueryRequestItem>,
+        max_response_size: usize,
+        max_event_count: Option<usize>,
+        query_state_deadline_ms: Option<u64>,
+    ) -> ExecutionQueryRequest {
+        ExecutionQueryRequest {
+            requests,
+            max_response_size,
+            max_event_count,
+            query_state_deadline_ms,
+        }
+    }
+
+    fn keys_item(address: Address, is_final: bool) -> ExecutionQueryRequestItem {
+        if is_final {
+            ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+                address,
+                prefix: vec![],
+                start_key: Bound::Unbounded,
+                end_key: Bound::Unbounded,
+                count: None,
+            }
+        } else {
+            ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+                address,
+                prefix: vec![],
+                start_key: Bound::Unbounded,
+                end_key: Bound::Unbounded,
+                count: None,
+            }
+        }
+    }
+
+    fn event_item(emitter: Address) -> ExecutionQueryRequestItem {
+        ExecutionQueryRequestItem::Events(EventFilter {
+            emitter_address: Some(emitter),
+            is_final: Some(true),
+            ..Default::default()
+        })
+    }
+
+    fn assert_keys(
+        response: &Result<ExecutionQueryResponseItem, ExecutionQueryError>,
+        address: Address,
+        is_final: bool,
+        expected: BTreeSet<Vec<u8>>,
+    ) {
+        match response {
+            Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
+                keys,
+                actual_address,
+                actual_final,
+            )) => {
+                assert_eq!(keys, &expected);
+                assert_eq!(*actual_address, address);
+                assert_eq!(*actual_final, is_final);
+            }
+            _ => panic!("unexpected datastore-keys response"),
+        }
+    }
+
+    fn assert_events(
+        response: &Result<ExecutionQueryResponseItem, ExecutionQueryError>,
+        expected: &[SCOutputEvent],
+    ) {
+        match response {
+            Ok(ExecutionQueryResponseItem::Events(events)) => assert_eq!(events, expected),
+            _ => panic!("unexpected events response"),
+        }
+    }
+
+    fn assert_too_large(
+        response: &Result<ExecutionQueryResponseItem, ExecutionQueryError>,
+        expected: &str,
+    ) {
+        match response {
+            Err(ExecutionQueryError::TooLargeResponse(message)) => assert_eq!(message, expected),
+            _ => panic!("expected TooLargeResponse: {expected}"),
+        }
+    }
+
+    #[test]
+    fn datastore_keys_final_candidate_and_empty_budget() {
+        let (controller, _, _) = fixture();
+        let address_a = Address::from_str(ADDRESS_A).unwrap();
+        let address_b = Address::from_str(ADDRESS_B).unwrap();
+        let keys = BTreeSet::from([b"aa".to_vec(), b"bbbb".to_vec()]);
+        let response = controller.query_state(query(
+            vec![keys_item(address_a, true), keys_item(address_a, false)],
+            12,
+            None,
+            None,
+        ));
+        assert_keys(&response.responses[0], address_a, true, keys.clone());
+        assert_keys(&response.responses[1], address_a, false, keys);
+
+        let response = controller.query_state(query(
+            vec![keys_item(address_b, true), keys_item(address_b, false)],
+            0,
+            None,
+            None,
+        ));
+        assert_keys(&response.responses[0], address_b, true, BTreeSet::new());
+        assert_keys(&response.responses[1], address_b, false, BTreeSet::new());
+
+        let response = controller.query_state(query(
+            vec![
+                keys_item(address_a, true),
+                ExecutionQueryRequestItem::AddressExistsFinal(address_a),
+            ],
+            0,
+            None,
+            None,
+        ));
+        assert_too_large(
+            &response.responses[0],
+            "query response size would exceed limit of 0 bytes (current 0, item 6)",
+        );
+        assert!(matches!(
+            &response.responses[1],
+            Ok(ExecutionQueryResponseItem::Boolean(true))
+        ));
+    }
+
+    #[test]
+    fn keys_bytecode_value_and_boolean_share_exact_byte_budget() {
+        let (controller, _, _) = fixture();
+        let address_a = Address::from_str(ADDRESS_A).unwrap();
+        let response = controller.query_state(query(
+            vec![
+                keys_item(address_a, false),
+                ExecutionQueryRequestItem::AddressExistsFinal(address_a),
+                ExecutionQueryRequestItem::AddressBytecodeFinal(address_a),
+                ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
+                    addr: address_a,
+                    key: b"value".to_vec(),
+                },
+            ],
+            10,
+            None,
+            None,
+        ));
+        assert_eq!(response.responses.len(), 4);
+        assert_keys(
+            &response.responses[0],
+            address_a,
+            false,
+            BTreeSet::from([b"aa".to_vec(), b"bbbb".to_vec()]),
+        );
+        assert!(matches!(
+            &response.responses[1],
+            Ok(ExecutionQueryResponseItem::Boolean(true))
+        ));
+        assert!(matches!(
+            &response.responses[2],
+            Ok(ExecutionQueryResponseItem::Bytecode(Bytecode(bytes)))
+                if bytes.as_slice() == BYTECODE.as_slice()
+        ));
+        assert!(matches!(
+            &response.responses[3],
+            Ok(ExecutionQueryResponseItem::DatastoreValue(value))
+                if value.as_slice() == VALUE.as_slice()
+        ));
+
+        let response = controller.query_state(query(
+            vec![
+                keys_item(address_a, true),
+                ExecutionQueryRequestItem::AddressBytecodeFinal(address_a),
+                ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+                    addr: address_a,
+                    key: b"value".to_vec(),
+                },
+            ],
+            9,
+            None,
+            None,
+        ));
+        assert_keys(
+            &response.responses[0],
+            address_a,
+            true,
+            BTreeSet::from([b"aa".to_vec(), b"bbbb".to_vec()]),
+        );
+        assert!(matches!(
+            &response.responses[1],
+            Ok(ExecutionQueryResponseItem::Bytecode(_))
+        ));
+        assert_too_large(
+            &response.responses[2],
+            "query response size would exceed limit of 9 bytes (current 8, item 2)",
+        );
+    }
+
+    #[test]
+    fn rejected_keys_do_not_spend_bytes_before_value() {
+        let (controller, _, _) = fixture();
+        let address_a = Address::from_str(ADDRESS_A).unwrap();
+        let response = controller.query_state(query(
+            vec![
+                keys_item(address_a, false),
+                ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+                    addr: address_a,
+                    key: b"value".to_vec(),
+                },
+            ],
+            5,
+            None,
+            None,
+        ));
+        assert_too_large(
+            &response.responses[0],
+            "query response size would exceed limit of 5 bytes (current 0, item 6)",
+        );
+        assert!(matches!(
+            &response.responses[1],
+            Ok(ExecutionQueryResponseItem::DatastoreValue(value))
+                if value.as_slice() == VALUE.as_slice()
+        ));
+    }
+
+    #[test]
+    fn events_use_utf8_data_and_full_context_at_exact_boundaries() {
+        let (controller, _, events) = fixture();
+        assert_eq!(events[0].data.len(), 5);
+        assert_eq!(events[1].data.len(), 2, "é is two UTF-8 bytes");
+        // Logical budget: UTF-8 data plus the current 128-byte estimate per context.
+        for (emitter, expected, bytes) in [
+            (
+                Some(Address::from_str(ADDRESS_A).unwrap()),
+                &events[..1],
+                133,
+            ),
+            (
+                Some(Address::from_str(ADDRESS_B).unwrap()),
+                &events[1..],
+                130,
+            ),
+            (None, &events[..], 263),
+        ] {
+            let filter = EventFilter {
+                emitter_address: emitter,
+                is_final: Some(true),
+                ..Default::default()
+            };
+            let response = controller.query_state(query(
+                vec![ExecutionQueryRequestItem::Events(filter.clone())],
+                bytes,
+                None,
+                None,
+            ));
+            assert_events(&response.responses[0], expected);
+            let response = controller.query_state(query(
+                vec![ExecutionQueryRequestItem::Events(filter)],
+                bytes - 1,
+                None,
+                None,
+            ));
+            assert_too_large(
+                &response.responses[0],
+                &format!(
+                    "query response size would exceed limit of {} bytes (current 0, item {})",
+                    bytes - 1,
+                    bytes
+                ),
+            );
+        }
+    }
+
+    #[test]
+    fn event_and_key_payloads_share_the_byte_budget() {
+        let (controller, _, events) = fixture();
+        let address_a = Address::from_str(ADDRESS_A).unwrap();
+        let response = controller.query_state(query(
+            vec![event_item(address_a), keys_item(address_a, true)],
+            139,
+            None,
+            None,
+        ));
+        assert_events(&response.responses[0], &events[..1]);
+        assert_keys(
+            &response.responses[1],
+            address_a,
+            true,
+            BTreeSet::from([b"aa".to_vec(), b"bbbb".to_vec()]),
+        );
+
+        let response = controller.query_state(query(
+            vec![event_item(address_a), keys_item(address_a, false)],
+            138,
+            None,
+            None,
+        ));
+        assert_events(&response.responses[0], &events[..1]);
+        assert_too_large(
+            &response.responses[1],
+            "query response size would exceed limit of 138 bytes (current 133, item 6)",
+        );
+    }
+
+    #[test]
+    fn event_quota_is_shared_spent_on_oversize_and_reset_per_batch() {
+        let (controller, _, events) = fixture();
+        let address_a = Address::from_str(ADDRESS_A).unwrap();
+        let address_b = Address::from_str(ADDRESS_B).unwrap();
+        let response = controller.query_state(query(
+            vec![
+                event_item(address_a),
+                event_item(address_b),
+                ExecutionQueryRequestItem::AddressExistsFinal(address_a),
+            ],
+            263,
+            Some(1),
+            None,
+        ));
+        assert_events(&response.responses[0], &events[..1]);
+        assert_too_large(
+            &response.responses[1],
+            "event budget for this batch is exhausted",
+        );
+        assert!(matches!(
+            &response.responses[2],
+            Ok(ExecutionQueryResponseItem::Boolean(true))
+        ));
+
+        let response = controller.query_state(query(
+            vec![event_item(address_a), event_item(address_b)],
+            263,
+            None,
+            None,
+        ));
+        assert_events(&response.responses[0], &events[..1]);
+        assert_events(&response.responses[1], &events[1..]);
+
+        let response =
+            controller.query_state(query(vec![event_item(address_a)], 263, Some(0), None));
+        assert_too_large(
+            &response.responses[0],
+            "event budget for this batch is exhausted",
+        );
+
+        let response =
+            controller.query_state(query(vec![event_item(address_b)], 263, Some(1), None));
+        assert_events(&response.responses[0], &events[1..]);
+
+        let response = controller.query_state(query(
+            vec![event_item(address_a), event_item(address_b)],
+            132,
+            Some(1),
+            None,
+        ));
+        assert_too_large(
+            &response.responses[0],
+            "query response size would exceed limit of 132 bytes (current 0, item 133)",
+        );
+        assert_too_large(
+            &response.responses[1],
+            "event budget for this batch is exhausted",
+        );
+    }
+
+    #[test]
+    fn deadline_zero_preserves_first_item_and_batch_metadata() {
+        let (controller, fingerprint, events) = fixture();
+        let address_a = Address::from_str(ADDRESS_A).unwrap();
+        let requests = || {
+            vec![
+                event_item(address_a),
+                keys_item(address_a, true),
+                ExecutionQueryRequestItem::AddressExistsFinal(address_a),
+            ]
+        };
+        let response = controller.query_state(query(requests(), 139, None, Some(0)));
+        assert_eq!(response.responses.len(), 3);
+        assert_events(&response.responses[0], &events[..1]);
+        for remaining in &response.responses[1..] {
+            assert!(matches!(
+                remaining,
+                Err(ExecutionQueryError::TooLargeResponse(message))
+                    if message == "query_state deadline exceeded"
+            ));
+        }
+        assert_eq!(response.candidate_cursor, Slot::new(0, 0));
+        assert_eq!(response.final_cursor, Slot::new(0, 0));
+        assert_eq!(response.final_state_fingerprint, fingerprint);
+
+        let response = controller.query_state(query(requests(), 139, None, None));
+        assert_events(&response.responses[0], &events[..1]);
+        assert_keys(
+            &response.responses[1],
+            address_a,
+            true,
+            BTreeSet::from([b"aa".to_vec(), b"bbbb".to_vec()]),
+        );
+        assert!(matches!(
+            &response.responses[2],
+            Ok(ExecutionQueryResponseItem::Boolean(true))
+        ));
+        assert_eq!(response.candidate_cursor, Slot::new(0, 0));
+        assert_eq!(response.final_cursor, Slot::new(0, 0));
+        assert_eq!(response.final_state_fingerprint, fingerprint);
+    }
+}
