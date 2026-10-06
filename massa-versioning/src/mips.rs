@@ -40,9 +40,9 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 2] {
                     (MipComponent::Execution, MIP_0002_EXECUTION_VERSION),
                     (MipComponent::FinalState, 2),
                 ]),
-                start: MassaTime::from_utc_ymd_hms(2026, 8, 10, 10, 0, 0).unwrap(), // Monday 10th August 2026 10:00:00 UTC
-                timeout: MassaTime::from_utc_ymd_hms(2026, 9, 9, 10, 0, 0).unwrap(), // Wednesday 9th September 2026 10:00:00 UTC
-                activation_delay: MassaTime::from_millis(7 * 24 * 60 * 60 * 1000),   // 7 days
+                start: MassaTime::from_utc_ymd_hms(2026, 10, 14, 10, 0, 0).unwrap(), // Wednesday 14th October 2026 10:00:00 UTC
+                timeout: MassaTime::from_utc_ymd_hms(2026, 12, 17, 10, 0, 0).unwrap(), // Thursday 17th December 2026 10:00:00 UTC
+                activation_delay: MassaTime::from_millis(7 * 24 * 60 * 60 * 1000), // 7 days -> earliest activation Wednesday 21st October 2026 10:00:00 UTC
             },
             MipState::new(defined_2),
         ),
