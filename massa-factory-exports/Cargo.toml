@@ -1,8 +1,8 @@
 [package]
 name = "massa_factory_exports"
-version = "6.0.0"
+version.workspace = true
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2021"
+edition.workspace = true
 
 [features]
 test-exports = ["massa_models/test-exports", "massa_protocol_exports/test-exports", "massa_pool_exports/test-exports"]

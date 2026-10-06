@@ -46,6 +46,10 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+version = "6.0.0"
+edition = "2021"
+
 # From https://doc.rust-lang.org/cargo/reference/profiles.html#overrides
 [profile.dev.package."*"]
 opt-level = 3 # Speed-up the CI
@@ -214,7 +218,6 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 unsigned-varint = "0.8"
 variant_count = "1.1"
-walkdir = "2.3"
 zeroize = { version = "1.7", features = ["derive"] }
 prost = { version = "=0.13" }
 tikv-jemalloc-sys = { version = "0.7", features = ["unprefixed_malloc_on_supported_platforms"] }
