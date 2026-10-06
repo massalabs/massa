@@ -514,6 +514,251 @@ fn test_readonly_settle_does_not_pollute_module_cache() {
     );
 }
 
+mod readonly_context_cleanup {
+    use super::*;
+    use crate::execution::ExecutionState;
+    use massa_execution_exports::{ExecutionChannels, ExecutionError, ReadOnlyExecutionOutput};
+    use massa_metrics::MassaMetrics;
+    use massa_wallet::test_exports::create_test_wallet;
+
+    const CANCEL_WASM: &[u8] = include_bytes!("./wasm/readonly_deferred_call_cancel.wasm");
+    const OWNER_A: &str = "AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA";
+    const OWNER_B: &str = "AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ";
+
+    struct Fixture {
+        state: ExecutionState,
+        call_id: DeferredCallId,
+        original_call: DeferredCall,
+    }
+
+    fn fixture() -> Fixture {
+        let mut foreign = ExecutionForeignControllers::new_with_mocks();
+        selector_boilerplate(&mut foreign.selector_controller);
+        let config = ExecutionConfig::default();
+
+        let owner_a = Address::from_str(OWNER_A).unwrap();
+        let owner_b = Address::from_str(OWNER_B).unwrap();
+        let target_slot = Slot::new(3, 0);
+        let call_id = DeferredCallId::new(0, target_slot, 0, b"readonly-cleanup").unwrap();
+        let original_call = DeferredCall::new(
+            owner_a,
+            target_slot,
+            owner_b,
+            "receive".to_string(),
+            vec![1, 2, 3],
+            Amount::from_str("7").unwrap(),
+            100_000,
+            Amount::from_raw(1),
+            false,
+        );
+
+        let registry =
+            DeferredCallRegistry::new(foreign.db.clone(), DeferredCallsConfig::default());
+        let mut registry_changes = DeferredCallRegistryChanges::default();
+        registry_changes.set_call(call_id.clone(), original_call.clone());
+        registry_changes.set_effective_slot_gas(target_slot, 100_000);
+        registry_changes.set_effective_total_gas(100_000);
+        let mut batch = DBBatch::default();
+        registry.apply_changes_to_batch(registry_changes, &mut batch);
+        foreign
+            .db
+            .write()
+            .write_batch(batch, DBBatch::default(), Some(Slot::new(1, 0)));
+
+        let bytecode = Arc::new(RwLock::new(Some(Bytecode(CANCEL_WASM.to_vec()))));
+        foreign
+            .ledger_controller
+            .set_expectations(|ledger_controller| {
+                ledger_controller
+                    .expect_entry_exists()
+                    .withf(move |address| *address == owner_a || *address == owner_b)
+                    .returning(|_| true);
+            });
+        final_state_boilerplate(
+            &mut foreign.final_state,
+            foreign.db.clone(),
+            &foreign.selector_controller,
+            &mut foreign.ledger_controller,
+            Some(bytecode),
+            None,
+            None,
+            Some(registry),
+        );
+
+        let mip_store = MipStore::try_from((
+            get_mip_list(),
+            MipStatsConfig {
+                block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                warn_announced_version_ratio: Ratio::new_raw(30, 100),
+            },
+        ))
+        .unwrap();
+        let (slot_tx, _) = tokio::sync::broadcast::channel(1);
+        #[cfg(feature = "execution-trace")]
+        let (trace_tx, _) = tokio::sync::broadcast::channel(1);
+        #[cfg(feature = "execution-info")]
+        let (info_tx, _) = tokio::sync::broadcast::channel(1);
+        let channels = ExecutionChannels {
+            slot_execution_output_sender: slot_tx,
+            #[cfg(feature = "execution-trace")]
+            slot_execution_traces_sender: trace_tx,
+            #[cfg(feature = "execution-info")]
+            slot_execution_info_sender: info_tx,
+        };
+        let wallet = Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default()))));
+        let metrics = MassaMetrics::new(
+            false,
+            "0.0.0.0:9898".parse().unwrap(),
+            32,
+            Duration::from_secs(5),
+        )
+        .0;
+        #[cfg(feature = "dump-block")]
+        let block_storage_backend: Arc<RwLock<dyn crate::storage_backend::StorageBackend>> =
+            Arc::new(RwLock::new(
+                crate::storage_backend::RocksDBStorageBackend::new(
+                    config.block_dump_folder_path.clone(),
+                    10,
+                ),
+            ));
+        let state = ExecutionState::new(
+            config,
+            foreign.final_state,
+            mip_store,
+            foreign.selector_controller,
+            channels,
+            wallet,
+            metrics,
+            foreign.event_cache_controller,
+            #[cfg(feature = "dump-block")]
+            block_storage_backend,
+        );
+
+        assert_eq!(
+            state.deferred_call_info(&call_id),
+            Some(original_call.clone())
+        );
+        Fixture {
+            state,
+            call_id,
+            original_call,
+        }
+    }
+
+    fn request(owner: &str, function: &str, id: &DeferredCallId) -> ReadOnlyExecutionRequest {
+        let owner = Address::from_str(owner).unwrap();
+        ReadOnlyExecutionRequest {
+            max_gas: 100_000_000,
+            call_stack: vec![ExecutionStackElement {
+                address: owner,
+                coins: Amount::zero(),
+                owned_addresses: vec![owner],
+                operation_datastore: None,
+            }],
+            target: ReadOnlyExecutionTarget::FunctionCall {
+                target_addr: owner,
+                target_func: function.to_string(),
+                parameter: id
+                    .to_string()
+                    .encode_utf16()
+                    .flat_map(u16::to_le_bytes)
+                    .collect(),
+            },
+            coins: None,
+            fee: None,
+        }
+    }
+
+    fn assert_deferred_cancel_error(
+        result: Result<ReadOnlyExecutionOutput, ExecutionError>,
+        msg: &str,
+    ) {
+        let err = result.expect_err("invalid deferred call cancellation unexpectedly succeeded");
+        assert!(
+            matches!(&err, ExecutionError::VMError { context, error }
+                if context.contains("FunctionCall") && error.to_string().contains(msg)),
+            "unexpected ABI error: {err:?}"
+        );
+    }
+
+    #[test]
+    fn success_cancels_and_refunds() {
+        let fixture = fixture();
+        let owner = Address::from_str(OWNER_A).unwrap();
+        let out = fixture
+            .state
+            .execute_readonly_request(request(OWNER_A, "cancel", &fixture.call_id))
+            .expect("read-only cancellation should succeed")
+            .out;
+
+        let change = out
+            .state_changes
+            .deferred_call_changes
+            .get_call_change(&fixture.original_call.target_slot, &fixture.call_id)
+            .expect("cancellation must be present in speculative output");
+        assert!(matches!(change, SetOrDelete::Set(call) if call.cancelled));
+        assert!(matches!(
+            out.state_changes.ledger_changes.0.get(&owner),
+            Some(SetUpdateOrDelete::Update(update))
+                if update.balance == SetOrKeep::Set(Amount::from_str("107").unwrap())
+        ));
+        assert_eq!(
+            fixture.state.deferred_call_info(&fixture.call_id),
+            Some(fixture.original_call)
+        );
+    }
+
+    #[test]
+    fn error_after_cancel_isolated() {
+        let fixture = fixture();
+        let result = fixture.state.execute_readonly_request(request(
+            OWNER_A,
+            "cancel_then_trap",
+            &fixture.call_id,
+        ));
+        let err = result.expect_err("fixture must trap after cancellation");
+        assert!(
+            matches!(&err, ExecutionError::VMError { context, error }
+                if context.contains("FunctionCall") && format!("{error:?}").to_lowercase().contains("unreachable")),
+            "expected VM unreachable trap, got {err:?}"
+        );
+
+        // This independent read must immediately observe the clean final view.
+        assert_eq!(
+            fixture.state.deferred_call_info(&fixture.call_id),
+            Some(fixture.original_call)
+        );
+    }
+
+    #[test]
+    fn other_owner_cannot_cancel() {
+        let fixture = fixture();
+        let result =
+            fixture
+                .state
+                .execute_readonly_request(request(OWNER_B, "cancel", &fixture.call_id));
+        assert_deferred_cancel_error(result, "only the caller");
+        assert_eq!(
+            fixture.state.deferred_call_info(&fixture.call_id),
+            Some(fixture.original_call)
+        );
+    }
+
+    #[test]
+    fn absent_id_is_rejected() {
+        let fixture = fixture();
+        let absent_id = DeferredCallId::new(0, Slot::new(3, 0), 1, b"readonly-cleanup").unwrap();
+        let result = fixture
+            .state
+            .execute_readonly_request(request(OWNER_A, "cancel", &absent_id));
+        assert_deferred_cancel_error(result, "does not exist");
+        assert_eq!(
+            fixture.state.deferred_call_info(&fixture.call_id),
+            Some(fixture.original_call)
+        );
+    }
+}
+
 /// Test the gas usage in nested calls using call SC operation
 ///
 /// Create a smart contract and send it in the blockclique.
