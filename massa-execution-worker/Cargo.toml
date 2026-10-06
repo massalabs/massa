@@ -4,9 +4,9 @@ harness = false
 
 [package]
 name = "massa_execution_worker"
-version = "5.0.0"
+version.workspace = true
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2021"
+edition.workspace = true
 
 [features]
 sandbox = ["massa_async_pool/sandbox"]

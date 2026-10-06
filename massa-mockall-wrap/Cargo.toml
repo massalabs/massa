@@ -2,7 +2,7 @@
 name = "mockall_wrap"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2021"
+edition.workspace = true
 description = "A wrapper around mockall mocks to create multiple mock instances that share the same expectations."
 license = "MIT OR Apache-2.0"
 
