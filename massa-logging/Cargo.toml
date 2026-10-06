@@ -1,8 +1,8 @@
 [package]
 name = "massa_logging"
-version = "5.0.0"
+version.workspace = true
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2021"
+edition.workspace = true
 
 [dependencies]
 serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem

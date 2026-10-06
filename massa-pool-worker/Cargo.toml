@@ -1,8 +1,8 @@
 [package]
 name = "massa_pool_worker"
-version = "5.0.0"
+version.workspace = true
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2021"
+edition.workspace = true
 
 [features]
 test-exports = ["massa_execution_exports/test-exports", "massa_pos_exports/test-exports", "massa_wallet/test-exports"]

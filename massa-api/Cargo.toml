@@ -1,7 +1,7 @@
 [package]
 name = "massa_api"
-version = "5.0.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [features]
 test-exports = ["dep:massa_channel", "dep:massa_grpc", "massa_grpc/test-exports"]
