@@ -1035,6 +1035,190 @@ fn test_query_state_deadline() {
     assert!(resp.responses[1].is_ok());
 }
 
+// Fixture for the finite response-budget tests below; no contract execution is needed.
+fn response_budget_universe() -> (ExecutionTestUniverse, Address) {
+    let mut controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut controllers.selector_controller);
+    controllers.ledger_controller.set_expectations(|ledger| {
+        ledger
+            .expect_get_bytecode()
+            .return_const(Some(Bytecode(b"abcdef".to_vec())));
+        ledger
+            .expect_get_data_entry()
+            .returning(|_, key| match key {
+                b"four" => Some(b"1234".to_vec()),
+                b"one" => Some(b"x".to_vec()),
+                b"large" => Some(vec![0; 11]),
+                b"empty" => Some(Vec::new()),
+                _ => None,
+            });
+    });
+    final_state_boilerplate(
+        &mut controllers.final_state,
+        controllers.db.clone(),
+        &controllers.selector_controller,
+        &mut controllers.ledger_controller,
+        None,
+        None,
+        None,
+        None,
+    );
+    controllers
+        .final_state
+        .write()
+        .expect_get_fingerprint()
+        .return_const(Hash::compute_from(b"response budget"));
+    let config = ExecutionConfig {
+        genesis_timestamp: massa_time::MassaTime::now()
+            .saturating_add(massa_time::MassaTime::from_millis(60_000)),
+        ..Default::default()
+    };
+    let address = Address::from_public_key(&KeyPair::from_str(TEST_SK_1).unwrap().get_public_key());
+    (ExecutionTestUniverse::new(controllers, config), address)
+}
+
+#[test]
+fn query_state_response_budget_exact_boundary() {
+    let (universe, addr) = response_budget_universe();
+    let response = universe
+        .module_controller
+        .query_state(ExecutionQueryRequest {
+            requests: vec![
+                ExecutionQueryRequestItem::AddressBytecodeFinal(addr),
+                ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
+                    addr,
+                    key: b"four".to_vec(),
+                },
+                ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+                    addr,
+                    key: b"one".to_vec(),
+                },
+                ExecutionQueryRequestItem::AddressExistsFinal(addr),
+            ],
+            max_response_size: 10,
+            max_event_count: None,
+            query_state_deadline_ms: None,
+        });
+    assert_eq!(response.responses.len(), 4);
+    assert!(
+        matches!(&response.responses[0], Ok(ExecutionQueryResponseItem::Bytecode(code)) if code.0 == b"abcdef")
+    );
+    assert!(
+        matches!(&response.responses[1], Ok(ExecutionQueryResponseItem::DatastoreValue(value)) if value == b"1234")
+    );
+    assert!(matches!(
+        &response.responses[2],
+        Err(ExecutionQueryError::TooLargeResponse(_))
+    ));
+    assert!(matches!(
+        response.responses[3],
+        Ok(ExecutionQueryResponseItem::Boolean(true))
+    ));
+    assert_eq!(
+        response.final_state_fingerprint,
+        Hash::compute_from(b"response budget")
+    );
+    assert_eq!(response.final_cursor.period, 0);
+    assert_eq!(response.candidate_cursor.period, 0);
+}
+
+#[test]
+fn query_state_response_budget_rejected_items() {
+    let (universe, addr) = response_budget_universe();
+    let response = universe
+        .module_controller
+        .query_state(ExecutionQueryRequest {
+            requests: vec![
+                ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+                    addr,
+                    key: b"large".to_vec(),
+                },
+                ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+                    addr,
+                    key: b"four".to_vec(),
+                },
+                ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
+                    addr,
+                    key: b"missing".to_vec(),
+                },
+                ExecutionQueryRequestItem::AddressBytecodeCandidate(addr),
+            ],
+            max_response_size: 10,
+            max_event_count: None,
+            query_state_deadline_ms: None,
+        });
+    assert_eq!(response.responses.len(), 4);
+    assert!(matches!(
+        &response.responses[0],
+        Err(ExecutionQueryError::TooLargeResponse(_))
+    ));
+    assert!(
+        matches!(&response.responses[1], Ok(ExecutionQueryResponseItem::DatastoreValue(value)) if value == b"1234")
+    );
+    assert!(matches!(
+        &response.responses[2],
+        Err(ExecutionQueryError::NotFound(_))
+    ));
+    assert!(
+        matches!(&response.responses[3], Ok(ExecutionQueryResponseItem::Bytecode(code)) if code.0 == b"abcdef")
+    );
+}
+
+#[test]
+fn query_state_response_budget_zero_and_reset() {
+    let (universe, addr) = response_budget_universe();
+    let response = universe
+        .module_controller
+        .query_state(ExecutionQueryRequest {
+            requests: vec![
+                ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+                    addr,
+                    key: b"empty".to_vec(),
+                },
+                ExecutionQueryRequestItem::AddressBytecodeFinal(addr),
+                ExecutionQueryRequestItem::AddressExistsCandidate(addr),
+            ],
+            max_response_size: 0,
+            max_event_count: None,
+            query_state_deadline_ms: None,
+        });
+    assert_eq!(response.responses.len(), 3);
+    assert!(
+        matches!(&response.responses[0], Ok(ExecutionQueryResponseItem::DatastoreValue(value)) if value.is_empty())
+    );
+    assert!(matches!(
+        &response.responses[1],
+        Err(ExecutionQueryError::TooLargeResponse(_))
+    ));
+    assert!(matches!(
+        response.responses[2],
+        Ok(ExecutionQueryResponseItem::Boolean(true))
+    ));
+    for _ in 0..2 {
+        let response = universe
+            .module_controller
+            .query_state(ExecutionQueryRequest {
+                requests: vec![
+                    ExecutionQueryRequestItem::AddressBytecodeCandidate(addr),
+                    ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+                        addr,
+                        key: b"four".to_vec(),
+                    },
+                ],
+                max_response_size: 10,
+                max_event_count: None,
+                query_state_deadline_ms: None,
+            });
+        assert_eq!(response.responses.len(), 2);
+        assert!(
+            matches!(&response.responses[0], Ok(ExecutionQueryResponseItem::Bytecode(code)) if code.0 == b"abcdef")
+        );
+        assert!(
+            matches!(&response.responses[1], Ok(ExecutionQueryResponseItem::DatastoreValue(value)) if value == b"1234")
+        );
+    }
+}
+
 /// Test the recursion depth limit in nested calls using call SC operation
 ///
 /// We call a smart contract that has a nested function call, while setting the max_recursive_calls_depth to 0.

@@ -11,15 +11,16 @@ use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
 use massa_pool_exports::MockPoolController;
 use massa_pos_exports::{MockSelectorController, Selection};
+use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::api::v1::get_datastore_entry_filter::Filter;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_proto_rs::massa::api::v1::{
-    search_blocks_filter, AddressBalanceCandidate, ExecuteReadOnlyCallRequest,
-    ExecutionQueryRequestItem, GetBlocksRequest, GetEndorsementsRequest,
-    GetNextBlockBestParentsRequest, GetOperationsRequest, GetScExecutionEventsRequest,
-    GetSelectorDrawsRequest, GetStatusRequest, GetTransactionsThroughputRequest, QueryStateRequest,
-    SearchBlocksFilter, SearchBlocksRequest, SearchEndorsementsRequest, SearchOperationsRequest,
-    SelectorDrawsFilter,
+    execution_query_response, execution_query_response_item, search_blocks_filter,
+    AddressBalanceCandidate, ExecuteReadOnlyCallRequest, ExecutionQueryRequestItem,
+    GetBlocksRequest, GetEndorsementsRequest, GetNextBlockBestParentsRequest, GetOperationsRequest,
+    GetScExecutionEventsRequest, GetSelectorDrawsRequest, GetStatusRequest,
+    GetTransactionsThroughputRequest, QueryStateRequest, SearchBlocksFilter, SearchBlocksRequest,
+    SearchEndorsementsRequest, SearchOperationsRequest, SelectorDrawsFilter,
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
 use massa_proto_rs::massa::model::v1::{
@@ -1031,6 +1032,173 @@ async fn query_state() {
     assert_eq!(result.responses.len(), 0);
 
     stop_handle.stop();
+}
+
+#[test]
+fn query_state_response_budget_grpc_settings_and_error() {
+    let addr: SocketAddr = "[::]:0".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
+    public_server.grpc_config.max_encoding_message_size = 10;
+    public_server.grpc_config.max_event_per_query = 1;
+    public_server.grpc_config.query_state_deadline_ms = Some(0);
+    public_server.grpc_config.max_query_items_per_request = 2;
+
+    let final_address =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    let candidate_address =
+        Address::from_str("AU1wDuhMhWStMYCEVrNocpsbJF4C4SXfBRLohs9bik5Np5m4dY7H").unwrap();
+    let final_address_text = final_address.to_string();
+    let candidate_address_text = candidate_address.to_string();
+    let expected_final_address = final_address;
+    let expected_candidate_address = candidate_address;
+
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
+    exec_ctrl
+        .expect_query_state()
+        .times(1)
+        .returning(move |request| {
+            assert_eq!(request.max_response_size, 10);
+            assert_eq!(request.max_event_count, Some(1));
+            assert_eq!(request.query_state_deadline_ms, Some(0));
+            assert!(matches!(
+                request.requests.as_slice(),
+                [
+                    massa_execution_exports::ExecutionQueryRequestItem::AddressBytecodeFinal(
+                        final_address
+                    ),
+                    massa_execution_exports::ExecutionQueryRequestItem::AddressBytecodeCandidate(
+                        candidate_address
+                    )
+                ] if final_address == &expected_final_address
+                    && candidate_address == &expected_candidate_address
+            ));
+
+            massa_execution_exports::ExecutionQueryResponse {
+                responses: vec![
+                    Ok(
+                        massa_execution_exports::ExecutionQueryResponseItem::Bytecode(
+                            massa_models::bytecode::Bytecode(b"abcdef".to_vec()),
+                        ),
+                    ),
+                    Err(
+                        massa_execution_exports::ExecutionQueryError::TooLargeResponse(
+                            "byte budget exceeded".to_string(),
+                        ),
+                    ),
+                ],
+                candidate_cursor: Slot::new(2, 1),
+                final_cursor: Slot::new(1, 0),
+                final_state_fingerprint: massa_hash::Hash::compute_from(b"budget fixture"),
+            }
+        });
+    public_server.execution_controller = exec_ctrl;
+
+    let request = QueryStateRequest {
+        queries: vec![
+            ExecutionQueryRequestItem {
+                request_item: Some(
+                    grpc_api::execution_query_request_item::RequestItem::AddressBytecodeFinal(
+                        grpc_api::AddressBytecodeFinal {
+                            address: final_address_text,
+                        },
+                    ),
+                ),
+            },
+            ExecutionQueryRequestItem {
+                request_item: Some(
+                    grpc_api::execution_query_request_item::RequestItem::AddressBytecodeCandidate(
+                        grpc_api::AddressBytecodeCandidate {
+                            address: candidate_address_text,
+                        },
+                    ),
+                ),
+            },
+        ],
+    };
+    let result = crate::public::query_state(&public_server, tonic::Request::new(request)).unwrap();
+
+    assert_eq!(result.responses.len(), 2);
+    assert_eq!(
+        result.responses[0].response,
+        Some(execution_query_response::Response::Result(
+            grpc_api::ExecutionQueryResponseItem {
+                response_item: Some(execution_query_response_item::ResponseItem::Bytes(
+                    b"abcdef".to_vec(),
+                )),
+            },
+        )),
+    );
+    assert_eq!(
+        result.responses[1].response,
+        Some(execution_query_response::Response::Error(
+            massa_proto_rs::massa::model::v1::Error {
+                code: 413,
+                message: "byte budget exceeded".to_string(),
+            },
+        )),
+    );
+    assert_eq!(
+        result.final_cursor,
+        Some(massa_proto_rs::massa::model::v1::Slot {
+            period: 1,
+            thread: 0,
+        })
+    );
+    assert_eq!(
+        result.candidate_cursor,
+        Some(massa_proto_rs::massa::model::v1::Slot {
+            period: 2,
+            thread: 1,
+        })
+    );
+    assert_eq!(
+        result.final_state_fingerprint,
+        massa_hash::Hash::compute_from(b"budget fixture").to_string()
+    );
+}
+
+#[test]
+fn query_state_response_budget_grpc_input_limit() {
+    let addr: SocketAddr = "[::]:0".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
+    public_server.grpc_config.max_query_items_per_request = 2;
+
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
+    exec_ctrl.expect_query_state().times(0);
+    public_server.execution_controller = exec_ctrl;
+
+    for queries in [
+        vec![],
+        vec![
+            ExecutionQueryRequestItem {
+                request_item: Some(
+                    grpc_api::execution_query_request_item::RequestItem::AddressBytecodeFinal(
+                        grpc_api::AddressBytecodeFinal {
+                            address: "AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"
+                                .to_string(),
+                        },
+                    ),
+                ),
+            };
+            3
+        ],
+    ] {
+        let expected_message = if queries.is_empty() {
+            "no query items specified"
+        } else {
+            "too many query items received. Only a maximum of 2 operations are accepted per request"
+        };
+        let error = crate::public::query_state(
+            &public_server,
+            tonic::Request::new(QueryStateRequest { queries }),
+        )
+        .unwrap_err();
+        let message = match error {
+            crate::error::GrpcError::InvalidArgument(message) => message,
+            _ => unreachable!(),
+        };
+        assert_eq!(message, expected_message);
+    }
 }
 
 #[tokio::test]
