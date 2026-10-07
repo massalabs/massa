@@ -152,7 +152,7 @@ impl BootstrapServerBinder {
                 .version_deserializer
                 .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
                 .map_err(|err| BootstrapError::GeneralError(format!("{}", &err)))?;
-            if !received_version.is_compatible(&version) {
+            if !version.is_compatible(&received_version) {
                 return Err(BootstrapError::IncompatibleVersionError(format!("Received a bad incompatible version in handshake. (excepted: {}, received: {})", version, received_version)));
             }
             Hash::compute_from(&msg_bytes)
