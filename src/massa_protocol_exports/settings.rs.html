@@ -178,29 +178,27 @@
 <a href=#178 id=178 data-nosnippet>178</a>    </span><span class="kw">pub </span>default_category_info: PeerCategoryInfo,
 <a href=#179 id=179 data-nosnippet>179</a>    <span class="doccomment">/// Version
 <a href=#180 id=180 data-nosnippet>180</a>    </span><span class="kw">pub </span>version: Version,
-<a href=#181 id=181 data-nosnippet>181</a>    <span class="doccomment">/// Oldest peer version accepted during handshakes
-<a href=#182 id=182 data-nosnippet>182</a>    </span><span class="kw">pub </span>min_compatible_version: Version,
-<a href=#183 id=183 data-nosnippet>183</a>    <span class="doccomment">/// Cooldown before testing again an old peer
-<a href=#184 id=184 data-nosnippet>184</a>    </span><span class="kw">pub </span>test_oldest_peer_cooldown: MassaTime,
-<a href=#185 id=185 data-nosnippet>185</a>    <span class="doccomment">/// Rate limit to apply on the data stream
-<a href=#186 id=186 data-nosnippet>186</a>    </span><span class="kw">pub </span>rate_limit: u64,
-<a href=#187 id=187 data-nosnippet>187</a>    <span class="doccomment">/// Chain id
-<a href=#188 id=188 data-nosnippet>188</a>    </span><span class="kw">pub </span>chain_id: u64,
-<a href=#189 id=189 data-nosnippet>189</a>}
-<a href=#190 id=190 data-nosnippet>190</a>
-<a href=#191 id=191 data-nosnippet>191</a><span class="kw">impl </span>ProtocolConfig {
-<a href=#192 id=192 data-nosnippet>192</a>    <span class="doccomment">/// Whether the node is configured to deal with peers that do not have a
-<a href=#193 id=193 data-nosnippet>193</a>    /// globally routable address, i.e. local networks. Mirrors the
-<a href=#194 id=194 data-nosnippet>194</a>    /// `allow_local_peers` category setting: as soon as one category accepts
-<a href=#195 id=195 data-nosnippet>195</a>    /// local peers, non-global endpoints are kept in the peer management
-<a href=#196 id=196 data-nosnippet>196</a>    /// pipeline and may be dialed. Per-category checks still apply when
-<a href=#197 id=197 data-nosnippet>197</a>    /// selecting peers to connect out; `NetworkController::try_connect`
-<a href=#198 id=198 data-nosnippet>198</a>    /// refuses non-global destinations when this returns false.
-<a href=#199 id=199 data-nosnippet>199</a>    </span><span class="kw">pub fn </span>allow_local_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-<a href=#200 id=200 data-nosnippet>200</a>        <span class="self">self</span>.default_category_info.allow_local_peers
-<a href=#201 id=201 data-nosnippet>201</a>            || <span class="self">self
-<a href=#202 id=202 data-nosnippet>202</a>                </span>.peers_categories
-<a href=#203 id=203 data-nosnippet>203</a>                .values()
-<a href=#204 id=204 data-nosnippet>204</a>                .any(|category| category.allow_local_peers)
-<a href=#205 id=205 data-nosnippet>205</a>    }
-<a href=#206 id=206 data-nosnippet>206</a>}</code></pre></div></section></main></body></html>
+<a href=#181 id=181 data-nosnippet>181</a>    <span class="doccomment">/// Cooldown before testing again an old peer
+<a href=#182 id=182 data-nosnippet>182</a>    </span><span class="kw">pub </span>test_oldest_peer_cooldown: MassaTime,
+<a href=#183 id=183 data-nosnippet>183</a>    <span class="doccomment">/// Rate limit to apply on the data stream
+<a href=#184 id=184 data-nosnippet>184</a>    </span><span class="kw">pub </span>rate_limit: u64,
+<a href=#185 id=185 data-nosnippet>185</a>    <span class="doccomment">/// Chain id
+<a href=#186 id=186 data-nosnippet>186</a>    </span><span class="kw">pub </span>chain_id: u64,
+<a href=#187 id=187 data-nosnippet>187</a>}
+<a href=#188 id=188 data-nosnippet>188</a>
+<a href=#189 id=189 data-nosnippet>189</a><span class="kw">impl </span>ProtocolConfig {
+<a href=#190 id=190 data-nosnippet>190</a>    <span class="doccomment">/// Whether the node is configured to deal with peers that do not have a
+<a href=#191 id=191 data-nosnippet>191</a>    /// globally routable address, i.e. local networks. Mirrors the
+<a href=#192 id=192 data-nosnippet>192</a>    /// `allow_local_peers` category setting: as soon as one category accepts
+<a href=#193 id=193 data-nosnippet>193</a>    /// local peers, non-global endpoints are kept in the peer management
+<a href=#194 id=194 data-nosnippet>194</a>    /// pipeline and may be dialed. Per-category checks still apply when
+<a href=#195 id=195 data-nosnippet>195</a>    /// selecting peers to connect out; `NetworkController::try_connect`
+<a href=#196 id=196 data-nosnippet>196</a>    /// refuses non-global destinations when this returns false.
+<a href=#197 id=197 data-nosnippet>197</a>    </span><span class="kw">pub fn </span>allow_local_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#198 id=198 data-nosnippet>198</a>        <span class="self">self</span>.default_category_info.allow_local_peers
+<a href=#199 id=199 data-nosnippet>199</a>            || <span class="self">self
+<a href=#200 id=200 data-nosnippet>200</a>                </span>.peers_categories
+<a href=#201 id=201 data-nosnippet>201</a>                .values()
+<a href=#202 id=202 data-nosnippet>202</a>                .any(|category| category.allow_local_peers)
+<a href=#203 id=203 data-nosnippet>203</a>    }
+<a href=#204 id=204 data-nosnippet>204</a>}</code></pre></div></section></main></body></html>

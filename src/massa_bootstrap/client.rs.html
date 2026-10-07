@@ -361,7 +361,7 @@
 <a href=#361 id=361 data-nosnippet>361</a>            server_time,
 <a href=#362 id=362 data-nosnippet>362</a>            version,
 <a href=#363 id=363 data-nosnippet>363</a>        }) =&gt; {
-<a href=#364 id=364 data-nosnippet>364</a>            <span class="kw">if </span>!our_version.is_compatible(<span class="kw-2">&amp;</span>version, <span class="kw-2">&amp;</span>cfg.min_compatible_version) {
+<a href=#364 id=364 data-nosnippet>364</a>            <span class="kw">if </span>!our_version.is_compatible(<span class="kw-2">&amp;</span>version) {
 <a href=#365 id=365 data-nosnippet>365</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::IncompatibleVersionError(<span class="macro">format!</span>(
 <a href=#366 id=366 data-nosnippet>366</a>                    <span class="string">"remote is running incompatible version: {} (local node version: {})"</span>,
 <a href=#367 id=367 data-nosnippet>367</a>                    version, our_version
