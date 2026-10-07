@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["MIP_0002_EXECUTION_VERSION","MIP_0002_NODE_VERSION"],"fn":["get_mip_list"]};
+window.SIDEBAR_ITEMS = {"constant":["MIP_0002_EXECUTION_VERSION"],"fn":["get_mip_list"]};
