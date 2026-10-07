@@ -14,6 +14,8 @@ use massa_protocol_exports::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::Signature;
 use massa_time::MassaTime;
+use massa_versioning::node_version::is_peer_version_compatible;
+use massa_versioning::versioning::MipStore;
 use peernet::context::Context as _;
 use peernet::messages::MessagesSerializer as _;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -109,12 +111,14 @@ impl PeerManagementHandler {
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
         config: &ProtocolConfig,
+        mip_store: MipStore,
         massa_metrics: MassaMetrics,
     ) -> Self {
         let message_serializer = PeerManagementMessageSerializer::new();
 
         let ((test_sender, test_receiver), testers) = Tester::run(
             config,
+            mip_store,
             active_connections.clone(),
             peer_db.clone(),
             messages_handler,
@@ -335,15 +339,17 @@ pub struct MassaHandshake {
     pub version_deserializer: VersionDeserializer,
     pub config: ProtocolConfig,
     pub peer_db: SharedPeerDB,
+    mip_store: MipStore,
     peer_mngt_msg_serializer: MessagesSerializer,
     peer_id_serializer: PeerIdSerializer,
     peer_id_deserializer: PeerIdDeserializer,
 }
 
 impl MassaHandshake {
-    pub fn new(peer_db: SharedPeerDB, config: ProtocolConfig) -> Self {
+    pub fn new(peer_db: SharedPeerDB, config: ProtocolConfig, mip_store: MipStore) -> Self {
         Self {
             peer_db,
+            mip_store,
             announcement_serializer: AnnouncementSerializer::new(),
             announcement_deserializer: AnnouncementDeserializer::new(
                 AnnouncementDeserializerArgs {
@@ -462,7 +468,12 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         Some(format!("Failed to deserialize version: {}", err)),
                     )
                 })?;
-            if !self.config.version.is_compatible(&version) {
+            if !is_peer_version_compatible(
+                &self.mip_store,
+                &self.config.version,
+                &version,
+                MassaTime::now(),
+            ) {
                 return Err(PeerNetError::HandshakeError.error(
                     "Massa Handshake",
                     Some(format!("Received version incompatible: {}", version)),
@@ -727,6 +738,8 @@ mod tests {
     use massa_protocol_exports::{PeerId, PeerIdSerializer, ProtocolConfig};
     use massa_serialization::{Serializer, U64VarIntDeserializer};
     use massa_signature::KeyPair;
+    use massa_versioning::versioning::{MipStatsConfig, MipStore};
+    use num::rational::Ratio;
     use parking_lot::RwLock;
     use peernet::{peer::InitConnectionHandler, transports::endpoint::Endpoint};
 
@@ -737,6 +750,18 @@ mod tests {
         models::{PeerDB, PeerInfo, PeerState},
     };
 
+    /// Empty MIP store: only the instance and major version are checked at handshake
+    fn mip_store() -> MipStore {
+        MipStore::try_from((
+            [],
+            MipStatsConfig {
+                block_count_considered: 10,
+                warn_announced_version_ratio: Ratio::new_raw(30, 100),
+            },
+        ))
+        .unwrap()
+    }
+
     #[test]
     fn test_handshake_rejects_banned_peer_and_keeps_ban() {
         let (sender_blocks, _) = MassaChannel::new(String::from("test_blocks"), None);
@@ -745,8 +770,11 @@ mod tests {
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
         let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
         let protocol_config = ProtocolConfig::default();
-        let mut handshake =
-            super::MassaHandshake::new(shared_peer_db.clone(), protocol_config.clone());
+        let mut handshake = super::MassaHandshake::new(
+            shared_peer_db.clone(),
+            protocol_config.clone(),
+            mip_store(),
+        );
         let our_keypair = KeyPair::generate(0).unwrap();
         let banned_keypair = KeyPair::generate(0).unwrap();
         let banned_peer_id = PeerId::from_public_key(banned_keypair.get_public_key());
@@ -825,7 +853,8 @@ mod tests {
         let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
         let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
-        let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
+        let mut handshake =
+            super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default(), mip_store());
         let our_keypair = KeyPair::generate(0).unwrap();
         let messages_handlers = MessagesHandler {
             id_deserializer: U64VarIntDeserializer::new(
@@ -886,7 +915,8 @@ mod tests {
         let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
         let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
-        let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
+        let mut handshake =
+            super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default(), mip_store());
         let our_keypair = KeyPair::generate(0).unwrap();
         let messages_handlers = MessagesHandler {
             id_deserializer: U64VarIntDeserializer::new(
@@ -931,7 +961,8 @@ mod tests {
         let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
         let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
-        let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
+        let mut handshake =
+            super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default(), mip_store());
         let our_keypair = KeyPair::generate(0).unwrap();
         let messages_handlers = MessagesHandler {
             id_deserializer: U64VarIntDeserializer::new(

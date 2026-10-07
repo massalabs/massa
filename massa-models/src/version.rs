@@ -191,10 +191,12 @@ impl Deserializer<Version> for VersionDeserializer {
 impl Version {
     /// true if instance and major are the same
     pub fn is_compatible(&self, other: &Version) -> bool {
-        self.instance == other.instance
-            && (self.major == other.major
-                || (self.major == 2 && other.major == 3)
-                || (self.major == 3 && other.major == 2))
+        self.instance == other.instance && self.major == other.major
+    }
+
+    /// true if this version is not older than `major.minor`
+    pub fn is_at_least(&self, major: u32, minor: u32) -> bool {
+        (self.major, self.minor) >= (major, minor)
     }
 }
 

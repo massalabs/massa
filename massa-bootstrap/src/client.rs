@@ -10,6 +10,7 @@ use massa_models::{
 };
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
+use massa_versioning::node_version::is_peer_version_compatible;
 use massa_versioning::versioning::{ComponentStateTypeId, MipInfo, MipState, StateAtError};
 use parking_lot::RwLock;
 use rand::{
@@ -361,7 +362,13 @@ pub(crate) fn bootstrap_from_server(
             server_time,
             version,
         }) => {
-            if !our_version.is_compatible(&version) {
+            let compatible = is_peer_version_compatible(
+                global_bootstrap_state.final_state.read().get_mip_store(),
+                &our_version,
+                &version,
+                MassaTime::now(),
+            );
+            if !compatible {
                 return Err(BootstrapError::IncompatibleVersionError(format!(
                     "remote is running incompatible version: {} (local node version: {})",
                     version, our_version

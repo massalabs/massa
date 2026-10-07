@@ -18,6 +18,8 @@ use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning::node_version::is_peer_version_compatible;
+use massa_versioning::versioning::MipStore;
 use std::io;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
@@ -137,6 +139,7 @@ impl BootstrapServerBinder {
     pub fn handshake_timeout(
         &mut self,
         version: Version,
+        mip_store: &MipStore,
         duration: Option<Duration>,
     ) -> Result<(), BootstrapError> {
         let deadline = duration.map(|d| Instant::now() + d);
@@ -152,7 +155,8 @@ impl BootstrapServerBinder {
                 .version_deserializer
                 .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
                 .map_err(|err| BootstrapError::GeneralError(format!("{}", &err)))?;
-            if !received_version.is_compatible(&version) {
+            if !is_peer_version_compatible(mip_store, &version, &received_version, MassaTime::now())
+            {
                 return Err(BootstrapError::IncompatibleVersionError(format!("Received a bad incompatible version in handshake. (excepted: {}, received: {})", version, received_version)));
             }
             Hash::compute_from(&msg_bytes)

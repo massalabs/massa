@@ -724,7 +724,8 @@ pub(crate) fn manage_bootstrap(
         ));
     };
 
-    server.handshake_timeout(version, Some(hs_timeout))?;
+    let mip_store = final_state.read().get_mip_store().clone();
+    server.handshake_timeout(version, &mip_store, Some(hs_timeout))?;
 
     // Check for error from client
     if Instant::now() + read_error_timeout >= deadline {

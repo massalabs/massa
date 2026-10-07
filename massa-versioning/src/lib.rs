@@ -93,6 +93,7 @@ pub mod consensus_signature;
 pub mod grpc_mapping;
 pub mod keypair_factory;
 pub mod mips;
+pub mod node_version;
 pub mod versioning;
 pub mod versioning_factory;
 pub mod versioning_ser_der;

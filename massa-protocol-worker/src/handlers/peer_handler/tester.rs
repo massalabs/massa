@@ -16,6 +16,8 @@ use massa_models::version::VersionDeserializer;
 use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
+use massa_versioning::node_version::is_peer_version_compatible;
+use massa_versioning::versioning::MipStore;
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
@@ -41,6 +43,7 @@ pub struct Tester {
 impl Tester {
     pub fn run(
         config: &ProtocolConfig,
+        mip_store: MipStore,
         active_connections: Box<dyn ActiveConnectionsTrait>,
         peer_db: SharedPeerDB,
         messages_handler: MessagesHandler,
@@ -67,6 +70,7 @@ impl Tester {
                 peer_db.clone(),
                 active_connections.clone(),
                 config.clone(),
+                mip_store.clone(),
                 test_receiver.clone(),
                 messages_handler.clone(),
                 target_out_connections.clone(),
@@ -87,6 +91,7 @@ impl Tester {
         peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
         config: &ProtocolConfig,
+        mip_store: &MipStore,
         massa_metrics: MassaMetrics,
     ) -> PeerNetResult<PeerId> {
         let our_version = config.version;
@@ -154,7 +159,8 @@ impl Tester {
                             Some(format!("Failed to deserialize version: {}", err)),
                         )
                     })?;
-                if !our_version.is_compatible(&version) {
+                if !is_peer_version_compatible(mip_store, &our_version, &version, MassaTime::now())
+                {
                     return Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
                         Some(format!("Received version incompatible: {}", version)),
@@ -297,6 +303,7 @@ impl Tester {
         peer_db: SharedPeerDB,
         active_connections: Box<dyn ActiveConnectionsTrait>,
         protocol_config: ProtocolConfig,
+        mip_store: MipStore,
         receiver: MassaReceiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
         messages_handler: MessagesHandler,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
@@ -427,6 +434,7 @@ impl Tester {
                                                 PeerIdDeserializer::new(),
                                                 *addr,
                                                 &protocol_config,
+                                                &mip_store,
                                                 massa_metrics.clone(),
                                             );
 
@@ -497,6 +505,7 @@ impl Tester {
                             PeerIdDeserializer::new(),
                             listener,
                             &protocol_config,
+                            &mip_store,
                             massa_metrics.clone(),
                         );
                         // let res =  network_manager.try_connect(

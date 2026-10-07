@@ -11,6 +11,10 @@ use crate::versioning::{MipComponent, MipInfo, MipState};
 /// Single source of truth for gating features bundled into that MIP.
 pub const MIP_0002_EXECUTION_VERSION: u32 = 2;
 
+/// First node release `(major, minor)` shipping `MIP-0002-BugFix`.
+/// Once the MIP is active, older peers are rejected at handshake.
+pub const MIP_0002_NODE_VERSION: (u32, u32) = (5, 1);
+
 #[cfg(not(feature = "test-exports"))]
 pub fn get_mip_list() -> [(MipInfo, MipState); 2] {
     // When the MIPs becomes defined, e.g. when merged to main branch

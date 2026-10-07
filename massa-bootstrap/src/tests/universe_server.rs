@@ -28,8 +28,10 @@ use massa_models::{
 use massa_protocol_exports::{BootstrapPeers, MockProtocolControllerWrapper};
 use massa_signature::KeyPair;
 use massa_test_framework::TestUniverse;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use mio::{Poll, Token, Waker};
 use mockall::Sequence;
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use tempfile::{NamedTempFile, TempDir};
 
@@ -154,6 +156,21 @@ impl Default for BootstrapServerTestUniverseBuilder {
             .write()
             .expect_get_last_slot_before_downtime()
             .return_const(None);
+        // read by the handshake to check the client version against the active MIPs
+        controllers
+            .final_state_controller
+            .write()
+            .expect_get_mip_store()
+            .return_const(
+                MipStore::try_from((
+                    [],
+                    MipStatsConfig {
+                        block_count_considered: 10,
+                        warn_announced_version_ratio: Ratio::new_raw(30, 100),
+                    },
+                ))
+                .unwrap(),
+            );
         controllers
             .consensus_controller
             .set_expectations(|consensus_controller| {

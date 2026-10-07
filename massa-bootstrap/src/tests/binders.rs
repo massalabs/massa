@@ -39,6 +39,8 @@ use massa_pos_exports::{MockSelectorControllerWrapper, PoSFinalState};
 use massa_protocol_exports::{BootstrapPeers, MockProtocolController};
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use num::rational::Ratio;
 
 use parking_lot::RwLock;
 use rand::Rng;
@@ -168,6 +170,18 @@ fn assert_client_got_msg(
     assert!(eq, "Received BootstrapServerMessage isn't the same");
 }
 
+// Empty MIP store: only the instance and major version are checked at handshake
+fn mip_store() -> MipStore {
+    MipStore::try_from((
+        [],
+        MipStatsConfig {
+            block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        },
+    ))
+    .unwrap()
+}
+
 // Initialize a pair of bootstrap server and client with the given configuration, and handshake done
 fn init_server_client_pair() -> (BootstrapServerBinder, BootstrapClientBinder) {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
@@ -196,7 +210,9 @@ fn init_server_client_pair() -> (BootstrapServerBinder, BootstrapClientBinder) {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
     client.handshake(version()).unwrap();
-    server.handshake_timeout(version(), None).unwrap();
+    server
+        .handshake_timeout(version(), &mip_store(), None)
+        .unwrap();
 
     (server, client)
 }
@@ -430,7 +446,9 @@ fn test_partial_msg() {
         .name("test_binders::server_thread".to_string())
         .spawn({
             move || {
-                server.handshake_timeout(version(), None).unwrap();
+                server
+                    .handshake_timeout(version(), &mip_store(), None)
+                    .unwrap();
                 prev_tx
                     .send(
                         server
@@ -805,7 +823,9 @@ fn test_client_drip_feed() {
         .name("test_binders::server_thread".to_string())
         .spawn({
             move || {
-                server.handshake_timeout(version(), None).unwrap();
+                server
+                    .handshake_timeout(version(), &mip_store(), None)
+                    .unwrap();
                 prev_tx
                     .send(
                         server
@@ -920,7 +940,9 @@ fn test_bandwidth() {
             move || {
                 let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-                server.handshake_timeout(version, None).unwrap();
+                server
+                    .handshake_timeout(version, &mip_store(), None)
+                    .unwrap();
 
                 std::thread::sleep(Duration::from_secs(1));
                 let before = Instant::now();
