@@ -47,7 +47,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "5.0.0"
+version = "30.1.0"
 edition = "2021"
 
 # From https://doc.rust-lang.org/cargo/reference/profiles.html#overrides
