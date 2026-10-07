@@ -152,7 +152,7 @@
 <a href=#152 id=152 data-nosnippet>152</a>                </span>.version_deserializer
 <a href=#153 id=153 data-nosnippet>153</a>                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>msg_bytes[..version_bytes.len()])
 <a href=#154 id=154 data-nosnippet>154</a>                .map_err(|err| BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">"{}"</span>, <span class="kw-2">&amp;</span>err)))<span class="question-mark">?</span>;
-<a href=#155 id=155 data-nosnippet>155</a>            <span class="kw">if </span>!received_version.is_compatible(<span class="kw-2">&amp;</span>version) {
+<a href=#155 id=155 data-nosnippet>155</a>            <span class="kw">if </span>!version.is_compatible(<span class="kw-2">&amp;</span>received_version) {
 <a href=#156 id=156 data-nosnippet>156</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::IncompatibleVersionError(<span class="macro">format!</span>(<span class="string">"Received a bad incompatible version in handshake. (excepted: {}, received: {})"</span>, version, received_version)));
 <a href=#157 id=157 data-nosnippet>157</a>            }
 <a href=#158 id=158 data-nosnippet>158</a>            Hash::compute_from(<span class="kw-2">&amp;</span>msg_bytes)
