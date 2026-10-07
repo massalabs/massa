@@ -27,7 +27,8 @@ jobs:
   release:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macOS-latest, windows-latest]
+        # TMP: macOS build and signing disabled while signing is broken
+        os: [ubuntu-22.04, windows-latest]
         platform: [x86_64, arm64]
         include:
           - os: ubuntu-22.04
@@ -42,14 +43,6 @@ jobs:
             platform: x86_64
             target: x86_64-pc-windows-gnu
             name: release_windows.zip
-          - os: macOS-latest
-            platform: x86_64
-            target: x86_64-apple-darwin
-            name: release_macos.tar.gz
-          - os: macOS-latest
-            platform: arm64
-            target: aarch64-apple-darwin
-            name: release_macos_aarch64.tar.gz
         exclude:
           - os: windows-latest
             platform: arm64
