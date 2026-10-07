@@ -30,6 +30,7 @@ use massa_proto_rs::massa::model::v1::{
 use massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, Result, RuntimeModule};
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
+use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
@@ -114,7 +115,7 @@ impl InterfaceImpl {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config)).unwrap();
         let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
             .expect("could not start selector controller");
         let disk_ledger = TempDir::new().expect("cannot create temp directory");
@@ -241,6 +242,47 @@ fn get_address_from_opt_or_context(
     }
 }
 
+/// One page of datastore keys. `start_key` is exclusive. Rejected before
+/// execution version 2, and when `count` is outside `1..=MAX_DATASTORE_KEYS_PAGE`.
+fn paginated_datastore_keys(
+    context: &ExecutionContext,
+    addr: &Address,
+    prefix: Option<&[u8]>,
+    start_key: Option<&[u8]>,
+    count: u32,
+) -> Result<BTreeSet<Vec<u8>>> {
+    if !context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
+        bail!(
+            "paginated datastore-key queries are only available from execution version {}",
+            MIP_0002_EXECUTION_VERSION
+        );
+    }
+    if !(1..=massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE).contains(&count) {
+        bail!(
+            "datastore key page size must be between 1 and {}, got {}",
+            massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE,
+            count
+        );
+    }
+    let start_key = match start_key {
+        Some(key) => std::ops::Bound::Excluded(key.to_vec()),
+        None => std::ops::Bound::Unbounded,
+    };
+    match context
+        .get_keys(
+            addr,
+            prefix.unwrap_or_default(),
+            start_key,
+            std::ops::Bound::Unbounded,
+            Some(count),
+        )
+        .map_err(|e| e.to_string())?
+    {
+        Some(keys) => Ok(keys),
+        None => bail!("data entry not found"),
+    }
+}
+
 /// Implementation of the Interface trait providing functions for massa-sc-runtime to call
 /// in order to interact with the execution context during bytecode execution.
 /// See the massa-sc-runtime crate for a functional description of the trait and its methods.
@@ -256,8 +298,10 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
+    /// Execution component version active at the current slot. massa-sc-runtime gates runtime
+    /// changes on it: from MIP_0002_EXECUTION_VERSION on, wasmv1 modules are no longer executed.
     fn get_interface_version(&self) -> Result<u32> {
-        bail!("get_interface_version has been called but no versioning is in progress")
+        Ok(context_guard!(self).execution_component_version)
     }
 
     fn increment_recursion_counter(&self) -> Result<()> {
@@ -528,6 +572,35 @@ impl Interface for InterfaceImpl {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
+    }
+
+    /// One page of datastore keys for the current address.
+    ///
+    /// `start_key` is an exclusive cursor. `count` must be in
+    /// `1..=MAX_DATASTORE_KEYS_PAGE`. Available from execution version 2
+    /// (MIP-0002); the runtime does not resolve the import before that.
+    fn get_keys_paginated(
+        &self,
+        prefix: Option<&[u8]>,
+        start_key: Option<&[u8]>,
+        count: u32,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address().map_err(|e| e.to_string())?;
+        paginated_datastore_keys(&context, &addr, prefix, start_key, count)
+    }
+
+    /// One page of datastore keys for `address`. See [`Interface::get_keys_paginated`].
+    fn get_keys_for_paginated(
+        &self,
+        address: &str,
+        prefix: Option<&[u8]>,
+        start_key: Option<&[u8]>,
+        count: u32,
+    ) -> Result<BTreeSet<Vec<u8>>> {
+        let addr = Address::from_str(address).map_err(|e| e.to_string())?;
+        let context = context_guard!(self);
+        paginated_datastore_keys(&context, &addr, prefix, start_key, count)
     }
 
     /// Get the datastore keys (aka entries) for a given address, or the current address if none is provided
@@ -1426,7 +1499,15 @@ impl Interface for InterfaceImpl {
     /// * `target_function`: Name of the message handling function
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
-    /// * `max_gas`: Maximum gas for the message execution
+    /// * `max_gas`: Maximum gas for the message execution.
+    ///   Bounded below by `max_instance_cost`, and — from execution component version
+    ///   [`MIP_0002_EXECUTION_VERSION`] on — above by the largest budget any slot
+    ///   can ever offer. `take_batch_to_execute` only schedules a message when
+    ///   `max_gas + async_msg_cst_gas_cost` fits the slot's async gas budget, which never
+    ///   exceeds `max_async_gas + max_gas_per_block` (see `execute_slot`). Before that
+    ///   version, a message above the ceiling was accepted but permanently unschedulable:
+    ///   it occupied async pool capacity until its validity end, and on expiry
+    ///   `cancel_async_message` refunded `raw_coins` but not `raw_fee`.
     /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
@@ -1469,6 +1550,21 @@ impl Interface for InterfaceImpl {
 
         if max_gas < self.config.gas_costs.max_instance_cost {
             bail!("max gas is lower than the minimum instance cost")
+        }
+        // Reject messages that no slot could ever schedule. Gated: rejecting here changes
+        // execution results, so it only applies once the MIP has activated.
+        if execution_context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
+            let max_schedulable_gas = self
+                .config
+                .max_async_gas
+                .saturating_add(self.config.max_gas_per_block)
+                .saturating_sub(self.config.async_msg_cst_gas_cost);
+            if max_gas > max_schedulable_gas {
+                bail!(
+                    "max gas is higher than the maximum schedulable async gas ({})",
+                    max_schedulable_gas
+                )
+            }
         }
         if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
         {
@@ -2170,6 +2266,58 @@ mod tests {
     use massa_models::address::Address;
     use massa_signature::KeyPair;
 
+    // An async message asking for more gas than any slot can ever schedule is admitted
+    // before the MIP activates, and rejected from MIP_0002_EXECUTION_VERSION on.
+    #[test]
+    fn test_send_message_max_gas_ceiling() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let target = "AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy";
+
+        let config = ExecutionConfig::default();
+        let ceiling = config
+            .max_async_gas
+            .saturating_add(config.max_gas_per_block)
+            .saturating_sub(config.async_msg_cst_gas_cost);
+
+        let send = |max_gas: u64| {
+            interface.send_message(target, "receive", (0, 0), (10, 0), max_gas, 0, 0, &[], None)
+        };
+
+        // pre-activation: the oversized message is accepted, which is the bug being fixed
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        send(ceiling + 1).expect("oversized message should be admitted before activation");
+
+        // post-activation: rejected, while a message exactly at the ceiling still passes
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(
+            send(ceiling + 1).is_err(),
+            "oversized message should be rejected after activation"
+        );
+        send(ceiling).expect("a message exactly at the ceiling is still schedulable");
+    }
+
+    // The runtime gates changes on the reported version (e.g. it stops executing wasmv1 modules
+    // from MIP_0002_EXECUTION_VERSION on): it must follow the execution component version active
+    // at the current slot, on both sides of the activation.
+    #[test]
+    fn test_get_interface_version_follows_execution_component_version() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        assert_eq!(
+            interface.get_interface_version().unwrap(),
+            MIP_0002_EXECUTION_VERSION - 1
+        );
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert_eq!(
+            interface.get_interface_version().unwrap(),
+            MIP_0002_EXECUTION_VERSION
+        );
+    }
+
     // Tests the get_keys_wasmv1 interface method used by the updated get_keys abi.
     #[test]
     fn test_get_keys() {
@@ -2191,6 +2339,84 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert!(keys.contains(b"k1".as_slice()));
         assert!(keys.contains(b"k2".as_slice()));
+    }
+
+    /// Pages chain without gaps or duplicates. `start_key` is exclusive.
+    /// The call is rejected before execution version 2 and when `count` is out of range.
+    #[test]
+    fn test_get_keys_paginated_pages() {
+        use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
+
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+
+        for i in 0..10u32 {
+            let key = format!("key{i:02}");
+            interface
+                .set_ds_value_wasmv1(key.as_bytes(), b"v", Some(sender_addr.to_string()))
+                .unwrap();
+        }
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        assert!(interface.get_keys_paginated(None, None, 4).is_err());
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(interface.get_keys_paginated(None, None, 0).is_err());
+        assert!(interface
+            .get_keys_paginated(None, None, MAX_DATASTORE_KEYS_PAGE + 1)
+            .is_err());
+
+        let page1 = interface.get_keys_paginated(None, None, 4).unwrap();
+        assert_eq!(page1.len(), 4);
+        let last1 = page1.iter().next_back().unwrap().clone();
+        let page2 = interface.get_keys_paginated(None, Some(&last1), 4).unwrap();
+        assert_eq!(page2.len(), 4);
+        assert!(page1.is_disjoint(&page2));
+        let last2 = page2.iter().next_back().unwrap().clone();
+        let page3 = interface.get_keys_paginated(None, Some(&last2), 4).unwrap();
+        assert_eq!(page3.len(), 2);
+
+        let mut all: Vec<Vec<u8>> = page1.into_iter().chain(page2).chain(page3).collect();
+        all.sort();
+        let expected: Vec<Vec<u8>> = (0..10u32)
+            .map(|i| format!("key{i:02}").into_bytes())
+            .collect();
+        assert_eq!(all, expected);
+
+        let one = interface
+            .get_keys_for_paginated(&sender_addr.to_string(), None, None, 1)
+            .unwrap();
+        assert_eq!(one.len(), 1);
+    }
+
+    /// From execution version 2, an unbounded `get_keys` that matches more than one
+    /// page fails. Before that version the same query returns every key.
+    #[test]
+    fn test_get_keys_capped_at_execution_v2() {
+        use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
+
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        let addr = sender_addr.to_string();
+
+        for i in 0..=MAX_DATASTORE_KEYS_PAGE {
+            let key = format!("k{i:06}");
+            interface
+                .set_ds_value_wasmv1(key.as_bytes(), b"v", Some(addr.clone()))
+                .unwrap();
+        }
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+        let keys = interface.get_keys(Some(b"")).unwrap();
+        assert_eq!(keys.len(), MAX_DATASTORE_KEYS_PAGE as usize + 1);
+
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        assert!(interface.get_keys(Some(b"")).is_err());
+
+        let page = interface
+            .get_keys_paginated(None, None, MAX_DATASTORE_KEYS_PAGE)
+            .unwrap();
+        assert_eq!(page.len(), MAX_DATASTORE_KEYS_PAGE as usize);
     }
 
     // Tests the get_op_keys_wasmv1 interface method used by the updated get_op_keys abi.
@@ -2546,4 +2772,480 @@ fn test_evm_verify() {
     let hash = sha3::Keccak256::digest(&raw_public_key[1..]).to_vec();
     let generated_address = &hash[12..];
     assert_eq!(generated_address, address_);
+}
+
+#[cfg(test)]
+mod datastore_key_interface_regressions {
+    use super::*;
+    use crate::{active_history::ActiveHistory, speculative_ledger::SpeculativeLedger};
+    use massa_execution_exports::ExecutionOutput;
+    use massa_final_state::{FinalStateController, MockFinalStateController, StateChanges};
+    use massa_ledger_exports::{
+        LedgerChanges, LedgerEntry, LedgerEntryUpdate, MockLedgerControllerWrapper,
+    };
+    use massa_models::address::Address;
+    use massa_models::slot::Slot;
+    use massa_models::types::{SetOrDelete, SetUpdateOrDelete};
+    use massa_sc_runtime::Interface;
+    use parking_lot::RwLock;
+    use std::collections::{BTreeMap, BTreeSet, VecDeque};
+    use std::ops::Bound;
+    use std::sync::Arc;
+
+    type LedgerKeys = Arc<RwLock<BTreeMap<Address, BTreeSet<Vec<u8>>>>>;
+
+    fn address(seed: &str) -> Address {
+        Address::from_str(seed).unwrap()
+    }
+
+    fn key(prefix: &str, index: usize) -> Vec<u8> {
+        format!("{prefix}{index:03}").into_bytes()
+    }
+
+    fn fixture() -> (
+        InterfaceImpl,
+        LedgerKeys,
+        Address,
+        Arc<RwLock<ActiveHistory>>,
+    ) {
+        let current = address("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M");
+        let target = address("AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy");
+        let interface = InterfaceImpl::new_default(current, None, None);
+        let keys: LedgerKeys = Arc::new(RwLock::new(BTreeMap::new()));
+
+        let mut ledger = MockLedgerControllerWrapper::new();
+        let ledger_keys = keys.clone();
+        ledger.set_expectations(move |mock| {
+            mock.expect_get_datastore_keys()
+                .returning(move |addr, prefix, start, end, count| {
+                    let keys = ledger_keys.read();
+                    let keys = keys.get(addr)?;
+                    Some(
+                        keys.iter()
+                            .filter(|key| key.starts_with(prefix))
+                            .filter(|key| match &start {
+                                Bound::Included(bound) => *key >= bound,
+                                Bound::Excluded(bound) => *key > bound,
+                                Bound::Unbounded => true,
+                            })
+                            .filter(|key| match &end {
+                                Bound::Included(bound) => *key <= bound,
+                                Bound::Excluded(bound) => *key < bound,
+                                Bound::Unbounded => true,
+                            })
+                            .take(count.unwrap_or(u32::MAX) as usize)
+                            .cloned()
+                            .collect(),
+                    )
+                });
+        });
+
+        let final_state = Arc::new(RwLock::new(MockFinalStateController::new()));
+        final_state
+            .write()
+            .expect_get_ledger()
+            .return_const(Box::new(ledger));
+        let final_state: Arc<RwLock<dyn FinalStateController>> = final_state;
+        let config = interface.config.clone();
+        let active_history = Arc::new(RwLock::new(ActiveHistory::default()));
+        interface.context.lock().speculative_ledger = SpeculativeLedger::new(
+            final_state,
+            active_history.clone(),
+            config.max_datastore_key_length,
+            config.max_bytecode_size,
+            config.max_datastore_value_size,
+            config.storage_costs_constants,
+            Arc::new(RwLock::new(Vec::new())),
+        );
+        (interface, keys, target, active_history)
+    }
+
+    fn keys(prefix: &str, count: usize) -> BTreeSet<Vec<u8>> {
+        (0..count).map(|i| key(prefix, i)).collect()
+    }
+
+    fn set_address_keys(ledger: &LedgerKeys, addr: Address, prefix: &str, count: usize) {
+        ledger.write().insert(addr, keys(prefix, count));
+    }
+
+    fn set_v2(interface: &InterfaceImpl) {
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+    }
+
+    fn set_v1(interface: &InterfaceImpl) {
+        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
+    }
+
+    fn assert_error<T>(result: massa_sc_runtime::Result<T>, expected: &str) {
+        match result {
+            Err(error) => assert_eq!(
+                error.to_string(),
+                format!("Interface generic error {expected}")
+            ),
+            Ok(_) => panic!("query should be rejected: {expected}"),
+        }
+    }
+
+    fn history_output(
+        slot: Slot,
+        addr: Address,
+        change: SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>,
+    ) -> ExecutionOutput {
+        let mut ledger_changes = LedgerChanges::default();
+        ledger_changes.0.insert(addr, change);
+        ExecutionOutput {
+            slot,
+            block_info: None,
+            state_changes: StateChanges {
+                ledger_changes,
+                ..Default::default()
+            },
+            events: Default::default(),
+            #[cfg(feature = "execution-trace")]
+            slot_trace: Default::default(),
+            #[cfg(feature = "dump-block")]
+            storage: None,
+            deferred_credits_execution: Default::default(),
+            cancel_async_message_execution: Default::default(),
+            auto_sell_execution: Default::default(),
+            transfers_history: Default::default(),
+            execution_info: None,
+        }
+    }
+
+    fn update(
+        entries: impl IntoIterator<Item = (Vec<u8>, SetOrDelete<Vec<u8>>)>,
+    ) -> LedgerEntryUpdate {
+        LedgerEntryUpdate {
+            datastore: entries.into_iter().collect(),
+            ..Default::default()
+        }
+    }
+
+    fn current_update(interface: &InterfaceImpl, addr: Address, update: LedgerEntryUpdate) {
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .added_changes
+            .0
+            .insert(addr, SetUpdateOrDelete::Update(update));
+    }
+
+    fn assert_current_address_unchanged(interface: &InterfaceImpl) {
+        assert_eq!(
+            interface.get_keys_paginated(None, None, 500).unwrap(),
+            BTreeSet::from([b"a000".to_vec(), b"a001".to_vec()])
+        );
+    }
+
+    #[test]
+    fn legacy_key_queries_follow_execution_version_boundary() {
+        let (interface, ledger, target, _) = fixture();
+        let current = address("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M");
+
+        for count in [0, 1, 499, 500, 501] {
+            let mut current_keys = keys("pA", count);
+            current_keys.insert(b"qA000".to_vec());
+            let mut target_keys = keys("pB", count);
+            target_keys.insert(b"qB000".to_vec());
+            ledger.write().insert(current, current_keys);
+            ledger.write().insert(target, target_keys);
+
+            set_v1(&interface);
+            assert_eq!(interface.get_keys(Some(b"pA")).unwrap(), keys("pA", count));
+            assert_eq!(
+                interface
+                    .get_keys_for(&target.to_string(), Some(b"pB"))
+                    .unwrap(),
+                keys("pB", count)
+            );
+
+            set_v2(&interface);
+            if count <= 500 {
+                assert_eq!(interface.get_keys(Some(b"pA")).unwrap(), keys("pA", count));
+                assert_eq!(
+                    interface
+                        .get_keys_for(&target.to_string(), Some(b"pB"))
+                        .unwrap(),
+                    keys("pB", count)
+                );
+            } else {
+                assert_error(
+                    interface.get_keys(Some(b"pA")),
+                    "Runtime error: datastore key query matched more than the maximum of 500 keys",
+                );
+                assert_error(
+                    interface.get_keys_for(&target.to_string(), Some(b"pB")),
+                    "Runtime error: datastore key query matched more than the maximum of 500 keys",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn paginated_queries_enforce_activation_counts_and_target_address() {
+        use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
+
+        assert_eq!(MAX_DATASTORE_KEYS_PAGE, 500);
+        let (interface, ledger, target, _) = fixture();
+        let current = address("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M");
+        set_address_keys(&ledger, current, "a", 2);
+        set_address_keys(&ledger, target, "p", 501);
+        ledger
+            .write()
+            .get_mut(&target)
+            .unwrap()
+            .insert(b"q000".to_vec());
+
+        set_v1(&interface);
+        assert_error(
+            interface.get_keys_paginated(Some(b"a"), None, 1),
+            "paginated datastore-key queries are only available from execution version 2",
+        );
+        assert_error(
+            interface.get_keys_for_paginated(&target.to_string(), Some(b"p"), None, 1),
+            "paginated datastore-key queries are only available from execution version 2",
+        );
+
+        set_v2(&interface);
+        for count in [0, 501] {
+            let error = format!("datastore key page size must be between 1 and 500, got {count}");
+            assert_error(
+                interface.get_keys_paginated(Some(b"a"), None, count),
+                &error,
+            );
+            assert_error(
+                interface.get_keys_for_paginated(&target.to_string(), Some(b"p"), None, count),
+                &error,
+            );
+        }
+        for count in [1, 499, 500] {
+            assert_eq!(
+                interface
+                    .get_keys_paginated(Some(b"a"), None, count)
+                    .unwrap(),
+                keys("a", (count as usize).min(2))
+            );
+            assert_eq!(
+                interface
+                    .get_keys_for_paginated(&target.to_string(), Some(b"p"), None, count)
+                    .unwrap(),
+                keys("p", count as usize)
+            );
+        }
+        assert_eq!(
+            interface.get_keys_paginated(None, None, 1).unwrap(),
+            keys("a", 1)
+        );
+    }
+
+    #[test]
+    fn paginated_target_keys_use_exclusive_prefix_scoped_cursors() {
+        let (interface, ledger, target, _) = fixture();
+        let current = address("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M");
+        set_address_keys(&ledger, current, "a", 2);
+        set_address_keys(&ledger, target, "p", 501);
+        ledger
+            .write()
+            .get_mut(&target)
+            .unwrap()
+            .insert(b"q000".to_vec());
+        set_v2(&interface);
+
+        let page1 = interface
+            .get_keys_for_paginated(&target.to_string(), Some(b"p"), None, 500)
+            .unwrap();
+        assert_eq!(page1, keys("p", 500));
+        let page2 = interface
+            .get_keys_for_paginated(&target.to_string(), Some(b"p"), Some(b"p499"), 500)
+            .unwrap();
+        assert_eq!(page2, BTreeSet::from([b"p500".to_vec()]));
+        assert!(interface
+            .get_keys_for_paginated(&target.to_string(), Some(b"p"), Some(b"p500"), 500)
+            .unwrap()
+            .is_empty());
+
+        for (cursor, expected) in [
+            (b"o".as_slice(), Some(b"p000".to_vec())),
+            (b"p010".as_slice(), Some(b"p011".to_vec())),
+            (b"p010a".as_slice(), Some(b"p011".to_vec())),
+            (b"q000".as_slice(), None),
+        ] {
+            let page = interface
+                .get_keys_for_paginated(&target.to_string(), Some(b"p"), Some(cursor), 1)
+                .unwrap();
+            assert_eq!(page, expected.into_iter().collect::<BTreeSet<_>>());
+        }
+
+        let own = interface.get_keys_paginated(Some(b"a"), None, 2).unwrap();
+        assert_eq!(own, keys("a", 2));
+        assert!(own.is_disjoint(&page1));
+    }
+
+    #[test]
+    fn paginated_keys_merge_history_and_current_updates() {
+        let (interface, ledger, target, active_history) = fixture();
+        let current = address("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M");
+        set_address_keys(&ledger, current, "a", 2);
+        set_address_keys(&ledger, target, "p", 501);
+        ledger
+            .write()
+            .get_mut(&target)
+            .unwrap()
+            .insert(b"q000".to_vec());
+        set_v2(&interface);
+
+        let mut history = BTreeMap::new();
+        history.insert(b"p001".to_vec(), SetOrDelete::Delete);
+        history.insert(b"p002".to_vec(), SetOrDelete::Set(b"updated".to_vec()));
+        history.insert(b"p501".to_vec(), SetOrDelete::Set(b"added".to_vec()));
+        active_history.write().0 = VecDeque::from([history_output(
+            Slot::new(1, 0),
+            target,
+            SetUpdateOrDelete::Update(update(history)),
+        )]);
+
+        let mut current_changes = BTreeMap::new();
+        current_changes.insert(b"p000".to_vec(), SetOrDelete::Delete);
+        current_changes.insert(b"p001".to_vec(), SetOrDelete::Set(b"restored".to_vec()));
+        current_changes.insert(b"p502".to_vec(), SetOrDelete::Set(b"added".to_vec()));
+        current_update(&interface, target, update(current_changes));
+
+        let expected_first: BTreeSet<_> = (1..=500).map(|i| key("p", i)).collect();
+        let first = interface
+            .get_keys_for_paginated(&target.to_string(), Some(b"p"), None, 500)
+            .unwrap();
+        assert_eq!(first, expected_first);
+        let expected_second = BTreeSet::from([b"p501".to_vec(), b"p502".to_vec()]);
+        let second = interface
+            .get_keys_for_paginated(&target.to_string(), Some(b"p"), Some(b"p500"), 500)
+            .unwrap();
+        assert_eq!(second, expected_second);
+        assert!(interface
+            .get_keys_for_paginated(&target.to_string(), Some(b"p"), Some(b"p502"), 500)
+            .unwrap()
+            .is_empty());
+
+        let all_first = interface
+            .get_keys_for_paginated(&target.to_string(), None, None, 500)
+            .unwrap();
+        let all_second = interface
+            .get_keys_for_paginated(&target.to_string(), None, Some(b"p500"), 500)
+            .unwrap();
+        assert_eq!(all_first, expected_first);
+        assert_eq!(
+            all_second,
+            BTreeSet::from([b"p501".to_vec(), b"p502".to_vec(), b"q000".to_vec()])
+        );
+        assert_current_address_unchanged(&interface);
+    }
+
+    #[test]
+    fn paginated_keys_replace_history_sets_before_current_updates() {
+        let (interface, ledger, target, active_history) = fixture();
+        let current = address("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M");
+        set_address_keys(&ledger, current, "a", 2);
+        set_address_keys(&ledger, target, "p", 501);
+        ledger
+            .write()
+            .get_mut(&target)
+            .unwrap()
+            .insert(b"q000".to_vec());
+        set_v2(&interface);
+
+        let history_set = BTreeMap::from([
+            (b"p100".to_vec(), b"one".to_vec()),
+            (b"p101".to_vec(), b"two".to_vec()),
+            (b"q100".to_vec(), b"q".to_vec()),
+        ]);
+        let mut later_history = BTreeMap::new();
+        later_history.insert(b"p100".to_vec(), SetOrDelete::Delete);
+        later_history.insert(b"p102".to_vec(), SetOrDelete::Set(b"three".to_vec()));
+        active_history.write().0 = VecDeque::from([
+            history_output(
+                Slot::new(1, 0),
+                target,
+                SetUpdateOrDelete::Set(LedgerEntry {
+                    datastore: history_set,
+                    ..Default::default()
+                }),
+            ),
+            history_output(
+                Slot::new(2, 0),
+                target,
+                SetUpdateOrDelete::Update(update(later_history)),
+            ),
+        ]);
+
+        let mut current_changes = BTreeMap::new();
+        current_changes.insert(b"p101".to_vec(), SetOrDelete::Delete);
+        current_changes.insert(b"p100".to_vec(), SetOrDelete::Set(b"restored".to_vec()));
+        current_changes.insert(b"p103".to_vec(), SetOrDelete::Set(b"four".to_vec()));
+        current_update(&interface, target, update(current_changes));
+
+        let expected = BTreeSet::from([
+            b"p100".to_vec(),
+            b"p102".to_vec(),
+            b"p103".to_vec(),
+            b"q100".to_vec(),
+        ]);
+        assert_eq!(
+            interface
+                .get_keys_for_paginated(&target.to_string(), None, None, 500)
+                .unwrap(),
+            expected
+        );
+        assert_current_address_unchanged(&interface);
+    }
+
+    #[test]
+    fn paginated_keys_restore_deleted_history_with_current_set() {
+        let (interface, ledger, target, active_history) = fixture();
+        let current = address("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M");
+        set_address_keys(&ledger, current, "a", 2);
+        set_address_keys(&ledger, target, "p", 501);
+        ledger
+            .write()
+            .get_mut(&target)
+            .unwrap()
+            .insert(b"q000".to_vec());
+        set_v2(&interface);
+
+        active_history.write().0 = VecDeque::from([history_output(
+            Slot::new(1, 0),
+            target,
+            SetUpdateOrDelete::Delete,
+        )]);
+        assert_error(
+            interface.get_keys_for_paginated(&target.to_string(), Some(b"p"), None, 10),
+            "data entry not found",
+        );
+
+        let current_set = BTreeMap::from([
+            (b"p700".to_vec(), b"new".to_vec()),
+            (b"q700".to_vec(), b"new q".to_vec()),
+        ]);
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .added_changes
+            .0
+            .insert(
+                target,
+                SetUpdateOrDelete::Set(LedgerEntry {
+                    datastore: current_set,
+                    ..Default::default()
+                }),
+            );
+        let expected = BTreeSet::from([b"p700".to_vec(), b"q700".to_vec()]);
+        assert_eq!(
+            interface
+                .get_keys_for_paginated(&target.to_string(), None, None, 10)
+                .unwrap(),
+            expected
+        );
+        assert_current_address_unchanged(&interface);
+    }
 }

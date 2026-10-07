@@ -189,12 +189,25 @@ impl Deserializer<Version> for VersionDeserializer {
 }
 
 impl Version {
-    /// true if instance and major are the same
+    /// true if a peer running `other` is compatible with us (`self`): same instance,
+    /// and same or newer major (6.x nodes also accept 5.x peers)
+    ///
+    /// ```rust
+    /// # use massa_models::version::Version;
+    /// # use std::str::FromStr;
+    /// let v = |s: &str| Version::from_str(s).unwrap();
+    /// assert!(v("TEST.5.1").is_compatible(&v("TEST.5.0")));
+    /// assert!(v("TEST.5.1").is_compatible(&v("TEST.6.0")));
+    /// assert!(v("TEST.5.1").is_compatible(&v("TEST.7.0")));
+    /// assert!(v("TEST.6.0").is_compatible(&v("TEST.5.1")));
+    /// assert!(!v("TEST.6.0").is_compatible(&v("TEST.4.2")));
+    /// assert!(!v("TEST.7.0").is_compatible(&v("TEST.5.1")));
+    /// assert!(!v("TEST.3.0").is_compatible(&v("TEST.2.0")));
+    /// assert!(!v("TEST.5.1").is_compatible(&v("PROD.5.1")));
+    /// ```
     pub fn is_compatible(&self, other: &Version) -> bool {
         self.instance == other.instance
-            && (self.major == other.major
-                || (self.major == 2 && other.major == 3)
-                || (self.major == 3 && other.major == 2))
+            && (other.major >= self.major || (self.major == 6 && other.major == 5))
     }
 }
 

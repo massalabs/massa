@@ -7,6 +7,7 @@ use massa_models::{
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
+    config::CHAINID,
     denunciation::Denunciation,
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     operation::{
@@ -49,9 +50,12 @@ pub trait TestUniverse {
     ) -> SecureShareBlock {
         let op_ids = operations.iter().map(|op| op.id).collect::<Vec<_>>();
         let operation_merkle_root = compute_operations_hash(&op_ids, &OperationIdSerializer::new());
+        // Must match the latest Active MIP network version from
+        // `get_mip_list()` under `test-exports` (MIP-0002 → 2). Protocol
+        // verification rejects headers whose `current_version` disagrees.
         let header = BlockHeader::new_verifiable(
             BlockHeader {
-                current_version: 0,
+                current_version: 2,
                 announced_version: None,
                 slot,
                 parents: vec![
@@ -64,7 +68,8 @@ pub trait TestUniverse {
             },
             BlockHeaderSerializer::new(),
             keypair,
-            0,
+            *CHAINID,
+            Some(*CHAINID),
         )
         .unwrap();
 
@@ -76,6 +81,7 @@ pub trait TestUniverse {
             BlockSerializer::new(),
             keypair,
             0,
+            None,
         )
         .unwrap()
     }
@@ -96,7 +102,8 @@ pub trait TestUniverse {
             op,
             expire_period,
         };
-        Operation::new_verifiable(content, OperationSerializer::new(), keypair, chain_id).unwrap()
+        Operation::new_verifiable(content, OperationSerializer::new(), keypair, chain_id, None)
+            .unwrap()
     }
 
     fn create_endorsement(creator: &KeyPair, slot: Slot) -> SecureShareEndorsement {
@@ -105,7 +112,14 @@ pub trait TestUniverse {
             index: 0,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
         };
-        Endorsement::new_verifiable(content, EndorsementSerializer::new(), creator, 0).unwrap()
+        Endorsement::new_verifiable(
+            content,
+            EndorsementSerializer::new(),
+            creator,
+            *CHAINID,
+            Some(*CHAINID),
+        )
+        .unwrap()
     }
 }
 
