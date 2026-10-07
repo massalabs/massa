@@ -69,6 +69,8 @@ pub struct ReadOnlyBytecodeExecution {
     pub operation_datastore: Option<Vec<u8>>,
     /// fee
     pub fee: Option<Amount>,
+    /// optional simulated initial balance for the caller address
+    pub simulate_initial_caller_balance: Option<Amount>,
 }
 
 /// read SC call request
@@ -88,6 +90,8 @@ pub struct ReadOnlyCall {
     pub coins: Option<Amount>,
     /// fee
     pub fee: Option<Amount>,
+    /// optional simulated initial balance for the caller address
+    pub simulate_initial_caller_balance: Option<Amount>,
 }
 
 /// Context of the transfer
