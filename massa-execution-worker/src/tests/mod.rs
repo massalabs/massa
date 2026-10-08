@@ -39,6 +39,9 @@ mod tests_active_history;
 mod tests_scan_datastore;
 
 #[cfg(test)]
+mod tests_datastore_materialization;
+
+#[cfg(test)]
 mod tests_event_indexing;
 
 mod interface;
