@@ -102,7 +102,7 @@ impl ProductionDatastoreFixture {
         let mut selector = MockSelectorControllerWrapper::new();
         selector.set_expectations(|mock| {
             mock.expect_feed_cycle().returning(|_, _, _| Ok(()));
-            mock.expect_wait_for_draws().returning(|cycle| Ok(cycle));
+            mock.expect_wait_for_draws().returning(Ok);
         });
 
         let config = ExecutionConfig::default();
@@ -623,7 +623,7 @@ enum WorkerReady {
 #[test]
 fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
     let batch_payload_bytes = RESOURCE_BATCH_ITEMS * 2 * VALUE_LEN;
-    assert!(RESOURCE_BATCH_ITEMS <= MAX_BATCH_ITEMS);
+    const { assert!(RESOURCE_BATCH_ITEMS <= MAX_BATCH_ITEMS) };
     assert!(batch_payload_bytes <= MAX_RESULT_BYTES);
 
     for reader_count in [1usize, 4] {
@@ -660,9 +660,9 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
                         let mut retained_capacity_bytes = 0usize;
 
                         for batch_index in 0..RESOURCE_BATCHES_PER_READER {
-                            assert!(RESOURCE_BATCH_ITEMS <= MAX_BATCH_ITEMS);
                             assert!(batch_payload_bytes <= MAX_RESULT_BYTES);
                             let input = vec![(address, key.clone()); RESOURCE_BATCH_ITEMS];
+                            assert!(input.len() <= MAX_BATCH_ITEMS);
                             if batch_index == 0 {
                                 // One notification starts the contender. It may
                                 // already have finished before another reader starts.
