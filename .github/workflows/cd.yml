@@ -34,7 +34,7 @@ jobs:
             platform: x86_64
             target: x86_64-unknown-linux-gnu
             name: release_linux.tar.gz
-          - os: ubuntu-22.04
+          - os: ubuntu-22.04-arm
             platform: arm64
             target: aarch64-unknown-linux-gnu
             name: release_linux_arm64.tar.gz
@@ -52,6 +52,8 @@ jobs:
             name: release_macos_aarch64.tar.gz
         exclude:
           - os: windows-latest
+            platform: arm64
+          - os: ubuntu-22.04
             platform: arm64
     runs-on: ${{ matrix.os }}
     steps:
@@ -74,7 +76,6 @@ jobs:
       - uses: actions-rs/cargo@v1
         if: matrix.platform == 'arm64'
         with:
-          use-cross: true
           command: build
           args: --profile release_prebuilt --target ${{ matrix.target }}
 
