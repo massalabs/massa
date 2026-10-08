@@ -7,6 +7,8 @@ on:
       - DEVN.*
       - MAIN.*
       - SECU.*
+  # build the binaries from any branch, without publishing a release
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -140,11 +142,12 @@ jobs:
           cp -rv ../massa-client/config massa-client/config
           cp -rv ../massa-client/base_config massa-client/base_config
           cd ..
+          archive="massa_${GITHUB_REF_NAME//\//-}_${{ matrix.name }}"
           if [[ "${{ matrix.os }}" == "windows-latest" ]]
           then
-            7z a massa_${GITHUB_REF/refs\/tags\//}_${{ matrix.name }} massa
+            7z a "$archive" massa
           else
-            tar czvf massa_${GITHUB_REF/refs\/tags\//}_${{ matrix.name }} massa
+            tar czvf "$archive" massa
           fi
 
       - name: Upload ${{ matrix.os }}_${{ matrix.platform }} artifacts
@@ -156,6 +159,7 @@ jobs:
             massa_*.tar.gz
           if-no-files-found: error
       - name: Publish ${{ matrix.os }}_${{ matrix.platform }} artifacts
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
@@ -189,6 +193,7 @@ jobs:
             massa_*.tar.gz
           output: checksums.txt
       - name: Publish checksums file
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
