@@ -27,7 +27,8 @@ jobs:
   release:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macOS-latest, windows-latest]
+        # windows-2022 (VS 2022): quiche 0.20.1 cannot link the BoringSSL built by VS 2026 (windows-latest)
+        os: [ubuntu-22.04, macOS-latest, windows-2022]
         platform: [x86_64, arm64]
         include:
           - os: ubuntu-22.04
@@ -38,7 +39,7 @@ jobs:
             platform: arm64
             target: aarch64-unknown-linux-gnu
             name: release_linux_arm64.tar.gz
-          - os: windows-latest
+          - os: windows-2022
             platform: x86_64
             target: x86_64-pc-windows-gnu
             name: release_windows.zip
@@ -51,7 +52,7 @@ jobs:
             target: aarch64-apple-darwin
             name: release_macos_aarch64.tar.gz
         exclude:
-          - os: windows-latest
+          - os: windows-2022
             platform: arm64
     runs-on: ${{ matrix.os }}
     steps:
@@ -143,7 +144,7 @@ jobs:
           cp -rv ../massa-client/base_config massa-client/base_config
           cd ..
           archive="massa_${GITHUB_REF_NAME//\//-}_${{ matrix.name }}"
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]
+          if [[ "${{ matrix.os }}" == "windows-2022" ]]
           then
             7z a "$archive" massa
           else
