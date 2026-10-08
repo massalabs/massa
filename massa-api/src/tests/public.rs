@@ -5,6 +5,8 @@ use std::{
     collections::{BTreeMap, HashMap},
     net::{IpAddr, SocketAddr},
     str::FromStr,
+    sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use jsonrpsee::{
@@ -1127,6 +1129,183 @@ async fn get_datastore_entries() {
         &"massa".as_bytes().to_vec()
     );
     api_public_handle.stop().await;
+}
+
+// Utility fixture: observations measure mock output bytes, not production memory use.
+fn install_bounded_datastore_oracle(
+    api: &mut crate::API<crate::Public>,
+    address: Address,
+) -> Arc<Mutex<Vec<(usize, usize)>>> {
+    let observations = Arc::new(Mutex::new(Vec::new()));
+    let recorded = observations.clone();
+    let mut exec_ctrl = MockExecutionController::new();
+    exec_ctrl
+        .expect_get_final_and_active_data_entry()
+        .returning(move |entries| {
+            assert!(entries.len() <= 64);
+            let bytes = entries
+                .iter()
+                .filter(|(_, key)| key.as_slice() == b"fixture")
+                .count()
+                * 2
+                * 64
+                * 1024;
+            let mut batches = recorded.lock().unwrap();
+            assert!(
+                batches.iter().map(|(_, bytes)| bytes).sum::<usize>() + bytes
+                    <= 8 * 1024 * 1024
+            );
+            let output = entries
+                .iter()
+                .map(|(addr, key)| {
+                    assert_eq!(*addr, address);
+                    match key.as_slice() {
+                        b"fixture" => {
+                            (Some(vec![0; 64 * 1024]), Some(vec![0; 64 * 1024]))
+                        }
+                        b"missing" => (None, None),
+                        _ => panic!("unexpected fixture key"),
+                    }
+                })
+                .collect::<Vec<_>>();
+            let materialized = output
+                .iter()
+                .map(|(final_value, candidate_value)| {
+                    final_value.as_ref().map_or(0, Vec::len)
+                        + candidate_value.as_ref().map_or(0, Vec::len)
+                })
+                .sum::<usize>();
+            assert_eq!(materialized, bytes);
+            batches.push((entries.len(), materialized));
+            output
+        });
+    api.0.execution_controller = Box::new(exec_ctrl);
+    observations
+}
+
+#[tokio::test]
+async fn datastore_rpc_duplicate_materialization_is_bounded_and_preserves_missing_keys(
+) {
+    let (mut api, config) = start_public_api("127.0.0.1:0".parse().unwrap());
+    let address = Address::from_str(
+        "AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x",
+    )
+    .unwrap();
+    let observed = install_bounded_datastore_oracle(&mut api, address);
+    let module = api.into_rpc();
+    for count in [1, 8, 32] {
+        let entries = vec![
+            DatastoreEntryInput {
+                address,
+                key: b"fixture".to_vec()
+            };
+            count
+        ];
+        let request = serde_json::json!({
+            "jsonrpc": "2.0", "id": 1, "method": "get_datastore_entries", "params": [entries]
+        })
+        .to_string();
+        assert!(request.len() < config.max_request_body_size as usize);
+        // raw_json_request dispatches the real registered method, but has no response ceiling.
+        let (response, _) = module.raw_json_request(&request, 1).await.unwrap();
+        let response: jsonrpsee::types::Response<
+            '_,
+            Vec<DatastoreEntryOutput>,
+        > = serde_json::from_str(&response).unwrap();
+        let output = jsonrpsee::types::ResponseSuccess::try_from(response)
+            .unwrap()
+            .result;
+        assert_eq!(output.len(), count);
+        for entry in output {
+            assert_eq!(entry.final_value.unwrap(), vec![0; 64 * 1024]);
+            assert_eq!(entry.candidate_value.unwrap(), vec![0; 64 * 1024]);
+        }
+        assert_eq!(
+            observed.lock().unwrap().last(),
+            Some(&(count, count * 2 * 64 * 1024))
+        );
+    }
+    let request = serde_json::json!({
+        "jsonrpc": "2.0", "id": 1, "method": "get_datastore_entries", "params": [[
+            DatastoreEntryInput { address, key: b"fixture".to_vec() },
+            DatastoreEntryInput { address, key: b"missing".to_vec() }
+        ]]
+    })
+    .to_string();
+    assert!(request.len() < config.max_request_body_size as usize);
+    let (response, _) = module.raw_json_request(&request, 1).await.unwrap();
+    let response: jsonrpsee::types::Response<'_, Vec<DatastoreEntryOutput>> =
+        serde_json::from_str(&response).unwrap();
+    let output = jsonrpsee::types::ResponseSuccess::try_from(response)
+        .unwrap()
+        .result;
+    assert_eq!(output.len(), 2);
+    assert_eq!(output[0].final_value.as_ref().unwrap().len(), 64 * 1024);
+    assert_eq!(output[0].candidate_value.as_ref().unwrap().len(), 64 * 1024);
+    assert!(output[1].final_value.is_none());
+    assert!(output[1].candidate_value.is_none());
+    assert_eq!(
+        *observed.lock().unwrap(),
+        vec![
+            (1, 2 * 64 * 1024),
+            (8, 16 * 64 * 1024),
+            (32, 64 * 64 * 1024),
+            (2, 2 * 64 * 1024)
+        ]
+    );
+}
+
+#[tokio::test]
+async fn datastore_rpc_response_ceiling_rejects_after_bounded_backend_materialization(
+) {
+    let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+    let (mut api, mut config) = start_public_api(addr);
+    config.max_request_body_size = 4096;
+    config.max_response_body_size = 1024;
+    api.0.api_settings = config.clone();
+    let address = Address::from_str(
+        "AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x",
+    )
+    .unwrap();
+    let observed = install_bounded_datastore_oracle(&mut api, address);
+    // Use the same jsonrpsee limits as crate::serve, with an ephemeral isolated-loopback port.
+    let server = jsonrpsee::server::ServerBuilder::new()
+        .max_request_body_size(config.max_request_body_size)
+        .max_response_body_size(config.max_response_body_size)
+        .http_only()
+        .build(addr)
+        .await
+        .unwrap();
+    let client = HttpClientBuilder::default()
+        .request_timeout(Duration::from_secs(5))
+        .build(format!("http://{}", server.local_addr().unwrap()))
+        .unwrap();
+    let handle = server.start(api.into_rpc());
+    let entries = vec![
+        DatastoreEntryInput {
+            address,
+            key: b"fixture".to_vec()
+        };
+        32
+    ];
+    let request = serde_json::json!({
+        "jsonrpc": "2.0", "id": 1, "method": "get_datastore_entries", "params": [entries.clone()]
+    })
+    .to_string();
+    assert!(request.len() < config.max_request_body_size as usize);
+    let response: Result<Vec<DatastoreEntryOutput>, Error> = client
+        .request("get_datastore_entries", rpc_params![entries])
+        .await;
+    handle.stop().unwrap();
+    handle.stopped().await;
+    match response.unwrap_err() {
+        Error::Call(error) => assert_eq!(
+            error.code(),
+            jsonrpsee::types::error::OVERSIZED_RESPONSE_CODE
+        ),
+        other => panic!("expected response-ceiling RPC error, got {other}"),
+    }
+    assert_eq!(*observed.lock().unwrap(), vec![(32, 2 * 32 * 64 * 1024)]);
 }
 
 #[tokio::test]
