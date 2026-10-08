@@ -18,9 +18,7 @@ use std::{
     time::Instant,
 };
 
-use massa_db_exports::{
-    DBBatch, MassaDBConfig, MassaDBController, ShareableMassaDBController,
-};
+use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
 use massa_event_cache::MockEventCacheControllerWrapper;
 use massa_execution_exports::{
@@ -81,8 +79,7 @@ struct ProductionDatastoreFixture {
 impl ProductionDatastoreFixture {
     fn new() -> Self {
         let db_dir = TempDir::new().expect("create fixture database directory");
-        let module_cache_dir =
-            TempDir::new().expect("create fixture module cache directory");
+        let module_cache_dir = TempDir::new().expect("create fixture module cache directory");
         let db_config = MassaDBConfig {
             path: db_dir.path().to_path_buf(),
             max_history_length: 10,
@@ -92,9 +89,9 @@ impl ProductionDatastoreFixture {
             max_ledger_backups: 10,
             enable_metrics: false,
         };
-        let db: ShareableMassaDBController =
-            Arc::new(RwLock::new(Box::new(MassaDB::new(db_config))
-                as Box<dyn MassaDBController + 'static>));
+        let db: ShareableMassaDBController = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>,
+        ));
 
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
@@ -144,8 +141,7 @@ impl ProductionDatastoreFixture {
         config.hd_cache_path = module_cache_dir.path().join("module-cache");
         #[cfg(feature = "dump-block")]
         {
-            config.block_dump_folder_path =
-                module_cache_dir.path().join("block-dump");
+            config.block_dump_folder_path = module_cache_dir.path().join("block-dump");
         }
         let (slot_execution_output_sender, _) = broadcast::channel(16);
         let channels = ExecutionChannels {
@@ -161,9 +157,7 @@ impl ProductionDatastoreFixture {
             mip_store,
             Box::new(MockSelectorControllerWrapper::new()),
             channels,
-            Arc::new(RwLock::new(create_test_wallet(Some(
-                PreHashMap::default(),
-            )))),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "127.0.0.1:0".parse().unwrap(),
@@ -172,10 +166,7 @@ impl ProductionDatastoreFixture {
             )
             .0,
             Box::new(MockEventCacheControllerWrapper::new()),
-            #[cfg(all(
-                feature = "dump-block",
-                feature = "db_storage_backend"
-            ))]
+            #[cfg(all(feature = "dump-block", feature = "db_storage_backend"))]
             Arc::new(RwLock::new(
                 crate::storage_backend::RocksDBStorageBackend::new(
                     config.block_dump_folder_path.clone(),
@@ -194,10 +185,7 @@ impl ProductionDatastoreFixture {
                 ),
             )),
         )));
-        let input_data = Arc::new((
-            Condvar::new(),
-            Mutex::new(ExecutionInputData::new(config)),
-        ));
+        let input_data = Arc::new((Condvar::new(), Mutex::new(ExecutionInputData::new(config))));
         let controller = ExecutionControllerImpl {
             input_data,
             execution_state: execution_state.clone(),
@@ -269,8 +257,7 @@ fn datastore_backend_duplicate_values_materialize_independent_owned_buffers() {
         let elapsed = started.elapsed();
         set_perf_stats(PerfStatsLevel::Disable);
         let rocksdb_get_read_bytes = perf.metric(PerfMetric::GetReadBytes);
-        let rocksdb_memtable_get_count =
-            perf.metric(PerfMetric::GetFromMemtableCount);
+        let rocksdb_memtable_get_count = perf.metric(PerfMetric::GetFromMemtableCount);
         assert_eq!(rocksdb_get_read_bytes, (batch_len * VALUE_LEN) as u64);
 
         assert_eq!(output.len(), batch_len);
@@ -279,8 +266,7 @@ fn datastore_backend_duplicate_values_materialize_independent_owned_buffers() {
         let mut buffers = Vec::with_capacity(batch_len * 2);
         for (final_value, active_value) in &output {
             let final_value = final_value.as_ref().expect("final value exists");
-            let active_value =
-                active_value.as_ref().expect("fallback active value exists");
+            let active_value = active_value.as_ref().expect("fallback active value exists");
             assert_eq!(final_value, &expected_a);
             assert_eq!(active_value, &expected_a);
             assert_eq!(final_value.len(), VALUE_LEN);
@@ -288,8 +274,7 @@ fn datastore_backend_duplicate_values_materialize_independent_owned_buffers() {
             assert!(final_value.capacity() >= VALUE_LEN);
             assert!(active_value.capacity() >= VALUE_LEN);
             retained_payload_bytes += final_value.len() + active_value.len();
-            retained_capacity_bytes +=
-                final_value.capacity() + active_value.capacity();
+            retained_capacity_bytes += final_value.capacity() + active_value.capacity();
             buffers.push(final_value.as_ptr() as usize);
             buffers.push(active_value.as_ptr() as usize);
         }
@@ -307,28 +292,19 @@ fn datastore_backend_duplicate_values_materialize_independent_owned_buffers() {
 
         let (address_a_value, _) = fixture
             .controller
-            .get_final_and_active_data_entry(vec![(
-                fixture.address_a,
-                fixture.key.clone(),
-            )])
+            .get_final_and_active_data_entry(vec![(fixture.address_a, fixture.key.clone())])
             .pop()
             .unwrap();
         let (address_b_value, _) = fixture
             .controller
-            .get_final_and_active_data_entry(vec![(
-                fixture.address_b,
-                fixture.key.clone(),
-            )])
+            .get_final_and_active_data_entry(vec![(fixture.address_b, fixture.key.clone())])
             .pop()
             .unwrap();
         assert_eq!(address_a_value.as_deref(), Some(expected_a.as_slice()));
         assert_eq!(address_b_value.as_deref(), Some(expected_b.as_slice()));
         let missing = fixture
             .controller
-            .get_final_and_active_data_entry(vec![(
-                fixture.address_a,
-                b"missing".to_vec(),
-            )])
+            .get_final_and_active_data_entry(vec![(fixture.address_a, b"missing".to_vec())])
             .pop()
             .unwrap();
         assert_eq!(missing, (None, None));
@@ -359,18 +335,12 @@ fn datastore_backend_duplicate_values_materialize_independent_owned_buffers() {
 }
 
 #[test]
-fn datastore_backend_active_history_preserves_final_candidate_and_missing_semantics(
-) {
+fn datastore_backend_active_history_preserves_final_candidate_and_missing_semantics() {
     let fixture = ProductionDatastoreFixture::new();
     let overwrite_key = b"overwrite".to_vec();
     let deleted_key = b"deleted".to_vec();
     let fallback_key = b"fallback".to_vec();
-    insert_history_final_values(
-        &fixture,
-        &overwrite_key,
-        &deleted_key,
-        &fallback_key,
-    );
+    insert_history_final_values(&fixture, &overwrite_key, &deleted_key, &fallback_key);
 
     let old_value = b"candidate-old".to_vec();
     let new_value = b"candidate-new".to_vec();
@@ -446,10 +416,8 @@ fn datastore_backend_active_history_preserves_final_candidate_and_missing_semant
 
     let mut retained_payload_bytes = 0usize;
     let mut retained_capacity_bytes = 0usize;
-    for (
-        (final_value, candidate_value),
-        (_, _, expected_final, expected_candidate),
-    ) in output.iter().zip(cases.iter())
+    for ((final_value, candidate_value), (_, _, expected_final, expected_candidate)) in
+        output.iter().zip(cases.iter())
     {
         assert_eq!(final_value, expected_final);
         assert_eq!(candidate_value, expected_candidate);
@@ -607,11 +575,7 @@ fn parse_proc_kib(contents: &str, field: &str) -> u64 {
 }
 
 #[cfg(target_os = "linux")]
-fn log_proc_memory_snapshot(
-    readers: usize,
-    phase: &str,
-    snapshot: ProcMemorySnapshot,
-) {
+fn log_proc_memory_snapshot(readers: usize, phase: &str, snapshot: ProcMemorySnapshot) {
     println!(
         "readers={readers} phase={phase} rss_kib={} private_clean_kib={} private_dirty_kib={} private_kib={} vm_hwm_kib={}",
         snapshot.rss_kib,
@@ -671,8 +635,7 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
         log_proc_memory_snapshot(reader_count, "before", before);
         let barrier = Arc::new(Barrier::new(reader_count + 2));
         let (ready_tx, ready_rx) = mpsc::sync_channel(reader_count + 1);
-        let (load_started_tx, load_started_rx) =
-            mpsc::sync_channel(reader_count);
+        let (load_started_tx, load_started_rx) = mpsc::sync_channel(reader_count);
         let mut release_senders = Vec::with_capacity(reader_count);
 
         let (reader_reports, writer_report) = thread::scope(|scope| {
@@ -691,8 +654,7 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
                     reader,
                     scope.spawn(move || {
                         start_barrier.wait();
-                        let mut query_elapsed_us =
-                            Vec::with_capacity(RESOURCE_BATCHES_PER_READER);
+                        let mut query_elapsed_us = Vec::with_capacity(RESOURCE_BATCHES_PER_READER);
                         let mut retained_output = None;
                         let mut retained_payload_bytes = 0usize;
                         let mut retained_capacity_bytes = 0usize;
@@ -700,41 +662,31 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
                         for batch_index in 0..RESOURCE_BATCHES_PER_READER {
                             assert!(RESOURCE_BATCH_ITEMS <= MAX_BATCH_ITEMS);
                             assert!(batch_payload_bytes <= MAX_RESULT_BYTES);
-                            let input = vec![
-                                (address, key.clone());
-                                RESOURCE_BATCH_ITEMS
-                            ];
+                            let input = vec![(address, key.clone()); RESOURCE_BATCH_ITEMS];
                             if batch_index == 0 {
                                 // One notification starts the contender. It may
                                 // already have finished before another reader starts.
                                 let _ = load_started_tx.send(());
                             }
                             let started = Instant::now();
-                            let output = controller
-                                .get_final_and_active_data_entry(input);
-                            query_elapsed_us
-                                .push(started.elapsed().as_micros());
+                            let output = controller.get_final_and_active_data_entry(input);
+                            query_elapsed_us.push(started.elapsed().as_micros());
                             assert_eq!(output.len(), RESOURCE_BATCH_ITEMS);
 
                             let mut payload_bytes = 0usize;
                             let mut capacity_bytes = 0usize;
                             for (final_value, active_value) in &output {
-                                let final_value = final_value
-                                    .as_ref()
-                                    .expect("final value exists");
-                                let active_value = active_value
-                                    .as_ref()
-                                    .expect("fallback active value exists");
+                                let final_value = final_value.as_ref().expect("final value exists");
+                                let active_value =
+                                    active_value.as_ref().expect("fallback active value exists");
                                 assert_eq!(final_value, &expected_value);
                                 assert_eq!(active_value, &expected_value);
                                 assert_eq!(final_value.len(), VALUE_LEN);
                                 assert_eq!(active_value.len(), VALUE_LEN);
                                 assert!(final_value.capacity() >= VALUE_LEN);
                                 assert!(active_value.capacity() >= VALUE_LEN);
-                                payload_bytes +=
-                                    final_value.len() + active_value.len();
-                                capacity_bytes += final_value.capacity()
-                                    + active_value.capacity();
+                                payload_bytes += final_value.len() + active_value.len();
+                                capacity_bytes += final_value.capacity() + active_value.capacity();
                             }
                             assert_eq!(payload_bytes, batch_payload_bytes);
                             assert!(payload_bytes <= MAX_RESULT_BYTES);
@@ -760,9 +712,7 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
                             .send(WorkerReady::Reader(ready))
                             .expect("send reader readiness");
                         release_rx
-                            .recv_timeout(std::time::Duration::from_secs(
-                                COORDINATION_TIMEOUT_SECS,
-                            ))
+                            .recv_timeout(std::time::Duration::from_secs(COORDINATION_TIMEOUT_SECS))
                             .expect("reader release signal timed out");
                         drop(retained_output);
                         ReaderFinished {
@@ -779,16 +729,13 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
             let writer = scope.spawn(move || {
                 start_barrier.wait();
                 load_started_rx
-                    .recv_timeout(std::time::Duration::from_secs(
-                        COORDINATION_TIMEOUT_SECS,
-                    ))
+                    .recv_timeout(std::time::Duration::from_secs(COORDINATION_TIMEOUT_SECS))
                     .expect("first reader batch did not start");
                 // This is a paced lock contender; a notification is not proof that
                 // a read lock is held. Only failed try_write attempts prove overlap.
                 thread::yield_now();
                 let mut contended_attempts = 0usize;
-                let mut wait_elapsed_us =
-                    Vec::with_capacity(RESOURCE_WRITE_ACQUISITIONS);
+                let mut wait_elapsed_us = Vec::with_capacity(RESOURCE_WRITE_ACQUISITIONS);
                 let mut acquisitions = 0usize;
                 for _ in 0..RESOURCE_WRITE_ACQUISITIONS {
                     let started = Instant::now();
@@ -820,9 +767,7 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
             let mut writer_ready = false;
             while reader_ready.len() < reader_count || !writer_ready {
                 match ready_rx
-                    .recv_timeout(std::time::Duration::from_secs(
-                        COORDINATION_TIMEOUT_SECS,
-                    ))
+                    .recv_timeout(std::time::Duration::from_secs(COORDINATION_TIMEOUT_SECS))
                     .expect("worker readiness timed out")
                 {
                     WorkerReady::Reader(report) => reader_ready.push(report),
@@ -834,14 +779,12 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
             assert!(reader_ready
                 .iter()
                 .enumerate()
-                .all(|(expected_reader, report)| report.reader
-                    == expected_reader));
+                .all(|(expected_reader, report)| report.reader == expected_reader));
             assert!(reader_ready.iter().all(|report| {
                 report.completed_batches == RESOURCE_BATCHES_PER_READER
                     && report.retained_payload_bytes == batch_payload_bytes
                     && report.retained_capacity_bytes <= MAX_RESULT_BYTES
-                    && report.query_elapsed_us.len()
-                        == RESOURCE_BATCHES_PER_READER
+                    && report.query_elapsed_us.len() == RESOURCE_BATCHES_PER_READER
             }));
             let held_payload_bytes = reader_ready
                 .iter()
@@ -871,15 +814,11 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
             for (expected_reader, reader) in readers {
                 let finished = reader.join().expect("reader thread completed");
                 assert_eq!(finished.reader, expected_reader);
-                assert_eq!(
-                    finished.completed_batches,
-                    RESOURCE_BATCHES_PER_READER
-                );
+                assert_eq!(finished.completed_batches, RESOURCE_BATCHES_PER_READER);
                 finished_readers += 1;
             }
             assert_eq!(finished_readers, reader_count);
-            let writer_report =
-                writer.join().expect("writer contender completed");
+            let writer_report = writer.join().expect("writer contender completed");
             assert_eq!(writer_report.acquisitions, RESOURCE_WRITE_ACQUISITIONS);
             assert_eq!(
                 writer_report.wait_elapsed_us.len(),
@@ -896,21 +835,14 @@ fn datastore_resource_memory_and_write_lock_progress_under_bounded_reads() {
 
         let after = read_proc_memory_snapshot();
         log_proc_memory_snapshot(reader_count, "after", after);
-        println!(
-            "readers={reader_count} procfs_before={before:?} procfs_after={after:?}"
-        );
+        println!("readers={reader_count} procfs_before={before:?} procfs_after={after:?}");
         assert_eq!(reader_reports.len(), reader_count);
         assert_eq!(writer_report.acquisitions, RESOURCE_WRITE_ACQUISITIONS);
-        assert!(
-            writer_report.contended_attempts <= RESOURCE_WRITE_ACQUISITIONS
-        );
+        assert!(writer_report.contended_attempts <= RESOURCE_WRITE_ACQUISITIONS);
 
         let recovered = fixture
             .controller
-            .get_final_and_active_data_entry(vec![(
-                fixture.address_a,
-                fixture.key.clone(),
-            )])
+            .get_final_and_active_data_entry(vec![(fixture.address_a, fixture.key.clone())])
             .pop()
             .unwrap();
         assert_eq!(recovered.0.as_deref(), Some(expected_value.as_slice()));

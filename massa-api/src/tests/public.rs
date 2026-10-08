@@ -1152,17 +1152,14 @@ fn install_bounded_datastore_oracle(
                 * 1024;
             let mut batches = recorded.lock().unwrap();
             assert!(
-                batches.iter().map(|(_, bytes)| bytes).sum::<usize>() + bytes
-                    <= 8 * 1024 * 1024
+                batches.iter().map(|(_, bytes)| bytes).sum::<usize>() + bytes <= 8 * 1024 * 1024
             );
             let output = entries
                 .iter()
                 .map(|(addr, key)| {
                     assert_eq!(*addr, address);
                     match key.as_slice() {
-                        b"fixture" => {
-                            (Some(vec![0; 64 * 1024]), Some(vec![0; 64 * 1024]))
-                        }
+                        b"fixture" => (Some(vec![0; 64 * 1024]), Some(vec![0; 64 * 1024])),
                         b"missing" => (None, None),
                         _ => panic!("unexpected fixture key"),
                     }
@@ -1184,13 +1181,10 @@ fn install_bounded_datastore_oracle(
 }
 
 #[tokio::test]
-async fn datastore_rpc_duplicate_materialization_is_bounded_and_preserves_missing_keys(
-) {
+async fn datastore_rpc_duplicate_materialization_is_bounded_and_preserves_missing_keys() {
     let (mut api, config) = start_public_api("127.0.0.1:0".parse().unwrap());
-    let address = Address::from_str(
-        "AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x",
-    )
-    .unwrap();
+    let address =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     let observed = install_bounded_datastore_oracle(&mut api, address);
     let module = api.into_rpc();
     for count in [1, 8, 32] {
@@ -1208,10 +1202,8 @@ async fn datastore_rpc_duplicate_materialization_is_bounded_and_preserves_missin
         assert!(request.len() < config.max_request_body_size as usize);
         // raw_json_request dispatches the real registered method, but has no response ceiling.
         let (response, _) = module.raw_json_request(&request, 1).await.unwrap();
-        let response: jsonrpsee::types::Response<
-            '_,
-            Vec<DatastoreEntryOutput>,
-        > = serde_json::from_str(&response).unwrap();
+        let response: jsonrpsee::types::Response<'_, Vec<DatastoreEntryOutput>> =
+            serde_json::from_str(&response).unwrap();
         let output = jsonrpsee::types::ResponseSuccess::try_from(response)
             .unwrap()
             .result;
@@ -1256,17 +1248,14 @@ async fn datastore_rpc_duplicate_materialization_is_bounded_and_preserves_missin
 }
 
 #[tokio::test]
-async fn datastore_rpc_response_ceiling_rejects_after_bounded_backend_materialization(
-) {
+async fn datastore_rpc_response_ceiling_rejects_after_bounded_backend_materialization() {
     let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
     let (mut api, mut config) = start_public_api(addr);
     config.max_request_body_size = 4096;
     config.max_response_body_size = 1024;
     api.0.api_settings = config.clone();
-    let address = Address::from_str(
-        "AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x",
-    )
-    .unwrap();
+    let address =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     let observed = install_bounded_datastore_oracle(&mut api, address);
     // Use the same jsonrpsee limits as crate::serve, with an ephemeral isolated-loopback port.
     let server = jsonrpsee::server::ServerBuilder::new()
