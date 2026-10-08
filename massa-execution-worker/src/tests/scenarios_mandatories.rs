@@ -1662,7 +1662,7 @@ fn send_and_receive_async_message() {
     let destination = match *CHAINID {
         77 => Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV").unwrap(),
         77658366 => {
-            Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
+            Address::from_str("AS1T8v5kyFMZh2TUeFLzReoCNLgqvdS9AhAbxepo4T4ij2jZbGY4").unwrap()
         }
         77658377 => {
             Address::from_str("AS1vipJvf2MeQUN5rosJJE3TfNMJvUgCpYnQzHG9pGahgmd4MVxN").unwrap()
@@ -5131,7 +5131,7 @@ fn send_and_receive_async_message_with_reset() {
     let destination = match *CHAINID {
         77 => Address::from_str("AS122j8hJaBQtoJXqaZSRbhRBD2GXEWAqdTgsBFJ47rxWNQPwa1fe").unwrap(),
         77658366 => {
-            Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
+            Address::from_str("AS12dzLo173bfj7a2H39WKZeeoS9PrG2Yum8iAuYJ7SWkK9iejsYv").unwrap()
         }
         77658377 => {
             Address::from_str("AS1zTmZ4y1ugi2qBLJjAtihanaaXw2M6fCmsEiFrLgAgmtMFyf28").unwrap()
