@@ -14,21 +14,21 @@ pub const MIP_0002_EXECUTION_VERSION: u32 = 2;
 #[cfg(not(feature = "test-exports"))]
 pub fn get_mip_list() -> [(MipInfo, MipState); 2] {
     // When the MIPs becomes defined, e.g. when merged to main branch
-    let defined_1 = MassaTime::from_utc_ymd_hms(2025, 5, 12, 10, 0, 0).unwrap(); // Monday 12th May 2025 10:00:00 UTC
+    let defined_1 = MassaTime::from_utc_ymd_hms(2025, 1, 10, 10, 0, 0).unwrap(); // Friday 10th January 2025 10:00:00 UTC
     let defined_2 = MassaTime::from_utc_ymd_hms(2026, 8, 3, 10, 0, 0).unwrap(); // Monday 3rd August 2026 10:00:00 UTC
 
     let mip_list = [
         (
             MipInfo {
-                name: "MIP-0001-DeferredCalls-And-Execution-BugFix".to_string(),
+                name: "MIP-0001-Execution-BugFix-And-DeferredCalls".to_string(),
                 version: 1,
                 components: BTreeMap::from([
                     (MipComponent::Execution, 1),
                     (MipComponent::FinalState, 1),
                 ]),
-                start: MassaTime::from_utc_ymd_hms(2025, 5, 19, 10, 0, 0).unwrap(), // Monday 19th May 2025 10:00:00 UTC
-                timeout: MassaTime::from_utc_ymd_hms(2025, 6, 19, 10, 0, 0).unwrap(), // Thursday 19th June 2025 10:00:00 UTC
-                activation_delay: MassaTime::from_millis(7 * 24 * 60 * 60 * 1000),    // 7 days
+                start: MassaTime::from_utc_ymd_hms(2025, 1, 13, 14, 0, 0).unwrap(), // Monday 13th January 2025 14:00:00 UTC
+                timeout: MassaTime::from_utc_ymd_hms(2025, 1, 20, 14, 0, 0).unwrap(), // Monday 20th January 2025 14:00:00 UTC
+                activation_delay: MassaTime::from_millis(60 * 60 * 1000),             // 1 hour
             },
             MipState::new(defined_1),
         ),
@@ -40,9 +40,9 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 2] {
                     (MipComponent::Execution, MIP_0002_EXECUTION_VERSION),
                     (MipComponent::FinalState, 2),
                 ]),
-                start: MassaTime::from_utc_ymd_hms(2026, 8, 10, 10, 0, 0).unwrap(), // Monday 10th August 2026 10:00:00 UTC
-                timeout: MassaTime::from_utc_ymd_hms(2026, 9, 9, 10, 0, 0).unwrap(), // Wednesday 9th September 2026 10:00:00 UTC
-                activation_delay: MassaTime::from_millis(7 * 24 * 60 * 60 * 1000),   // 7 days
+                start: MassaTime::from_utc_ymd_hms(2026, 10, 14, 10, 0, 0).unwrap(), // Wednesday 14th October 2026 10:00:00 UTC
+                timeout: MassaTime::from_utc_ymd_hms(2026, 12, 17, 10, 0, 0).unwrap(), // Thursday 17th December 2026 10:00:00 UTC
+                activation_delay: MassaTime::from_millis(7 * 24 * 60 * 60 * 1000), // 7 days -> earliest activation Wednesday 21st October 2026 10:00:00 UTC
             },
             MipState::new(defined_2),
         ),
