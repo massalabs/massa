@@ -14,21 +14,21 @@
 <a href=#14 id=14 data-nosnippet>14</a><span class="attr">#[cfg(not(feature = <span class="string">"test-exports"</span>))]
 <a href=#15 id=15 data-nosnippet>15</a></span><span class="kw">pub fn </span>get_mip_list() -&gt; [(MipInfo, MipState); <span class="number">2</span>] {
 <a href=#16 id=16 data-nosnippet>16</a>    <span class="comment">// When the MIPs becomes defined, e.g. when merged to main branch
-<a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">let </span>defined_1 = MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">5</span>, <span class="number">12</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(); <span class="comment">// Monday 12th May 2025 10:00:00 UTC
+<a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">let </span>defined_1 = MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">1</span>, <span class="number">10</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(); <span class="comment">// Friday 10th January 2025 10:00:00 UTC
 <a href=#18 id=18 data-nosnippet>18</a>    </span><span class="kw">let </span>defined_2 = MassaTime::from_utc_ymd_hms(<span class="number">2026</span>, <span class="number">8</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(); <span class="comment">// Monday 3rd August 2026 10:00:00 UTC
 <a href=#19 id=19 data-nosnippet>19</a>
 <a href=#20 id=20 data-nosnippet>20</a>    </span><span class="kw">let </span>mip_list = [
 <a href=#21 id=21 data-nosnippet>21</a>        (
 <a href=#22 id=22 data-nosnippet>22</a>            MipInfo {
-<a href=#23 id=23 data-nosnippet>23</a>                name: <span class="string">"MIP-0001-DeferredCalls-And-Execution-BugFix"</span>.to_string(),
+<a href=#23 id=23 data-nosnippet>23</a>                name: <span class="string">"MIP-0001-Execution-BugFix-And-DeferredCalls"</span>.to_string(),
 <a href=#24 id=24 data-nosnippet>24</a>                version: <span class="number">1</span>,
 <a href=#25 id=25 data-nosnippet>25</a>                components: BTreeMap::from([
 <a href=#26 id=26 data-nosnippet>26</a>                    (MipComponent::Execution, <span class="number">1</span>),
 <a href=#27 id=27 data-nosnippet>27</a>                    (MipComponent::FinalState, <span class="number">1</span>),
 <a href=#28 id=28 data-nosnippet>28</a>                ]),
-<a href=#29 id=29 data-nosnippet>29</a>                start: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">5</span>, <span class="number">19</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Monday 19th May 2025 10:00:00 UTC
-<a href=#30 id=30 data-nosnippet>30</a>                </span>timeout: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">6</span>, <span class="number">19</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Thursday 19th June 2025 10:00:00 UTC
-<a href=#31 id=31 data-nosnippet>31</a>                </span>activation_delay: MassaTime::from_millis(<span class="number">7 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>),    <span class="comment">// 7 days
+<a href=#29 id=29 data-nosnippet>29</a>                start: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">1</span>, <span class="number">13</span>, <span class="number">14</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Monday 13th January 2025 14:00:00 UTC
+<a href=#30 id=30 data-nosnippet>30</a>                </span>timeout: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">1</span>, <span class="number">20</span>, <span class="number">14</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Monday 20th January 2025 14:00:00 UTC
+<a href=#31 id=31 data-nosnippet>31</a>                </span>activation_delay: MassaTime::from_millis(<span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>),             <span class="comment">// 1 hour
 <a href=#32 id=32 data-nosnippet>32</a>            </span>},
 <a href=#33 id=33 data-nosnippet>33</a>            MipState::new(defined_1),
 <a href=#34 id=34 data-nosnippet>34</a>        ),
@@ -40,9 +40,9 @@
 <a href=#40 id=40 data-nosnippet>40</a>                    (MipComponent::Execution, MIP_0002_EXECUTION_VERSION),
 <a href=#41 id=41 data-nosnippet>41</a>                    (MipComponent::FinalState, <span class="number">2</span>),
 <a href=#42 id=42 data-nosnippet>42</a>                ]),
-<a href=#43 id=43 data-nosnippet>43</a>                start: MassaTime::from_utc_ymd_hms(<span class="number">2026</span>, <span class="number">11</span>, <span class="number">11</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Wednesday 11th November 2026 10:00:00 UTC
-<a href=#44 id=44 data-nosnippet>44</a>                </span>timeout: MassaTime::from_utc_ymd_hms(<span class="number">2026</span>, <span class="number">12</span>, <span class="number">31</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Thursday 31st December 2026 10:00:00 UTC
-<a href=#45 id=45 data-nosnippet>45</a>                </span>activation_delay: MassaTime::from_millis(<span class="number">7 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>), <span class="comment">// 7 days -&gt; earliest activation Wednesday 18th November 2026 10:00:00 UTC
+<a href=#43 id=43 data-nosnippet>43</a>                start: MassaTime::from_utc_ymd_hms(<span class="number">2026</span>, <span class="number">10</span>, <span class="number">14</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Wednesday 14th October 2026 10:00:00 UTC
+<a href=#44 id=44 data-nosnippet>44</a>                </span>timeout: MassaTime::from_utc_ymd_hms(<span class="number">2026</span>, <span class="number">12</span>, <span class="number">17</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Thursday 17th December 2026 10:00:00 UTC
+<a href=#45 id=45 data-nosnippet>45</a>                </span>activation_delay: MassaTime::from_millis(<span class="number">7 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>), <span class="comment">// 7 days -&gt; earliest activation Wednesday 21st October 2026 10:00:00 UTC
 <a href=#46 id=46 data-nosnippet>46</a>            </span>},
 <a href=#47 id=47 data-nosnippet>47</a>            MipState::new(defined_2),
 <a href=#48 id=48 data-nosnippet>48</a>        ),
