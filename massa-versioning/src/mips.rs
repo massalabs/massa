@@ -15,7 +15,7 @@ pub const MIP_0002_EXECUTION_VERSION: u32 = 2;
 pub fn get_mip_list() -> [(MipInfo, MipState); 2] {
     // When the MIPs becomes defined, e.g. when merged to main branch
     let defined_1 = MassaTime::from_utc_ymd_hms(2025, 5, 12, 10, 0, 0).unwrap(); // Monday 12th May 2025 10:00:00 UTC
-    let defined_2 = MassaTime::from_utc_ymd_hms(2026, 8, 3, 10, 0, 0).unwrap(); // Monday 3rd August 2026 10:00:00 UTC
+    let defined_2 = MassaTime::from_utc_ymd_hms(2026, 10, 19, 10, 0, 0).unwrap(); // Monday 19th October 2026 10:00:00 UTC
 
     let mip_list = [
         (
@@ -40,9 +40,9 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 2] {
                     (MipComponent::Execution, MIP_0002_EXECUTION_VERSION),
                     (MipComponent::FinalState, 2),
                 ]),
-                start: MassaTime::from_utc_ymd_hms(2026, 8, 10, 10, 0, 0).unwrap(), // Monday 10th August 2026 10:00:00 UTC
-                timeout: MassaTime::from_utc_ymd_hms(2026, 9, 9, 10, 0, 0).unwrap(), // Wednesday 9th September 2026 10:00:00 UTC
-                activation_delay: MassaTime::from_millis(7 * 24 * 60 * 60 * 1000),   // 7 days
+                start: MassaTime::from_utc_ymd_hms(2026, 10, 26, 10, 0, 0).unwrap(), // Monday 26th October 2026 10:00:00 UTC
+                timeout: MassaTime::from_utc_ymd_hms(2026, 12, 31, 10, 0, 0).unwrap(), // Thursday 31st December 2026 10:00:00 UTC
+                activation_delay: MassaTime::from_millis(7 * 24 * 60 * 60 * 1000), // 7 days -> earliest activation Monday 2nd November 2026 10:00:00 UTC
             },
             MipState::new(defined_2),
         ),
