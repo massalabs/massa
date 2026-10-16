@@ -282,6 +282,8 @@ impl ExecutionState {
             );
         }
 
+        // The cached and broadcast copies must carry the same final metadata.
+        exec_out.events.finalize();
         let exec_out_2 = exec_out.clone();
         #[cfg(feature = "slot-replayer")]
         {
@@ -308,8 +310,6 @@ impl ExecutionState {
         }
 
         // append generated events to the final event store
-        exec_out.events.finalize();
-
         self.final_events_cache.save_events(exec_out.events.0);
 
         // update the prometheus metrics
