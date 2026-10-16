@@ -1417,7 +1417,7 @@ impl ExecutionState {
             context.get_snapshot()
         };
 
-        if call.cancelled {
+        let execution_result = if call.cancelled {
             Ok(result)
         } else {
             let deferred_call_execution = || {
@@ -1542,7 +1542,9 @@ impl ExecutionState {
                 context.deferred_call_fail_exec(id, &call);
             }
             execution_result
-        }
+        };
+        context_guard!(self).deferred_call_id = None;
+        execution_result
     }
     /// Executes a full slot (with or without a block inside) without causing any changes to the state,
     /// just yielding the execution output.
