@@ -78,6 +78,7 @@ impl Serializer<KeyType> for KeyTypeSerializer {
 #[derive(Clone)]
 pub struct KeyTypeDeserializer {
     vec_u8_deserializer: VecU8Deserializer,
+    max_datastore_key_length: u8,
     // Same as in KeyTypeSerializer but for deserialization.
     with_datastore_key_length: bool,
 }
@@ -92,6 +93,7 @@ impl KeyTypeDeserializer {
                 Included(u64::MIN),
                 Included(max_datastore_key_length as u64),
             ),
+            max_datastore_key_length,
             with_datastore_key_length,
         }
     }
@@ -111,6 +113,12 @@ impl Deserializer<KeyType> for KeyTypeDeserializer {
                     let (rest, data) = self.vec_u8_deserializer.deserialize(rest)?;
                     Ok((rest, KeyType::DATASTORE(data)))
                 } else {
+                    if rest.len() > self.max_datastore_key_length as usize {
+                        return Err(nom::Err::Error(E::from_error_kind(
+                            rest,
+                            nom::error::ErrorKind::LengthValue,
+                        )));
+                    }
                     Ok((&[], KeyType::DATASTORE(rest.to_vec())))
                 }
             }
@@ -332,5 +340,71 @@ mod tests {
 
         let res = KeyDeserializer::new(255, true).deserialize::<DeserializeError>(&serialized);
         assert!(res.is_err(), "a non-canonical key version must be rejected");
+    }
+}
+
+#[cfg(test)]
+mod datastore_key_bounds {
+    use super::{KeyType, KeyTypeDeserializer, KeyTypeSerializer};
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
+
+    #[test]
+    fn datastore_key_bounds_layout_boundaries() {
+        for prefixed in [false, true] {
+            for maximum in [0u8, 8, 255] {
+                for length in [0, maximum as usize, maximum as usize + 1] {
+                    let key = KeyType::DATASTORE(vec![0x80; length]);
+                    let mut bytes = Vec::new();
+                    KeyTypeSerializer::new(prefixed)
+                        .serialize(&key, &mut bytes)
+                        .unwrap();
+                    let result = KeyTypeDeserializer::new(maximum, prefixed)
+                        .deserialize::<DeserializeError>(&bytes);
+                    if length <= maximum as usize {
+                        assert_eq!(result.unwrap(), (&[][..], key));
+                    } else {
+                        assert!(
+                            result.is_err(),
+                            "key bound: prefixed={prefixed}, maximum={maximum}, length={length}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn datastore_key_bounds_prefixed_remainder() {
+        let key = KeyType::DATASTORE(vec![0x80; 8]);
+        let mut bytes = Vec::new();
+        KeyTypeSerializer::new(true)
+            .serialize(&key, &mut bytes)
+            .unwrap();
+        bytes.extend([0xff, 0x42]);
+        assert_eq!(
+            KeyTypeDeserializer::new(8, true)
+                .deserialize::<DeserializeError>(&bytes)
+                .unwrap(),
+            (&[0xff, 0x42][..], key)
+        );
+    }
+
+    #[test]
+    fn datastore_key_bounds_other_key_types() {
+        for prefixed in [false, true] {
+            for key in [KeyType::VERSION, KeyType::BALANCE, KeyType::BYTECODE] {
+                let mut bytes = Vec::new();
+                KeyTypeSerializer::new(prefixed)
+                    .serialize(&key, &mut bytes)
+                    .unwrap();
+                bytes.push(0x42);
+                assert_eq!(
+                    KeyTypeDeserializer::new(0, prefixed)
+                        .deserialize::<DeserializeError>(&bytes)
+                        .unwrap(),
+                    (&[0x42][..], key)
+                );
+            }
+        }
     }
 }
