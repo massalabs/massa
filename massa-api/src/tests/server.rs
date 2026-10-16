@@ -444,4 +444,188 @@ mod jsonrpc_error_classification {
         drop(receiver);
         handle.stop().await;
     }
+
+    #[tokio::test]
+    async fn invalid_envelope_rejection_http_invalid_ids() {
+        let port = 46113;
+        let (handle, counts) = server(port, 16).await;
+        for (index, id) in [json!(true), json!(false), json!({}), json!([])]
+            .into_iter()
+            .enumerate()
+        {
+            let invalid = request(ENTRIES, Some(id));
+            let before = count(&counts);
+            let (status, body) = post(port, invalid.to_string()).await;
+            assert_eq!(status, 200);
+            assert!(!body.is_empty(), "invalid_id_error_missing");
+            assert_error(&body, -32600, Value::Null);
+            assert_eq!(
+                delta(before, count(&counts)),
+                [0, 0],
+                "invalid ID dispatched"
+            );
+            recovery(port, &counts, &format!("single-{index}")).await;
+
+            let before = count(&counts);
+            let good = request("get_addresses_datastore_keys", Some(json!("okay")));
+            let null_call = request(ENTRIES, Some(Value::Null));
+            let (status, body) = post(port, json!([invalid, good, null_call]).to_string()).await;
+            assert_eq!(status, 200);
+            let reply: Value = serde_json::from_str(&body).unwrap();
+            let replies = reply.as_array().unwrap();
+            assert_eq!(replies.len(), 3, "invalid batch member omitted");
+            assert_error(&replies[0].to_string(), -32600, Value::Null);
+            assert_eq!(replies[1], json!({"jsonrpc":"2.0","id":"okay","result":[]}));
+            assert_eq!(replies[2], json!({"jsonrpc":"2.0","id":null,"result":[]}));
+            assert_eq!(
+                delta(before, count(&counts)),
+                [1, 1],
+                "mixed batch dispatch"
+            );
+            recovery(port, &counts, &format!("batch-{index}")).await;
+        }
+
+        // ID omission and unknown members remain allowed notification syntax.
+        let mut notification = request(ENTRIES, None);
+        notification["extra"] = json!({"allowed":true});
+        let (status, body) = post(port, notification.to_string()).await;
+        assert_eq!(status, 200);
+        assert!(body.is_empty());
+        let (status, body) = post(
+            port,
+            json!([notification, request(ENTRIES, Some(json!("peer")))]).to_string(),
+        )
+        .await;
+        assert_eq!(status, 200);
+        assert_eq!(
+            serde_json::from_str::<Value>(&body).unwrap(),
+            json!([{"jsonrpc":"2.0","id":"peer","result":[]}])
+        );
+        recovery(port, &counts, "omitted-id").await;
+        handle.stop().await;
+    }
+
+    #[tokio::test]
+    async fn invalid_envelope_rejection_websocket_invalid_ids() {
+        use jsonrpsee::client_transport::ws::WsTransportClientBuilder;
+        use jsonrpsee::core::client::{ReceivedMessage, TransportReceiverT, TransportSenderT};
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        async fn receive(receiver: &mut impl TransportReceiverT) -> Value {
+            let reply = tokio::time::timeout(Duration::from_secs(2), receiver.receive())
+                .await
+                .unwrap()
+                .unwrap();
+            let ReceivedMessage::Text(raw) = reply else {
+                panic!("unexpected WS frame")
+            };
+            serde_json::from_str(&raw).unwrap()
+        }
+
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut module = jsonrpsee::RpcModule::new(calls.clone());
+        module
+            .register_method("tick", |_, count, _| count.fetch_add(1, Ordering::SeqCst))
+            .unwrap();
+        let address = SocketAddr::from(([127, 0, 0, 1], 46114));
+        let (_, mut config) = crate::tests::mock::start_public_api(address);
+        config.enable_http = true;
+        config.enable_ws = true;
+        let handle = crate::serve(module, &address, &config).await.unwrap();
+        let (mut sender, mut receiver) = WsTransportClientBuilder::default()
+            .build(Url::parse("ws://127.0.0.1:46114").unwrap())
+            .await
+            .unwrap();
+
+        for (index, id) in [json!(true), json!(false), json!({}), json!([])]
+            .into_iter()
+            .enumerate()
+        {
+            let invalid = request("tick", Some(id));
+            let before = calls.load(Ordering::SeqCst);
+            sender.send(invalid.to_string()).await.unwrap();
+            assert_error(
+                &receive(&mut receiver).await.to_string(),
+                -32600,
+                Value::Null,
+            );
+            assert_eq!(
+                calls.load(Ordering::SeqCst),
+                before,
+                "invalid ID dispatched"
+            );
+            let recovery_id = format!("single-{index}");
+            sender
+                .send(request("tick", Some(json!(recovery_id))).to_string())
+                .await
+                .unwrap();
+            assert_eq!(
+                receive(&mut receiver).await,
+                json!({"jsonrpc":"2.0","id":recovery_id,"result":before})
+            );
+            assert_eq!(calls.load(Ordering::SeqCst), before + 1);
+
+            let before = calls.load(Ordering::SeqCst);
+            let good = request("tick", Some(json!("okay")));
+            let null_call = request("tick", Some(Value::Null));
+            sender
+                .send(json!([invalid, good, null_call]).to_string())
+                .await
+                .unwrap();
+            let reply = receive(&mut receiver).await;
+            let replies = reply.as_array().unwrap();
+            assert_eq!(replies.len(), 3, "invalid batch member omitted");
+            assert_error(&replies[0].to_string(), -32600, Value::Null);
+            assert_eq!(
+                replies[1],
+                json!({"jsonrpc":"2.0","id":"okay","result":before})
+            );
+            assert_eq!(
+                replies[2],
+                json!({"jsonrpc":"2.0","id":null,"result":before + 1})
+            );
+            assert_eq!(
+                calls.load(Ordering::SeqCst),
+                before + 2,
+                "mixed batch dispatch"
+            );
+            let recovery_id = format!("batch-{index}");
+            sender
+                .send(request("tick", Some(json!(recovery_id))).to_string())
+                .await
+                .unwrap();
+            assert_eq!(
+                receive(&mut receiver).await,
+                json!({"jsonrpc":"2.0","id":recovery_id,"result":before + 2})
+            );
+            assert_eq!(calls.load(Ordering::SeqCst), before + 3);
+        }
+
+        for id in [json!(0), json!("valid"), Value::Null] {
+            let before = calls.load(Ordering::SeqCst);
+            sender
+                .send(request("tick", Some(id.clone())).to_string())
+                .await
+                .unwrap();
+            assert_eq!(
+                receive(&mut receiver).await,
+                json!({"jsonrpc":"2.0","id":id,"result":before})
+            );
+            assert_eq!(calls.load(Ordering::SeqCst), before + 1);
+        }
+        let mut notification = request("tick", None);
+        notification["extra"] = json!({"allowed":true});
+        sender.send(notification.to_string()).await.unwrap();
+        sender
+            .send(request("tick", Some(json!("after-notification"))).to_string())
+            .await
+            .unwrap();
+        let reply = receive(&mut receiver).await;
+        assert_eq!(reply["id"], "after-notification");
+        assert!(reply.get("result").is_some());
+        assert!(reply.get("error").is_none());
+        drop(sender);
+        drop(receiver);
+        handle.stop().await;
+    }
 }

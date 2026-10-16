@@ -55,7 +55,7 @@ use jsonrpsee_core::{BoxError, JsonRawValue, TEN_MB_SIZE_BYTES};
 use jsonrpsee_types::error::{
 	reject_too_big_batch_request, ErrorCode, BATCHES_NOT_SUPPORTED_CODE, BATCHES_NOT_SUPPORTED_MSG,
 };
-use jsonrpsee_types::{ErrorObject, Id, InvalidRequest, Notification};
+use jsonrpsee_types::{ErrorObject, Id, InvalidRequest, TwoPointZero};
 use soketto::handshake::http::is_upgrade_request;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 use tokio::sync::{mpsc, watch, OwnedSemaphorePermit};
@@ -64,7 +64,21 @@ use tower::layer::util::Identity;
 use tower::{Layer, Service};
 use tracing::{instrument, Instrument};
 
-type Notif<'a> = Notification<'a, Option<&'a JsonRawValue>>;
+#[derive(serde::Deserialize)]
+struct Notif<'a> {
+	#[serde(rename = "jsonrpc")]
+	_jsonrpc: TwoPointZero,
+	#[serde(borrow, rename = "method")]
+	_method: std::borrow::Cow<'a, str>,
+	#[serde(borrow, rename = "params")]
+	_params: Option<&'a JsonRawValue>,
+	#[serde(default, rename = "id", deserialize_with = "reject_notification_id")]
+	_id: (),
+}
+
+fn reject_notification_id<'de, D: serde::Deserializer<'de>>(_: D) -> Result<(), D::Error> {
+	Err(serde::de::Error::custom("notification must not contain an id"))
+}
 
 fn is_object(body: &[u8]) -> bool {
 	body.iter().find(|b| !b.is_ascii_whitespace()) == Some(&b'{')

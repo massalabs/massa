@@ -9,6 +9,10 @@ checks JSON syntax before extracting a request ID, so valid JSON with an
 invalid envelope returns Invalid Request (-32600), while malformed JSON
 returns Parse Error (-32700). Valid IDs are retained when available.
 
+The notification decoder also rejects every present `id`, so unsupported ID
+types produce Invalid Request instead of being silently treated as notifications
+in single requests and batches. Supported ID-bearing requests retain precedence.
+
 For Rust 1.91.1 with warnings denied, `src/server.rs` also removes redundant
 trait-object parentheses and `src/utils.rs` makes inferred return lifetimes
 explicit. Comment typos are corrected in `src/future.rs` and
