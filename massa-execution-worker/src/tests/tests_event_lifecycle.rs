@@ -51,6 +51,8 @@ use tokio::sync::broadcast;
 enum DeferredProfile {
     Success,
     VmFailure,
+    ValidationFailure,
+    Cancelled,
 }
 
 struct Fixture {
@@ -239,6 +241,8 @@ fn seed(
     match profile {
         DeferredProfile::Success => (),
         DeferredProfile::VmFailure => call.target_function = "not_exported".into(),
+        DeferredProfile::ValidationFailure => call.target_address = sender,
+        DeferredProfile::Cancelled => call.cancelled = true,
     }
     let effective_gas = if call.cancelled { 0 } else { 2_300_000 };
     let deferred = DeferredCallId::new(0, slot, 0, b"e3-private-workload").unwrap();
@@ -284,6 +288,7 @@ fn seed(
 }
 
 struct Outputs {
+    workload: Workload,
     candidate: ExecutionOutput,
     final_events: Vec<SCOutputEvent>,
     broadcast: Option<ExecutionOutput>,
@@ -397,6 +402,7 @@ fn execute(profile: DeferredProfile, cached: bool, broadcast_enabled: bool) -> O
         serde_json::json!({"profile":format!("{profile:?}"),"cached":cached,"broadcast_enabled":broadcast_enabled,"candidate":candidate.events.0,"final_events":final_events,"broadcast_events":broadcast.as_ref().map(|o| &o.events.0),"operation_id":w.operation.id.to_string(),"deferred_id":w.deferred.to_string(),"message_id":format!("{:?}",w.message),"target_balance_raw":100_000_000_000u64+received,"operation_success":true,"persistent_cleanup":true})
     );
     Outputs {
+        workload: w,
         candidate,
         final_events,
         broadcast,
@@ -442,4 +448,75 @@ fn final_event_status_broadcast_disabled() {
     assert!(output.broadcast.is_none());
     assert!(output.final_events.iter().all(|e| e.context.is_final));
     assert!(output.final_events.iter().any(|e| e.context.is_error));
+}
+
+fn check_attribution(output: Outputs, profile: DeferredProfile) {
+    let w = &output.workload;
+    for events in [
+        output.candidate.events.0.into_iter().collect::<Vec<_>>(),
+        output.final_events,
+    ] {
+        let deferred: Vec<_> = events
+            .iter()
+            .filter(|e| e.context.deferred_call_id.as_ref() == Some(&w.deferred))
+            .collect();
+        assert_eq!(
+            deferred.len(),
+            usize::from(!matches!(profile, DeferredProfile::Cancelled)),
+            "deferred origin must not leak"
+        );
+        for event in deferred {
+            assert_eq!(event.context.origin_operation_id, None);
+            assert_eq!(event.context.async_msg_id, None);
+            assert_eq!(
+                event.context.is_error,
+                !matches!(profile, DeferredProfile::Success)
+            );
+        }
+        let op: Vec<_> = events
+            .iter()
+            .filter(|e| e.context.origin_operation_id == Some(w.operation.id))
+            .collect();
+        let asc: Vec<_> = events
+            .iter()
+            .filter(|e| e.context.async_msg_id == Some(w.message))
+            .collect();
+        assert_eq!(op.len(), 1);
+        assert_eq!(asc.len(), 1);
+        for event in op.into_iter().chain(asc) {
+            assert_eq!(
+                event.context.deferred_call_id, None,
+                "ordinary event must not inherit deferred origin"
+            );
+            assert!(!event.context.is_error);
+            assert_eq!(event.data, "message correctly received: 42,42,42,42");
+            assert_eq!(event.context.call_stack.back(), Some(&w.target));
+        }
+        assert_eq!(
+            events
+                .iter()
+                .map(|e| e.context.index_in_slot)
+                .collect::<Vec<_>>(),
+            (0..events.len() as u64).collect::<Vec<_>>()
+        );
+    }
+}
+
+#[test]
+fn deferred_attribution_same_slot_sequence() {
+    check_attribution(
+        execute(DeferredProfile::Success, true, true),
+        DeferredProfile::Success,
+    );
+}
+
+#[test]
+fn deferred_attribution_failure_and_cancellation() {
+    for profile in [
+        DeferredProfile::ValidationFailure,
+        DeferredProfile::VmFailure,
+        DeferredProfile::Cancelled,
+    ] {
+        check_attribution(execute(profile, true, true), profile);
+    }
 }
