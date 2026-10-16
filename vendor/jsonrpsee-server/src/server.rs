@@ -55,7 +55,7 @@ use jsonrpsee_core::{BoxError, JsonRawValue, TEN_MB_SIZE_BYTES};
 use jsonrpsee_types::error::{
 	reject_too_big_batch_request, ErrorCode, BATCHES_NOT_SUPPORTED_CODE, BATCHES_NOT_SUPPORTED_MSG,
 };
-use jsonrpsee_types::{ErrorObject, Id, InvalidRequest, TwoPointZero};
+use jsonrpsee_types::{ErrorObject, Id, InvalidRequest, Request, TwoPointZero};
 use soketto::handshake::http::is_upgrade_request;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 use tokio::sync::{mpsc, watch, OwnedSemaphorePermit};
@@ -66,18 +66,29 @@ use tracing::{instrument, Instrument};
 
 #[derive(serde::Deserialize)]
 struct Notif<'a> {
-	#[serde(rename = "jsonrpc")]
-	_jsonrpc: TwoPointZero,
-	#[serde(borrow, rename = "method")]
-	_method: std::borrow::Cow<'a, str>,
-	#[serde(borrow, rename = "params")]
-	_params: Option<&'a JsonRawValue>,
+	jsonrpc: TwoPointZero,
+	#[serde(borrow)]
+	method: std::borrow::Cow<'a, str>,
+	#[serde(borrow)]
+	params: Option<&'a JsonRawValue>,
 	#[serde(default, rename = "id", deserialize_with = "reject_notification_id")]
 	_id: (),
 }
 
 fn reject_notification_id<'de, D: serde::Deserializer<'de>>(_: D) -> Result<(), D::Error> {
 	Err(serde::de::Error::custom("notification must not contain an id"))
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct IsNotification;
+
+fn notification(body: &[u8], mut extensions: Extensions) -> Result<Request<'_>, serde_json::Error> {
+	let Notif { jsonrpc, method, params, .. } = serde_json::from_slice(body)?;
+	extensions.insert(IsNotification);
+	let mut request = Request::new(method, params, Id::Null);
+	request.jsonrpc = jsonrpc;
+	request.extensions = extensions;
+	Ok(request)
 }
 
 fn is_object(body: &[u8]) -> bool {
@@ -1313,9 +1324,10 @@ where
 {
 	// Single request or notification
 	if is_single {
-		if let Ok(req) = deserialize::from_slice_with_extensions(body, extensions) {
+		if let Ok(req) = deserialize::from_slice_with_extensions(body, extensions.clone()) {
 			Some(rpc_service.call(req).await)
-		} else if let Ok(_notif) = serde_json::from_slice::<Notif>(body) {
+		} else if let Ok(notif) = notification(body, extensions) {
+			let _ = rpc_service.call(notif).await;
 			None
 		} else {
 			let (id, code) = prepare_error(body);
@@ -1345,14 +1357,22 @@ where
 			let mut batch_response = BatchResponseBuilder::new_with_limit(max_response_size as usize);
 
 			for call in batch {
-				if let Ok(req) = deserialize::from_str_with_extensions(call.get(), extensions.clone()) {
+				// Serde structs can accept arrays; JSON-RPC requests must be objects.
+				if !is_object(call.get().as_bytes()) {
+					if let Err(too_large) = batch_response
+						.append(&MethodResponse::error(Id::Null, ErrorObject::from(ErrorCode::InvalidRequest)))
+					{
+						return Some(too_large);
+					}
+				} else if let Ok(req) = deserialize::from_str_with_extensions(call.get(), extensions.clone()) {
 					let rp = rpc_service.call(req).await;
 
 					if let Err(too_large) = batch_response.append(&rp) {
 						return Some(too_large);
 					}
-				} else if let Ok(_notif) = serde_json::from_str::<Notif>(call.get()) {
+				} else if let Ok(notif) = notification(call.get().as_bytes(), extensions.clone()) {
 					// notifications should not be answered.
+					let _ = rpc_service.call(notif).await;
 					got_notif = true;
 				} else {
 					// valid JSON but could be not parsable as `InvalidRequest`

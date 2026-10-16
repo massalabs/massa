@@ -105,6 +105,13 @@ impl<'a> RpcServiceT<'a> for RpcService {
 					ResponseFuture::ready(rp)
 				}
 				MethodCallback::Subscription(callback) => {
+					// Subscription handshakes write to the sink and require a request id.
+					if extensions.get::<crate::server::IsNotification>().is_some() {
+						return ResponseFuture::ready(MethodResponse::error(
+							id,
+							ErrorObject::from(ErrorCode::InvalidRequest),
+						));
+					}
 					let RpcServiceCfg::CallsAndSubscriptions {
 						bounded_subscriptions,
 						sink,

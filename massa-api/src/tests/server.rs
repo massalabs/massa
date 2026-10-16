@@ -226,6 +226,7 @@ mod jsonrpc_error_classification {
     };
 
     const ENTRIES: &str = "get_datastore_entries";
+    const KEYS: &str = "get_addresses_datastore_keys";
     type Counts = Arc<Mutex<[usize; 2]>>;
 
     fn request(method: &str, id: Option<Value>) -> Value {
@@ -624,6 +625,323 @@ mod jsonrpc_error_classification {
         assert_eq!(reply["id"], "after-notification");
         assert!(reply.get("result").is_some());
         assert!(reply.get("error").is_none());
+        drop(sender);
+        drop(receiver);
+        handle.stop().await;
+    }
+
+    #[tokio::test]
+    async fn notification_dispatch_ordinary_calls_and_notifications() {
+        let port = 46101;
+        let (handle, counts) = server(port, 16).await;
+        let mut nested_id = request(ENTRIES, None);
+        nested_id["extra"] = json!({"id":true});
+        let mut bad_params = request(KEYS, None);
+        bad_params["params"] = json!([]);
+        let cases = [
+            (request(ENTRIES, None), None, [1, 0]),
+            (request(KEYS, None), None, [0, 1]),
+            (nested_id, None, [1, 0]),
+            (
+                json!([request(ENTRIES, None), request(KEYS, None)]),
+                None,
+                [1, 1],
+            ),
+            (
+                json!([
+                    request(ENTRIES, Some(json!(1))),
+                    request(KEYS, None),
+                    request(KEYS, Some(json!("keys"))),
+                    request(ENTRIES, None)
+                ]),
+                Some(json!([{"jsonrpc":"2.0","id":1,"result":[]},
+                    {"jsonrpc":"2.0","id":"keys","result":[]}])),
+                [2, 2],
+            ),
+            (request("unknown_fixture", None), None, [0, 0]),
+            (bad_params, None, [0, 0]),
+            (
+                json!([
+                    ["2.0", "get_datastore_entries", [[]]],
+                    request(KEYS, Some(json!(9)))
+                ]),
+                Some(
+                    json!([{"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"Invalid request"}},
+                    {"jsonrpc":"2.0","id":9,"result":[]}]),
+                ),
+                [0, 1],
+            ),
+        ];
+        for (index, (raw, expected, wanted)) in cases.into_iter().enumerate() {
+            let before = count(&counts);
+            let (status, body) = post(port, raw.to_string()).await;
+            assert_eq!(status, 200);
+            match expected {
+                Some(value) => assert_eq!(serde_json::from_str::<Value>(&body).unwrap(), value),
+                None => assert!(body.is_empty(), "notification emitted a response"),
+            }
+            assert_eq!(
+                delta(before, count(&counts)),
+                wanted,
+                "notification_not_dispatched"
+            );
+            recovery(port, &counts, &index.to_string()).await;
+        }
+        for id in [json!(0), json!("valid"), Value::Null] {
+            let before = count(&counts);
+            let (status, body) = post(port, request(ENTRIES, Some(id.clone())).to_string()).await;
+            assert_eq!(status, 200);
+            assert_eq!(
+                serde_json::from_str::<Value>(&body).unwrap(),
+                json!({"jsonrpc":"2.0","id":id,"result":[]})
+            );
+            assert_eq!(delta(before, count(&counts)), [1, 0]);
+        }
+        handle.stop().await;
+    }
+
+    #[tokio::test]
+    async fn configured_resource_limits_limit_boundaries_and_recovery() {
+        let (handle, counts) = server(46103, 16).await;
+        let mut input = vec![request(ENTRIES, None); 15];
+        input.push(request(KEYS, Some(json!(16))));
+        let (status, body) = post(46103, Value::Array(input).to_string()).await;
+        assert_eq!(status, 200);
+        assert_eq!(
+            serde_json::from_str::<Value>(&body).unwrap(),
+            json!([{"jsonrpc":"2.0","id":16,"result":[]}])
+        );
+        assert_eq!(count(&counts), [15, 1]);
+        let before = count(&counts);
+        let mut input = vec![request(ENTRIES, None); 16];
+        input.push(request(KEYS, Some(json!(17))));
+        let (status, body) = post(46103, Value::Array(input).to_string()).await;
+        assert_eq!(status, 200);
+        assert_eq!(
+            serde_json::from_str::<Value>(&body).unwrap(),
+            json!({"jsonrpc":"2.0","id":null,"error":{"code":-32010,"message":"The batch request was too large","data":"Exceeded max limit of 16"}}),
+            "guard_batch_limit"
+        );
+        assert_eq!(
+            delta(before, count(&counts)),
+            [0, 0],
+            "guard_before_dispatch"
+        );
+        recovery(46103, &counts, "limit").await;
+        handle.stop().await;
+        println!(
+            "PROTOCOL_GUARD {}",
+            json!({"case":"limit","accepted":16,"rejected":17,"pre_dispatch":true,"recovery":true})
+        );
+    }
+
+    #[tokio::test]
+    async fn protocol_batches_disabled() {
+        let (handle, counts) = server(46104, 0).await;
+        let (status, body) =
+            post(46104, json!([request(ENTRIES, Some(json!(1)))]).to_string()).await;
+        assert_eq!(status, 200);
+        assert_eq!(
+            serde_json::from_str::<Value>(&body).unwrap(),
+            json!({"jsonrpc":"2.0","id":null,"error":{"code":-32005,"message":"Batched requests are not supported by this server"}}),
+            "guard_batches_disabled"
+        );
+        assert_eq!(count(&counts), [0, 0], "guard_disabled_before_dispatch");
+        recovery(46104, &counts, "disabled").await;
+        handle.stop().await;
+        println!(
+            "PROTOCOL_GUARD {}",
+            json!({"case":"disabled","pre_dispatch":true,"recovery":true})
+        );
+    }
+
+    #[tokio::test]
+    async fn body_and_result_byte_limits() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut module = jsonrpsee::RpcModule::new(calls.clone());
+        module
+            .register_method("big", |_, ctx, _| {
+                ctx.fetch_add(1, Ordering::SeqCst);
+                "x".repeat(4096)
+            })
+            .unwrap();
+        module
+            .register_method("small", |_, ctx, _| {
+                ctx.fetch_add(1, Ordering::SeqCst);
+                7
+            })
+            .unwrap();
+        let address = SocketAddr::from(([127, 0, 0, 1], 46106));
+        let (_, mut config) = crate::tests::mock::start_public_api(address);
+        config.max_request_body_size = 128;
+        config.max_response_body_size = 256;
+        config.enable_ws = false;
+        let handle = crate::serve(module, &address, &config).await.unwrap();
+        let raw =
+            json!({"jsonrpc":"2.0","id":1,"method":"small","params":["x".repeat(200)]}).to_string();
+        assert_eq!(post(46106, raw).await.0, 413);
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        let (_, body) = post(46106, r#"{"jsonrpc":"2.0","id":2,"method":"big"}"#.into()).await;
+        assert_eq!(
+            serde_json::from_str::<Value>(&body).unwrap()["error"]["code"],
+            -32008
+        );
+        let (_, body) = post(46106, r#"{"jsonrpc":"2.0","method":"big"}"#.into()).await;
+        assert!(body.is_empty());
+        let (_, body) = post(46106, r#"{"jsonrpc":"2.0","id":3,"method":"small"}"#.into()).await;
+        assert_eq!(serde_json::from_str::<Value>(&body).unwrap()["result"], 7);
+        assert_eq!(calls.load(Ordering::SeqCst), 3);
+        handle.stop().await;
+    }
+
+    #[tokio::test]
+    async fn notification_extensions() {
+        use jsonrpsee::server::{
+            middleware::rpc::RpcServiceT, BatchRequestConfig, HttpBody, HttpRequest, MethodResponse,
+        };
+        use jsonrpsee::types::{ErrorCode, Request};
+        use std::future::{ready, Ready};
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        struct Capture(Arc<AtomicUsize>);
+        impl<'a> RpcServiceT<'a> for Capture {
+            type Future = Ready<MethodResponse>;
+            fn call(&self, request: Request<'a>) -> Self::Future {
+                assert_eq!(request.extensions().get::<u32>(), Some(&77));
+                self.0.fetch_add(1, Ordering::SeqCst);
+                ready(MethodResponse::error(
+                    request.id(),
+                    ErrorCode::MethodNotFound,
+                ))
+            }
+        }
+        let calls = Arc::new(AtomicUsize::new(0));
+        for raw in [
+            r#"{"jsonrpc":"2.0","method":"fixture"}"#,
+            r#"[{"jsonrpc":"2.0","method":"fixture"}]"#,
+        ] {
+            let mut request = HttpRequest::new(HttpBody::from(raw.to_string()));
+            *request.method_mut() = http::Method::POST;
+            request.headers_mut().insert(
+                http::header::CONTENT_TYPE,
+                http::HeaderValue::from_static("application/json"),
+            );
+            request.extensions_mut().insert(77u32);
+            let response = jsonrpsee::server::http::call_with_service(
+                request,
+                BatchRequestConfig::Limit(16),
+                1024,
+                Capture(calls.clone()),
+                1024,
+            )
+            .await;
+            assert_eq!(response.status(), 200);
+        }
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    async fn shared_websocket_behavior_websocket_neighbors() {
+        use jsonrpsee::client_transport::ws::WsTransportClientBuilder;
+        use jsonrpsee::core::client::{ReceivedMessage, TransportReceiverT, TransportSenderT};
+        use jsonrpsee::core::server::SubscriptionMessage;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let calls = Arc::new(AtomicUsize::new(0));
+        let subscriptions = Arc::new(AtomicUsize::new(0));
+        let mut module = jsonrpsee::RpcModule::new(calls.clone());
+        module
+            .register_method("tick", |_, ctx, _| ctx.fetch_add(1, Ordering::SeqCst))
+            .unwrap();
+        module
+            .register_method("count", |_, ctx, _| ctx.load(Ordering::SeqCst))
+            .unwrap();
+        let subs = subscriptions.clone();
+        module
+            .register_subscription("sub", "event", "unsub", move |_, pending, _, _| {
+                let subs = subs.clone();
+                async move {
+                    subs.fetch_add(1, Ordering::SeqCst);
+                    let sink = pending.accept().await?;
+                    sink.send(SubscriptionMessage::from_json(&7)?).await?;
+                    Ok::<(), jsonrpsee::core::StringError>(())
+                }
+            })
+            .unwrap();
+        let address = SocketAddr::from(([127, 0, 0, 1], 46107));
+        let (_, mut config) = crate::tests::mock::start_public_api(address);
+        config.enable_http = true;
+        config.enable_ws = true;
+        let handle = crate::serve(module, &address, &config).await.unwrap();
+        let (mut sender, mut receiver) = WsTransportClientBuilder::default()
+            .build(Url::parse("ws://127.0.0.1:46107").unwrap())
+            .await
+            .unwrap();
+        sender
+            .send(
+                r#"[{"jsonrpc":"2.0","method":"tick"},{"jsonrpc":"2.0","id":1,"method":"count"}]"#
+                    .into(),
+            )
+            .await
+            .unwrap();
+        let receive = |message| match message {
+            ReceivedMessage::Text(raw) => serde_json::from_str::<Value>(&raw).unwrap(),
+            _ => panic!("unexpected WS frame"),
+        };
+        let reply = receive(
+            tokio::time::timeout(Duration::from_secs(2), receiver.receive())
+                .await
+                .unwrap()
+                .unwrap(),
+        );
+        assert_eq!(reply, json!([{"jsonrpc":"2.0","id":1,"result":1}]));
+        sender.send(r#"[{"jsonrpc":"2.0","id":true,"method":"tick"},{"jsonrpc":"2.0","id":2,"method":"count"}]"#.into()).await.unwrap();
+        let reply = receive(
+            tokio::time::timeout(Duration::from_secs(2), receiver.receive())
+                .await
+                .unwrap()
+                .unwrap(),
+        );
+        assert_eq!(reply[0]["id"], Value::Null);
+        assert_eq!(reply[0]["error"]["code"], -32600);
+        assert_eq!(reply[1]["result"], 1);
+        sender
+            .send(
+                r#"[{"jsonrpc":"2.0","method":"sub"},{"jsonrpc":"2.0","id":3,"method":"count"}]"#
+                    .into(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            receive(
+                tokio::time::timeout(Duration::from_secs(2), receiver.receive())
+                    .await
+                    .unwrap()
+                    .unwrap()
+            ),
+            json!([{"jsonrpc":"2.0","id":3,"result":1}])
+        );
+        assert_eq!(subscriptions.load(Ordering::SeqCst), 0);
+        sender
+            .send(r#"{"jsonrpc":"2.0","id":4,"method":"sub"}"#.into())
+            .await
+            .unwrap();
+        let reply = receive(
+            tokio::time::timeout(Duration::from_secs(2), receiver.receive())
+                .await
+                .unwrap()
+                .unwrap(),
+        );
+        assert_eq!(reply["id"], 4);
+        assert!(reply.get("result").is_some());
+        let event = receive(
+            tokio::time::timeout(Duration::from_secs(2), receiver.receive())
+                .await
+                .unwrap()
+                .unwrap(),
+        );
+        assert_eq!(event["params"]["result"], 7);
+        assert_eq!(subscriptions.load(Ordering::SeqCst), 1);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
         drop(sender);
         drop(receiver);
         handle.stop().await;
