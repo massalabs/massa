@@ -992,7 +992,7 @@ where
 	for<'a> <RpcMiddleware as Layer<RpcService>>::Service: RpcServiceT<'a>,
 	HttpMiddleware: Layer<TowerServiceNoHttp<RpcMiddleware>> + Send + 'static,
 	<HttpMiddleware as Layer<TowerServiceNoHttp<RpcMiddleware>>>::Service:
-		Send + Service<HttpRequest<RequestBody>, Response = HttpResponse<ResponseBody>, Error = Box<(dyn StdError + Send + Sync + 'static)>>,
+		Send + Service<HttpRequest<RequestBody>, Response = HttpResponse<ResponseBody>, Error = Box<dyn StdError + Send + Sync + 'static>>,
 	<<HttpMiddleware as Layer<TowerServiceNoHttp<RpcMiddleware>>>::Service as Service<HttpRequest<RequestBody>>>::Future:
 		Send + 'static,
 	RequestBody: http_body::Body<Data = Bytes> + Send + 'static,

@@ -191,7 +191,7 @@ impl Future for SessionClosedFuture {
 }
 
 pub(crate) fn session_close() -> (SessionClose, SessionClosedFuture) {
-	// SessionClosedFuture is closed after one message has been recevied
+	// SessionClosedFuture is closed after one message has been received
 	// and max one message is handled then it's closed.
 	let (tx, rx) = tokio::sync::broadcast::channel(1);
 	(SessionClose(tx), SessionClosedFuture(BroadcastStream::new(rx)))
