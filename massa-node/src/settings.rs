@@ -24,10 +24,25 @@ pub struct CliSettings {
     pub approved_community_charter_file_path: PathBuf,
 }
 
+// Defaults of the keys added in MAIN.5.1, equal to `base_config/config.toml`: a node started with
+// a MAIN.5.0 base config, which does not have them, still loads its settings.
+fn default_readonly_starvation_timeout() -> MassaTime {
+    MassaTime::from_millis(5000)
+}
+
+fn default_query_state_deadline_ms() -> Option<u64> {
+    Some(500)
+}
+
+fn default_max_endorsements_per_propagation_round() -> usize {
+    1024
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct ExecutionSettings {
     pub max_final_events: usize,
     pub readonly_queue_length: usize,
+    #[serde(default = "default_readonly_starvation_timeout")]
     pub readonly_starvation_timeout: MassaTime,
     pub cursor_delay: MassaTime,
     pub stats_time_window_duration: MassaTime,
@@ -47,7 +62,7 @@ pub struct ExecutionSettings {
     pub event_snip_amount: usize,
     pub max_event_per_query: usize,
     /// wall-clock deadline for a query_state batch, in ms (`None` = no deadline)
-    #[serde(default)]
+    #[serde(default = "default_query_state_deadline_ms")]
     pub query_state_deadline_ms: Option<u64>,
     /// slot execution info channel capacity
     pub broadcast_slot_execution_info_channel_capacity: usize,
@@ -273,6 +288,7 @@ pub struct ProtocolSettings {
     /// MAx number of operations kept for propagation
     pub max_ops_kept_for_propagation: usize,
     /// Max number of endorsements merged into a single propagation round
+    #[serde(default = "default_max_endorsements_per_propagation_round")]
     pub max_endorsements_per_propagation_round: usize,
     /// Time threshold after which operation are not propagated
     pub max_operations_propagation_time: MassaTime,
@@ -438,4 +454,70 @@ pub struct BlockDumpSettings {
 #[test]
 fn test_load_node_config() {
     let _ = *SETTINGS;
+}
+
+/// The defaults of the keys added in MAIN.5.1 must match the base config.
+#[cfg(test)]
+#[test]
+fn test_new_keys_defaults_match_base_config() {
+    assert_eq!(
+        SETTINGS.execution.readonly_starvation_timeout,
+        default_readonly_starvation_timeout()
+    );
+    assert_eq!(
+        SETTINGS.execution.query_state_deadline_ms,
+        default_query_state_deadline_ms()
+    );
+    assert_eq!(
+        SETTINGS.protocol.max_endorsements_per_propagation_round,
+        default_max_endorsements_per_propagation_round()
+    );
+}
+
+/// A base config without the keys added in MAIN.5.1, such as the MAIN.5.0 one, still loads.
+#[cfg(test)]
+#[test]
+fn test_load_base_config_without_new_keys() {
+    const NEW_KEYS: [&str; 3] = [
+        "readonly_starvation_timeout",
+        "query_state_deadline_ms",
+        "max_endorsements_per_propagation_round",
+    ];
+    let base_config = std::fs::read_to_string("base_config/config.toml").unwrap();
+    let without_new_keys: String = base_config
+        .lines()
+        .filter(|line| {
+            !NEW_KEYS
+                .iter()
+                .any(|key| line.trim_start().starts_with(&format!("{key} =")))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert_eq!(
+        base_config.lines().count() - without_new_keys.lines().count(),
+        NEW_KEYS.len()
+    );
+
+    let settings: Settings = config::Config::builder()
+        .add_source(config::File::from_str(
+            &without_new_keys,
+            config::FileFormat::Toml,
+        ))
+        .build()
+        .unwrap()
+        .try_deserialize()
+        .unwrap();
+
+    assert_eq!(
+        settings.execution.readonly_starvation_timeout,
+        SETTINGS.execution.readonly_starvation_timeout
+    );
+    assert_eq!(
+        settings.execution.query_state_deadline_ms,
+        SETTINGS.execution.query_state_deadline_ms
+    );
+    assert_eq!(
+        settings.protocol.max_endorsements_per_propagation_round,
+        SETTINGS.protocol.max_endorsements_per_propagation_round
+    );
 }

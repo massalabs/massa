@@ -109,3 +109,6 @@ massa_db_worker = { workspace = true }
 massa_event_cache = { workspace = true }
 massa_execution_worker = { workspace = true }
 tikv-jemalloc-sys = { workspace = true, optional = true }
+
+[dev-dependencies]
+config = { workspace = true }
