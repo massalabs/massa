@@ -9,7 +9,8 @@ use massa_models::{
     config::THREAD_COUNT,
     slot::{Slot, SLOT_KEY_SIZE},
 };
-use rocksdb::{DBCompressionType, Options};
+use rocksdb::{DBCompressionType, Options, ReadOptions};
+use tracing::warn;
 
 /// Parse a block-dump file name of the form `block_slot_{thread}_{period}.bin`
 /// back into its [`Slot`]. Returns `None` for names that don't match.
@@ -42,22 +43,35 @@ fn load_saved_slots_from_folder(folder: &Path) -> VecDeque<Slot> {
 
 /// Rebuild the retention queue (oldest first) from block dumps already present
 /// in the RocksDB store, so that the `max_blocks` cap survives restarts.
+///
+/// This runs on node startup, before the execution worker starts, over a store
+/// that can hold millions of dumped blocks, so the scan is tuned for a single
+/// sequential pass: only keys are read (values are never copied), and since
+/// keys are sortable slot keys they already come out oldest first.
 fn load_saved_slots_from_db(db: &rocksdb::DB) -> VecDeque<Slot> {
-    let mut slots: Vec<Slot> = db
-        .iterator(rocksdb::IteratorMode::Start)
-        .filter_map(|res| res.ok())
-        .filter_map(|(key, _)| {
-            let key: [u8; SLOT_KEY_SIZE] = key.as_ref().try_into().ok()?;
+    let mut read_opts = ReadOptions::default();
+    // one-shot scan: don't evict useful blocks from the block cache
+    read_opts.fill_cache(false);
+    read_opts.set_verify_checksums(false);
+    read_opts.set_readahead_size(8 * 1024 * 1024);
+    read_opts.set_async_io(true);
+
+    let mut slots = VecDeque::new();
+    let mut iter = db.raw_iterator_opt(read_opts);
+    iter.seek_to_first();
+    while let Some(key) = iter.key() {
+        if let Ok(key) = <[u8; SLOT_KEY_SIZE]>::try_from(key) {
             let slot = Slot::from_bytes_key(&key);
-            if slot.thread >= THREAD_COUNT {
-                None
-            } else {
-                Some(slot)
+            if slot.thread < THREAD_COUNT {
+                slots.push_back(slot);
             }
-        })
-        .collect();
-    slots.sort_unstable();
-    VecDeque::from(slots)
+        }
+        iter.next();
+    }
+    if let Err(e) = iter.status() {
+        warn!("block dump store scan stopped early: {}", e);
+    }
+    slots
 }
 
 /// A trait that defines the interface for a storage backend for the dump-block
@@ -273,5 +287,32 @@ mod tests {
         assert_eq!(data, Some(value.clone()));
         let data = storage.read(&slot_3);
         assert_eq!(data, Some(value.clone()));
+    }
+
+    #[test]
+    fn rocksdb_backend_reload_is_slot_ordered() {
+        let dir = tempfile::tempdir().unwrap();
+        let value = vec![1, 2, 3];
+        // written out of order, across threads and periods
+        let slots = [
+            Slot::new(3, 0),
+            Slot::new(1, 5),
+            Slot::new(2, 0),
+            Slot::new(1, 0),
+            Slot::new(256, 1),
+        ];
+        {
+            let mut storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 100);
+            for slot in &slots {
+                storage.write(slot, &value);
+            }
+            // keys that are not slot keys must be ignored on reload
+            storage.db.put(b"not a slot key", &value).unwrap();
+        }
+
+        let storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 100);
+        let mut expected = slots.to_vec();
+        expected.sort_unstable();
+        assert_eq!(storage.slots_saved, VecDeque::from(expected));
     }
 }
