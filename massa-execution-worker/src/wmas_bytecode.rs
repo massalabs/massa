@@ -4,12 +4,12 @@
 //! Fixed WMAS bytecode, embedded as an in-source byte array so the patch
 //! carries no external build artifact.
 //!
-//! Source: massa-standards smart-contracts/build/WMAS.wasm
+//! Source: massa-standards smart-contracts/build/WMAS.wasm (`npm run build`), at
+//! commit 59dcf3cdbe0aad204bfc131b08b7602539e75828 (tag `wmas-mrc20-0.1.0`). Its
+//! MRC20 code is the one of massa-standards main at
+//! 70a3775da6625a65f6a5f3a00e9093dce9b44183, up to doc comments.
 //! Length: 29113 bytes
 //! sha256: 4db528b941d4370987d32c4a299b3629e5134ca05ab1cde6715ee31b5776f6c7
-//!
-//! TODO(release): regenerate from the reproducible, audited build of the
-//! actually deployed WMAS contract and verify the sha256 above before enabling.
 #[rustfmt::skip]
 pub const PATCHED_WMAS_BYTECODE: &[u8] = &[
     0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x59, 0x10, 0x60, 0x01, 0x7f, 0x01, 0x7f, 
