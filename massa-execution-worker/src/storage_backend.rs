@@ -5,12 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use massa_models::{
-    config::THREAD_COUNT,
-    slot::{Slot, SLOT_KEY_SIZE},
-};
-use rocksdb::{DBCompressionType, Options, ReadOptions};
-use tracing::warn;
+use massa_models::{config::THREAD_COUNT, slot::Slot};
+use rocksdb::{DBCompressionType, Options, WriteBatch};
 
 /// Parse a block-dump file name of the form `block_slot_{thread}_{period}.bin`
 /// back into its [`Slot`]. Returns `None` for names that don't match.
@@ -39,39 +35,6 @@ fn load_saved_slots_from_folder(folder: &Path) -> VecDeque<Slot> {
     };
     slots.sort_unstable();
     VecDeque::from(slots)
-}
-
-/// Rebuild the retention queue (oldest first) from block dumps already present
-/// in the RocksDB store, so that the `max_blocks` cap survives restarts.
-///
-/// This runs on node startup, before the execution worker starts, over a store
-/// that can hold millions of dumped blocks, so the scan is tuned for a single
-/// sequential pass: only keys are read (values are never copied), and since
-/// keys are sortable slot keys they already come out oldest first.
-fn load_saved_slots_from_db(db: &rocksdb::DB) -> VecDeque<Slot> {
-    let mut read_opts = ReadOptions::default();
-    // one-shot scan: don't evict useful blocks from the block cache
-    read_opts.fill_cache(false);
-    read_opts.set_verify_checksums(false);
-    read_opts.set_readahead_size(8 * 1024 * 1024);
-    read_opts.set_async_io(true);
-
-    let mut slots = VecDeque::new();
-    let mut iter = db.raw_iterator_opt(read_opts);
-    iter.seek_to_first();
-    while let Some(key) = iter.key() {
-        if let Ok(key) = <[u8; SLOT_KEY_SIZE]>::try_from(key) {
-            let slot = Slot::from_bytes_key(&key);
-            if slot.thread < THREAD_COUNT {
-                slots.push_back(slot);
-            }
-        }
-        iter.next();
-    }
-    if let Err(e) = iter.status() {
-        warn!("block dump store scan stopped early: {}", e);
-    }
-    slots
 }
 
 /// A trait that defines the interface for a storage backend for the dump-block
@@ -142,10 +105,28 @@ impl StorageBackend for FileStorageBackend {
     }
 }
 
+/// Oldest slot to keep when `slot` is written and only the last `max_blocks`
+/// slots are retained. Returns `None` while the window still reaches genesis.
+fn oldest_kept_slot(slot: &Slot, max_blocks: u64) -> Option<Slot> {
+    let index = slot
+        .period
+        .checked_mul(THREAD_COUNT as u64)?
+        .checked_add(slot.thread as u64)?;
+    let oldest = index.checked_sub(max_blocks.saturating_sub(1))?;
+    Some(Slot::new(
+        oldest / THREAD_COUNT as u64,
+        (oldest % THREAD_COUNT as u64) as u8,
+    ))
+}
+
 /// A storage backend that uses RocksDB as the underlying storage engine.
+///
+/// Every final slot is dumped (missed slots with an empty value), so retention
+/// keeps the last `max_blocks` slots: this needs no scan of the store on startup.
 pub struct RocksDBStorageBackend {
     db: rocksdb::DB,
-    slots_saved: VecDeque<Slot>,
+    /// oldest slot kept, as of the last write since startup
+    oldest_kept: Option<Slot>,
     max_blocks: u64,
 }
 
@@ -160,10 +141,9 @@ impl RocksDBStorageBackend {
         let db = rocksdb::DB::open(&opts, path.clone())
             .unwrap_or_else(|_| panic!("Failed to create storage db at {:?}", path));
 
-        let slots_saved = load_saved_slots_from_db(&db);
         Self {
             db,
-            slots_saved,
+            oldest_kept: None,
             max_blocks,
         }
     }
@@ -171,16 +151,27 @@ impl RocksDBStorageBackend {
 
 impl StorageBackend for RocksDBStorageBackend {
     fn write(&mut self, slot: &Slot, value: &[u8]) {
-        if self.slots_saved.len() >= self.max_blocks as usize {
-            let slot_to_remove = self.slots_saved.pop_front().unwrap();
-            self.db
-                .delete(slot_to_remove.to_bytes_key())
-                .expect("Unable to delete block from db");
+        let mut batch = WriteBatch::default();
+        if let Some(oldest_kept) = oldest_kept_slot(slot, self.max_blocks) {
+            match self.oldest_kept {
+                // window did not move forward
+                Some(prev) if prev >= oldest_kept => {}
+                // steady state: exactly one slot fell out of the window
+                Some(prev) if prev.get_next_slot(THREAD_COUNT).ok() == Some(oldest_kept) => {
+                    batch.delete(prev.to_bytes_key());
+                    self.oldest_kept = Some(oldest_kept);
+                }
+                // first write since startup (entries left from before a restart,
+                // a downtime gap or a lowered `max_blocks`) or a gap in written
+                // slots: drop everything older than the window in one range delete
+                _ => {
+                    batch.delete_range(Slot::new(0, 0).to_bytes_key(), oldest_kept.to_bytes_key());
+                    self.oldest_kept = Some(oldest_kept);
+                }
+            }
         }
-        self.db
-            .put(slot.to_bytes_key(), value)
-            .expect("Unable to write block to db");
-        self.slots_saved.push_back(*slot);
+        batch.put(slot.to_bytes_key(), value);
+        self.db.write(&batch).expect("Unable to write block to db");
     }
 
     fn read(&self, slot: &Slot) -> Option<Vec<u8>> {
@@ -260,27 +251,19 @@ mod tests {
 
     #[test]
     fn test_rocksdb_storage_backend() {
-        let slot = Slot {
-            thread: 1,
-            period: 1,
-        };
-        let slot_2 = Slot {
-            thread: 1,
-            period: 2,
-        };
-        let slot_3 = Slot {
-            thread: 1,
-            period: 3,
-        };
+        let dir = tempfile::tempdir().unwrap();
+        let slot = Slot::new(1, 1);
+        let slot_2 = Slot::new(1, 2);
+        let slot_3 = Slot::new(1, 3);
         let value = vec![1, 2, 3];
 
-        let mut storage = RocksDBStorageBackend::new(PathBuf::from("test_db"), 2);
+        let mut storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 2);
         storage.write(&slot, &value);
         storage.write(&slot_2, &value);
         storage.write(&slot_3, &value);
         drop(storage);
 
-        let storage = RocksDBStorageBackend::new(PathBuf::from("test_db"), 2);
+        let storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 2);
         let data = storage.read(&slot);
         assert_eq!(data, None);
         let data = storage.read(&slot_2);
@@ -290,29 +273,62 @@ mod tests {
     }
 
     #[test]
-    fn rocksdb_backend_reload_is_slot_ordered() {
+    fn rocksdb_backend_window_slides_across_restart_and_period_boundary() {
         let dir = tempfile::tempdir().unwrap();
         let value = vec![1, 2, 3];
-        // written out of order, across threads and periods
-        let slots = [
-            Slot::new(3, 0),
-            Slot::new(1, 5),
-            Slot::new(2, 0),
-            Slot::new(1, 0),
-            Slot::new(256, 1),
-        ];
+        let last_thread = THREAD_COUNT - 1;
+        let s1 = Slot::new(1, last_thread - 1);
+        let s2 = Slot::new(1, last_thread);
+        let s3 = Slot::new(2, 0);
+        let s4 = Slot::new(2, 1);
+
+        {
+            let mut storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 2);
+            storage.write(&s1, &value);
+            storage.write(&s2, &value);
+        }
+        // restart: retention keeps applying to dumps written before it
+        let mut storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 2);
+        storage.write(&s3, &value);
+        assert_eq!(storage.read(&s1), None);
+        assert_eq!(storage.read(&s2), Some(value.clone()));
+        storage.write(&s4, &value);
+        assert_eq!(storage.read(&s2), None);
+        assert_eq!(storage.read(&s3), Some(value.clone()));
+        assert_eq!(storage.read(&s4), Some(value.clone()));
+    }
+
+    #[test]
+    fn rocksdb_backend_drops_dumps_older_than_window_after_gap() {
+        let dir = tempfile::tempdir().unwrap();
+        let value = vec![1, 2, 3];
+        let old = [Slot::new(1, 0), Slot::new(1, 1), Slot::new(1, 2)];
+        let recent = Slot::new(10, 0);
+
         {
             let mut storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 100);
-            for slot in &slots {
+            for slot in &old {
                 storage.write(slot, &value);
             }
-            // keys that are not slot keys must be ignored on reload
-            storage.db.put(b"not a slot key", &value).unwrap();
         }
+        // restart after downtime, with a lowered cap: the old dumps fall out of the window
+        let mut storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 3);
+        storage.write(&recent, &value);
+        for slot in &old {
+            assert_eq!(storage.read(slot), None);
+        }
+        assert_eq!(storage.read(&recent), Some(value.clone()));
+    }
 
-        let storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 100);
-        let mut expected = slots.to_vec();
-        expected.sort_unstable();
-        assert_eq!(storage.slots_saved, VecDeque::from(expected));
+    #[test]
+    fn oldest_kept_slot_window() {
+        assert_eq!(oldest_kept_slot(&Slot::new(0, 1), 3), None);
+        assert_eq!(oldest_kept_slot(&Slot::new(0, 2), 3), Some(Slot::new(0, 0)));
+        assert_eq!(
+            oldest_kept_slot(&Slot::new(1, 0), 2),
+            Some(Slot::new(0, THREAD_COUNT - 1))
+        );
+        assert_eq!(oldest_kept_slot(&Slot::new(5, 3), 1), Some(Slot::new(5, 3)));
+        assert_eq!(oldest_kept_slot(&Slot::new(5, 3), 0), Some(Slot::new(5, 3)));
     }
 }
