@@ -6,7 +6,7 @@
 //! WMAS is a widely-used singleton that cannot be redeployed without forcing
 //! every holder and integration to migrate. Instead, at the activation of
 //! [`MipComponent::Execution`] version `MIP_0002_EXECUTION_VERSION`, every node
-//! deterministically overwrites the WMAS bytecode with an audited fixed build.
+//! deterministically overwrites the WMAS bytecode with a fixed build.
 //!
 //! Safety of the approach:
 //! - Bytecode is stored separately from the datastore and the coin balance, so
@@ -30,13 +30,9 @@
 //! slot, together with the rest of the next release's breaking changes — there
 //! is no separate WMAS MIP.
 //!
-//! IMPORTANT: because it is bundled with `MIP-0002-BugFix` (which has real
-//! activation dates), this patch is NOT inert until a future date. Before that
-//! release ships, `wmas_bytecode.rs` MUST be regenerated from the reproducible,
-//! audited build of the deployed WMAS contract (it currently embeds a dev build)
-//! and the per-network `WMAS_ADDRESS_*` constants verified. The fail-safe in
-//! `execute_slot` only skips on an unknown chain_id or missing contract, so
-//! a wrong-but-valid blob would still be applied.
+//! The fail-safe in `execute_slot` only skips on an unknown chain_id or missing
+//! contract: a wrong-but-valid blob would still be applied. Any change to
+//! `wmas_bytecode.rs` must keep its source commit and sha256 up to date.
 
 use massa_models::{address::Address, bytecode::Bytecode};
 use std::str::FromStr;
@@ -51,12 +47,8 @@ pub const WMAS_ADDRESS_MAINNET: &str = "AS12U4TZfNK7qoLyEERBBRDMu8nm5MKoRzPXDXan
 /// Deployed WMAS address on buildnet.
 pub const WMAS_ADDRESS_BUILDNET: &str = "AS12FW5Rs5YN2zdpEnqwj4iHUUPt9R4Eqjq2qtpJFNKW3mn33RuLU";
 
-/// Audited fixed WMAS bytecode, embedded as an in-source byte array (see
-/// [`crate::wmas_bytecode`]).
-///
-/// TODO(release): regenerate `wmas_bytecode.rs` from the reproducible, audited
-/// build of the actually deployed WMAS contract before enabling the activation
-/// MIP.
+/// Fixed WMAS bytecode (MRC20 0.1.0), embedded as an in-source byte array (see
+/// [`crate::wmas_bytecode`] for its source commit and sha256).
 pub const PATCHED_WMAS_BYTECODE: &[u8] = crate::wmas_bytecode::PATCHED_WMAS_BYTECODE;
 
 // Some checks at compile time that should not be ignored!
