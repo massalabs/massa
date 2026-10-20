@@ -45,3 +45,6 @@ mod tests_datastore_materialization;
 mod tests_event_indexing;
 
 mod interface;
+
+#[cfg(test)]
+mod tests_event_lifecycle;
