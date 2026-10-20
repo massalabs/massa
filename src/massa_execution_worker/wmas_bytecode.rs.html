@@ -4,12 +4,12 @@
 <a href=#4 id=4 data-nosnippet>4</a>//! Fixed WMAS bytecode, embedded as an in-source byte array so the patch
 <a href=#5 id=5 data-nosnippet>5</a>//! carries no external build artifact.
 <a href=#6 id=6 data-nosnippet>6</a>//!
-<a href=#7 id=7 data-nosnippet>7</a>//! Source: massa-standards smart-contracts/build/WMAS.wasm
-<a href=#8 id=8 data-nosnippet>8</a>//! Length: 29113 bytes
-<a href=#9 id=9 data-nosnippet>9</a>//! sha256: 4db528b941d4370987d32c4a299b3629e5134ca05ab1cde6715ee31b5776f6c7
-<a href=#10 id=10 data-nosnippet>10</a>//!
-<a href=#11 id=11 data-nosnippet>11</a>//! TODO(release): regenerate from the reproducible, audited build of the
-<a href=#12 id=12 data-nosnippet>12</a>//! actually deployed WMAS contract and verify the sha256 above before enabling.
+<a href=#7 id=7 data-nosnippet>7</a>//! Source: massa-standards smart-contracts/build/WMAS.wasm (`npm run build`), at
+<a href=#8 id=8 data-nosnippet>8</a>//! commit 59dcf3cdbe0aad204bfc131b08b7602539e75828 (tag `wmas-mrc20-0.1.0`). Its
+<a href=#9 id=9 data-nosnippet>9</a>//! MRC20 code is the one of massa-standards main at
+<a href=#10 id=10 data-nosnippet>10</a>//! 70a3775da6625a65f6a5f3a00e9093dce9b44183, up to doc comments.
+<a href=#11 id=11 data-nosnippet>11</a>//! Length: 29113 bytes
+<a href=#12 id=12 data-nosnippet>12</a>//! sha256: 4db528b941d4370987d32c4a299b3629e5134ca05ab1cde6715ee31b5776f6c7
 <a href=#13 id=13 data-nosnippet>13</a></span><span class="attr">#[rustfmt::skip]
 <a href=#14 id=14 data-nosnippet>14</a></span><span class="kw">pub const </span>PATCHED_WMAS_BYTECODE: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>[
 <a href=#15 id=15 data-nosnippet>15</a>    <span class="number">0x00</span>, <span class="number">0x61</span>, <span class="number">0x73</span>, <span class="number">0x6d</span>, <span class="number">0x01</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x01</span>, <span class="number">0x59</span>, <span class="number">0x10</span>, <span class="number">0x60</span>, <span class="number">0x01</span>, <span class="number">0x7f</span>, <span class="number">0x01</span>, <span class="number">0x7f</span>, 
