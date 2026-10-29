@@ -1,7 +1,7 @@
 use crate::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
-use massa_hash::Hash;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_sc_runtime::{CondomLimits, GasCosts, RuntimeModule};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::RngCore;
@@ -102,9 +102,22 @@ impl HDCache {
         self.entry_count = 0;
     }
 
-    /// Insert a new module in the cache
+    /// Whether a module is stored for `hash`.
+    /// A module key is always written together with its metadata key, see `insert`.
+    fn contains(&self, hash: Hash) -> bool {
+        self.db
+            .as_ref()
+            .expect(CRUD_ERROR)
+            .get_pinned(module_key!(hash))
+            .expect(CRUD_ERROR)
+            .is_some()
+    }
+
+    /// Insert a new module in the cache, or overwrite an already stored one
     pub fn insert(&mut self, hash: Hash, module_info: ModuleInfo) {
-        if self.entry_count >= self.max_entry_count {
+        // only count new entries, so that `entry_count` matches the stored modules
+        let is_new = !self.contains(hash);
+        if is_new && self.entry_count >= self.max_entry_count {
             self.snip();
         }
 
@@ -139,7 +152,9 @@ impl HDCache {
             .write(&batch)
             .expect(CRUD_ERROR);
 
-        self.entry_count = self.entry_count.saturating_add(1);
+        if is_new {
+            self.entry_count = self.entry_count.saturating_add(1);
+        }
 
         debug!("(HD insert) entry_count is: {}", self.entry_count);
     }
@@ -150,6 +165,11 @@ impl HDCache {
     /// * `hash`: hash associated to the module for which we want to set the cost
     /// * `init_cost`: the new cost associated to the module
     pub fn set_init_cost(&self, hash: Hash, init_cost: u64) {
+        // The module may be absent (snipped, or only in the LRU cache): writing its metadata
+        // alone would leave an orphan key, so skip it.
+        if !self.contains(hash) {
+            return;
+        }
         let mut ser_metadata = Vec::new();
         self.meta_ser
             .serialize(&ModuleMetadata::Delta(init_cost), &mut ser_metadata)
@@ -163,6 +183,10 @@ impl HDCache {
 
     /// Sets a given module as invalid
     pub fn set_invalid(&self, hash: Hash, err_msg: String) {
+        // see `set_init_cost`
+        if !self.contains(hash) {
+            return;
+        }
         let mut ser_metadata = Vec::new();
         self.meta_ser
             .serialize(&ModuleMetadata::Invalid(err_msg), &mut ser_metadata)
@@ -223,51 +247,54 @@ impl HDCache {
         }
     }
 
-    /// Try to remove as much as `self.amount_to_snip` entries from the db
+    /// Try to remove as much as `self.snip_amount` entries from the db.
+    ///
+    /// Walks the keys from a random point of the key space, wrapping around once, and removes
+    /// every visited key. It does not assume that module and metadata keys come in pairs, so a
+    /// stray key is removed instead of crashing the node, and only removed modules are counted.
     fn snip(&mut self) {
-        let mut iter = self.db.as_ref().expect(CRUD_ERROR).raw_iterator();
+        let db = self.db.as_ref().expect(CRUD_ERROR);
         let mut batch = WriteBatch::default();
         let mut snipped_count: usize = 0;
 
+        // random starting point
+        let mut rbytes = [0u8; 16];
+        rand::thread_rng().fill_bytes(&mut rbytes);
+        let start = *Hash::compute_from(&rbytes).to_bytes();
+
+        let mut iter = db.raw_iterator();
+        iter.seek(start);
+        let mut wrapped = false;
         while snipped_count < self.snip_amount {
-            // generate a random key
-            let mut rbytes = [0u8; 16];
-            rand::thread_rng().fill_bytes(&mut rbytes);
-            let key = *Hash::compute_from(&rbytes).to_bytes();
-
-            // take the upper existing key
-            iter.seek_for_prev(key);
-
-            // check iterator validity
-            if !iter.valid() {
+            let Some(key) = iter.key() else {
+                // end of the db (or read error): wrap around once
+                iter.status().expect(CRUD_ERROR);
+                if wrapped {
+                    break;
+                }
+                wrapped = true;
+                iter.seek_to_first();
                 continue;
+            };
+            if wrapped && key >= &start[..] {
+                // every key has been visited
+                break;
             }
 
-            // unwrap justified by above conditional statement.
-            // seeking the previous key of a randombly generated one
-            // will always end up on a metadata key.
-            let metadata_key = iter.key().unwrap();
-            batch.delete(metadata_key);
-            iter.prev();
-            let module_key = iter.key().unwrap();
-            batch.delete(module_key);
-
-            // increase snipped_count
-            snipped_count += 1;
+            batch.delete(key);
+            if key.len() == HASH_SIZE_BYTES + 1 && key[HASH_SIZE_BYTES] == MODULE_IDENT {
+                // its metadata key comes right after: delete it now in case we stop here
+                let mut metadata_key = key.to_vec();
+                metadata_key[HASH_SIZE_BYTES] = DATA_IDENT;
+                batch.delete(metadata_key);
+                snipped_count += 1;
+            }
+            iter.next();
         }
 
-        // safety check
-        if batch.len() / 2 != snipped_count {
-            panic!("snipped_count incoherence");
-        }
-
-        // delete the key and reduce entry_count
-        self.db
-            .as_ref()
-            .expect(CRUD_ERROR)
-            .write(&batch)
-            .expect(CRUD_ERROR);
-        self.entry_count -= snipped_count;
+        // delete the keys and reduce entry_count
+        db.write(&batch).expect(CRUD_ERROR);
+        self.entry_count = self.entry_count.saturating_sub(snipped_count);
     }
 }
 
@@ -358,6 +385,84 @@ mod tests {
             cache.max_entry_count - cache.snip_amount + 1
         );
         dbg!(cache.entry_count);
+    }
+
+    /// Number of module keys stored in the db, i.e. the actual entry count
+    fn stored_module_count(cache: &HDCache) -> usize {
+        cache
+            .db
+            .as_ref()
+            .unwrap()
+            .iterator(IteratorMode::Start)
+            .filter(|kv| {
+                let (key, _) = kv.as_ref().unwrap();
+                key.len() == HASH_SIZE_BYTES + 1 && key[HASH_SIZE_BYTES] == MODULE_IDENT
+            })
+            .count()
+    }
+
+    #[test]
+    #[serial]
+    fn test_metadata_update_of_missing_module_is_ignored() {
+        let cache = setup();
+        let hash = Hash::compute_from(b"never_inserted");
+
+        cache.set_init_cost(hash, 100);
+        cache.set_invalid(hash, "test_error".to_string());
+
+        // no orphan metadata key is written
+        let mut iter = cache.db.as_ref().unwrap().iterator(IteratorMode::Start);
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    #[serial]
+    fn test_overwrite_does_not_grow_entry_count() {
+        let mut cache = setup();
+        let hash = Hash::compute_from(b"test_hash");
+        let module = make_default_module_info();
+
+        cache.insert(hash, module.clone());
+        cache.insert(hash, module);
+        assert_eq!(cache.entry_count, 1);
+        assert_eq!(stored_module_count(&cache), 1);
+    }
+
+    #[test]
+    #[serial]
+    fn test_snip_survives_stray_keys() {
+        let tmp_path = TempDir::new().unwrap().path().to_path_buf();
+        let mut cache = HDCache::new(tmp_path, 20, 5);
+        let module = make_default_module_info();
+
+        // stray keys: an orphan metadata key that is the smallest possible key (the previous
+        // implementation stepped back from it past the start of the db and panicked), and a key
+        // that does not follow the cache layout
+        let db = cache.db.as_ref().unwrap();
+        db.put(metadata_key!(Hash::from_bytes(&[0u8; 32])), [0u8])
+            .unwrap();
+        db.put([0xAAu8; 7], [0u8]).unwrap();
+
+        for count in 0..500 {
+            let key = Hash::compute_from(count.to_string().as_bytes());
+            cache.insert(key, module.clone());
+            assert!(cache.entry_count <= cache.max_entry_count);
+            assert_eq!(cache.entry_count, stored_module_count(&cache));
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_snip_amount_larger_than_entry_count() {
+        let tmp_path = TempDir::new().unwrap().path().to_path_buf();
+        let mut cache = HDCache::new(tmp_path, 3, 10);
+        let module = make_default_module_info();
+
+        for count in 0..10 {
+            let key = Hash::compute_from(count.to_string().as_bytes());
+            cache.insert(key, module.clone());
+            assert_eq!(cache.entry_count, stored_module_count(&cache));
+        }
     }
 
     #[test]
