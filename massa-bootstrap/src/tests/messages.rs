@@ -328,6 +328,7 @@ fn test_accepts_max_sized_ledger_db_entries() {
     use massa_ledger_exports::{max_ledger_db_key_length, Key, KeySerializer, KeyType};
     use massa_models::address::Address;
     use massa_models::bytecode::{Bytecode, BytecodeSerializer};
+    use massa_models::slot::Slot;
     use massa_models::streaming_step::StreamingStep;
     use massa_signature::KeyPair;
 
@@ -378,7 +379,8 @@ fn test_accepts_max_sized_ledger_db_entries() {
 
     // client cursor
     let msg = BootstrapClientMessage::AskBootstrapPart {
-        last_slot: None,
+        // the cursors are only serialized along with a slot
+        last_slot: Some(Slot::new(1, 0)),
         last_state_step: StreamingStep::Ongoing(db_key),
         last_versioning_step: StreamingStep::Started,
         last_consensus_step: StreamingStep::Started,
