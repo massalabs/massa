@@ -6,13 +6,14 @@ use massa_consensus_exports::bootstrapable_graph::{
 };
 
 use massa_db_exports::StreamBatch;
+use massa_ledger_exports::max_ledger_db_key_length;
 
 use massa_models::block::BlockDeserializerArgs;
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 
 use massa_models::config::{
     bootstrap_batch_allocation_budget, BOOTSTRAP_BATCH_ENTRY_OVERHEAD,
-    MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE,
+    MAX_BOOTSTRAP_MESSAGE_FROM_SERVER_SIZE, MAX_BYTECODE_LENGTH,
 };
 use massa_models::prehash::PreHashSet;
 use massa_models::serialization::{
@@ -45,6 +46,17 @@ use nom::{
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
+
+/// Upper bound of the serialization overhead of a bytecode stored in the state DB:
+/// its version and its length, both u64 varints (at most 10 bytes each).
+const BYTECODE_DB_VALUE_OVERHEAD: u64 = 2 * 10;
+
+/// Maximum length of a raw state DB value streamed during bootstrap. Besides datastore
+/// values, the state holds serialized bytecodes, which are slightly larger than
+/// `MAX_BYTECODE_LENGTH`.
+pub(crate) fn max_state_db_value_length(max_datastore_value_length: u64) -> u64 {
+    max_datastore_value_length.max(MAX_BYTECODE_LENGTH.saturating_add(BYTECODE_DB_VALUE_OVERHEAD))
+}
 
 /// Messages used during bootstrap by server
 #[derive(Debug, Clone)]
@@ -364,17 +376,20 @@ impl BootstrapServerMessageDeserializer {
                 args.max_advertise_length,
                 args.max_listeners_per_peer,
             ),
+            // Streamed state keys/values are raw DB entries: a ledger datastore DB key is
+            // longer than the datastore key itself, and a bytecode DB value is longer than
+            // the bytecode, so bound them by their serialized maximums.
             datastore_key_deserializer: VecU8Deserializer::new(
                 Included(0),
-                Included(args.max_datastore_key_length.into()),
+                Included(max_ledger_db_key_length(args.max_datastore_key_length)),
             ),
             datastore_val_deserializer: VecU8Deserializer::new(
                 Included(0),
-                Included(args.max_datastore_value_length),
+                Included(max_state_db_value_length(args.max_datastore_value_length)),
             ),
             opt_vec_u8_deserializer: OptionDeserializer::new(VecU8Deserializer::new(
                 Included(0),
-                Included(args.max_datastore_value_length),
+                Included(max_state_db_value_length(args.max_datastore_value_length)),
             )),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
                 block_args,
@@ -928,9 +943,10 @@ impl BootstrapClientMessageDeserializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
+            // The cursor is the last raw state DB key received, see `datastore_key_deserializer`
             state_step_deserializer: StreamingStepDeserializer::new(VecU8Deserializer::new(
                 Included(0),
-                Included(max_datastore_key_length.into()),
+                Included(max_ledger_db_key_length(max_datastore_key_length)),
             )),
             block_ids_step_deserializer: StreamingStepDeserializer::new(
                 PreHashSetDeserializer::new(

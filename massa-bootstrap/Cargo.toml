@@ -38,6 +38,7 @@ stream_limiter = { workspace = true }
 massa_consensus_exports = { workspace = true }
 massa_final_state = { workspace = true }
 massa_hash = { workspace = true }
+massa_ledger_exports = { workspace = true }
 massa_logging = { workspace = true }
 massa_models = { workspace = true }
 massa_protocol_exports = { workspace = true }
@@ -58,7 +59,6 @@ serial_test = { workspace = true }                                            # 
 num = { workspace = true }
 massa_final_state = { workspace = true, "features" = ["test-exports"] }
 massa_async_pool = { workspace = true, "features" = ["test-exports"] }
-massa_ledger_exports = { workspace = true }
 massa_ledger_worker = { workspace = true, "features" = ["test-exports"] }
 massa_executed_ops = { workspace = true }
 massa_pos_exports = { workspace = true, "features" = ["test-exports"] }
