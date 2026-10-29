@@ -1,9 +1,9 @@
 (function() {
-    var implementors = Object.fromEntries([["massa_db_worker",[["impl <a class=\"trait\" href=\"massa_db_exports/controller/trait.MassaDBController.html\" title=\"trait massa_db_exports::controller::MassaDBController\">MassaDBController</a> for <a class=\"struct\" href=\"massa_db_worker/struct.RawMassaDB.html\" title=\"struct massa_db_worker::RawMassaDB\">RawMassaDB</a>&lt;<a class=\"struct\" href=\"massa_models/slot/struct.Slot.html\" title=\"struct massa_models::slot::Slot\">Slot</a>, <a class=\"struct\" href=\"massa_models/slot/struct.SlotSerializer.html\" title=\"struct massa_models::slot::SlotSerializer\">SlotSerializer</a>, <a class=\"struct\" href=\"massa_models/slot/struct.SlotDeserializer.html\" title=\"struct massa_models::slot::SlotDeserializer\">SlotDeserializer</a>&gt;"]]]]);
+    var implementors = Object.fromEntries([["massa_db_worker",[["impl MassaDBController for <a class=\"struct\" href=\"massa_db_worker/struct.RawMassaDB.html\" title=\"struct massa_db_worker::RawMassaDB\">RawMassaDB</a>&lt;<a class=\"struct\" href=\"massa_models/slot/struct.Slot.html\" title=\"struct massa_models::slot::Slot\">Slot</a>, <a class=\"struct\" href=\"massa_models/slot/struct.SlotSerializer.html\" title=\"struct massa_models::slot::SlotSerializer\">SlotSerializer</a>, <a class=\"struct\" href=\"massa_models/slot/struct.SlotDeserializer.html\" title=\"struct massa_models::slot::SlotDeserializer\">SlotDeserializer</a>&gt;"]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
         window.pending_implementors = implementors;
     }
 })()
-//{"start":57,"fragment_lengths":[753]}
+//{"start":57,"fragment_lengths":[600]}
