@@ -154,14 +154,32 @@ pub fn datastore_prefix_from_address(address: &Address, prefix: &[u8]) -> Vec<u8
     res_prefix
 }
 
+/// Serialized size of `value` as a u64 varint (7 bits per byte)
+const fn u64_varint_length(value: u64) -> usize {
+    let bits = (u64::BITS - value.leading_zeros()) as usize;
+    if bits == 0 {
+        1
+    } else {
+        bits.div_ceil(7)
+    }
+}
+
 /// Maximum length of a serialized ledger key as stored in the state DB:
 /// `LEDGER_PREFIX`, key version, address (type, version, hash), `DATASTORE_IDENT` and
 /// a datastore key of at most `max_datastore_key_length` bytes.
 ///
 /// This is larger than `max_datastore_key_length` itself, so anything bounding raw
 /// state DB keys (e.g. bootstrap streaming) must use this instead.
-pub fn max_ledger_db_key_length(max_datastore_key_length: u8) -> u64 {
-    (LEDGER_PREFIX.len() + 1 + 1 + 1 + HASH_SIZE_BYTES + 1) as u64 + max_datastore_key_length as u64
+pub const fn max_ledger_db_key_length(max_datastore_key_length: u8) -> u64 {
+    // The key version is always `KEY_VERSION` (enforced by `KeyDeserializer`). The address
+    // type and version are varints that may grow with new address kinds/versions, so count
+    // them at their maximum size to keep this bound valid without having to update it.
+    (LEDGER_PREFIX.len()
+        + u64_varint_length(KEY_VERSION)
+        + 2 * u64_varint_length(u64::MAX)
+        + HASH_SIZE_BYTES
+        + 1) as u64
+        + max_datastore_key_length as u64
 }
 
 /// Basic key serializer
@@ -293,11 +311,13 @@ impl Deserializer<Key> for KeyDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use super::{max_ledger_db_key_length, Key, KeyDeserializer, KeySerializer, KeyType};
+    use super::{
+        max_ledger_db_key_length, u64_varint_length, Key, KeyDeserializer, KeySerializer, KeyType,
+    };
     use massa_db_exports::LEDGER_PREFIX;
     use massa_models::address::Address;
     use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
-    use massa_serialization::{DeserializeError, Deserializer, Serializer};
+    use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
     use std::str::FromStr;
 
     fn sample_address() -> Address {
@@ -319,8 +339,19 @@ mod tests {
     }
 
     #[test]
-    fn max_ledger_db_key_length_matches_serialized_key() {
-        // The longest datastore key accepted by execution must serialize to exactly the bound.
+    fn u64_varint_length_matches_serializer() {
+        for value in [0, 1, 127, 128, 16_383, 16_384, u32::MAX as u64, u64::MAX] {
+            let mut serialized = Vec::new();
+            U64VarIntSerializer::new()
+                .serialize(&value, &mut serialized)
+                .unwrap();
+            assert_eq!(serialized.len(), u64_varint_length(value), "value {value}");
+        }
+    }
+
+    #[test]
+    fn max_ledger_db_key_length_bounds_serialized_key() {
+        // The longest datastore key accepted by execution must fit within the bound.
         let key = Key::new(
             &sample_address(),
             KeyType::DATASTORE(vec![0xFF; MAX_DATASTORE_KEY_LENGTH as usize]),
@@ -329,10 +360,7 @@ mod tests {
         KeySerializer::new(false)
             .serialize(&key, &mut serialized)
             .unwrap();
-        assert_eq!(
-            serialized.len() as u64,
-            max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH)
-        );
+        assert!(serialized.len() as u64 <= max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH));
         assert!(serialized.len() > MAX_DATASTORE_KEY_LENGTH as usize);
     }
 

@@ -343,10 +343,8 @@ fn test_accepts_max_sized_ledger_db_entries() {
             &mut db_key,
         )
         .unwrap();
-    assert_eq!(
-        db_key.len() as u64,
-        max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH)
-    );
+    assert!(db_key.len() as u64 <= max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH));
+    assert!(db_key.len() > MAX_DATASTORE_KEY_LENGTH as usize);
     let mut db_bytecode = Vec::new();
     BytecodeSerializer::new()
         .serialize(
