@@ -6,10 +6,11 @@ use massa_sc_runtime::{CondomLimits, GasCosts, RuntimeModule};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::RngCore;
 use rocksdb::{Direction, IteratorMode, Options, WriteBatch, DB};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
 
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
+const DESTROY_ERROR: &str = "critical: could not remove the previous module cache db";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const DATA_SER_ERROR: &str = "critical: metadata serialization failed";
 const DATA_DESER_ERROR: &str = "critical: metadata deserialization failed";
@@ -32,6 +33,23 @@ macro_rules! metadata_key {
     ($bc_hash:expr) => {
         [&$bc_hash.to_bytes()[..], &[DATA_IDENT]].concat()
     };
+}
+
+/// Remove the db at `path` if there is one, so that the cache always starts empty.
+///
+/// `entry_count` starts at 0, so silently reopening a db that could not be destroyed would
+/// reuse stale entries (possibly left in a bad state) that are not accounted for.
+fn destroy_db(path: &Path) {
+    if !path.exists() {
+        return;
+    }
+    if let Err(e) = DB::destroy(&Options::default(), path) {
+        warn!(
+            "Failed to destroy the db: {:?}, removing its directory instead",
+            e
+        );
+        std::fs::remove_dir_all(path).expect(DESTROY_ERROR);
+    }
 }
 
 pub(crate) struct HDCache {
@@ -64,11 +82,7 @@ impl HDCache {
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
     pub fn new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -> Self {
         // Reset the DB if it already exists
-        if path.exists() {
-            if let Err(e) = DB::destroy(&Options::default(), path.clone()) {
-                warn!("Failed to destroy the db: {:?}", e);
-            }
-        }
+        destroy_db(&path);
         let db = DB::open_default(path).expect(OPEN_ERROR);
         let entry_count = 0;
 
@@ -91,11 +105,7 @@ impl HDCache {
         let _ = self.db.take();
 
         // Destroy the database files
-        if path.exists() {
-            if let Err(e) = DB::destroy(&Options::default(), path.clone()) {
-                warn!("Failed to destroy the db: {:?}", e);
-            }
-        }
+        destroy_db(&path);
         // Reopen the database
         let db = DB::open_default(&path).expect(OPEN_ERROR);
         self.db = Some(db);
@@ -449,6 +459,41 @@ mod tests {
             assert!(cache.entry_count <= cache.max_entry_count);
             assert_eq!(cache.entry_count, stored_module_count(&cache));
         }
+    }
+
+    #[test]
+    #[serial]
+    fn test_new_and_reset_start_from_an_empty_db() {
+        let tmp_dir = TempDir::new().unwrap();
+        let path = tmp_dir.path().join("hd_cache");
+        let hash = Hash::compute_from(b"test_hash");
+        let gas_costs = GasCosts::default();
+        let condom_limits = CondomLimits::default();
+        let is_empty = |cache: &HDCache| {
+            let mut iter = cache.db.as_ref().unwrap().iterator(IteratorMode::Start);
+            iter.next().is_none()
+        };
+
+        // a previous run left an entry and a stray key on disk
+        {
+            let mut cache = HDCache::new(path.clone(), 1000, 10);
+            cache.insert(hash, make_default_module_info());
+            cache.db.as_ref().unwrap().put([0xAAu8; 7], [0u8]).unwrap();
+        }
+
+        // reopening starts from scratch
+        let mut cache = HDCache::new(path, 1000, 10);
+        assert!(is_empty(&cache));
+        assert!(cache
+            .get(hash, gas_costs.clone(), condom_limits.clone())
+            .is_none());
+
+        // so does a reset
+        cache.insert(hash, make_default_module_info());
+        cache.reset();
+        assert!(is_empty(&cache));
+        assert_eq!(cache.entry_count, 0);
+        assert!(cache.get(hash, gas_costs, condom_limits).is_none());
     }
 
     #[test]
