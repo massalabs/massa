@@ -419,7 +419,10 @@ impl LedgerDB {
                 }
             }
             KeyType::DATASTORE(_) => {
-                if serialized_value.len() >= self.max_datastore_value_length as usize {
+                // Must match the inclusive bound enforced at write time (execution and
+                // `put_entry`/`update_entry`), otherwise a max-sized value is accepted on chain
+                // but rejects the whole DB at startup / after bootstrap.
+                if serialized_value.len() > self.max_datastore_value_length as usize {
                     return false;
                 }
             }
@@ -889,6 +892,36 @@ mod tests {
             .get_sub_entry(&addr, LedgerSubEntry::Balance)
             .is_none());
         assert!(ledger_db.get_entire_datastore(&addr).is_empty());
+    }
+
+    #[test]
+    fn test_is_key_value_valid_datastore_bounds() {
+        let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        // max datastore key length 255, max datastore value length 1000
+        let (ledger_db, _batch, _data) = setup_test_ledger(addr);
+
+        let serialize_key = |datastore_key: Vec<u8>| {
+            let mut serialized_key = Vec::new();
+            ledger_db
+                .key_serializer_db
+                .serialize(
+                    &Key::new(&addr, KeyType::DATASTORE(datastore_key)),
+                    &mut serialized_key,
+                )
+                .unwrap();
+            serialized_key
+        };
+
+        // values up to and including the max length are valid
+        let key = serialize_key(b"k".to_vec());
+        assert!(ledger_db.is_key_value_valid(&key, &vec![0u8; 999]));
+        assert!(ledger_db.is_key_value_valid(&key, &vec![0u8; 1000]));
+        assert!(!ledger_db.is_key_value_valid(&key, &vec![0u8; 1001]));
+
+        // the longest datastore key is valid even though its DB key exceeds 255 bytes
+        let key = serialize_key(vec![0xFF; 255]);
+        assert!(key.len() > 255);
+        assert!(ledger_db.is_key_value_valid(&key, b"v"));
     }
 
     #[test]
