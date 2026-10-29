@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::messages::max_state_db_value_length;
 use crate::settings::{BootstrapConfig, IpType};
 use crate::{BootstrapClientMessage, BootstrapServerMessage};
 use bitvec::vec::BitVec;
@@ -18,7 +19,7 @@ use massa_executed_ops::{
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig, FinalStateController};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::LedgerEntry;
+use massa_ledger_exports::{max_ledger_db_key_length, LedgerEntry};
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
@@ -918,14 +919,14 @@ impl BootstrapServerMessage {
             let key_len = if faulty_part
                 == BootstrapServerMessageFaultyPart::MaxStateDatastoreKeyLengthOverflow
             {
-                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+                (max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH) as usize) + 1
             } else {
                 MAX_DATASTORE_KEY_LENGTH as usize
             };
             let value_len = if faulty_part
                 == BootstrapServerMessageFaultyPart::MaxStateDatastoreValueLengthOverflow
             {
-                (MAX_DATASTORE_VALUE_LENGTH as usize) + 1
+                (max_state_db_value_length(MAX_DATASTORE_VALUE_LENGTH) as usize) + 1
             } else {
                 MAX_DATASTORE_VALUE_LENGTH as usize
             };
@@ -979,14 +980,14 @@ impl BootstrapServerMessage {
             let key_len = if faulty_part
                 == BootstrapServerMessageFaultyPart::MaxVersioningDatastoreKeyLengthOverflow
             {
-                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+                (max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH) as usize) + 1
             } else {
                 MAX_DATASTORE_KEY_LENGTH as usize
             };
             let value_len = if faulty_part
                 == BootstrapServerMessageFaultyPart::MaxVersioningDatastoreValueLengthOverflow
             {
-                (MAX_DATASTORE_VALUE_LENGTH as usize) + 1
+                (max_state_db_value_length(MAX_DATASTORE_VALUE_LENGTH) as usize) + 1
             } else {
                 MAX_DATASTORE_VALUE_LENGTH as usize
             };
@@ -1374,7 +1375,7 @@ impl BootstrapClientMessage {
 
         let last_state_step_nb =
             if faulty_part == BootstrapClientMessageFaultyPart::LastStateStepMaxKeyOverflow {
-                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+                (max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH) as usize) + 1
             } else {
                 5
             };
@@ -1384,7 +1385,7 @@ impl BootstrapClientMessage {
 
         let last_versioning_step_nb =
             if faulty_part == BootstrapClientMessageFaultyPart::LastVersioningStepMaxKeyOverflow {
-                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+                (max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH) as usize) + 1
             } else {
                 5
             };

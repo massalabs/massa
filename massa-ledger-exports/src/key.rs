@@ -1,4 +1,5 @@
 use massa_db_exports::LEDGER_PREFIX;
+use massa_hash::HASH_SIZE_BYTES;
 use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -153,6 +154,16 @@ pub fn datastore_prefix_from_address(address: &Address, prefix: &[u8]) -> Vec<u8
     res_prefix
 }
 
+/// Maximum length of a serialized ledger key as stored in the state DB:
+/// `LEDGER_PREFIX`, key version, address (type, version, hash), `DATASTORE_IDENT` and
+/// a datastore key of at most `max_datastore_key_length` bytes.
+///
+/// This is larger than `max_datastore_key_length` itself, so anything bounding raw
+/// state DB keys (e.g. bootstrap streaming) must use this instead.
+pub fn max_ledger_db_key_length(max_datastore_key_length: u8) -> u64 {
+    (LEDGER_PREFIX.len() + 1 + 1 + 1 + HASH_SIZE_BYTES + 1) as u64 + max_datastore_key_length as u64
+}
+
 /// Basic key serializer
 #[derive(Default, Clone)]
 pub struct KeySerializer {
@@ -282,9 +293,10 @@ impl Deserializer<Key> for KeyDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use super::{Key, KeyDeserializer, KeySerializer, KeyType};
+    use super::{max_ledger_db_key_length, Key, KeyDeserializer, KeySerializer, KeyType};
     use massa_db_exports::LEDGER_PREFIX;
     use massa_models::address::Address;
+    use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
     use std::str::FromStr;
 
@@ -304,6 +316,24 @@ mod tests {
             .unwrap();
         assert!(rest.is_empty());
         assert_eq!(deser, key);
+    }
+
+    #[test]
+    fn max_ledger_db_key_length_matches_serialized_key() {
+        // The longest datastore key accepted by execution must serialize to exactly the bound.
+        let key = Key::new(
+            &sample_address(),
+            KeyType::DATASTORE(vec![0xFF; MAX_DATASTORE_KEY_LENGTH as usize]),
+        );
+        let mut serialized = Vec::new();
+        KeySerializer::new(false)
+            .serialize(&key, &mut serialized)
+            .unwrap();
+        assert_eq!(
+            serialized.len() as u64,
+            max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH)
+        );
+        assert!(serialized.len() > MAX_DATASTORE_KEY_LENGTH as usize);
     }
 
     #[test]

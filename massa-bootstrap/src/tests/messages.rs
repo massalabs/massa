@@ -318,3 +318,83 @@ fn test_serialize_error_cases_servermsg() {
         println!("===========");
     }
 }
+
+/// MASSA-002/003: the state is streamed as raw DB entries. A ledger DB key wraps the datastore
+/// key with a prefix and the address (so a 213..=255 byte datastore key yields a >255 byte DB
+/// key), and a bytecode DB value wraps the bytecode with its version and length. The largest
+/// entries execution can write must still parse, both in a server part and as the client cursor.
+#[test]
+fn test_accepts_max_sized_ledger_db_entries() {
+    use massa_ledger_exports::{max_ledger_db_key_length, Key, KeySerializer, KeyType};
+    use massa_models::address::Address;
+    use massa_models::bytecode::{Bytecode, BytecodeSerializer};
+    use massa_models::streaming_step::StreamingStep;
+    use massa_signature::KeyPair;
+
+    let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+    let mut db_key = Vec::new();
+    KeySerializer::new(false)
+        .serialize(
+            &Key::new(
+                &addr,
+                KeyType::DATASTORE(vec![0xFF; MAX_DATASTORE_KEY_LENGTH as usize]),
+            ),
+            &mut db_key,
+        )
+        .unwrap();
+    assert_eq!(
+        db_key.len() as u64,
+        max_ledger_db_key_length(MAX_DATASTORE_KEY_LENGTH)
+    );
+    let mut db_bytecode = Vec::new();
+    BytecodeSerializer::new()
+        .serialize(
+            &Bytecode(vec![0; MAX_BYTECODE_LENGTH as usize]),
+            &mut db_bytecode,
+        )
+        .unwrap();
+    assert!(db_bytecode.len() as u64 > MAX_DATASTORE_VALUE_LENGTH);
+
+    // server part
+    let config = bootstrap_client_config_with_batch_allocation(bootstrap_batch_allocation_budget(
+        MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
+    ) as u64);
+    let mut state = BTreeMap::new();
+    state.insert(db_key.clone(), db_bytecode);
+    let mut bytes = Vec::new();
+    BootstrapServerMessageSerializer::new()
+        .serialize(
+            &minimal_bootstrap_part_message(state, BTreeMap::new()),
+            &mut bytes,
+        )
+        .unwrap();
+    let deser = BootstrapServerMessageDeserializer::with_last_start_period((&config).into(), None);
+    let res = deser.deserialize::<DeserializeError>(&bytes);
+    assert!(
+        res.is_ok(),
+        "max-sized ledger entries must parse: {:?}",
+        res.err()
+    );
+
+    // client cursor
+    let msg = BootstrapClientMessage::AskBootstrapPart {
+        last_slot: None,
+        last_state_step: StreamingStep::Ongoing(db_key),
+        last_versioning_step: StreamingStep::Started,
+        last_consensus_step: StreamingStep::Started,
+        send_last_start_period: false,
+    };
+    let mut bytes = Vec::new();
+    BootstrapClientMessageSerializer::new()
+        .serialize(&msg, &mut bytes)
+        .unwrap();
+    let (rest, msg_res) = BootstrapClientMessageDeserializer::new(
+        THREAD_COUNT,
+        MAX_DATASTORE_KEY_LENGTH,
+        MAX_CONSENSUS_BLOCKS_IDS,
+    )
+    .deserialize::<DeserializeError>(&bytes)
+    .unwrap();
+    assert!(rest.is_empty());
+    assert!(msg_res.equals(&msg));
+}
