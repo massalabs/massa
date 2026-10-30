@@ -261,12 +261,11 @@ impl ExecutionThread {
         // silently and callers see a generic channel-readout error instead of this clean
         // worker-closing cancellation.
         self.readonly_requests.cancel(cancel_err.clone());
-        self.input_data
-            .1
-            .lock()
-            .take()
-            .readonly_requests
-            .cancel(cancel_err);
+        // Refuse new requests in the same critical section as the final drain: a request
+        // queued after it would never be answered and its caller would block forever.
+        let mut input_data = self.input_data.1.lock();
+        input_data.closed = true;
+        input_data.take().readonly_requests.cancel(cancel_err);
     }
 }
 
