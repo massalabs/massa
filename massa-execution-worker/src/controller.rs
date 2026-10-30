@@ -858,7 +858,10 @@ mod tests {
         // a request pushed after the final drain would never be answered
         let _ = input_data.take();
         assert!(input_data.closed, "take must not reset the closed flag");
-        let err = input_data.check_readonly_admission().unwrap_err();
-        assert!(err.to_string().contains("execution worker is closing"));
+        // `ExecutionError`'s Display drops the message, so match the variant instead
+        assert!(matches!(
+            input_data.check_readonly_admission(),
+            Err(ExecutionError::ChannelError(msg)) if msg.contains("execution worker is closing")
+        ));
     }
 }
