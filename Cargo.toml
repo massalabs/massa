@@ -221,3 +221,6 @@ variant_count = "1.1"
 zeroize = { version = "1.7", features = ["derive"] }
 prost = { version = "=0.13" }
 tikv-jemalloc-sys = { version = "0.7", features = ["unprefixed_malloc_on_supported_platforms"] }
+
+[patch.crates-io]
+jsonrpsee-server = { path = "vendor/jsonrpsee-server" }
