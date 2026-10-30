@@ -261,85 +261,86 @@
 <a href=#261 id=261 data-nosnippet>261</a>        // silently and callers see a generic channel-readout error instead of this clean
 <a href=#262 id=262 data-nosnippet>262</a>        // worker-closing cancellation.
 <a href=#263 id=263 data-nosnippet>263</a>        </span><span class="self">self</span>.readonly_requests.cancel(cancel_err.clone());
-<a href=#264 id=264 data-nosnippet>264</a>        <span class="comment">// Refuse new requests in the same critical section as the final drain: a request
-<a href=#265 id=265 data-nosnippet>265</a>        // queued after it would never be answered and its caller would block forever.
-<a href=#266 id=266 data-nosnippet>266</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>input_data = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
-<a href=#267 id=267 data-nosnippet>267</a>        input_data.closed = <span class="bool-val">true</span>;
-<a href=#268 id=268 data-nosnippet>268</a>        input_data.take().readonly_requests.cancel(cancel_err);
-<a href=#269 id=269 data-nosnippet>269</a>    }
-<a href=#270 id=270 data-nosnippet>270</a>}
-<a href=#271 id=271 data-nosnippet>271</a>
-<a href=#272 id=272 data-nosnippet>272</a><span class="doccomment">/// Launches an execution worker thread and returns an `ExecutionManager` to interact with it
-<a href=#273 id=273 data-nosnippet>273</a>///
-<a href=#274 id=274 data-nosnippet>274</a>/// # parameters
-<a href=#275 id=275 data-nosnippet>275</a>/// * `config`: execution configuration
-<a href=#276 id=276 data-nosnippet>276</a>/// * `final_state`: a thread-safe shared access to the final state for reading and writing
-<a href=#277 id=277 data-nosnippet>277</a>///
-<a href=#278 id=278 data-nosnippet>278</a>/// # Returns
-<a href=#279 id=279 data-nosnippet>279</a>/// A pair `(execution_manager, execution_controller)` where:
-<a href=#280 id=280 data-nosnippet>280</a>/// * `execution_manager`: allows to stop the worker
-<a href=#281 id=281 data-nosnippet>281</a>/// * `execution_controller`: allows sending requests and notifications to the worker
-<a href=#282 id=282 data-nosnippet>282</a></span><span class="attr">#[allow(clippy::too_many_arguments)]
-<a href=#283 id=283 data-nosnippet>283</a></span><span class="kw">pub fn </span>start_execution_worker(
-<a href=#284 id=284 data-nosnippet>284</a>    config: ExecutionConfig,
-<a href=#285 id=285 data-nosnippet>285</a>    final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
-<a href=#286 id=286 data-nosnippet>286</a>    selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-<a href=#287 id=287 data-nosnippet>287</a>    mip_store: MipStore,
-<a href=#288 id=288 data-nosnippet>288</a>    channels: ExecutionChannels,
-<a href=#289 id=289 data-nosnippet>289</a>    wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
-<a href=#290 id=290 data-nosnippet>290</a>    massa_metrics: MassaMetrics,
-<a href=#291 id=291 data-nosnippet>291</a>    event_cache: Box&lt;<span class="kw">dyn </span>EventCacheController&gt;,
-<a href=#292 id=292 data-nosnippet>292</a>    <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)] </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
-<a href=#293 id=293 data-nosnippet>293</a>) -&gt; (Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;, Box&lt;<span class="kw">dyn </span>ExecutionController&gt;) {
-<a href=#294 id=294 data-nosnippet>294</a>    <span class="kw">if </span>config.hd_cache_size &lt; config.snip_amount {
-<a href=#295 id=295 data-nosnippet>295</a>        <span class="macro">panic!</span>(<span class="string">"In config.toml, hd_cache_size must be greater than snip_amount"</span>);
-<a href=#296 id=296 data-nosnippet>296</a>    }
-<a href=#297 id=297 data-nosnippet>297</a>
-<a href=#298 id=298 data-nosnippet>298</a>    <span class="comment">// create an execution state
-<a href=#299 id=299 data-nosnippet>299</a>    </span><span class="kw">let </span>execution_state = Arc::new(RwLock::new(ExecutionState::new(
-<a href=#300 id=300 data-nosnippet>300</a>        config.clone(),
-<a href=#301 id=301 data-nosnippet>301</a>        final_state,
-<a href=#302 id=302 data-nosnippet>302</a>        mip_store,
-<a href=#303 id=303 data-nosnippet>303</a>        selector.clone(),
-<a href=#304 id=304 data-nosnippet>304</a>        channels,
-<a href=#305 id=305 data-nosnippet>305</a>        wallet,
-<a href=#306 id=306 data-nosnippet>306</a>        massa_metrics,
-<a href=#307 id=307 data-nosnippet>307</a>        event_cache,
-<a href=#308 id=308 data-nosnippet>308</a>        <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
-<a href=#309 id=309 data-nosnippet>309</a>        </span>block_storage_backend,
-<a href=#310 id=310 data-nosnippet>310</a>    )));
-<a href=#311 id=311 data-nosnippet>311</a>
-<a href=#312 id=312 data-nosnippet>312</a>    <span class="comment">// define the input data interface
-<a href=#313 id=313 data-nosnippet>313</a>    </span><span class="kw">let </span>input_data = Arc::new((
-<a href=#314 id=314 data-nosnippet>314</a>        Condvar::new(),
-<a href=#315 id=315 data-nosnippet>315</a>        Mutex::new(ExecutionInputData::new(config.clone())),
-<a href=#316 id=316 data-nosnippet>316</a>    ));
-<a href=#317 id=317 data-nosnippet>317</a>
-<a href=#318 id=318 data-nosnippet>318</a>    <span class="comment">// create a controller
-<a href=#319 id=319 data-nosnippet>319</a>    </span><span class="kw">let </span>controller = ExecutionControllerImpl {
-<a href=#320 id=320 data-nosnippet>320</a>        input_data: input_data.clone(),
-<a href=#321 id=321 data-nosnippet>321</a>        execution_state: execution_state.clone(),
-<a href=#322 id=322 data-nosnippet>322</a>    };
-<a href=#323 id=323 data-nosnippet>323</a>
-<a href=#324 id=324 data-nosnippet>324</a>    <span class="comment">// launch the execution thread
-<a href=#325 id=325 data-nosnippet>325</a>    </span><span class="kw">let </span>input_data_clone = input_data.clone();
-<a href=#326 id=326 data-nosnippet>326</a>
-<a href=#327 id=327 data-nosnippet>327</a>    <span class="comment">// We set the stack size to 200 Mb instead of the default 2 Mb to avoid stack overflows
-<a href=#328 id=328 data-nosnippet>328</a>    // as a temporary workaround fully fixed by https://github.com/massalabs/massa/pull/4729
-<a href=#329 id=329 data-nosnippet>329</a>    </span><span class="kw">let </span>thread_builder = thread::Builder::new()
-<a href=#330 id=330 data-nosnippet>330</a>        .stack_size(<span class="number">200 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
-<a href=#331 id=331 data-nosnippet>331</a>        .name(<span class="string">"execution"</span>.into());
-<a href=#332 id=332 data-nosnippet>332</a>    <span class="kw">let </span>thread_handle = thread_builder
-<a href=#333 id=333 data-nosnippet>333</a>        .spawn(<span class="kw">move </span>|| {
-<a href=#334 id=334 data-nosnippet>334</a>            ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
-<a href=#335 id=335 data-nosnippet>335</a>        })
-<a href=#336 id=336 data-nosnippet>336</a>        .expect(<span class="string">"failed to spawn thread : execution"</span>);
-<a href=#337 id=337 data-nosnippet>337</a>    <span class="comment">// create a manager
-<a href=#338 id=338 data-nosnippet>338</a>    </span><span class="kw">let </span>manager = ExecutionManagerImpl {
-<a href=#339 id=339 data-nosnippet>339</a>        input_data,
-<a href=#340 id=340 data-nosnippet>340</a>        thread_handle: <span class="prelude-val">Some</span>(thread_handle),
-<a href=#341 id=341 data-nosnippet>341</a>    };
-<a href=#342 id=342 data-nosnippet>342</a>
-<a href=#343 id=343 data-nosnippet>343</a>    <span class="comment">// return the execution manager and controller pair
-<a href=#344 id=344 data-nosnippet>344</a>    </span>(Box::new(manager), Box::new(controller))
-<a href=#345 id=345 data-nosnippet>345</a>}</code></pre></div></section></main></body></html>
+<a href=#264 id=264 data-nosnippet>264</a>        <span class="self">self</span>.input_data
+<a href=#265 id=265 data-nosnippet>265</a>            .<span class="number">1
+<a href=#266 id=266 data-nosnippet>266</a>            </span>.lock()
+<a href=#267 id=267 data-nosnippet>267</a>            .take()
+<a href=#268 id=268 data-nosnippet>268</a>            .readonly_requests
+<a href=#269 id=269 data-nosnippet>269</a>            .cancel(cancel_err);
+<a href=#270 id=270 data-nosnippet>270</a>    }
+<a href=#271 id=271 data-nosnippet>271</a>}
+<a href=#272 id=272 data-nosnippet>272</a>
+<a href=#273 id=273 data-nosnippet>273</a><span class="doccomment">/// Launches an execution worker thread and returns an `ExecutionManager` to interact with it
+<a href=#274 id=274 data-nosnippet>274</a>///
+<a href=#275 id=275 data-nosnippet>275</a>/// # parameters
+<a href=#276 id=276 data-nosnippet>276</a>/// * `config`: execution configuration
+<a href=#277 id=277 data-nosnippet>277</a>/// * `final_state`: a thread-safe shared access to the final state for reading and writing
+<a href=#278 id=278 data-nosnippet>278</a>///
+<a href=#279 id=279 data-nosnippet>279</a>/// # Returns
+<a href=#280 id=280 data-nosnippet>280</a>/// A pair `(execution_manager, execution_controller)` where:
+<a href=#281 id=281 data-nosnippet>281</a>/// * `execution_manager`: allows to stop the worker
+<a href=#282 id=282 data-nosnippet>282</a>/// * `execution_controller`: allows sending requests and notifications to the worker
+<a href=#283 id=283 data-nosnippet>283</a></span><span class="attr">#[allow(clippy::too_many_arguments)]
+<a href=#284 id=284 data-nosnippet>284</a></span><span class="kw">pub fn </span>start_execution_worker(
+<a href=#285 id=285 data-nosnippet>285</a>    config: ExecutionConfig,
+<a href=#286 id=286 data-nosnippet>286</a>    final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
+<a href=#287 id=287 data-nosnippet>287</a>    selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+<a href=#288 id=288 data-nosnippet>288</a>    mip_store: MipStore,
+<a href=#289 id=289 data-nosnippet>289</a>    channels: ExecutionChannels,
+<a href=#290 id=290 data-nosnippet>290</a>    wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
+<a href=#291 id=291 data-nosnippet>291</a>    massa_metrics: MassaMetrics,
+<a href=#292 id=292 data-nosnippet>292</a>    event_cache: Box&lt;<span class="kw">dyn </span>EventCacheController&gt;,
+<a href=#293 id=293 data-nosnippet>293</a>    <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)] </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
+<a href=#294 id=294 data-nosnippet>294</a>) -&gt; (Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;, Box&lt;<span class="kw">dyn </span>ExecutionController&gt;) {
+<a href=#295 id=295 data-nosnippet>295</a>    <span class="kw">if </span>config.hd_cache_size &lt; config.snip_amount {
+<a href=#296 id=296 data-nosnippet>296</a>        <span class="macro">panic!</span>(<span class="string">"In config.toml, hd_cache_size must be greater than snip_amount"</span>);
+<a href=#297 id=297 data-nosnippet>297</a>    }
+<a href=#298 id=298 data-nosnippet>298</a>
+<a href=#299 id=299 data-nosnippet>299</a>    <span class="comment">// create an execution state
+<a href=#300 id=300 data-nosnippet>300</a>    </span><span class="kw">let </span>execution_state = Arc::new(RwLock::new(ExecutionState::new(
+<a href=#301 id=301 data-nosnippet>301</a>        config.clone(),
+<a href=#302 id=302 data-nosnippet>302</a>        final_state,
+<a href=#303 id=303 data-nosnippet>303</a>        mip_store,
+<a href=#304 id=304 data-nosnippet>304</a>        selector.clone(),
+<a href=#305 id=305 data-nosnippet>305</a>        channels,
+<a href=#306 id=306 data-nosnippet>306</a>        wallet,
+<a href=#307 id=307 data-nosnippet>307</a>        massa_metrics,
+<a href=#308 id=308 data-nosnippet>308</a>        event_cache,
+<a href=#309 id=309 data-nosnippet>309</a>        <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
+<a href=#310 id=310 data-nosnippet>310</a>        </span>block_storage_backend,
+<a href=#311 id=311 data-nosnippet>311</a>    )));
+<a href=#312 id=312 data-nosnippet>312</a>
+<a href=#313 id=313 data-nosnippet>313</a>    <span class="comment">// define the input data interface
+<a href=#314 id=314 data-nosnippet>314</a>    </span><span class="kw">let </span>input_data = Arc::new((
+<a href=#315 id=315 data-nosnippet>315</a>        Condvar::new(),
+<a href=#316 id=316 data-nosnippet>316</a>        Mutex::new(ExecutionInputData::new(config.clone())),
+<a href=#317 id=317 data-nosnippet>317</a>    ));
+<a href=#318 id=318 data-nosnippet>318</a>
+<a href=#319 id=319 data-nosnippet>319</a>    <span class="comment">// create a controller
+<a href=#320 id=320 data-nosnippet>320</a>    </span><span class="kw">let </span>controller = ExecutionControllerImpl {
+<a href=#321 id=321 data-nosnippet>321</a>        input_data: input_data.clone(),
+<a href=#322 id=322 data-nosnippet>322</a>        execution_state: execution_state.clone(),
+<a href=#323 id=323 data-nosnippet>323</a>    };
+<a href=#324 id=324 data-nosnippet>324</a>
+<a href=#325 id=325 data-nosnippet>325</a>    <span class="comment">// launch the execution thread
+<a href=#326 id=326 data-nosnippet>326</a>    </span><span class="kw">let </span>input_data_clone = input_data.clone();
+<a href=#327 id=327 data-nosnippet>327</a>
+<a href=#328 id=328 data-nosnippet>328</a>    <span class="comment">// We set the stack size to 200 Mb instead of the default 2 Mb to avoid stack overflows
+<a href=#329 id=329 data-nosnippet>329</a>    // as a temporary workaround fully fixed by https://github.com/massalabs/massa/pull/4729
+<a href=#330 id=330 data-nosnippet>330</a>    </span><span class="kw">let </span>thread_builder = thread::Builder::new()
+<a href=#331 id=331 data-nosnippet>331</a>        .stack_size(<span class="number">200 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
+<a href=#332 id=332 data-nosnippet>332</a>        .name(<span class="string">"execution"</span>.into());
+<a href=#333 id=333 data-nosnippet>333</a>    <span class="kw">let </span>thread_handle = thread_builder
+<a href=#334 id=334 data-nosnippet>334</a>        .spawn(<span class="kw">move </span>|| {
+<a href=#335 id=335 data-nosnippet>335</a>            ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
+<a href=#336 id=336 data-nosnippet>336</a>        })
+<a href=#337 id=337 data-nosnippet>337</a>        .expect(<span class="string">"failed to spawn thread : execution"</span>);
+<a href=#338 id=338 data-nosnippet>338</a>    <span class="comment">// create a manager
+<a href=#339 id=339 data-nosnippet>339</a>    </span><span class="kw">let </span>manager = ExecutionManagerImpl {
+<a href=#340 id=340 data-nosnippet>340</a>        input_data,
+<a href=#341 id=341 data-nosnippet>341</a>        thread_handle: <span class="prelude-val">Some</span>(thread_handle),
+<a href=#342 id=342 data-nosnippet>342</a>    };
+<a href=#343 id=343 data-nosnippet>343</a>
+<a href=#344 id=344 data-nosnippet>344</a>    <span class="comment">// return the execution manager and controller pair
+<a href=#345 id=345 data-nosnippet>345</a>    </span>(Box::new(manager), Box::new(controller))
+<a href=#346 id=346 data-nosnippet>346</a>}</code></pre></div></section></main></body></html>
