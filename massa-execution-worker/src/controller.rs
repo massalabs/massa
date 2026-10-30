@@ -45,6 +45,9 @@ pub(crate) struct ExecutionInputData {
     pub block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     /// queue for read-only execution requests and response MPSCs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
+    /// set by the worker after its final drain: new read-only requests are refused.
+    /// Unlike the other fields, it is not reset by `take`.
+    pub closed: bool,
 }
 
 impl Display for ExecutionInputData {
@@ -75,14 +78,30 @@ impl ExecutionInputData {
             finalized_blocks: Default::default(),
             new_blockclique: Default::default(),
             block_metadata: Default::default(),
-            readonly_requests: RequestQueue::new(config.max_final_events),
+            readonly_requests: RequestQueue::new(config.readonly_queue_length),
+            closed: false,
         }
+    }
+
+    /// Checks whether a new read-only request can be queued
+    pub fn check_readonly_admission(&self) -> Result<(), ExecutionError> {
+        if self.closed {
+            return Err(ExecutionError::ChannelError(
+                "readonly execution refused because the execution worker is closing".into(),
+            ));
+        }
+        if self.readonly_requests.is_full() {
+            return Err(ExecutionError::ChannelError(
+                "too many queued readonly requests".into(),
+            ));
+        }
+        Ok(())
     }
 
     /// Takes the current input data into a clone that is returned,
     /// and resets self.
     pub fn take(&mut self) -> Self {
-        let max_final_events = self.readonly_requests.capacity();
+        let readonly_queue_length = self.readonly_requests.capacity();
         ExecutionInputData {
             stop: std::mem::take(&mut self.stop),
             finalized_blocks: std::mem::take(&mut self.finalized_blocks),
@@ -90,8 +109,9 @@ impl ExecutionInputData {
             block_metadata: std::mem::take(&mut self.block_metadata),
             readonly_requests: std::mem::replace(
                 &mut self.readonly_requests,
-                RequestQueue::new(max_final_events),
+                RequestQueue::new(readonly_queue_length),
             ),
+            closed: self.closed,
         }
     }
 }
@@ -256,12 +276,8 @@ impl ExecutionController for ExecutionControllerImpl {
         let resp_rx = {
             let mut input_data = self.input_data.1.lock();
 
-            // if the read-only queue is already full, return an error
-            if input_data.readonly_requests.is_full() {
-                return Err(ExecutionError::ChannelError(
-                    "too many queued readonly requests".into(),
-                ));
-            }
+            // refuse the request if the queue is full or the worker is closing
+            input_data.check_readonly_admission()?;
 
             // prepare the channel to send back the result of the read-only execution
             let (resp_tx, resp_rx) = MassaChannel::new("read_only_request".to_string(), None);
@@ -790,5 +806,59 @@ impl ExecutionManager for ExecutionManagerImpl {
                 .expect("Execution manager thread panicked");
         }
         info!("Execution manager stopped");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use massa_execution_exports::ReadOnlyExecutionTarget;
+
+    fn readonly_request(
+    ) -> RequestWithResponseSender<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput> {
+        let (resp_tx, _resp_rx) = MassaChannel::new("read_only_request".to_string(), None);
+        RequestWithResponseSender::new(
+            ReadOnlyExecutionRequest {
+                max_gas: 0,
+                call_stack: vec![],
+                target: ReadOnlyExecutionTarget::BytecodeExecution(vec![]),
+                coins: None,
+                fee: None,
+            },
+            resp_tx,
+        )
+    }
+
+    #[test]
+    fn readonly_admission_uses_readonly_queue_length() {
+        let config = ExecutionConfig {
+            readonly_queue_length: 1,
+            max_final_events: 1000,
+            ..Default::default()
+        };
+        let mut input_data = ExecutionInputData::new(config);
+        assert_eq!(input_data.readonly_requests.capacity(), 1);
+        assert!(input_data.check_readonly_admission().is_ok());
+
+        input_data.readonly_requests.push(readonly_request());
+        assert!(input_data.check_readonly_admission().is_err());
+
+        // the worker takes the queue: the capacity stays the same
+        let taken = input_data.take();
+        assert_eq!(taken.readonly_requests.capacity(), 1);
+        assert_eq!(input_data.readonly_requests.capacity(), 1);
+        assert!(input_data.check_readonly_admission().is_ok());
+    }
+
+    #[test]
+    fn readonly_admission_refused_after_close() {
+        let mut input_data = ExecutionInputData::new(ExecutionConfig::default());
+        input_data.closed = true;
+
+        // a request pushed after the final drain would never be answered
+        let _ = input_data.take();
+        assert!(input_data.closed, "take must not reset the closed flag");
+        let err = input_data.check_readonly_admission().unwrap_err();
+        assert!(err.to_string().contains("execution worker is closing"));
     }
 }
