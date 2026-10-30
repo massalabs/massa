@@ -9,7 +9,8 @@ use massa_execution_exports::mapping_grpc::{
     to_event_filter, to_execution_query_response, to_querystate_filter,
 };
 use massa_execution_exports::{
-    ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponseItem,
+    ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_models::address::Address;
 use massa_models::amount::Amount;
@@ -805,12 +806,26 @@ pub(crate) fn get_sc_execution_events(
     request: tonic::Request<grpc_api::GetScExecutionEventsRequest>,
 ) -> Result<grpc_api::GetScExecutionEventsResponse, GrpcError> {
     let event_filter = to_event_filter(request.into_inner().filters)?;
-    let events: Vec<grpc_model::ScExecutionEvent> = grpc
+    // go through query_state so that the event count and response size budgets apply
+    let response = grpc
         .execution_controller
-        .get_filtered_sc_output_event(event_filter)
-        .into_iter()
-        .map(|event| event.into())
-        .collect();
+        .query_state(ExecutionQueryRequest {
+            requests: vec![ExecutionQueryRequestItem::Events(event_filter)],
+            max_response_size: grpc.grpc_config.max_encoding_message_size,
+            max_event_count: Some(grpc.grpc_config.max_event_per_query as usize),
+            query_state_deadline_ms: grpc.grpc_config.query_state_deadline_ms,
+        });
+    let events: Vec<grpc_model::ScExecutionEvent> = match response.responses.into_iter().next() {
+        Some(Ok(ExecutionQueryResponseItem::Events(events))) => {
+            events.into_iter().map(|event| event.into()).collect()
+        }
+        Some(Err(err)) => return Err(GrpcError::InternalServerError(err.to_string())),
+        _ => {
+            return Err(GrpcError::InternalServerError(
+                "unexpected response type".to_string(),
+            ))
+        }
+    };
 
     Ok(grpc_api::GetScExecutionEventsResponse { events })
 }

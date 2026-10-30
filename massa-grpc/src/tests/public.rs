@@ -690,31 +690,48 @@ async fn get_sc_execution_events() {
 
     let mut exec_ctrl = Box::new(MockExecutionController::new());
     exec_ctrl
-        .expect_get_filtered_sc_output_event()
-        .returning(|_| {
-            vec![massa_models::output_event::SCOutputEvent {
-                context: massa_models::output_event::EventExecutionContext {
-                    slot: Slot {
-                        period: 1,
-                        thread: 10,
-                    },
-                    block: None,
-                    read_only: false,
-                    index_in_slot: 1,
-                    call_stack: VecDeque::new(),
-                    origin_operation_id: Some(
-                        massa_models::operation::OperationId::from_str(
-                            "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC",
-                        )
-                        .unwrap(),
-                    ),
-                    is_final: false,
-                    is_error: false,
-                    deferred_call_id: None,
-                    async_msg_id: None,
-                },
-                data: "massa".to_string(),
-            }]
+        .expect_query_state()
+        .times(1)
+        .returning(|request| {
+            assert_eq!(request.max_event_count, Some(7000));
+            assert!(matches!(
+                request.requests.as_slice(),
+                [massa_execution_exports::ExecutionQueryRequestItem::Events(
+                    _
+                )]
+            ));
+            massa_execution_exports::ExecutionQueryResponse {
+                responses: vec![Ok(
+                    massa_execution_exports::ExecutionQueryResponseItem::Events(vec![
+                        massa_models::output_event::SCOutputEvent {
+                            context: massa_models::output_event::EventExecutionContext {
+                                slot: Slot {
+                                    period: 1,
+                                    thread: 10,
+                                },
+                                block: None,
+                                read_only: false,
+                                index_in_slot: 1,
+                                call_stack: VecDeque::new(),
+                                origin_operation_id: Some(
+                                    massa_models::operation::OperationId::from_str(
+                                        "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC",
+                                    )
+                                    .unwrap(),
+                                ),
+                                is_final: false,
+                                is_error: false,
+                                deferred_call_id: None,
+                                async_msg_id: None,
+                            },
+                            data: "massa".to_string(),
+                        },
+                    ]),
+                )],
+                candidate_cursor: Slot::new(0, 0),
+                final_cursor: Slot::new(0, 0),
+                final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
+            }
         });
 
     public_server.execution_controller = exec_ctrl;

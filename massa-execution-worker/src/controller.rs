@@ -209,9 +209,8 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    // ponytail: single-shot path uncapped (explicit None), one full active-history scan per call;
-    // thread a handler-provided limit like query_state does if this is abused
-    // (breaking-changes list, F42).
+    // Uncapped (explicit None): the public JSON-RPC and gRPC handlers go through
+    // `query_state` instead, which applies the event count and response size budgets.
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         self.execution_state
             .read()

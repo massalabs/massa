@@ -624,31 +624,44 @@ async fn get_filtered_sc_output_event() {
 
     let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
-        .expect_get_filtered_sc_output_event()
-        .returning(|_a| {
-            vec![SCOutputEvent {
-                context: massa_models::output_event::EventExecutionContext {
-                    slot: Slot {
-                        period: 1,
-                        thread: 10,
+        .expect_query_state()
+        .times(1)
+        .returning(|request| {
+            assert_eq!(request.max_event_count, Some(7000));
+            assert!(matches!(
+                request.requests.as_slice(),
+                [ExecutionQueryRequestItem::Events(_)]
+            ));
+            ExecutionQueryResponse {
+                responses: vec![Ok(ExecutionQueryResponseItem::Events(vec![
+                    SCOutputEvent {
+                        context: massa_models::output_event::EventExecutionContext {
+                            slot: Slot {
+                                period: 1,
+                                thread: 10,
+                            },
+                            block: None,
+                            read_only: false,
+                            index_in_slot: 1,
+                            call_stack: std::collections::VecDeque::new(),
+                            origin_operation_id: Some(
+                                massa_models::operation::OperationId::from_str(
+                                    "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC",
+                                )
+                                .unwrap(),
+                            ),
+                            is_final: false,
+                            is_error: false,
+                            deferred_call_id: None,
+                            async_msg_id: None,
+                        },
+                        data: "massa".to_string(),
                     },
-                    block: None,
-                    read_only: false,
-                    index_in_slot: 1,
-                    call_stack: std::collections::VecDeque::new(),
-                    origin_operation_id: Some(
-                        massa_models::operation::OperationId::from_str(
-                            "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC",
-                        )
-                        .unwrap(),
-                    ),
-                    is_final: false,
-                    is_error: false,
-                    deferred_call_id: None,
-                    async_msg_id: None,
-                },
-                data: "massa".to_string(),
-            }]
+                ]))],
+                candidate_cursor: Slot::new(0, 0),
+                final_cursor: Slot::new(0, 0),
+                final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
+            }
         });
 
     api_public.0.execution_controller = Box::new(exec_ctrl);
@@ -1295,6 +1308,42 @@ async fn datastore_rpc_response_ceiling_rejects_after_bounded_backend_materializ
         other => panic!("expected response-ceiling RPC error, got {other}"),
     }
     assert_eq!(*observed.lock().unwrap(), vec![(32, 2 * 32 * 64 * 1024)]);
+}
+
+#[tokio::test]
+async fn get_addresses_and_datastore_entries_input_limit() {
+    let addr: SocketAddr = "[::]:0".parse().unwrap();
+    let (mut api_public, mut config) = start_public_api(addr);
+    config.max_arguments = 2;
+    api_public.0.api_settings = config;
+    // any call to the execution controller would panic: the requests must be
+    // rejected before reaching it
+    api_public.0.execution_controller = Box::new(MockExecutionController::new());
+
+    let address =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    let expected_message =
+        "Bad request: too many arguments received. Only a maximum of 2 arguments are accepted per request";
+
+    let error = api_public
+        .get_addresses(vec![address; 3])
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), -32000);
+    assert_eq!(error.message(), expected_message);
+
+    let error = api_public
+        .get_datastore_entries(vec![
+            DatastoreEntryInput {
+                address,
+                key: b"key".to_vec()
+            };
+            3
+        ])
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), -32000);
+    assert_eq!(error.message(), expected_message);
 }
 
 #[tokio::test]
