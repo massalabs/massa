@@ -37,6 +37,9 @@ use std::str::FromStr;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumString};
 
+/// Default `max_arguments` of the node's JSON-RPC API: larger `get_addresses` batches are rejected
+const MAX_ADDRESSES_PER_REQUEST: usize = 128;
+
 /// All the client commands
 /// the order they are defined is the order they are displayed in so be careful
 /// Maybe it would be worth renaming some of them for consistency
@@ -632,20 +635,30 @@ impl Command {
                 if !json && show_keys {
                     client_warning!("do not share your secret key");
                 }
-                match client
-                    .public
-                    .get_addresses(wallet.get_full_wallet().keys().copied().collect())
-                    .await
-                {
-                    Ok(addresses_info) => Ok(Box::new(ExtendedWallet::new(
+                let addresses: Vec<Address> = wallet.get_full_wallet().keys().copied().collect();
+                let mut addresses_info = Vec::with_capacity(addresses.len());
+                let mut fetch_failed = false;
+                for chunk in addresses.chunks(MAX_ADDRESSES_PER_REQUEST) {
+                    match client.public.get_addresses(chunk.to_vec()).await {
+                        Ok(chunk_info) => addresses_info.extend(chunk_info),
+                        Err(_) => {
+                            fetch_failed = true;
+                            break;
+                        }
+                    }
+                }
+                if fetch_failed {
+                    // FIXME
+                    match show_keys {
+                        true => Ok(Box::new(wallet.clone())),
+                        false => Ok(Box::new(wallet.get_wallet_address_list())),
+                    }
+                } else {
+                    Ok(Box::new(ExtendedWallet::new(
                         wallet,
                         &addresses_info,
                         show_keys,
-                    )?)),
-                    Err(_) => match show_keys {
-                        true => Ok(Box::new(wallet.clone())),
-                        false => Ok(Box::new(wallet.get_wallet_address_list())),
-                    }, // FIXME
+                    )?))
                 }
             }
             Command::wallet_get_public_key => {

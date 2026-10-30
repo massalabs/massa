@@ -1025,10 +1025,6 @@ impl MassaRpcServer for API<Public> {
         &self,
         entries: Vec<DatastoreEntryInput>,
     ) -> RpcResult<Vec<DatastoreEntryOutput>> {
-        if entries.len() as u64 > self.0.api_settings.max_arguments {
-            return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", self.0.api_settings.max_arguments)).into());
-        }
-
         Ok(self
             .0
             .execution_controller

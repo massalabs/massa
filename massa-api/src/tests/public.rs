@@ -1311,28 +1311,37 @@ async fn datastore_rpc_response_ceiling_rejects_after_bounded_backend_materializ
 }
 
 #[tokio::test]
-async fn get_addresses_and_datastore_entries_input_limit() {
+async fn get_addresses_input_limit() {
     let addr: SocketAddr = "[::]:0".parse().unwrap();
     let (mut api_public, mut config) = start_public_api(addr);
     config.max_arguments = 2;
     api_public.0.api_settings = config;
-    // any call to the execution controller would panic: the requests must be
-    // rejected before reaching it
-    api_public.0.execution_controller = Box::new(MockExecutionController::new());
 
     let address =
         Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
-    let expected_message =
-        "Bad request: too many arguments received. Only a maximum of 2 arguments are accepted per request";
 
+    // any call to the execution controller would panic: the request must be
+    // rejected before reaching it
+    api_public.0.execution_controller = Box::new(MockExecutionController::new());
     let error = api_public
         .get_addresses(vec![address; 3])
         .await
         .unwrap_err();
     assert_eq!(error.code(), -32000);
-    assert_eq!(error.message(), expected_message);
+    assert_eq!(
+        error.message(),
+        "Bad request: too many arguments received. Only a maximum of 2 arguments are accepted per request"
+    );
 
-    let error = api_public
+    // get_datastore_entries is not bound by max_arguments: existing clients send
+    // larger batches (e.g. a DeWeb site's whole file list)
+    let mut exec_ctrl = MockExecutionController::new();
+    exec_ctrl
+        .expect_get_final_and_active_data_entry()
+        .times(1)
+        .returning(|entries| vec![(None, None); entries.len()]);
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+    let entries = api_public
         .get_datastore_entries(vec![
             DatastoreEntryInput {
                 address,
@@ -1341,9 +1350,8 @@ async fn get_addresses_and_datastore_entries_input_limit() {
             3
         ])
         .await
-        .unwrap_err();
-    assert_eq!(error.code(), -32000);
-    assert_eq!(error.message(), expected_message);
+        .unwrap();
+    assert_eq!(entries.len(), 3);
 }
 
 #[tokio::test]
