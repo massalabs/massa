@@ -858,7 +858,10 @@
 <a href=#858 id=858 data-nosnippet>858</a>        <span class="comment">// a request pushed after the final drain would never be answered
 <a href=#859 id=859 data-nosnippet>859</a>        </span><span class="kw">let _ </span>= input_data.take();
 <a href=#860 id=860 data-nosnippet>860</a>        <span class="macro">assert!</span>(input_data.closed, <span class="string">"take must not reset the closed flag"</span>);
-<a href=#861 id=861 data-nosnippet>861</a>        <span class="kw">let </span>err = input_data.check_readonly_admission().unwrap_err();
-<a href=#862 id=862 data-nosnippet>862</a>        <span class="macro">assert!</span>(err.to_string().contains(<span class="string">"execution worker is closing"</span>));
-<a href=#863 id=863 data-nosnippet>863</a>    }
-<a href=#864 id=864 data-nosnippet>864</a>}</code></pre></div></section></main></body></html>
+<a href=#861 id=861 data-nosnippet>861</a>        <span class="comment">// `ExecutionError`'s Display drops the message, so match the variant instead
+<a href=#862 id=862 data-nosnippet>862</a>        </span><span class="macro">assert!</span>(<span class="macro">matches!</span>(
+<a href=#863 id=863 data-nosnippet>863</a>            input_data.check_readonly_admission(),
+<a href=#864 id=864 data-nosnippet>864</a>            <span class="prelude-val">Err</span>(ExecutionError::ChannelError(msg)) <span class="kw">if </span>msg.contains(<span class="string">"execution worker is closing"</span>)
+<a href=#865 id=865 data-nosnippet>865</a>        ));
+<a href=#866 id=866 data-nosnippet>866</a>    }
+<a href=#867 id=867 data-nosnippet>867</a>}</code></pre></div></section></main></body></html>
