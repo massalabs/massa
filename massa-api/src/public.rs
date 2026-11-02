@@ -282,6 +282,7 @@ impl MassaRpcServer for API<Public> {
             bytecode,
             operation_datastore,
             fee,
+            simulate_initial_caller_balance,
         } in reqs
         {
             let address = if let Some(addr) = address {
@@ -329,6 +330,7 @@ impl MassaRpcServer for API<Public> {
                 }],
                 coins: None,
                 fee,
+                simulate_initial_caller_balance,
             };
 
             // check if fee is enough
@@ -393,6 +395,7 @@ impl MassaRpcServer for API<Public> {
             caller_address,
             coins,
             fee,
+            simulate_initial_caller_balance,
         } in reqs
         {
             let caller_address = if let Some(addr) = caller_address {
@@ -431,6 +434,7 @@ impl MassaRpcServer for API<Public> {
                 ],
                 coins,
                 fee,
+                simulate_initial_caller_balance,
             };
 
             if let Some(fee) = fee {
