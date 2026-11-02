@@ -238,6 +238,13 @@ macro_rules! gen_varint {
                 fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], $type, E> {
                     context(concat!("Failed ", stringify!($type), " deserialization"), |input: &'a [u8]| {
                         let (rest, value) = unsigned_nom::$type(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
+                        let consumed = input.len() - rest.len();
+                        // The dependency discards terminal payload bits above the type width.
+                        if consumed == ($type::BITS as usize).div_ceil(7)
+                            && input[consumed - 1] >> ($type::BITS % 7) != 0
+                        {
+                            return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
+                        }
                         if !self.range.contains(&value) {
                             return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
                         }
