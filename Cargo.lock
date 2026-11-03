@@ -176,8 +176,8 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "as-ffi-bindings"
-version = "0.2.5"
-source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.6#ba6583eb2877065090e28985e370feac427641a1"
+version = "0.5.7"
+source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.7#c9881d64438a5fe30c33473cb0b56c5ba041a7e8"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -2915,7 +2915,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=409b0ef80f0f3065f19accbfbc539f4e97df0533#409b0ef80f0f3065f19accbfbc539f4e97df0533"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=b40ec3899ca7eec92ee206d50c701157f7f429b4#b40ec3899ca7eec92ee206d50c701157f7f429b4"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
