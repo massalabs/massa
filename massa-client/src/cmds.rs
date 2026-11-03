@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::display::Output;
+use crate::settings::SETTINGS;
 use crate::voting::{MasOGBalance, MasOGBalanceResponse, VotingConfig};
 use crate::{client_warning, rpc_error};
 use anyhow::{anyhow, bail, Result};
@@ -36,9 +37,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumString};
-
-/// Default `max_arguments` of the node's JSON-RPC API: larger `get_addresses` batches are rejected
-const MAX_ADDRESSES_PER_REQUEST: usize = 128;
 
 /// All the client commands
 /// the order they are defined is the order they are displayed in so be careful
@@ -638,7 +636,8 @@ impl Command {
                 let addresses: Vec<Address> = wallet.get_full_wallet().keys().copied().collect();
                 let mut addresses_info = Vec::with_capacity(addresses.len());
                 let mut fetch_failed = false;
-                for chunk in addresses.chunks(MAX_ADDRESSES_PER_REQUEST) {
+                let chunk_size = SETTINGS.client.max_addresses_per_request.max(1);
+                for chunk in addresses.chunks(chunk_size) {
                     match client.public.get_addresses(chunk.to_vec()).await {
                         Ok(chunk_info) => addresses_info.extend(chunk_info),
                         Err(_) => {
