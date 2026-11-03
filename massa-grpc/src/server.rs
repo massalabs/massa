@@ -28,7 +28,7 @@ use massa_storage::Storage;
 use massa_wallet::Wallet;
 
 use tokio::sync::oneshot;
-use tonic::body::BoxBody;
+use tonic::body::Body;
 use tonic::codegen::CompressionEncoding;
 use tonic::server::NamedService;
 use tonic::transport::{Certificate, Identity, ServerTlsConfig};
@@ -162,7 +162,7 @@ impl StopHandle {
 }
 
 /// Massa service health check implementation
-async fn massa_service_status(mut reporter: HealthReporter) {
+async fn massa_service_status(reporter: HealthReporter) {
     //TODO add a complete health check based on Massa modules health
     reporter
         .set_serving::<PublicServiceServer<MassaPublicGrpc>>()
@@ -182,10 +182,11 @@ pub(crate) fn check_mtls_requires_tls(config: &GrpcConfig) -> Result<(), GrpcErr
 // Configure and start the gRPC API with the given service
 async fn serve<S>(service: S, config: &GrpcConfig) -> Result<StopHandle, GrpcError>
 where
-    S: tower_service::Service<Request<BoxBody>, Response = Response<BoxBody>, Error = Infallible>
+    S: tower_service::Service<Request<Body>, Response = Response<Body>, Error = Infallible>
         + NamedService
         + Clone
         + Send
+        + Sync
         + 'static,
     S::Future: Send + 'static,
 {
@@ -274,7 +275,7 @@ where
     };
 
     let health_service_opt = if config.enable_health {
-        let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
+        let (health_reporter, health_service) = tonic_health::server::health_reporter();
         health_reporter
             .set_serving::<PublicServiceServer<MassaPublicGrpc>>()
             .await;

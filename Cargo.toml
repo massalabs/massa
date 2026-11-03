@@ -116,8 +116,8 @@ massa_event_cache = { path = "./massa-event-cache" }
 mockall_wrap = { path = "./massa-mockall-wrap" }
 
 # Massa projects dependencies
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", "rev" = "0bcc52f40d2d7d596eeaf8f8713364bd7c15594b" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "409b0ef80f0f3065f19accbfbc539f4e97df0533" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", "rev" = "f3b36ea7f0df92bc4fd2b3661dc3fa8885c5aef3" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "c2b4bfcd46db32b8cff1c6a8aa22cdeac3382397" }
 
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "c26659997602386d3c9883361d8867139d8de246" }
 # Dev only - use local dependencies
@@ -207,10 +207,10 @@ time = "0.3"
 tokio = "1.23"
 tokio-stream = "0.1"
 toml_edit = "0.21"
-tonic = "=0.12"
-tonic-health = "=0.12"
-tonic-reflection = "=0.12"
-tonic-web = "=0.12"
+tonic = "0.14.9"
+tonic-health = "0.14.9"
+tonic-reflection = "0.14.9"
+tonic-web = "0.14.9"
 tower = "0.4"
 tower-http = "0.6"
 tower-service = "0.3"
@@ -219,5 +219,5 @@ tracing-subscriber = "0.3"
 unsigned-varint = "0.8"
 variant_count = "1.1"
 zeroize = { version = "1.7", features = ["derive"] }
-prost = { version = "=0.13" }
+prost = { version = "=0.14" }
 tikv-jemalloc-sys = { version = "0.7", features = ["unprefixed_malloc_on_supported_platforms"] }
