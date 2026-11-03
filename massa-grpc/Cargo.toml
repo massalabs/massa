@@ -17,7 +17,7 @@ execution-info = ["execution-trace", "massa_execution_exports/execution-info"]
 massa-proto-rs = { workspace = true, "features" = ["tonic"] }
 displaydoc = { workspace = true }
 thiserror = { workspace = true }
-tonic = { workspace = true, "features" = ["gzip", "tls"] }
+tonic = { workspace = true, "features" = ["gzip", "tls-ring"] }
 tonic-web = { workspace = true }
 tonic-reflection = { workspace = true }
 tonic-health = { workspace = true }
