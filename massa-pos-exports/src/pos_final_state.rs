@@ -1059,15 +1059,17 @@ impl PoSFinalState {
             let db = self.db.read();
 
             while let Some((serialized_key, _)) = match found_cycles.last() {
-                Some(prev_cycle) => db
-                    .iterator_cf(
+                // u64::MAX is the last possible cycle: stop instead of reading it again forever
+                Some(prev_cycle) => prev_cycle.checked_add(1).and_then(|next_cycle| {
+                    db.iterator_cf(
                         STATE_CF,
                         MassaIteratorMode::From(
-                            &self.cycle_history_cycle_prefix(prev_cycle.saturating_add(1)),
+                            &self.cycle_history_cycle_prefix(next_cycle),
                             MassaDirection::Forward,
                         ),
                     )
-                    .next(),
+                    .next()
+                }),
                 None => db
                     .iterator_cf(
                         STATE_CF,
@@ -2596,6 +2598,67 @@ mod tests {
         assert!(
             !pos_state.is_cycle_history_key_value_valid(&complete_key, &[1]),
             "complete cycle with wrong RNG seed length must be rejected"
+        );
+    }
+
+    /// A cycle history entry for cycle `u64::MAX` (corrupt DB or bad bootstrap peer)
+    /// must not make the cycle scan loop forever.
+    #[test]
+    fn test_get_cycle_history_cycles_stops_at_max_cycle() {
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
+        };
+
+        let tempdir = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: 2,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
+        ));
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        let cycle_info_deserializer = CycleInfoDeserializer::new(
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
+
+        let mut pos_state = PoSFinalState {
+            config: pos_config.clone(),
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: Box::new(MockSelectorController::new()),
+            initial_rolls: Default::default(),
+            initial_seeds,
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(pos_config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
+            cycle_info_deserializer,
+        };
+
+        let mut batch = DBBatch::new();
+        pos_state.put_cycle_history_complete(0, false, &mut batch);
+        pos_state.put_cycle_history_complete(u64::MAX, true, &mut batch);
+        db.write().write_batch(batch, DBBatch::new(), None);
+
+        // before the fix, this call never returned
+        assert_eq!(
+            pos_state.get_cycle_history_cycles(),
+            vec![(0, false), (u64::MAX, true)]
         );
     }
 
