@@ -50,9 +50,17 @@ pub struct ClientSettings {
     pub certificate_store: String,
     pub id_kind: String,
     pub max_log_length: u32,
+    /// Maximum number of addresses sent in one `get_addresses` request
+    #[serde(default = "default_max_addresses_per_request")]
+    pub max_addresses_per_request: usize,
     pub headers: Vec<(String, String)>,
     pub http: HttpSettings,
     pub grpc: GrpcSettings,
+}
+
+/// Default `max_arguments` of the node's JSON-RPC API
+fn default_max_addresses_per_request() -> usize {
+    128
 }
 
 ///TODO add WebSocket to CLI
