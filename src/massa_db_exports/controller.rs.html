@@ -66,53 +66,67 @@
 <a href=#66 id=66 data-nosnippet>66</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt;;
 <a href=#67 id=67 data-nosnippet>67</a>
 <a href=#68 id=68 data-nosnippet>68</a>    <span class="doccomment">/// Get the current extended state hash of the database
-<a href=#69 id=69 data-nosnippet>69</a>    </span><span class="kw">fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof&lt;HASH_XOF_SIZE_BYTES&gt;;
-<a href=#70 id=70 data-nosnippet>70</a>
-<a href=#71 id=71 data-nosnippet>71</a>    <span class="doccomment">/// Flushes the underlying db.
-<a href=#72 id=72 data-nosnippet>72</a>    </span><span class="kw">fn </span>flush(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaDBError&gt;;
-<a href=#73 id=73 data-nosnippet>73</a>
-<a href=#74 id=74 data-nosnippet>74</a>    <span class="doccomment">/// Write a stream_batch of database entries received from a bootstrap server
-<a href=#75 id=75 data-nosnippet>75</a>    </span><span class="kw">fn </span>write_batch_bootstrap_client(
-<a href=#76 id=76 data-nosnippet>76</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#77 id=77 data-nosnippet>77</a>        stream_changes: StreamBatch&lt;Slot&gt;,
-<a href=#78 id=78 data-nosnippet>78</a>        stream_changes_versioning: StreamBatch&lt;Slot&gt;,
-<a href=#79 id=79 data-nosnippet>79</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(StreamingStep&lt;Key&gt;, StreamingStep&lt;Key&gt;), MassaDBError&gt;;
-<a href=#80 id=80 data-nosnippet>80</a>
-<a href=#81 id=81 data-nosnippet>81</a>    <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
-<a href=#82 id=82 data-nosnippet>82</a>    ///
-<a href=#83 id=83 data-nosnippet>83</a>    /// Returns a StreamBatch&lt;Slot&gt;
-<a href=#84 id=84 data-nosnippet>84</a>    </span><span class="kw">fn </span>get_batch_to_stream(
-<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#86 id=86 data-nosnippet>86</a>        last_state_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
-<a href=#87 id=87 data-nosnippet>87</a>        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-<a href=#88 id=88 data-nosnippet>88</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
-<a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a>    <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
-<a href=#91 id=91 data-nosnippet>91</a>    ///
-<a href=#92 id=92 data-nosnippet>92</a>    /// Returns a StreamBatch&lt;Slot&gt;
-<a href=#93 id=93 data-nosnippet>93</a>    </span><span class="kw">fn </span>get_versioning_batch_to_stream(
-<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#95 id=95 data-nosnippet>95</a>        last_versioning_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
-<a href=#96 id=96 data-nosnippet>96</a>        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-<a href=#97 id=97 data-nosnippet>97</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
-<a href=#98 id=98 data-nosnippet>98</a>
-<a href=#99 id=99 data-nosnippet>99</a>    <span class="doccomment">/// Get the total size of the change history and the change versioning history respectively
-<a href=#100 id=100 data-nosnippet>100</a>    </span><span class="kw">fn </span>get_change_history_sizes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, usize);
-<a href=#101 id=101 data-nosnippet>101</a>
-<a href=#102 id=102 data-nosnippet>102</a>    <span class="doccomment">/// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
-<a href=#103 id=103 data-nosnippet>103</a>    </span><span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
-<a href=#104 id=104 data-nosnippet>104</a>    </span><span class="kw">fn </span>get_entire_database(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt;;
-<a href=#105 id=105 data-nosnippet>105</a>}
-<a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a><span class="doccomment">/// Similar to RocksDB's IteratorMode
-<a href=#108 id=108 data-nosnippet>108</a></span><span class="kw">pub enum </span>MassaIteratorMode&lt;<span class="lifetime">'a</span>&gt; {
-<a href=#109 id=109 data-nosnippet>109</a>    Start,
-<a href=#110 id=110 data-nosnippet>110</a>    End,
-<a href=#111 id=111 data-nosnippet>111</a>    From(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], MassaDirection),
-<a href=#112 id=112 data-nosnippet>112</a>}
-<a href=#113 id=113 data-nosnippet>113</a>
-<a href=#114 id=114 data-nosnippet>114</a><span class="doccomment">/// Similar to RocksDB's Direction
-<a href=#115 id=115 data-nosnippet>115</a></span><span class="kw">pub enum </span>MassaDirection {
-<a href=#116 id=116 data-nosnippet>116</a>    Forward,
-<a href=#117 id=117 data-nosnippet>117</a>    Reverse,
-<a href=#118 id=118 data-nosnippet>118</a>}</code></pre></div></section></main></body></html>
+<a href=#69 id=69 data-nosnippet>69</a>    ///
+<a href=#70 id=70 data-nosnippet>70</a>    /// # Security
+<a href=#71 id=71 data-nosnippet>71</a>    ///
+<a href=#72 id=72 data-nosnippet>72</a>    /// This is an incremental fingerprint, NOT a collision-resistant commitment.
+<a href=#73 id=73 data-nosnippet>73</a>    /// It is the XOR of `HashXof(key ‖ value)` over every row of the state, which is
+<a href=#74 id=74 data-nosnippet>74</a>    /// linear over GF(2): any 4,097 distinct rows contain a non-empty subset that XORs
+<a href=#75 id=75 data-nosnippet>75</a>    /// to zero, and Gaussian elimination finds it offline. Distinct states can thus be
+<a href=#76 id=76 data-nosnippet>76</a>    /// crafted to share the same fingerprint, or to reach a chosen value.
+<a href=#77 id=77 data-nosnippet>77</a>    ///
+<a href=#78 id=78 data-nosnippet>78</a>    /// It is fine for detecting accidental divergence, and as the cycle snapshot mixed
+<a href=#79 id=79 data-nosnippet>79</a>    /// into the PoS draw seed (combined there with the later `rng_seed`, see
+<a href=#80 id=80 data-nosnippet>80</a>    /// `PoSFinalState::feed_selector`). Do not use it as a binding commitment to the
+<a href=#81 id=81 data-nosnippet>81</a>    /// state (trust-minimized bootstrap, state proofs, snapshot verification): that
+<a href=#82 id=82 data-nosnippet>82</a>    /// needs a different construction, gated behind `MipComponent::FinalStateHashKind`.
+<a href=#83 id=83 data-nosnippet>83</a>    </span><span class="kw">fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof&lt;HASH_XOF_SIZE_BYTES&gt;;
+<a href=#84 id=84 data-nosnippet>84</a>
+<a href=#85 id=85 data-nosnippet>85</a>    <span class="doccomment">/// Flushes the underlying db.
+<a href=#86 id=86 data-nosnippet>86</a>    </span><span class="kw">fn </span>flush(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaDBError&gt;;
+<a href=#87 id=87 data-nosnippet>87</a>
+<a href=#88 id=88 data-nosnippet>88</a>    <span class="doccomment">/// Write a stream_batch of database entries received from a bootstrap server
+<a href=#89 id=89 data-nosnippet>89</a>    </span><span class="kw">fn </span>write_batch_bootstrap_client(
+<a href=#90 id=90 data-nosnippet>90</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#91 id=91 data-nosnippet>91</a>        stream_changes: StreamBatch&lt;Slot&gt;,
+<a href=#92 id=92 data-nosnippet>92</a>        stream_changes_versioning: StreamBatch&lt;Slot&gt;,
+<a href=#93 id=93 data-nosnippet>93</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(StreamingStep&lt;Key&gt;, StreamingStep&lt;Key&gt;), MassaDBError&gt;;
+<a href=#94 id=94 data-nosnippet>94</a>
+<a href=#95 id=95 data-nosnippet>95</a>    <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
+<a href=#96 id=96 data-nosnippet>96</a>    ///
+<a href=#97 id=97 data-nosnippet>97</a>    /// Returns a StreamBatch&lt;Slot&gt;
+<a href=#98 id=98 data-nosnippet>98</a>    </span><span class="kw">fn </span>get_batch_to_stream(
+<a href=#99 id=99 data-nosnippet>99</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#100 id=100 data-nosnippet>100</a>        last_state_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+<a href=#101 id=101 data-nosnippet>101</a>        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+<a href=#102 id=102 data-nosnippet>102</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
+<a href=#103 id=103 data-nosnippet>103</a>
+<a href=#104 id=104 data-nosnippet>104</a>    <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
+<a href=#105 id=105 data-nosnippet>105</a>    ///
+<a href=#106 id=106 data-nosnippet>106</a>    /// Returns a StreamBatch&lt;Slot&gt;
+<a href=#107 id=107 data-nosnippet>107</a>    </span><span class="kw">fn </span>get_versioning_batch_to_stream(
+<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#109 id=109 data-nosnippet>109</a>        last_versioning_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+<a href=#110 id=110 data-nosnippet>110</a>        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+<a href=#111 id=111 data-nosnippet>111</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
+<a href=#112 id=112 data-nosnippet>112</a>
+<a href=#113 id=113 data-nosnippet>113</a>    <span class="doccomment">/// Get the total size of the change history and the change versioning history respectively
+<a href=#114 id=114 data-nosnippet>114</a>    </span><span class="kw">fn </span>get_change_history_sizes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, usize);
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a>    <span class="doccomment">/// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
+<a href=#117 id=117 data-nosnippet>117</a>    </span><span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
+<a href=#118 id=118 data-nosnippet>118</a>    </span><span class="kw">fn </span>get_entire_database(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt;;
+<a href=#119 id=119 data-nosnippet>119</a>}
+<a href=#120 id=120 data-nosnippet>120</a>
+<a href=#121 id=121 data-nosnippet>121</a><span class="doccomment">/// Similar to RocksDB's IteratorMode
+<a href=#122 id=122 data-nosnippet>122</a></span><span class="kw">pub enum </span>MassaIteratorMode&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#123 id=123 data-nosnippet>123</a>    Start,
+<a href=#124 id=124 data-nosnippet>124</a>    End,
+<a href=#125 id=125 data-nosnippet>125</a>    From(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], MassaDirection),
+<a href=#126 id=126 data-nosnippet>126</a>}
+<a href=#127 id=127 data-nosnippet>127</a>
+<a href=#128 id=128 data-nosnippet>128</a><span class="doccomment">/// Similar to RocksDB's Direction
+<a href=#129 id=129 data-nosnippet>129</a></span><span class="kw">pub enum </span>MassaDirection {
+<a href=#130 id=130 data-nosnippet>130</a>    Forward,
+<a href=#131 id=131 data-nosnippet>131</a>    Reverse,
+<a href=#132 id=132 data-nosnippet>132</a>}</code></pre></div></section></main></body></html>
