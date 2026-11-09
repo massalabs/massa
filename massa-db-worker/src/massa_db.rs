@@ -656,6 +656,9 @@ where
     }
 
     /// Get the current XOF state hash of the database
+    ///
+    /// Not collision resistant (XOR of per-row hashes): see the security note on
+    /// `MassaDBController::get_xof_db_hash` before relying on it as a commitment.
     pub fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES> {
         self.get_xof_db_hash_opt()
             .unwrap_or(HashXof(*STATE_HASH_INITIAL_BYTES))
