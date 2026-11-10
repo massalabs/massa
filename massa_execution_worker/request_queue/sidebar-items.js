@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["RequestQueue","RequestWithResponseSender"],"type":["ResponseSender"]};
+window.SIDEBAR_ITEMS = {"struct":["RequestQueue","RequestWithResponseSender"]};
