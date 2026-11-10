@@ -1025,6 +1025,13 @@ impl MassaRpcServer for API<Public> {
         &self,
         entries: Vec<DatastoreEntryInput>,
     ) -> RpcResult<Vec<DatastoreEntryOutput>> {
+        // same bound as a datastore keys page, so the values of one page can always be read in one call
+        if let Some(conf_max) = self.0.api_settings.max_datastore_keys_queries {
+            if entries.len() > conf_max as usize {
+                return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", conf_max)).into());
+            }
+        }
+
         Ok(self
             .0
             .execution_controller

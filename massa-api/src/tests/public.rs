@@ -1333,8 +1333,7 @@ async fn get_addresses_input_limit() {
         "Bad request: too many arguments received. Only a maximum of 2 arguments are accepted per request"
     );
 
-    // get_datastore_entries is not bound by max_arguments: existing clients send
-    // larger batches (e.g. a DeWeb site's whole file list)
+    // get_datastore_entries is not bound by max_arguments but by max_datastore_keys_query
     let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
         .expect_get_final_and_active_data_entry()
@@ -1352,6 +1351,24 @@ async fn get_addresses_input_limit() {
         .await
         .unwrap();
     assert_eq!(entries.len(), 3);
+
+    api_public.0.api_settings.max_datastore_keys_queries = Some(2);
+    api_public.0.execution_controller = Box::new(MockExecutionController::new());
+    let error = api_public
+        .get_datastore_entries(vec![
+            DatastoreEntryInput {
+                address,
+                key: b"key".to_vec()
+            };
+            3
+        ])
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), -32000);
+    assert_eq!(
+        error.message(),
+        "Bad request: too many arguments received. Only a maximum of 2 arguments are accepted per request"
+    );
 }
 
 #[tokio::test]
