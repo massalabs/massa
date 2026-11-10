@@ -284,13 +284,28 @@ impl PoSFinalState {
         }
     }
 
-    /// Ensures every complete cycle has the persisted fields required for selector feeding.
+    /// Ensures the persisted cycle history can be used for selector feeding.
     ///
-    /// A cycle marked complete must have an RNG seed and a non-empty
-    /// `final_state_hash_snapshot`. Used after load/bootstrap and during DB validation so
-    /// malformed history fails fast instead of panicking later in `feed_selector`.
+    /// Cycles must be consecutive, as `get_cycle_index` assumes. A cycle marked
+    /// complete must have an RNG seed and a non-empty `final_state_hash_snapshot`.
+    /// Used after load/bootstrap and during DB validation so malformed history fails
+    /// fast instead of panicking later in `feed_selector`.
+    ///
+    /// The history length is deliberately not capped to `cycle_history_length`: an
+    /// interrupted multi-cycle downtime interpolation legitimately persists more cycles
+    /// until its final pruning, and the next start resumes it.
     pub fn validate_selector_history(&self) -> PosResult<()> {
-        for (cycle, complete) in self.get_cycle_history_cycles() {
+        let cycles = self.get_cycle_history_cycles();
+        for pair in cycles.windows(2) {
+            let (prev, next) = (pair[0].0, pair[1].0);
+            if prev.checked_add(1) != Some(next) {
+                return Err(PosError::ContainerInconsistency(format!(
+                    "cycle history is not consecutive: cycle {} is followed by cycle {}",
+                    prev, next
+                )));
+            }
+        }
+        for (cycle, complete) in cycles {
             if !complete {
                 continue;
             }
@@ -2659,6 +2674,78 @@ mod tests {
         assert_eq!(
             pos_state.get_cycle_history_cycles(),
             vec![(0, false), (u64::MAX, true)]
+        );
+
+        // the gap between 0 and u64::MAX is rejected by the history validation
+        assert_matches!(
+            pos_state.validate_selector_history(),
+            Err(PosError::ContainerInconsistency(_))
+        );
+    }
+
+    /// A cycle history with a gap (corrupt DB or bad bootstrap peer) is rejected,
+    /// since `get_cycle_index` assumes consecutive cycles.
+    #[test]
+    fn test_validate_selector_history_rejects_non_consecutive_cycles() {
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
+        };
+
+        let tempdir = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: 2,
+            max_ledger_backups: 10,
+            enable_metrics: false,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<dyn MassaDBController + 'static>
+        ));
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        let cycle_info_deserializer = CycleInfoDeserializer::new(
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
+
+        let mut pos_state = PoSFinalState {
+            config: pos_config.clone(),
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: Box::new(MockSelectorController::new()),
+            initial_rolls: Default::default(),
+            initial_seeds,
+            credits_serializer: DeferredCreditSerializer::new(),
+            credits_deserializer: DeferredCreditDeserializer::new(pos_config.max_credit_length),
+            cycle_info_serializer: CycleInfoSerializer::new(),
+            cycle_info_deserializer,
+        };
+
+        // incomplete cycles, so only the consecutiveness check applies
+        let mut batch = DBBatch::new();
+        pos_state.put_cycle_history_complete(3, false, &mut batch);
+        pos_state.put_cycle_history_complete(4, false, &mut batch);
+        db.write().write_batch(batch, DBBatch::new(), None);
+        assert_matches!(pos_state.validate_selector_history(), Ok(()));
+
+        // cycle 5 is missing
+        let mut batch = DBBatch::new();
+        pos_state.put_cycle_history_complete(6, false, &mut batch);
+        db.write().write_batch(batch, DBBatch::new(), None);
+        assert_matches!(
+            pos_state.validate_selector_history(),
+            Err(PosError::ContainerInconsistency(_))
         );
     }
 
