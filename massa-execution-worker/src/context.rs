@@ -664,6 +664,29 @@ impl ExecutionContext {
         self.speculative_ledger.get_bytecode(address)
     }
 
+    /// Returns the `(hash, length)` of the current non-empty bytecode of an address,
+    /// if an earlier `get_bytecode_and_hash` cached it, without fetching the bytecode.
+    pub fn get_cached_bytecode_hash(&self, address: &Address) -> Option<(Hash, usize)> {
+        self.speculative_ledger.get_cached_bytecode_hash(address)
+    }
+
+    /// Same as `get_bytecode`, also returning `Hash::compute_from` of the bytecode.
+    /// The hash is cached so that later `get_cached_bytecode_hash` calls can skip
+    /// the fetch until the bytecode of that address changes.
+    pub fn get_bytecode_and_hash(&mut self, address: &Address) -> Option<(Bytecode, Hash)> {
+        let bytecode = self.speculative_ledger.get_bytecode(address)?;
+        let hash = match self.speculative_ledger.get_cached_bytecode_hash(address) {
+            Some((hash, _)) => hash,
+            None => {
+                let hash = Hash::compute_from(&bytecode.0);
+                self.speculative_ledger
+                    .cache_bytecode_hash(*address, &bytecode, hash);
+                hash
+            }
+        };
+        Some((bytecode, hash))
+    }
+
     /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
     pub fn get_keys(
         &self,

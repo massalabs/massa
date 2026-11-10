@@ -13,8 +13,10 @@ use massa_execution_exports::execution_info::{TransferContext, TransferInfo};
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalStateController;
+use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::bytecode::Bytecode;
+use massa_models::prehash::PreHashMap;
 use massa_models::types::Applicable;
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
@@ -39,6 +41,15 @@ pub(crate) struct SpeculativeLedger {
 
     /// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
     pub added_changes: LedgerChanges,
+
+    /// Node-local cache of `(Hash::compute_from(bytecode), bytecode.len())` for the
+    /// current non-empty bytecode of an address, as seen by `get_bytecode`.
+    /// It lets the module cache be queried without fetching and hashing the whole
+    /// bytecode again on every call. It never changes what is executed: every
+    /// bytecode write and every reset of `added_changes` drops the stale entries,
+    /// and the final state and active history do not change while this
+    /// `SpeculativeLedger` is in use (it is rebuilt with each execution context).
+    bytecode_hash_cache: PreHashMap<Address, (Hash, usize)>,
 
     /// max datastore key length
     max_datastore_key_length: u8,
@@ -74,6 +85,7 @@ impl SpeculativeLedger {
         SpeculativeLedger {
             final_state,
             added_changes: Default::default(),
+            bytecode_hash_cache: Default::default(),
             active_history,
             max_datastore_key_length,
             max_datastore_value_size,
@@ -86,6 +98,7 @@ impl SpeculativeLedger {
     /// Returns the changes caused to the `SpeculativeLedger` since its creation,
     /// and resets their local value to nothing.
     pub fn take(&mut self) -> LedgerChanges {
+        self.bytecode_hash_cache.clear();
         std::mem::take(&mut self.added_changes)
     }
 
@@ -96,6 +109,8 @@ impl SpeculativeLedger {
 
     /// Resets the `SpeculativeLedger` to a snapshot (see `get_snapshot` method)
     pub fn reset_to_snapshot(&mut self, snapshot: LedgerChanges) {
+        // the snapshot may revert bytecode changes
+        self.bytecode_hash_cache.clear();
         self.added_changes = snapshot;
     }
 
@@ -137,6 +152,24 @@ impl SpeculativeLedger {
                 HistorySearchResult::Absent => None,
             }
         })
+    }
+
+    /// Gets the cached `(hash, length)` of the current non-empty bytecode of an
+    /// address, if `cache_bytecode_hash` stored it and the bytecode has not changed since.
+    pub fn get_cached_bytecode_hash(&self, addr: &Address) -> Option<(Hash, usize)> {
+        self.bytecode_hash_cache.get(addr).copied()
+    }
+
+    /// Caches the hash of the current bytecode of an address.
+    ///
+    /// `bytecode` must be what `get_bytecode(addr)` currently returns. Empty
+    /// bytecodes are not cached.
+    pub fn cache_bytecode_hash(&mut self, addr: Address, bytecode: &Bytecode, hash: Hash) {
+        debug_assert_eq!(self.get_bytecode(&addr).as_ref(), Some(bytecode));
+        if !bytecode.0.is_empty() {
+            self.bytecode_hash_cache
+                .insert(addr, (hash, bytecode.0.len()));
+        }
     }
 
     /// Transfers coins from one address to another.
@@ -314,6 +347,7 @@ impl SpeculativeLedger {
             TransferContext::CreateSCStorage,
         )?;
         self.added_changes.create_address(&addr);
+        self.bytecode_hash_cache.remove(&addr);
         self.added_changes.set_bytecode(addr, bytecode);
         Ok(())
     }
@@ -391,6 +425,7 @@ impl SpeculativeLedger {
             )?;
         }
         // set the bytecode of that address
+        self.bytecode_hash_cache.remove(addr);
         self.added_changes.set_bytecode(*addr, bytecode);
 
         Ok(())
@@ -403,6 +438,7 @@ impl SpeculativeLedger {
     /// deterministically at a versioning activation (see `wmas_patch`). The
     /// target address is assumed to already exist in the ledger.
     pub fn set_bytecode_raw(&mut self, addr: &Address, bytecode: Bytecode) {
+        self.bytecode_hash_cache.remove(addr);
         self.added_changes.set_bytecode(*addr, bytecode);
     }
 
