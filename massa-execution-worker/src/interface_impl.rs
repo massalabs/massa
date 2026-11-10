@@ -177,6 +177,82 @@ impl InterfaceImpl {
         InterfaceImpl::new(config, context)
     }
 
+    /// Shared body of `init_call` and `init_call_without_bytecode`.
+    ///
+    /// Returns the target bytecode when `return_bytecode` is set. Otherwise the
+    /// bytecode is only checked for presence, without being fetched when its hash
+    /// is already cached in the execution context. Checks, ordering and errors are
+    /// the same in both cases.
+    fn init_call_impl(
+        &self,
+        address: &str,
+        raw_coins: u64,
+        return_bytecode: bool,
+    ) -> Result<Option<Vec<u8>>> {
+        // get target address
+        let to_address = Address::from_str(address).map_err(|e| e.to_string())?;
+
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        // check that the target address is a SC address and if it exists
+        context
+            .check_target_sc_address(to_address)
+            .map_err(|e| e.to_string())?;
+
+        // get target bytecode (a cached hash means a non-empty bytecode is present)
+        let bytecode = if return_bytecode {
+            match context.get_bytecode(&to_address) {
+                Some(bytecode) => Some(bytecode.0),
+                None => bail!("bytecode not found for address {}", to_address),
+            }
+        } else {
+            if context.get_cached_bytecode_hash(&to_address).is_none()
+                && context.get_bytecode_and_hash(&to_address).is_none()
+            {
+                bail!("bytecode not found for address {}", to_address);
+            }
+            None
+        };
+
+        // get caller address
+        let from_address = match context.stack.last() {
+            Some(addr) => addr.address,
+            _ => bail!("failed to read call stack current address"),
+        };
+
+        // transfer coins from caller to target address
+        let coins = Amount::from_raw(raw_coins);
+        // note: rights are not checked here we checked that to_address is an SC address above
+        // and we know that the sender is at the top of the call stack
+        if let Err(err) = context.transfer_coins(
+            Some(from_address),
+            Some(to_address),
+            coins,
+            false,
+            TransferContext::AbiCallCoins,
+        ) {
+            bail!(
+                "error transferring {} coins from {} to {}: {}",
+                coins,
+                from_address,
+                to_address,
+                err
+            );
+        }
+
+        // push a new call stack element on top of the current call stack
+        context.stack.push(ExecutionStackElement {
+            address: to_address,
+            coins,
+            owned_addresses: vec![to_address],
+            operation_datastore: None,
+        });
+
+        // return the target bytecode
+        Ok(bytecode)
+    }
+
     // Allow certain addresses to bypass:
     // - the event size limit
     // - the user event count per operation / asc / deferred_call
@@ -345,59 +421,14 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The target bytecode or an error
     fn init_call(&self, address: &str, raw_coins: u64) -> Result<Vec<u8>> {
-        // get target address
-        let to_address = Address::from_str(address).map_err(|e| e.to_string())?;
+        self.init_call_impl(address, raw_coins, true)
+            .map(|bytecode| bytecode.unwrap_or_default())
+    }
 
-        // write-lock context
-        let mut context = context_guard!(self);
-
-        // check that the target address is a SC address and if it exists
-        context
-            .check_target_sc_address(to_address)
-            .map_err(|e| e.to_string())?;
-
-        // get target bytecode
-        let bytecode = match context.get_bytecode(&to_address) {
-            Some(bytecode) => bytecode,
-            None => bail!("bytecode not found for address {}", to_address),
-        };
-
-        // get caller address
-        let from_address = match context.stack.last() {
-            Some(addr) => addr.address,
-            _ => bail!("failed to read call stack current address"),
-        };
-
-        // transfer coins from caller to target address
-        let coins = Amount::from_raw(raw_coins);
-        // note: rights are not checked here we checked that to_address is an SC address above
-        // and we know that the sender is at the top of the call stack
-        if let Err(err) = context.transfer_coins(
-            Some(from_address),
-            Some(to_address),
-            coins,
-            false,
-            TransferContext::AbiCallCoins,
-        ) {
-            bail!(
-                "error transferring {} coins from {} to {}: {}",
-                coins,
-                from_address,
-                to_address,
-                err
-            );
-        }
-
-        // push a new call stack element on top of the current call stack
-        context.stack.push(ExecutionStackElement {
-            address: to_address,
-            coins,
-            owned_addresses: vec![to_address],
-            operation_datastore: None,
-        });
-
-        // return the target bytecode
-        Ok(bytecode.0)
+    /// Same as `init_call`, without returning the target bytecode.
+    /// It is not fetched when its hash is already cached in the execution context.
+    fn init_call_without_bytecode(&self, address: &str, raw_coins: u64) -> Result<()> {
+        self.init_call_impl(address, raw_coins, false).map(|_| ())
     }
 
     /// Called to finish the call process after a bytecode calls a function from another one.
@@ -424,6 +455,41 @@ impl Interface for InterfaceImpl {
             .module_cache
             .write()
             .load_module(bytecode, gas_limit, condom_limits)
+            .map_err(|e| e.to_string())?;
+
+        Ok(ret)
+    }
+
+    /// Same as `raw_get_bytecode_for` followed by `get_module`.
+    ///
+    /// `function_exists`, `call` and `local_call` cost a flat amount of gas whatever
+    /// the target bytecode size, so when the bytecode hash is cached in the execution
+    /// context and the module is in the module cache, the bytecode is neither fetched
+    /// nor hashed again. Same result, errors and gas as the uncached path.
+    fn get_module_for_address(&self, address: &str, gas_limit: u64) -> Result<RuntimeModule> {
+        let mut context = context_guard!(self);
+        let address = Address::from_str(address).map_err(|e| e.to_string())?;
+        let condom_limits = context.get_condom_limits();
+
+        if let Some((hash, bytecode_len)) = context.get_cached_bytecode_hash(&address) {
+            if let Some(ret) = context.module_cache.write().load_cached_module_by_hash(
+                hash,
+                bytecode_len,
+                gas_limit,
+                condom_limits.clone(),
+            ) {
+                return Ok(ret.map_err(|e| e.to_string())?);
+            }
+        }
+
+        let (bytecode, hash) = match context.get_bytecode_and_hash(&address) {
+            Some(bytecode_and_hash) => bytecode_and_hash,
+            _ => bail!("bytecode not found"),
+        };
+        let ret = context
+            .module_cache
+            .write()
+            .load_module_with_hash(&bytecode.0, hash, gas_limit, condom_limits)
             .map_err(|e| e.to_string())?;
 
         Ok(ret)
@@ -3247,5 +3313,113 @@ mod datastore_key_interface_regressions {
             expected
         );
         assert_current_address_unchanged(&interface);
+    }
+}
+
+#[cfg(test)]
+mod module_for_address_regressions {
+    use super::*;
+    use massa_hash::Hash;
+    use massa_ledger_exports::LedgerEntry;
+    use massa_models::types::SetUpdateOrDelete;
+    use massa_sc_runtime::Interface;
+    use massa_signature::KeyPair;
+
+    const VALID_WASM: &[u8] = include_bytes!("tests/wasm/receive_message.wasm");
+    const INVALID_WASM: &[u8] = b"not a wasm module";
+    const SC: &str = "AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy";
+
+    fn sc() -> Address {
+        Address::from_str(SC).unwrap()
+    }
+
+    fn cached_hash(interface: &InterfaceImpl) -> Option<(Hash, usize)> {
+        interface.context.lock().get_cached_bytecode_hash(&sc())
+    }
+
+    /// Result of the uncached path that `get_module_for_address` replaces
+    fn default_path(interface: &InterfaceImpl) -> std::result::Result<(), String> {
+        let bytecode = interface
+            .raw_get_bytecode_for(SC)
+            .map_err(|e| e.to_string())?;
+        interface
+            .get_module(&bytecode, u64::MAX)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    fn by_address(interface: &InterfaceImpl) -> std::result::Result<(), String> {
+        interface
+            .get_module_for_address(SC, u64::MAX)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    // MASSA-007: while the bytecode hash of an address is cached, `get_module_for_address`
+    // must still load the module of the current bytecode, so every bytecode change and
+    // every snapshot reset drops the cached hash.
+    #[test]
+    fn test_get_module_for_address_follows_bytecode_changes() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .added_changes
+            .0
+            .insert(
+                sc(),
+                SetUpdateOrDelete::Set(LedgerEntry {
+                    bytecode: Bytecode(VALID_WASM.to_vec()),
+                    ..Default::default()
+                }),
+            );
+        let valid = Some((Hash::compute_from(VALID_WASM), VALID_WASM.len()));
+
+        // cold, then served from the cached hash
+        assert_eq!(cached_hash(&interface), None);
+        assert_eq!(by_address(&interface), Ok(()));
+        assert_eq!(cached_hash(&interface), valid);
+        assert_eq!(by_address(&interface), Ok(()));
+        assert_eq!(by_address(&interface), default_path(&interface));
+
+        // a bytecode change drops the cached hash: the new, invalid, module is loaded
+        let snapshot = interface.context.lock().speculative_ledger.get_snapshot();
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .set_bytecode_raw(&sc(), Bytecode(INVALID_WASM.to_vec()));
+        assert_eq!(cached_hash(&interface), None);
+        let err = by_address(&interface).expect_err("the new bytecode is invalid");
+        assert_eq!(Err(err), default_path(&interface));
+        assert_eq!(
+            cached_hash(&interface),
+            Some((Hash::compute_from(INVALID_WASM), INVALID_WASM.len()))
+        );
+        // still invalid when served from the cached hash
+        assert_eq!(by_address(&interface), default_path(&interface));
+        assert!(by_address(&interface).is_err());
+
+        // a snapshot reset reverts the bytecode and drops the cached hash
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .reset_to_snapshot(snapshot);
+        assert_eq!(cached_hash(&interface), None);
+        assert_eq!(by_address(&interface), Ok(()));
+        assert_eq!(cached_hash(&interface), valid);
+
+        // empty bytecode: same error as the default path, and never cached
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .set_bytecode_raw(&sc(), Bytecode(Vec::new()));
+        let err = by_address(&interface).expect_err("empty bytecode");
+        assert_eq!(Err(err), default_path(&interface));
+        assert_eq!(cached_hash(&interface), None);
     }
 }
