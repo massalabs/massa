@@ -66,6 +66,20 @@ pub trait MassaDBController: Send + Sync + Debug {
     ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
 
     /// Get the current extended state hash of the database
+    ///
+    /// # Security
+    ///
+    /// This is an incremental fingerprint, NOT a collision-resistant commitment.
+    /// It is the XOR of `HashXof(key ‖ value)` over every row of the state, which is
+    /// linear over GF(2): any 4,097 distinct rows contain a non-empty subset that XORs
+    /// to zero, and Gaussian elimination finds it offline. Distinct states can thus be
+    /// crafted to share the same fingerprint, or to reach a chosen value.
+    ///
+    /// It is fine for detecting accidental divergence, and as the cycle snapshot mixed
+    /// into the PoS draw seed (combined there with the later `rng_seed`, see
+    /// `PoSFinalState::feed_selector`). Do not use it as a binding commitment to the
+    /// state (trust-minimized bootstrap, state proofs, snapshot verification): that
+    /// needs a different construction, gated behind `MipComponent::FinalStateHashKind`.
     fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES>;
 
     /// Flushes the underlying db.
