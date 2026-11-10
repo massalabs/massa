@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["default_max_addresses_per_request"],"struct":["CliSettings","ClientSettings","DefaultNode","GrpcSettings","GrpcTlsSettings","HttpSettings","SETTINGS","Settings"]};
+window.SIDEBAR_ITEMS = {"struct":["CliSettings","ClientSettings","DefaultNode","GrpcSettings","GrpcTlsSettings","HttpSettings","SETTINGS","Settings"]};
