@@ -28,6 +28,9 @@ pub struct ExecutionConfig {
     /// maximum time a queued read-only request may wait behind slot execution
     /// before the execution worker serves it, even if slot work is still pending
     pub readonly_starvation_timeout: MassaTime,
+    /// maximum time a read-only request may wait in the queue before its execution
+    /// starts: past it, the request is answered with a timeout error instead
+    pub readonly_queue_timeout: MassaTime,
     /// maximum number of SC output events kept in cache
     pub max_final_events: usize,
     /// maximum available gas for asynchronous messages execution

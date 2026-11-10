@@ -60,7 +60,7 @@ mod types;
 pub use channels::ExecutionChannels;
 #[cfg(feature = "test-exports")]
 pub use controller_traits::MockExecutionController;
-pub use controller_traits::{ExecutionController, ExecutionManager};
+pub use controller_traits::{ExecutionController, ExecutionManager, ReadOnlyExecutionFuture};
 pub use error::{ExecutionError, ExecutionQueryError};
 pub use event_store::EventStore;
 pub use massa_sc_runtime::{CondomLimits, GasCosts};

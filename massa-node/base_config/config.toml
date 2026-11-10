@@ -217,6 +217,11 @@
     # Kept well below the API request handler timeout (60s) so that callers still get
     # an answer, while staying high enough (10 slots) not to slow down catch-up.
     readonly_starvation_timeout = 5000
+    # maximum time in milliseconds a read-only request may wait in the queue before
+    # its execution starts. Past it, the request is answered with a timeout error
+    # instead of being executed. Kept below the API request handler timeout (60s)
+    # so that callers get this error rather than a dropped connection.
+    readonly_queue_timeout = 30000
     # by how many milliseconds should the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
     cursor_delay = 2000

@@ -43,7 +43,7 @@ use massa_proto_rs::massa::api::v1::{
 };
 
 /// Execute read only call (function or bytecode)
-pub(crate) fn execute_read_only_call(
+pub(crate) async fn execute_read_only_call(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::ExecuteReadOnlyCallRequest>,
 ) -> Result<grpc_api::ExecuteReadOnlyCallResponse, GrpcError> {
@@ -162,9 +162,11 @@ pub(crate) fn execute_read_only_call(
         )));
     }
 
+    // await the answer without holding a runtime thread
     let output = grpc
         .execution_controller
-        .execute_readonly_request(read_only_call)?;
+        .execute_readonly_request_async(read_only_call)
+        .await?;
 
     let result = grpc_model::ReadOnlyExecutionOutput {
         out: Some(output.out.into()),

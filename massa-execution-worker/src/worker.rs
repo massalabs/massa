@@ -46,6 +46,8 @@ pub(crate) struct ExecutionThread {
     selector: Box<dyn SelectorController>,
     /// maximum time a queued read-only request may wait behind slot execution
     readonly_starvation_timeout: Duration,
+    /// maximum time a read-only request may wait in the queue before its execution starts
+    readonly_queue_timeout: Duration,
     /// time at which the latest read-only request was executed,
     /// used to bound read-only starvation when slot work is continuously available
     last_readonly_served: Instant,
@@ -81,6 +83,7 @@ impl ExecutionThread {
             input_data,
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
             readonly_starvation_timeout: config.readonly_starvation_timeout.to_duration(),
+            readonly_queue_timeout: config.readonly_queue_timeout.to_duration(),
             last_readonly_served: Instant::now(),
             execution_state,
             slot_sequencer: SlotSequencer::new(config, final_cursor),
@@ -94,6 +97,13 @@ impl ExecutionThread {
         &mut self,
         new_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
     ) {
+        // Answer the requests that waited too long and drop the abandoned ones first,
+        // so that they neither wait for their turn nor take room from new requests.
+        // This runs at every loop iteration, so even while slot work keeps the worker
+        // busy, an expired request gets its timeout error within one iteration.
+        self.readonly_requests
+            .remove_expired(self.readonly_queue_timeout);
+
         // Append incoming readonly requests to our readonly request queue
         // Excess requests are cancelled
         self.readonly_requests.extend(new_requests);
@@ -105,6 +115,10 @@ impl ExecutionThread {
     /// # Returns
     /// true if a request was executed, false otherwise
     fn execute_one_readonly_request(&mut self) -> bool {
+        // never start a request that expired or was abandoned since the last sweep
+        self.readonly_requests
+            .remove_expired(self.readonly_queue_timeout);
+
         if let Some(req_resp) = self.readonly_requests.pop() {
             let (req, resp_tx) = req_resp.into_request_sender_pair();
 

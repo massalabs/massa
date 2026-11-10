@@ -695,30 +695,32 @@ async fn execute_read_only_bytecode() {
 
     let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
-        .expect_execute_readonly_request()
+        .expect_execute_readonly_request_async()
         .returning(|_req| {
-            Ok(ReadOnlyExecutionOutput {
-                out: massa_execution_exports::ExecutionOutput {
-                    slot: Slot {
-                        period: 1,
-                        thread: 5,
+            Box::pin(std::future::ready({
+                Ok(ReadOnlyExecutionOutput {
+                    out: massa_execution_exports::ExecutionOutput {
+                        slot: Slot {
+                            period: 1,
+                            thread: 5,
+                        },
+                        block_info: None,
+                        state_changes: massa_final_state::StateChanges::default(),
+                        events: massa_execution_exports::EventStore::default(),
+                        #[cfg(feature = "execution-trace")]
+                        slot_trace: None,
+                        #[cfg(feature = "dump-block")]
+                        storage: None,
+                        deferred_credits_execution: vec![],
+                        cancel_async_message_execution: vec![],
+                        auto_sell_execution: vec![],
+                        transfers_history: Default::default(),
+                        execution_info: None,
                     },
-                    block_info: None,
-                    state_changes: massa_final_state::StateChanges::default(),
-                    events: massa_execution_exports::EventStore::default(),
-                    #[cfg(feature = "execution-trace")]
-                    slot_trace: None,
-                    #[cfg(feature = "dump-block")]
-                    storage: None,
-                    deferred_credits_execution: vec![],
-                    cancel_async_message_execution: vec![],
-                    auto_sell_execution: vec![],
-                    transfers_history: Default::default(),
-                    execution_info: None,
-                },
-                gas_cost: 100,
-                call_result: "toto".as_bytes().to_vec(),
-            })
+                    gas_cost: 100,
+                    call_result: "toto".as_bytes().to_vec(),
+                })
+            }))
         });
 
     api_public.0.execution_controller = Box::new(exec_ctrl);
@@ -784,30 +786,32 @@ async fn execute_read_only_call() {
 
     let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
-        .expect_execute_readonly_request()
+        .expect_execute_readonly_request_async()
         .returning(|_req| {
-            Ok(ReadOnlyExecutionOutput {
-                out: massa_execution_exports::ExecutionOutput {
-                    slot: Slot {
-                        period: 1,
-                        thread: 5,
+            Box::pin(std::future::ready({
+                Ok(ReadOnlyExecutionOutput {
+                    out: massa_execution_exports::ExecutionOutput {
+                        slot: Slot {
+                            period: 1,
+                            thread: 5,
+                        },
+                        block_info: None,
+                        state_changes: massa_final_state::StateChanges::default(),
+                        events: massa_execution_exports::EventStore::default(),
+                        #[cfg(feature = "execution-trace")]
+                        slot_trace: None,
+                        #[cfg(feature = "dump-block")]
+                        storage: None,
+                        deferred_credits_execution: vec![],
+                        cancel_async_message_execution: vec![],
+                        auto_sell_execution: vec![],
+                        transfers_history: Default::default(),
+                        execution_info: None,
                     },
-                    block_info: None,
-                    state_changes: massa_final_state::StateChanges::default(),
-                    events: massa_execution_exports::EventStore::default(),
-                    #[cfg(feature = "execution-trace")]
-                    slot_trace: None,
-                    #[cfg(feature = "dump-block")]
-                    storage: None,
-                    deferred_credits_execution: vec![],
-                    cancel_async_message_execution: vec![],
-                    auto_sell_execution: vec![],
-                    transfers_history: Default::default(),
-                    execution_info: None,
-                },
-                gas_cost: 100,
-                call_result: "toto".as_bytes().to_vec(),
-            })
+                    gas_cost: 100,
+                    call_result: "toto".as_bytes().to_vec(),
+                })
+            }))
         });
 
     api_public.0.execution_controller = Box::new(exec_ctrl);

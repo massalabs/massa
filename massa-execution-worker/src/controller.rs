@@ -5,12 +5,12 @@
 
 use crate::execution::ExecutionState;
 use crate::request_queue::{RequestQueue, RequestWithResponseSender};
-use massa_channel::MassaChannel;
 use massa_execution_exports::{
     ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, ExecutionQueryError, ExecutionQueryExecutionStatus,
     ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
-    ExecutionQueryResponseItem, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionQueryResponseItem, ReadOnlyExecutionFuture, ReadOnlyExecutionOutput,
+    ReadOnlyExecutionRequest,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
@@ -24,6 +24,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Display;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tokio::sync::oneshot;
 use tracing::info;
 
 #[cfg(feature = "execution-trace")]
@@ -124,6 +125,47 @@ pub struct ExecutionControllerImpl {
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// current execution state (see execution.rs for details)
     pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
+}
+
+/// Receiving side of the response channel of a queued read-only request
+type ReadOnlyResponseReceiver = oneshot::Receiver<Result<ReadOnlyExecutionOutput, ExecutionError>>;
+
+/// The execution worker dropped the response sender without answering
+fn readonly_response_channel_error(err: oneshot::error::RecvError) -> ExecutionError {
+    ExecutionError::ChannelError(format!(
+        "readonly execution response channel readout failed: {}",
+        err
+    ))
+}
+
+impl ExecutionControllerImpl {
+    /// Queues a read-only request for the execution worker, or refuses it if the
+    /// queue is full or the worker is closing.
+    ///
+    /// # Returns
+    /// The receiving side of the channel the worker answers on
+    fn queue_readonly_request(
+        &self,
+        req: ReadOnlyExecutionRequest,
+    ) -> Result<ReadOnlyResponseReceiver, ExecutionError> {
+        let mut input_data = self.input_data.1.lock();
+
+        // refuse the request if the queue is full or the worker is closing
+        input_data.check_readonly_admission()?;
+
+        // prepare the channel to send back the result of the read-only execution
+        let (resp_tx, resp_rx) = oneshot::channel();
+
+        // append the request to the queue of input read-only requests
+        input_data
+            .readonly_requests
+            .push(RequestWithResponseSender::new(req, resp_tx));
+
+        // wake up the execution main loop
+        self.input_data.0.notify_one();
+
+        Ok(resp_rx)
+    }
 }
 
 impl ExecutionController for ExecutionControllerImpl {
@@ -273,34 +315,21 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
-        let resp_rx = {
-            let mut input_data = self.input_data.1.lock();
+        let resp_rx = self.queue_readonly_request(req)?;
 
-            // refuse the request if the queue is full or the worker is closing
-            input_data.check_readonly_admission()?;
+        // Wait for the result of the execution, blocking this thread
+        resp_rx
+            .blocking_recv()
+            .map_err(readonly_response_channel_error)?
+    }
 
-            // prepare the channel to send back the result of the read-only execution
-            let (resp_tx, resp_rx) = MassaChannel::new("read_only_request".to_string(), None);
-
-            // append the request to the queue of input read-only requests
-            input_data
-                .readonly_requests
-                .push(RequestWithResponseSender::new(req, resp_tx));
-
-            // wake up the execution main loop
-            self.input_data.0.notify_one();
-
-            resp_rx
-        };
-
-        // Wait for the result of the execution
-        match resp_rx.recv() {
-            Ok(result) => result,
-            Err(err) => Err(ExecutionError::ChannelError(format!(
-                "readonly execution response channel readout failed: {}",
-                err
-            ))),
-        }
+    fn execute_readonly_request_async(
+        &self,
+        req: ReadOnlyExecutionRequest,
+    ) -> ReadOnlyExecutionFuture {
+        // queue (or refuse) the request now, then only wait for the answer in the future
+        let resp_rx = self.queue_readonly_request(req);
+        Box::pin(async move { resp_rx?.await.map_err(readonly_response_channel_error)? })
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
@@ -816,7 +845,7 @@ mod tests {
 
     fn readonly_request(
     ) -> RequestWithResponseSender<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput> {
-        let (resp_tx, _resp_rx) = MassaChannel::new("read_only_request".to_string(), None);
+        let (resp_tx, _resp_rx) = oneshot::channel();
         RequestWithResponseSender::new(
             ReadOnlyExecutionRequest {
                 max_gas: 0,

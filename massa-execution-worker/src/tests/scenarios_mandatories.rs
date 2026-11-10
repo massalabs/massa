@@ -276,6 +276,85 @@ fn test_sending_command() {
     );
 }
 
+/// Universe whose worker answers every read-only request with a queue timeout:
+/// with `readonly_queue_timeout = 0`, any request expires before its execution starts.
+fn universe_with_zero_readonly_queue_timeout() -> ExecutionTestUniverse {
+    let exec_cfg = ExecutionConfig {
+        readonly_queue_timeout: massa_time::MassaTime::from_millis(0),
+        ..ExecutionConfig::default()
+    };
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+        None,
+    );
+    ExecutionTestUniverse::new(foreign_controllers, exec_cfg)
+}
+
+fn empty_readonly_request() -> ReadOnlyExecutionRequest {
+    ReadOnlyExecutionRequest {
+        max_gas: 1_000_000,
+        call_stack: vec![],
+        target: ReadOnlyExecutionTarget::BytecodeExecution(vec![]),
+        coins: None,
+        fee: None,
+    }
+}
+
+fn assert_readonly_queue_timeout(
+    result: Result<
+        massa_execution_exports::ReadOnlyExecutionOutput,
+        massa_execution_exports::ExecutionError,
+    >,
+) {
+    match result {
+        Err(massa_execution_exports::ExecutionError::ChannelError(msg)) => {
+            assert!(
+                msg.contains("readonly request timed out"),
+                "unexpected error: {msg}"
+            )
+        }
+        other => panic!(
+            "expected a queue timeout error, got {:?}",
+            other.map(|o| o.gas_cost)
+        ),
+    }
+}
+
+/// MASSA-011: a read-only request that waited longer than `readonly_queue_timeout`
+/// is answered with a timeout error by the worker instead of being executed.
+#[test]
+fn test_readonly_request_times_out_in_queue() {
+    let universe = universe_with_zero_readonly_queue_timeout();
+    assert_readonly_queue_timeout(
+        universe
+            .module_controller
+            .execute_readonly_request(empty_readonly_request()),
+    );
+}
+
+/// MASSA-011: the async variant gets the same answer while only awaiting,
+/// without blocking a runtime thread.
+#[test]
+fn test_readonly_request_async_times_out_in_queue() {
+    let universe = universe_with_zero_readonly_queue_timeout();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("tokio runtime");
+    // the request is queued when the future is created, before it is awaited
+    let future = universe
+        .module_controller
+        .execute_readonly_request_async(empty_readonly_request());
+    assert_readonly_queue_timeout(runtime.block_on(future));
+}
+
 #[test]
 fn test_readonly_execution() {
     // setup the period duration

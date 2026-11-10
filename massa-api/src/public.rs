@@ -349,8 +349,12 @@ impl MassaRpcServer for API<Public> {
                 }
             }
 
-            // run
-            let result = self.0.execution_controller.execute_readonly_request(req);
+            // run, awaiting the answer without holding a runtime thread
+            let result = self
+                .0
+                .execution_controller
+                .execute_readonly_request_async(req)
+                .await;
 
             // map result
             let result = ExecuteReadOnlyResponse {
@@ -450,8 +454,12 @@ impl MassaRpcServer for API<Public> {
                 }
             }
 
-            // run
-            let result = self.0.execution_controller.execute_readonly_request(req);
+            // run, awaiting the answer without holding a runtime thread
+            let result = self
+                .0
+                .execution_controller
+                .execute_readonly_request_async(req)
+                .await;
 
             // map result
             let result = ExecuteReadOnlyResponse {

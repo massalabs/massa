@@ -58,7 +58,9 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         request: tonic::Request<grpc_api::ExecuteReadOnlyCallRequest>,
     ) -> std::result::Result<tonic::Response<grpc_api::ExecuteReadOnlyCallResponse>, tonic::Status>
     {
-        Ok(tonic::Response::new(execute_read_only_call(self, request)?))
+        Ok(tonic::Response::new(
+            execute_read_only_call(self, request).await?,
+        ))
     }
 
     #[cfg(feature = "execution-trace")]
