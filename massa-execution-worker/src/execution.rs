@@ -2560,17 +2560,20 @@ impl ExecutionState {
     /// * original caller address
     /// * operation id
     /// * event state (final, candidate or both)
+    ///
+    /// Fails if the final events query would scan more index keys than the event
+    /// cache allows (see `EventCacheConfig::max_scanned_keys_per_query`).
     pub fn get_filtered_sc_output_event(
         &self,
         filter: EventFilter,
         limit: Option<usize>,
-    ) -> Vec<SCOutputEvent> {
+    ) -> Result<Vec<SCOutputEvent>, String> {
         // `None` means unbounded; callers with a budget pass `Some(remaining)`.
         let limit = limit.unwrap_or(usize::MAX);
-        match filter.is_final {
+        Ok(match filter.is_final {
             Some(true) => self
                 .final_events_cache
-                .get_filtered_sc_output_events(&filter)
+                .get_filtered_sc_output_events(&filter)?
                 .into_iter()
                 .take(limit)
                 .collect(),
@@ -2584,7 +2587,7 @@ impl ExecutionState {
                 .collect(),
             None => self
                 .final_events_cache
-                .get_filtered_sc_output_events(&filter)
+                .get_filtered_sc_output_events(&filter)?
                 .into_iter()
                 .chain(
                     self.active_history
@@ -2595,7 +2598,7 @@ impl ExecutionState {
                 )
                 .take(limit)
                 .collect(),
-        }
+        })
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
