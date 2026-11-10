@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::display::Output;
+use crate::settings::SETTINGS;
 use crate::voting::{MasOGBalance, MasOGBalanceResponse, VotingConfig};
 use crate::{client_warning, rpc_error};
 use anyhow::{anyhow, bail, Result};
@@ -632,20 +633,31 @@ impl Command {
                 if !json && show_keys {
                     client_warning!("do not share your secret key");
                 }
-                match client
-                    .public
-                    .get_addresses(wallet.get_full_wallet().keys().copied().collect())
-                    .await
-                {
-                    Ok(addresses_info) => Ok(Box::new(ExtendedWallet::new(
+                let addresses: Vec<Address> = wallet.get_full_wallet().keys().copied().collect();
+                let mut addresses_info = Vec::with_capacity(addresses.len());
+                let mut fetch_failed = false;
+                let chunk_size = SETTINGS.client.max_addresses_per_request.max(1);
+                for chunk in addresses.chunks(chunk_size) {
+                    match client.public.get_addresses(chunk.to_vec()).await {
+                        Ok(chunk_info) => addresses_info.extend(chunk_info),
+                        Err(_) => {
+                            fetch_failed = true;
+                            break;
+                        }
+                    }
+                }
+                if fetch_failed {
+                    // FIXME
+                    match show_keys {
+                        true => Ok(Box::new(wallet.clone())),
+                        false => Ok(Box::new(wallet.get_wallet_address_list())),
+                    }
+                } else {
+                    Ok(Box::new(ExtendedWallet::new(
                         wallet,
                         &addresses_info,
                         show_keys,
-                    )?)),
-                    Err(_) => match show_keys {
-                        true => Ok(Box::new(wallet.clone())),
-                        false => Ok(Box::new(wallet.get_wallet_address_list())),
-                    }, // FIXME
+                    )?))
                 }
             }
             Command::wallet_get_public_key => {

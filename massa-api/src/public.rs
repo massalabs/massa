@@ -1025,6 +1025,13 @@ impl MassaRpcServer for API<Public> {
         &self,
         entries: Vec<DatastoreEntryInput>,
     ) -> RpcResult<Vec<DatastoreEntryOutput>> {
+        // same bound as a datastore keys page, so the values of one page can always be read in one call
+        if let Some(conf_max) = self.0.api_settings.max_datastore_keys_queries {
+            if entries.len() > conf_max as usize {
+                return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", conf_max)).into());
+            }
+        }
+
         Ok(self
             .0
             .execution_controller
@@ -1094,6 +1101,10 @@ impl MassaRpcServer for API<Public> {
 
     /// get addresses
     async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
+        if addresses.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", self.0.api_settings.max_arguments)).into());
+        }
+
         // get info from storage about which blocks the addresses have created
         let created_blocks: Vec<PreHashSet<BlockId>> = {
             let lck = self.0.storage.read_blocks();
@@ -1494,13 +1505,13 @@ impl MassaRpcServer for API<Public> {
         &self,
         filter: EventFilter,
     ) -> RpcResult<Vec<SCOutputEvent>> {
-        let events = self
-            .0
-            .execution_controller
-            .get_filtered_sc_output_event(filter);
-
-        // TODO: get rid of the async part
-        Ok(events)
+        // go through query_state so that the event count and response size budgets apply
+        let response = self.exec_query(vec![ExecutionQueryRequestItem::Events(filter)]);
+        match response.responses.into_iter().next() {
+            Some(Ok(ExecutionQueryResponseItem::Events(events))) => Ok(events),
+            Some(Err(err)) => Err(ApiError::InternalServerError(err.to_string()).into()),
+            _ => Err(ApiError::InternalServerError("unexpected response type".to_string()).into()),
+        }
     }
 
     async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
