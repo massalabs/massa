@@ -50,6 +50,8 @@ impl Default for ExecutionConfig {
             max_globals_len: Some(100),
             max_custom_sections_len: Some(100),
             max_custom_sections_data_len: Some(1_000_000),
+            max_locals_count: Some(MAX_RUNTIME_MODULE_LOCALS),
+            max_code_section_size: Some(MAX_RUNTIME_MODULE_CODE_SECTION_SIZE),
         };
 
         Self {
