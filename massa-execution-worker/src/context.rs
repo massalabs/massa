@@ -1134,7 +1134,6 @@ impl ExecutionContext {
                 self.config.thread_count,
                 self.config.roll_price,
                 self.config.max_miss_ratio,
-                self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
             )
         } else {
             vec![]
