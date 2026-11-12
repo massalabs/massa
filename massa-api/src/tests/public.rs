@@ -924,6 +924,77 @@ async fn get_addresses() {
     api_public_handle.stop().await;
 }
 
+/// A repeated address is looked up once, and answered at each of its positions.
+#[tokio::test]
+async fn get_addresses_with_duplicates() {
+    let addr: SocketAddr = "[::]:5080".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr);
+
+    let addr_a =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    let addr_b =
+        Address::from_str("AU12WuVR1Td74q9eAbtYZUnk5jnRbUuUacyhQFwm217bV5v1mNqTZ").unwrap();
+
+    let mut exec_ctrl = MockExecutionController::new();
+    exec_ctrl
+        .expect_get_addresses_infos()
+        .times(1)
+        .returning(move |a, _s, _m| {
+            // only the distinct addresses, in first-seen order
+            assert_eq!(a, &[addr_a, addr_b]);
+            a.iter()
+                .map(|address| ExecutionAddressInfo {
+                    candidate_balance: Amount::zero(),
+                    final_balance: Amount::zero(),
+                    // tells the addresses apart in the response
+                    final_roll_count: if *address == addr_a { 1 } else { 2 },
+                    final_datastore_keys: std::collections::BTreeSet::new(),
+                    candidate_roll_count: 0,
+                    candidate_datastore_keys: std::collections::BTreeSet::new(),
+                    future_deferred_credits: BTreeMap::new(),
+                    cycle_infos: vec![],
+                })
+                .collect()
+        });
+
+    let mut selector_ctrl = MockSelectorController::new();
+    selector_ctrl
+        .expect_get_available_selections_in_range()
+        .returning(|_range, _addrs| Ok(BTreeMap::new()));
+
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+    api_public.0.selector_controller = Box::new(selector_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').next_back().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![vec![addr_a, addr_b, addr_a, addr_a]];
+    let response: Vec<AddressInfo> = client
+        .request("get_addresses", params.clone())
+        .await
+        .unwrap();
+
+    let answered: Vec<(Address, u64)> = response
+        .iter()
+        .map(|info| (info.address, info.final_roll_count))
+        .collect();
+    assert_eq!(
+        answered,
+        vec![(addr_a, 1), (addr_b, 2), (addr_a, 1), (addr_a, 1)]
+    );
+
+    api_public_handle.stop().await;
+}
+
 #[tokio::test]
 async fn get_addresses_bytecode() {
     let addr: SocketAddr = "[::]:5019".parse().unwrap();

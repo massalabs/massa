@@ -294,6 +294,9 @@ pub(crate) struct EventCache {
     max_operations_per_block: u64,
     /// Max number of events returned by a query
     max_events_per_query: usize,
+    /// Max number of index keys a query may scan, over all its filter criteria.
+    /// Bounds the work (and the memory of the intermediate key sets) of one query.
+    max_scanned_keys_per_query: u64,
 }
 
 impl EventCache {
@@ -309,6 +312,7 @@ impl EventCache {
         max_events_per_operation: u64,
         max_operations_per_block: u64,
         max_events_per_query: usize,
+        max_scanned_keys_per_query: u64,
     ) -> Self {
         // Clear the db
         if path.exists() {
@@ -343,6 +347,7 @@ impl EventCache {
             max_events_per_operation,
             max_operations_per_block,
             max_events_per_query,
+            max_scanned_keys_per_query,
         }
     }
 
@@ -464,14 +469,19 @@ impl EventCache {
     }
 
     /// Get events filtered by the given argument
+    /// Returns the events matching `filter` (at most `max_events_per_query`), with
+    /// the number of index keys scanned for each filter criterion.
+    ///
+    /// Fails without returning anything if the query would scan more than
+    /// `max_scanned_keys_per_query` index keys: the client must narrow its filter.
     pub(crate) fn get_filtered_sc_output_events(
         &self,
         filter: &EventFilter,
-    ) -> (Vec<u64>, Vec<SCOutputEvent>) {
+    ) -> Result<(Vec<u64>, Vec<SCOutputEvent>), String> {
         // All events stored in this cache are final: a query for non-final
         // events can never match anything here
         if filter.is_final == Some(false) {
-            return (vec![], vec![]);
+            return Ok((vec![], vec![]));
         }
 
         // Step 1
@@ -508,14 +518,22 @@ impl EventCache {
 
         let mut query_counts = Vec::with_capacity(map.len());
         let mut filter_res_prev = None;
-        for ((_counter, indent), filter_item) in map.iter() {
+        let mut scan_budget = self.max_scanned_keys_per_query;
+        let last_pass = map.len().saturating_sub(1);
+        for (pass, ((_counter, indent), filter_item)) in map.iter().enumerate() {
             let mut filter_res = BTreeSet::new();
+            // Only the first `max_events_per_query` keys of the last pass are kept (step 3).
+            // Keys are scanned in increasing order, so that pass can stop once it has them,
+            // with the same result. Earlier passes are intersected later, so they can't.
+            let max_results = (pass == last_pass).then_some(self.max_events_per_query);
             let query_count = self.filter_for(
                 indent,
                 filter_item,
                 &mut filter_res,
                 filter_res_prev.as_ref(),
-            );
+                max_results,
+                &mut scan_budget,
+            )?;
             query_counts.push(query_count);
             filter_res_prev = Some(filter_res);
         }
@@ -556,16 +574,22 @@ impl EventCache {
             })
             .collect::<Vec<SCOutputEvent>>();
 
-        (query_counts, events)
+        Ok((query_counts, events))
     }
 
+    /// Collects into `result` the keys matching `filter_item` (and present in `seen` if given),
+    /// stopping once `result` holds `max_results` keys.
+    ///
+    /// Every scanned key consumes one unit of `scan_budget`; fails once it is exhausted.
     fn filter_for(
         &self,
         indent: &KeyIndent,
         filter_item: &FilterItem,
         result: &mut BTreeSet<Vec<u8>>,
         seen: Option<&BTreeSet<Vec<u8>>>,
-    ) -> u64 {
+        max_results: Option<usize>,
+        scan_budget: &mut u64,
+    ) -> Result<u64, String> {
         let mut query_count: u64 = 0;
 
         if *indent == KeyIndent::Event {
@@ -610,6 +634,13 @@ impl EventCache {
 
                     let found = kvb.0.to_vec();
                     query_count = query_count.saturating_add(1);
+                    if *scan_budget == 0 {
+                        return Err(format!(
+                            "event query scans more than {} index keys: narrow the filter (slot range, emitter, caller or operation id)",
+                            self.max_scanned_keys_per_query
+                        ));
+                    }
+                    *scan_budget -= 1;
 
                     if let Some(filter_set_seen) = seen {
                         if filter_set_seen.contains(&found) {
@@ -624,6 +655,10 @@ impl EventCache {
                         }
                     } else {
                         result.insert(found);
+                    }
+
+                    if max_results.is_some_and(|max| result.len() >= max) {
+                        break;
                     }
                 }
             }
@@ -664,6 +699,13 @@ impl EventCache {
                         .to_vec();
 
                     query_count = query_count.saturating_add(1);
+                    if *scan_budget == 0 {
+                        return Err(format!(
+                            "event query scans more than {} index keys: narrow the filter (slot range, emitter, caller or operation id)",
+                            self.max_scanned_keys_per_query
+                        ));
+                    }
+                    *scan_budget -= 1;
 
                     if let Some(filter_set_seen) = seen {
                         if filter_set_seen.contains(&found) {
@@ -679,11 +721,15 @@ impl EventCache {
                     } else {
                         result.insert(found);
                     }
+
+                    if max_results.is_some_and(|max| result.len() >= max) {
+                        break;
+                    }
                 }
             }
         }
 
-        query_count
+        Ok(query_count)
     }
 
     /// Estimate for a given KeyIndent & FilterItem the number of row to iterate
@@ -986,7 +1032,8 @@ mod tests {
             MAX_EVENT_DATA_SIZE as u64,
             MAX_EVENT_PER_OPERATION as u64,
             MAX_OPERATIONS_PER_BLOCK as u64,
-            5000, // MAX_EVENTS_PER_QUERY,
+            5000,      // MAX_EVENTS_PER_QUERY,
+            1_000_000, // MAX_SCANNED_KEYS_PER_QUERY
         )
     }
 
@@ -1345,7 +1392,7 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
+        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
 
         assert_eq!(filtered_events_1.len(), 2);
         assert_eq!(filtered_events_1[0].context.slot, slot_2);
@@ -1423,7 +1470,7 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
+        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
 
         assert_eq!(filtered_events_1.len(), cache.max_entry_count - 5);
         filtered_events_1.iter().enumerate().for_each(|(i, event)| {
@@ -1433,7 +1480,7 @@ mod tests {
 
         {
             filter_1.original_operation_id = Some(op_id_2);
-            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
+            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
             assert_eq!(filtered_events_2.len(), 2);
             filtered_events_2.iter().enumerate().for_each(|(i, event)| {
                 assert_eq!(event.context.slot, slot_2);
@@ -1447,7 +1494,7 @@ mod tests {
 
         {
             filter_1.original_operation_id = Some(op_id_unknown);
-            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
+            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
             assert_eq!(filtered_events_2.len(), 0);
         }
     }
@@ -1532,7 +1579,7 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
+        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
 
         assert_eq!(filtered_events_1.len(), threshold);
         filtered_events_1.iter().for_each(|event| {
@@ -1543,7 +1590,7 @@ mod tests {
         // filter with emit_addr_2
         {
             filter_1.emitter_address = Some(emit_addr_2);
-            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
+            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
             assert_eq!(filtered_events_2.len(), threshold + 1 + 2);
             filtered_events_2.iter().for_each(|event| {
                 assert_eq!(*event.context.call_stack.back().unwrap(), emit_addr_2)
@@ -1552,13 +1599,13 @@ mod tests {
         // filter with dummy_addr
         {
             filter_1.emitter_address = Some(dummy_addr);
-            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
+            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
             assert_eq!(filtered_events_2.len(), 0);
         }
         // filter with address that is not in the DB
         {
             filter_1.emitter_address = Some(emit_addr_unknown);
-            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
+            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
             assert_eq!(filtered_events_2.len(), 0);
         }
     }
@@ -1642,7 +1689,7 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
+        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
 
         assert_eq!(filtered_events_1.len(), threshold);
         filtered_events_1.iter().for_each(|event| {
@@ -1652,7 +1699,7 @@ mod tests {
 
         {
             filter_1.original_caller_address = Some(caller_addr_2);
-            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
+            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
             assert_eq!(filtered_events_2.len(), threshold + 1 + 2);
             filtered_events_2.iter().for_each(|event| {
                 assert_eq!(*event.context.call_stack.front().unwrap(), caller_addr_2);
@@ -1660,12 +1707,12 @@ mod tests {
         }
         {
             filter_1.original_caller_address = Some(dummy_addr);
-            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
+            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
             assert_eq!(filtered_events_2.len(), 0);
         }
         {
             filter_1.original_caller_address = Some(caller_addr_unknown);
-            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
+            let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
             assert_eq!(filtered_events_2.len(), 0);
         }
     }
@@ -1748,7 +1795,7 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
+        let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1).unwrap();
         assert_eq!(filtered_events_1.len(), 1);
         assert!(filtered_events_1[0].context.is_error);
         assert_eq!(filtered_events_1[0].context.slot, slot_2);
@@ -1792,7 +1839,7 @@ mod tests {
             emitter_address: Some(emitter),
             ..Default::default()
         };
-        let (_, events) = cache.get_filtered_sc_output_events(&filter);
+        let (_, events) = cache.get_filtered_sc_output_events(&filter).unwrap();
         assert!(events.is_empty());
     }
 
@@ -1942,7 +1989,8 @@ mod tests {
             ..Default::default()
         };
 
-        let (query_counts, _filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
+        let (query_counts, _filtered_events_1) =
+            cache.get_filtered_sc_output_events(&filter_1).unwrap();
         println!("threshold: {:?}", threshold);
         println!("query_counts: {:?}", query_counts);
 
@@ -1951,5 +1999,132 @@ mod tests {
         // For second filter (is_error) we could have iter more (all events have is_error = true)
         // but as soon as we found 2 items we could return (as the previous filter already limit the final count)
         assert_eq!(query_counts[1], threshold as u64);
+    }
+
+    /// Cache with custom query limits, filled with `count` final events over slots
+    /// (1, 0), (2, 0), ... emitted by `emitter` every `emitter_every` events
+    /// (others by a second address).
+    fn cache_with_events(
+        max_events_per_query: usize,
+        max_scanned_keys_per_query: u64,
+        count: u64,
+        emitter_every: u64,
+    ) -> (EventCache, Address, TempDir) {
+        let tmp = TempDir::new().unwrap();
+        let mut cache = EventCache::new(
+            tmp.path(),
+            1000,
+            300,
+            THREAD_COUNT,
+            MAX_RECURSIVE_CALLS_DEPTH,
+            MAX_EVENT_DATA_SIZE as u64,
+            MAX_EVENT_PER_OPERATION as u64,
+            MAX_OPERATIONS_PER_BLOCK as u64,
+            max_events_per_query,
+            max_scanned_keys_per_query,
+        );
+        let emitter =
+            Address::from_str("AU122Em8qkqegdLb1eyH8rdkSCNEf7RZLeTJve4Q2inRPGiTJ2xNv").unwrap();
+        let other =
+            Address::from_str("AU12WuVR1Td74q9eAbtYZUnk5jnRbUuUacyhQFwm217bV5v1mNqTZ").unwrap();
+        let mut events: Vec<SCOutputEvent> = (0..count)
+            .map(|i| SCOutputEvent {
+                context: EventExecutionContext {
+                    slot: Slot::new(i + 1, 0),
+                    block: None,
+                    read_only: false,
+                    index_in_slot: 0,
+                    call_stack: VecDeque::from(vec![if i % emitter_every == 0 {
+                        emitter
+                    } else {
+                        other
+                    }]),
+                    origin_operation_id: None,
+                    is_final: true,
+                    is_error: false,
+                    deferred_call_id: None,
+                    async_msg_id: None,
+                },
+                data: format!("event {}", i),
+            })
+            .collect();
+        events.shuffle(&mut thread_rng());
+        cache.insert_multi_it(events.into_iter());
+        (cache, emitter, tmp)
+    }
+
+    /// MASSA-012: the last filter pass stops once it has `max_events_per_query` keys,
+    /// and returns exactly the events a full scan would.
+    #[test]
+    #[serial]
+    fn test_query_stops_scanning_at_max_events_per_query() {
+        let (capped, emitter, _tmp_1) = cache_with_events(10, 1_000_000, 300, 2);
+        let (full, _, _tmp_2) = cache_with_events(1_000, 1_000_000, 300, 2);
+
+        let filters = [
+            // no criteria: one pass over the whole event column
+            EventFilter::default(),
+            // one criterion
+            EventFilter {
+                emitter_address: Some(emitter),
+                ..Default::default()
+            },
+            // two criteria: only the last pass can stop early
+            EventFilter {
+                start: Some(Slot::new(50, 0)),
+                emitter_address: Some(emitter),
+                ..Default::default()
+            },
+        ];
+        for filter in filters {
+            let (counts, events) = capped.get_filtered_sc_output_events(&filter).unwrap();
+            let (full_counts, all_events) = full.get_filtered_sc_output_events(&filter).unwrap();
+            assert_eq!(events.len(), 10, "{filter:?}");
+            assert_eq!(events, all_events[..10], "{filter:?}");
+            // the last pass stopped early
+            assert!(
+                counts.last().unwrap() < full_counts.last().unwrap(),
+                "{filter:?}: {counts:?} vs {full_counts:?}"
+            );
+            if counts.len() == 1 {
+                // a single pass scans exactly the keys it keeps
+                assert_eq!(counts[0], 10, "{filter:?}");
+            }
+        }
+    }
+
+    /// MASSA-012: a query that would scan more index keys than allowed fails instead of
+    /// scanning the whole cache, while narrower queries still succeed.
+    #[test]
+    #[serial]
+    fn test_query_fails_past_the_scan_budget() {
+        // 300 events, 1 in 100 emitted by `emitter`
+        let (cache, emitter, _tmp) = cache_with_events(1_000, 50, 300, 100);
+
+        // a query with no criteria would scan all 300 event keys
+        let err = cache
+            .get_filtered_sc_output_events(&EventFilter::default())
+            .unwrap_err();
+        assert!(err.contains("narrow the filter"), "{err}");
+
+        // the emitter index only holds 3 keys: well within the budget
+        let (_, events) = cache
+            .get_filtered_sc_output_events(&EventFilter {
+                emitter_address: Some(emitter),
+                ..Default::default()
+            })
+            .unwrap();
+        assert_eq!(events.len(), 3);
+
+        // the budget covers every pass: 3 keys for the emitter, then a slot range
+        // whose scan does not find them all and goes past the budget
+        let err = cache
+            .get_filtered_sc_output_events(&EventFilter {
+                start: Some(Slot::new(150, 0)),
+                emitter_address: Some(emitter),
+                ..Default::default()
+            })
+            .unwrap_err();
+        assert!(err.contains("narrow the filter"), "{err}");
     }
 }
