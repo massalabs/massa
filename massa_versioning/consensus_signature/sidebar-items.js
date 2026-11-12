@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["sig_chain_id_for_slot"]};
