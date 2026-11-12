@@ -561,8 +561,7 @@ pub(crate) fn get_slot_transfers(
 
             let abi_transfer_1 = "assembly_script_transfer_coins".to_string();
             let abi_transfer_2 = "assembly_script_transfer_coins_for".to_string();
-            let abi_transfer_3 = "abi_transfer_coins".to_string();
-            let transfer_abi_names = vec![abi_transfer_1, abi_transfer_2, abi_transfer_3];
+            let transfer_abi_names = vec![abi_transfer_1, abi_transfer_2];
             for (i, asc_call_stack) in abi_calls.asc_call_stacks.iter().enumerate() {
                 for abi_trace in asc_call_stack {
                     let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
