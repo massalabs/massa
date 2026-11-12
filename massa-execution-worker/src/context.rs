@@ -53,7 +53,6 @@ use massa_sc_runtime::{CondomLimits, MAX_DATASTORE_KEYS_PAGE};
 use massa_serialization::Serializer;
 use massa_time::MassaTime;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
-use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 use massa_versioning::versioning::{MipComponent, MipStore};
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use parking_lot::RwLock;
@@ -1469,11 +1468,6 @@ impl ExecutionContext {
     /// Get the condom limits to pass to the VM depending on the current execution component version
     pub fn get_condom_limits(&self) -> CondomLimits {
         self.config.condom_limits.clone()
-    }
-
-    /// Returns `true` if the execution component version is at least `version`.
-    pub fn is_execution_component_version_at_least(&self, version: u32) -> bool {
-        self.execution_component_version >= version
     }
 }
 

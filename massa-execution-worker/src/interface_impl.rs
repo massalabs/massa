@@ -30,7 +30,6 @@ use massa_proto_rs::massa::model::v1::{
 use massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, Result, RuntimeModule};
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
-use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
@@ -2319,6 +2318,7 @@ mod tests {
     use super::*;
     use massa_models::address::Address;
     use massa_signature::KeyPair;
+    use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 
     // An async message asking for more gas than any slot can ever schedule is rejected.
     #[test]
