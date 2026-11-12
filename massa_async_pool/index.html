@@ -29,9 +29,9 @@
 </ul>
 <p>Note that <code>fee + coins</code> coins are burned when sending the message.</p>
 <h3 id="how-is-the-asyncpool-handled"><a class="doc-anchor" href="#how-is-the-asyncpool-handled">§</a>How is the <code>AsyncPool</code> handled</h3><div class="example-wrap"><pre class="language-md"><code>* In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(rev(Ratio(msg.fee, max(msg.max_gas,1))), rev(msg.slot), rev(msg.emission_index))`
-  Batch selection and overflow eviction re-rank with
-  `fee / max(max_gas + async_msg_cst_gas_cost, 1)` so priority matches the gas actually
-  charged when taking a batch.
+  From execution component version 2 (MIP-0002), batch selection and overflow eviction
+  re-rank with `fee / max(max_gas + async_msg_cst_gas_cost, 1)` so priority matches the
+  gas actually charged when taking a batch.
 
 * when an AsyncMessage is added to the AsyncPool:
   * if the AsyncPool length has exceeded config.max_async_pool_length:
