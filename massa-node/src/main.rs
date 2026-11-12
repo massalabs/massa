@@ -493,6 +493,7 @@ async fn launch(
         max_events_per_operation: MAX_EVENT_PER_OPERATION as u64,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK as u64,
         max_events_per_query: SETTINGS.execution.max_event_per_query,
+        max_scanned_keys_per_query: SETTINGS.execution.max_event_keys_scanned_per_query,
     };
     let (event_cache_manager, event_cache_controller) =
         start_event_cache_writer_worker(event_cache_config);

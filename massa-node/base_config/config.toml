@@ -254,6 +254,12 @@
     event_snip_amount = 10
     # maximum number of events return by a query
     max_event_per_query = 7000
+    # maximum number of event cache index keys a single event query may scan, over all its
+    # filter criteria (slot range, emitter, caller, operation id, is_error). A query that would
+    # scan more is answered with an error asking to narrow the filter, instead of scanning the
+    # whole cache while holding the execution state read lock. Raise it on indexer/explorer
+    # nodes that need broad queries.
+    max_event_keys_scanned_per_query = 1000000
     # wall-clock deadline for a query_state batch, in ms (safety net against lock contention)
     query_state_deadline_ms = 500
     # slot execution info channel capacity
