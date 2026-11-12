@@ -481,7 +481,6 @@ impl ExecutionContext {
             self.slot,
             max_gas,
             async_msg_cst_gas_cost,
-            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         )
     }
 
@@ -1114,7 +1113,6 @@ impl ExecutionContext {
             &slot,
             &self.speculative_ledger.added_changes,
             self.config.async_msg_cst_gas_cost,
-            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         );
 
         let mut cancel_async_message_transfers = vec![];
