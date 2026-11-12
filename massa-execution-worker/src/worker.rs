@@ -51,6 +51,8 @@ pub(crate) struct ExecutionThread {
     /// time at which the latest read-only request was executed,
     /// used to bound read-only starvation when slot work is continuously available
     last_readonly_served: Instant,
+    /// metrics of the read-only queue
+    massa_metrics: MassaMetrics,
 }
 
 impl ExecutionThread {
@@ -66,6 +68,7 @@ impl ExecutionThread {
         input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
         execution_state: Arc<RwLock<ExecutionState>>,
         selector: Box<dyn SelectorController>,
+        massa_metrics: MassaMetrics,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
         // if we are restarting the network, use last genesis slot of the last start.
@@ -85,6 +88,7 @@ impl ExecutionThread {
             readonly_starvation_timeout: config.readonly_starvation_timeout.to_duration(),
             readonly_queue_timeout: config.readonly_queue_timeout.to_duration(),
             last_readonly_served: Instant::now(),
+            massa_metrics,
             execution_state,
             slot_sequencer: SlotSequencer::new(config, final_cursor),
             selector,
@@ -103,13 +107,35 @@ impl ExecutionThread {
         // busy, an expired request gets its timeout error within one iteration.
         // The incoming batch is swept too: it waited for this iteration, possibly
         // behind a long slot execution, and is cut to the free capacity just below.
-        self.readonly_requests
-            .remove_expired(self.readonly_queue_timeout);
-        new_requests.remove_expired(self.readonly_queue_timeout);
+        self.remove_expired_readonly_requests();
+        let timed_out = new_requests.remove_expired(self.readonly_queue_timeout);
+        if timed_out > 0 {
+            self.massa_metrics
+                .inc_readonly_requests_timed_out_by(timed_out);
+        }
 
         // Append incoming readonly requests to our readonly request queue
         // Excess requests are cancelled
-        self.readonly_requests.extend(new_requests);
+        let refused = self.readonly_requests.extend(new_requests);
+        if refused > 0 {
+            self.massa_metrics.inc_readonly_requests_refused_by(refused);
+        }
+        self.massa_metrics
+            .set_readonly_queue_length(self.readonly_requests.len());
+    }
+
+    /// Answers the queued read-only requests that waited too long with a timeout error,
+    /// drops the abandoned ones, and updates the read-only queue metrics.
+    fn remove_expired_readonly_requests(&mut self) {
+        let timed_out = self
+            .readonly_requests
+            .remove_expired(self.readonly_queue_timeout);
+        if timed_out > 0 {
+            self.massa_metrics
+                .inc_readonly_requests_timed_out_by(timed_out);
+        }
+        self.massa_metrics
+            .set_readonly_queue_length(self.readonly_requests.len());
     }
 
     /// Executes a read-only request from the queue, if any.
@@ -119,10 +145,11 @@ impl ExecutionThread {
     /// true if a request was executed, false otherwise
     fn execute_one_readonly_request(&mut self) -> bool {
         // never start a request that expired or was abandoned since the last sweep
-        self.readonly_requests
-            .remove_expired(self.readonly_queue_timeout);
+        self.remove_expired_readonly_requests();
 
         if let Some(req_resp) = self.readonly_requests.pop() {
+            self.massa_metrics
+                .set_readonly_queue_length(self.readonly_requests.len());
             let (req, resp_tx) = req_resp.into_request_sender_pair();
 
             // Acquire write access to the execution state (for cache updates) and execute the read-only request
@@ -278,6 +305,7 @@ impl ExecutionThread {
         // silently and callers see a generic channel-readout error instead of this clean
         // worker-closing cancellation.
         self.readonly_requests.cancel(cancel_err.clone());
+        self.massa_metrics.set_readonly_queue_length(0);
         // Refuse new requests in the same critical section as the final drain: a request
         // queued after it would never be answered and its caller would block forever.
         let mut input_data = self.input_data.1.lock();
@@ -320,7 +348,7 @@ pub fn start_execution_worker(
         selector.clone(),
         channels,
         wallet,
-        massa_metrics,
+        massa_metrics.clone(),
         event_cache,
         #[cfg(feature = "dump-block")]
         block_storage_backend,
@@ -336,6 +364,7 @@ pub fn start_execution_worker(
     let controller = ExecutionControllerImpl {
         input_data: input_data.clone(),
         execution_state: execution_state.clone(),
+        massa_metrics: massa_metrics.clone(),
     };
 
     // launch the execution thread
@@ -348,7 +377,14 @@ pub fn start_execution_worker(
         .name("execution".into());
     let thread_handle = thread_builder
         .spawn(move || {
-            ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
+            ExecutionThread::new(
+                config,
+                input_data_clone,
+                execution_state,
+                selector,
+                massa_metrics,
+            )
+            .main_loop();
         })
         .expect("failed to spawn thread : execution");
     // create a manager
