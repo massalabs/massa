@@ -1358,11 +1358,8 @@ impl ExecutionContext {
         &mut self,
         call: DeferredCall,
     ) -> Result<DeferredCallId, ExecutionError> {
-        self.speculative_deferred_calls.register_call(
-            call,
-            self.execution_trail_hash,
-            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
-        )
+        self.speculative_deferred_calls
+            .register_call(call, self.execution_trail_hash)
     }
 
     /// Check if a deferred call exists
