@@ -477,33 +477,10 @@ impl SpeculativeDeferredCallRegistry {
         &mut self,
         call: DeferredCall,
         trail_hash: massa_hash::Hash,
-        use_effective_index: bool,
     ) -> Result<DeferredCallId, ExecutionError> {
-        let index = if use_effective_index {
-            self.get_calls_by_slot(call.target_slot).slot_calls.len()
-        } else {
-            let mut index = 0;
-
-            if let Some(val) = self
-                .deferred_calls_changes
-                .slots_change
-                .get(&call.target_slot)
-            {
-                index += val.calls_len();
-            }
-
-            {
-                // final state
-                let slots_call = self
-                    .final_state
-                    .read()
-                    .get_deferred_call_registry()
-                    .get_slot_calls(call.target_slot);
-                index += slots_call.slot_calls.len();
-            }
-
-            index
-        };
+        // index allocation uses the same effective view as execution
+        // (current changes + active history + final state)
+        let index = self.get_calls_by_slot(call.target_slot).slot_calls.len();
 
         let id = DeferredCallId::new(0, call.target_slot, index as u64, trail_hash.to_bytes())?;
 
@@ -862,28 +839,7 @@ mod tests {
         )
     }
 
-    // Before MIP-0002, active-history deferred calls are not counted when allocating
-    // the per-slot index, which can assign an already-used index.
-    #[test]
-    fn register_call_legacy_index_ignores_active_history() {
-        let target_slot = Slot::new(10, 1);
-        let history_id =
-            DeferredCallId::new(0, target_slot, 0, Hash::compute_from(b"history").to_bytes())
-                .unwrap();
-        let mut registry = registry_with_history_call(target_slot, history_id);
-
-        let id = registry
-            .register_call(
-                sample_deferred_call(target_slot),
-                Hash::compute_from(b"new-call"),
-                false,
-            )
-            .unwrap();
-
-        assert_eq!(deferred_call_index(&id), 0);
-    }
-
-    // From MIP-0002 on, index allocation uses the same effective view as execution.
+    // Index allocation uses the same effective view as execution.
     #[test]
     fn register_call_effective_index_includes_active_history() {
         let target_slot = Slot::new(10, 1);
@@ -898,7 +854,6 @@ mod tests {
             .register_call(
                 sample_deferred_call(target_slot),
                 Hash::compute_from(b"new-call"),
-                true,
             )
             .unwrap();
 
@@ -919,14 +874,12 @@ mod tests {
             .register_call(
                 sample_deferred_call(target_slot),
                 Hash::compute_from(b"first"),
-                true,
             )
             .unwrap();
         let id2 = registry
             .register_call(
                 sample_deferred_call(target_slot),
                 Hash::compute_from(b"second"),
-                true,
             )
             .unwrap();
 
