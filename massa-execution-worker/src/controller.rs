@@ -25,7 +25,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::oneshot;
-use tracing::info;
+use tracing::{info, warn};
 
 #[cfg(feature = "execution-trace")]
 use massa_execution_exports::types_trace_info::AbiTrace;
@@ -271,13 +271,18 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    // ponytail: single-shot path uncapped (explicit None), one full active-history scan per call;
-    // thread a handler-provided limit like query_state does if this is abused
-    // (breaking-changes list, F42).
+    // Uncapped (explicit None): the public JSON-RPC and gRPC handlers go through
+    // `query_state` instead, which applies the event count and response size budgets.
+    // A query that exceeds the event cache scan budget returns no events here (logged):
+    // this trait method has no error channel, unlike the `Events` item of `query_state`.
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         self.execution_state
             .read()
             .get_filtered_sc_output_event(filter, None)
+            .unwrap_or_else(|err| {
+                warn!("get_filtered_sc_output_event: {}", err);
+                Vec::new()
+            })
     }
 
     /// Get the final and candidate values of balance.
@@ -726,7 +731,9 @@ fn eval_query_item(
                 ));
             }
             let limit = *remaining_events;
-            let events = exec_state.get_filtered_sc_output_event(filter, limit);
+            let events = exec_state
+                .get_filtered_sc_output_event(filter, limit)
+                .map_err(ExecutionQueryError::TooLargeResponse)?;
             if let Some(remaining) = remaining_events {
                 *remaining -= events.len();
             }

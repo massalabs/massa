@@ -30,7 +30,13 @@ impl EventCacheWriterInputData {
 pub trait EventCacheController: Send + Sync {
     fn save_events(&self, events: VecDeque<SCOutputEvent>);
 
-    fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> Vec<SCOutputEvent>;
+    /// Events matching `filter`, from the queue of events not written yet and from the cache.
+    ///
+    /// Fails if the cache query would scan more than its configured number of index keys.
+    fn get_filtered_sc_output_events(
+        &self,
+        filter: &EventFilter,
+    ) -> Result<Vec<SCOutputEvent>, String>;
 }
 
 #[derive(Clone)]
@@ -53,7 +59,10 @@ impl EventCacheController for EventCacheControllerImpl {
         self.input_data.0.notify_all();
     }
 
-    fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> Vec<SCOutputEvent> {
+    fn get_filtered_sc_output_events(
+        &self,
+        filter: &EventFilter,
+    ) -> Result<Vec<SCOutputEvent>, String> {
         let mut res_0 = {
             // Read from new events first
             let lock_0 = self.input_data.1.lock();
@@ -112,15 +121,15 @@ impl EventCacheController for EventCacheControllerImpl {
         let res_1 = {
             // Read from db (on disk) events
             let lock = self.cache.read();
-            let (_, res_1) = lock.get_filtered_sc_output_events(filter);
+            let res_1 = lock.get_filtered_sc_output_events(filter);
             // Drop the lock on the event cache db asap
             drop(lock);
-            res_1
+            res_1?.1
         };
 
         // Merge results
         let res_1: BTreeSet<SCOutputEvent> = BTreeSet::from_iter(res_1);
         res_0.extend(res_1);
-        Vec::from_iter(res_0)
+        Ok(Vec::from_iter(res_0))
     }
 }

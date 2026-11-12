@@ -624,31 +624,44 @@ async fn get_filtered_sc_output_event() {
 
     let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
-        .expect_get_filtered_sc_output_event()
-        .returning(|_a| {
-            vec![SCOutputEvent {
-                context: massa_models::output_event::EventExecutionContext {
-                    slot: Slot {
-                        period: 1,
-                        thread: 10,
+        .expect_query_state()
+        .times(1)
+        .returning(|request| {
+            assert_eq!(request.max_event_count, Some(7000));
+            assert!(matches!(
+                request.requests.as_slice(),
+                [ExecutionQueryRequestItem::Events(_)]
+            ));
+            ExecutionQueryResponse {
+                responses: vec![Ok(ExecutionQueryResponseItem::Events(vec![
+                    SCOutputEvent {
+                        context: massa_models::output_event::EventExecutionContext {
+                            slot: Slot {
+                                period: 1,
+                                thread: 10,
+                            },
+                            block: None,
+                            read_only: false,
+                            index_in_slot: 1,
+                            call_stack: std::collections::VecDeque::new(),
+                            origin_operation_id: Some(
+                                massa_models::operation::OperationId::from_str(
+                                    "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC",
+                                )
+                                .unwrap(),
+                            ),
+                            is_final: false,
+                            is_error: false,
+                            deferred_call_id: None,
+                            async_msg_id: None,
+                        },
+                        data: "massa".to_string(),
                     },
-                    block: None,
-                    read_only: false,
-                    index_in_slot: 1,
-                    call_stack: std::collections::VecDeque::new(),
-                    origin_operation_id: Some(
-                        massa_models::operation::OperationId::from_str(
-                            "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC",
-                        )
-                        .unwrap(),
-                    ),
-                    is_final: false,
-                    is_error: false,
-                    deferred_call_id: None,
-                    async_msg_id: None,
-                },
-                data: "massa".to_string(),
-            }]
+                ]))],
+                candidate_cursor: Slot::new(0, 0),
+                final_cursor: Slot::new(0, 0),
+                final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
+            }
         });
 
     api_public.0.execution_controller = Box::new(exec_ctrl);
@@ -911,6 +924,77 @@ async fn get_addresses() {
         .unwrap();
 
     assert!(response.len() == 1);
+
+    api_public_handle.stop().await;
+}
+
+/// A repeated address is looked up once, and answered at each of its positions.
+#[tokio::test]
+async fn get_addresses_with_duplicates() {
+    let addr: SocketAddr = "[::]:5080".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr);
+
+    let addr_a =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    let addr_b =
+        Address::from_str("AU12WuVR1Td74q9eAbtYZUnk5jnRbUuUacyhQFwm217bV5v1mNqTZ").unwrap();
+
+    let mut exec_ctrl = MockExecutionController::new();
+    exec_ctrl
+        .expect_get_addresses_infos()
+        .times(1)
+        .returning(move |a, _s, _m| {
+            // only the distinct addresses, in first-seen order
+            assert_eq!(a, &[addr_a, addr_b]);
+            a.iter()
+                .map(|address| ExecutionAddressInfo {
+                    candidate_balance: Amount::zero(),
+                    final_balance: Amount::zero(),
+                    // tells the addresses apart in the response
+                    final_roll_count: if *address == addr_a { 1 } else { 2 },
+                    final_datastore_keys: std::collections::BTreeSet::new(),
+                    candidate_roll_count: 0,
+                    candidate_datastore_keys: std::collections::BTreeSet::new(),
+                    future_deferred_credits: BTreeMap::new(),
+                    cycle_infos: vec![],
+                })
+                .collect()
+        });
+
+    let mut selector_ctrl = MockSelectorController::new();
+    selector_ctrl
+        .expect_get_available_selections_in_range()
+        .returning(|_range, _addrs| Ok(BTreeMap::new()));
+
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+    api_public.0.selector_controller = Box::new(selector_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').next_back().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![vec![addr_a, addr_b, addr_a, addr_a]];
+    let response: Vec<AddressInfo> = client
+        .request("get_addresses", params.clone())
+        .await
+        .unwrap();
+
+    let answered: Vec<(Address, u64)> = response
+        .iter()
+        .map(|info| (info.address, info.final_roll_count))
+        .collect();
+    assert_eq!(
+        answered,
+        vec![(addr_a, 1), (addr_b, 2), (addr_a, 1), (addr_a, 1)]
+    );
 
     api_public_handle.stop().await;
 }
@@ -1299,6 +1383,67 @@ async fn datastore_rpc_response_ceiling_rejects_after_bounded_backend_materializ
         other => panic!("expected response-ceiling RPC error, got {other}"),
     }
     assert_eq!(*observed.lock().unwrap(), vec![(32, 2 * 32 * 64 * 1024)]);
+}
+
+#[tokio::test]
+async fn get_addresses_input_limit() {
+    let addr: SocketAddr = "[::]:0".parse().unwrap();
+    let (mut api_public, mut config) = start_public_api(addr);
+    config.max_arguments = 2;
+    api_public.0.api_settings = config;
+
+    let address =
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+
+    // any call to the execution controller would panic: the request must be
+    // rejected before reaching it
+    api_public.0.execution_controller = Box::new(MockExecutionController::new());
+    let error = api_public
+        .get_addresses(vec![address; 3])
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), -32000);
+    assert_eq!(
+        error.message(),
+        "Bad request: too many arguments received. Only a maximum of 2 arguments are accepted per request"
+    );
+
+    // get_datastore_entries is not bound by max_arguments but by max_datastore_keys_query
+    let mut exec_ctrl = MockExecutionController::new();
+    exec_ctrl
+        .expect_get_final_and_active_data_entry()
+        .times(1)
+        .returning(|entries| vec![(None, None); entries.len()]);
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+    let entries = api_public
+        .get_datastore_entries(vec![
+            DatastoreEntryInput {
+                address,
+                key: b"key".to_vec()
+            };
+            3
+        ])
+        .await
+        .unwrap();
+    assert_eq!(entries.len(), 3);
+
+    api_public.0.api_settings.max_datastore_keys_queries = Some(2);
+    api_public.0.execution_controller = Box::new(MockExecutionController::new());
+    let error = api_public
+        .get_datastore_entries(vec![
+            DatastoreEntryInput {
+                address,
+                key: b"key".to_vec()
+            };
+            3
+        ])
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), -32000);
+    assert_eq!(
+        error.message(),
+        "Bad request: too many arguments received. Only a maximum of 2 arguments are accepted per request"
+    );
 }
 
 #[tokio::test]

@@ -3819,6 +3819,14 @@ fn roll_sell() {
         periods_per_cycle: 2,
         last_start_period: 2,
         max_miss_ratio: Ratio::new(1, 1),
+        // Keep the wall-clock time cursor before genesis so that no candidate slot is executed
+        // speculatively. Otherwise, as soon as slot (3, 1) (last slot of cycle 1) is reached in
+        // time, its candidate execution settles cycle 1 production stats, which the mocked final
+        // state never holds, and the execution thread panics.
+        // Kept short: when the final block arrives together with the initial ones, it is only
+        // executed at the next slot tick, i.e. once genesis is reached.
+        genesis_timestamp: massa_time::MassaTime::now()
+            .saturating_add(massa_time::MassaTime::from_millis(2_000)),
         ..Default::default()
     };
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();

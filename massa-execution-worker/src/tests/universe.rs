@@ -97,56 +97,58 @@ impl ExecutionForeignControllers {
             controller
                 .expect_get_filtered_sc_output_events()
                 .returning(move |filter| {
-                    let events_ = events_clone_2.lock().unwrap().clone();
-                    events_
-                        .into_iter()
-                        .filter(|evt| {
-                            if let Some(start) = filter.start {
-                                if evt.context.slot < start {
-                                    return false;
+                    Ok({
+                        let events_ = events_clone_2.lock().unwrap().clone();
+                        events_
+                            .into_iter()
+                            .filter(|evt| {
+                                if let Some(start) = filter.start {
+                                    if evt.context.slot < start {
+                                        return false;
+                                    }
                                 }
-                            }
-                            if let Some(end) = filter.end {
-                                if evt.context.slot >= end {
-                                    return false;
+                                if let Some(end) = filter.end {
+                                    if evt.context.slot >= end {
+                                        return false;
+                                    }
                                 }
-                            }
-                            if let Some(is_final) = filter.is_final {
-                                if evt.context.is_final != is_final {
-                                    return false;
+                                if let Some(is_final) = filter.is_final {
+                                    if evt.context.is_final != is_final {
+                                        return false;
+                                    }
                                 }
-                            }
-                            if let Some(is_error) = filter.is_error {
-                                if evt.context.is_error != is_error {
-                                    return false;
+                                if let Some(is_error) = filter.is_error {
+                                    if evt.context.is_error != is_error {
+                                        return false;
+                                    }
                                 }
-                            }
 
-                            match (
-                                filter.original_caller_address,
-                                evt.context.call_stack.front(),
-                            ) {
-                                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
-                                (Some(_), None) => return false,
-                                _ => (),
-                            }
-                            match (filter.emitter_address, evt.context.call_stack.back()) {
-                                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
-                                (Some(_), None) => return false,
-                                _ => (),
-                            }
-                            match (
-                                filter.original_operation_id,
-                                evt.context.origin_operation_id,
-                            ) {
-                                (Some(addr1), Some(addr2)) if addr1 != addr2 => return false,
-                                (Some(_), None) => return false,
-                                _ => (),
-                            }
+                                match (
+                                    filter.original_caller_address,
+                                    evt.context.call_stack.front(),
+                                ) {
+                                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                                    (Some(_), None) => return false,
+                                    _ => (),
+                                }
+                                match (filter.emitter_address, evt.context.call_stack.back()) {
+                                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                                    (Some(_), None) => return false,
+                                    _ => (),
+                                }
+                                match (
+                                    filter.original_operation_id,
+                                    evt.context.origin_operation_id,
+                                ) {
+                                    (Some(addr1), Some(addr2)) if addr1 != addr2 => return false,
+                                    (Some(_), None) => return false,
+                                    _ => (),
+                                }
 
-                            true
-                        })
-                        .collect::<Vec<SCOutputEvent>>()
+                                true
+                            })
+                            .collect::<Vec<SCOutputEvent>>()
+                    })
                 });
         });
         Self {

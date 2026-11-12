@@ -43,6 +43,7 @@
     # deferred credits delta (in milliseconds)
     deferred_credits_delta = 7776000000 # ~ 3 months (90×24×60×60×1000) in milliseconds
     # max datastore keys query: maximum number of keys per request, and the default count when a request omits it.
+    # Also the maximum number of entries in one JSON-RPC `get_datastore_entries` request.
     # Keeps datastore key scans bounded: removing it lets a request without a count enumerate every key of an address.
     max_datastore_keys_query = 500
     # max number of addresses that can be included in a single request
@@ -258,6 +259,12 @@
     event_snip_amount = 10
     # maximum number of events return by a query
     max_event_per_query = 7000
+    # maximum number of event cache index keys a single event query may scan, over all its
+    # filter criteria (slot range, emitter, caller, operation id, is_error). A query that would
+    # scan more is answered with an error asking to narrow the filter, instead of scanning the
+    # whole cache while holding the execution state read lock. Raise it on indexer/explorer
+    # nodes that need broad queries.
+    max_event_keys_scanned_per_query = 1000000
     # wall-clock deadline for a query_state batch, in ms (safety net against lock contention)
     query_state_deadline_ms = 500
     # slot execution info channel capacity

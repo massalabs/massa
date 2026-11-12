@@ -1033,6 +1033,13 @@ impl MassaRpcServer for API<Public> {
         &self,
         entries: Vec<DatastoreEntryInput>,
     ) -> RpcResult<Vec<DatastoreEntryOutput>> {
+        // same bound as a datastore keys page, so the values of one page can always be read in one call
+        if let Some(conf_max) = self.0.api_settings.max_datastore_keys_queries {
+            if entries.len() > conf_max as usize {
+                return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", conf_max)).into());
+            }
+        }
+
         Ok(self
             .0
             .execution_controller
@@ -1101,7 +1108,27 @@ impl MassaRpcServer for API<Public> {
     }
 
     /// get addresses
-    async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
+    async fn get_addresses(&self, requested: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
+        if requested.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", self.0.api_settings.max_arguments)).into());
+        }
+
+        // The response matches the request by position, so a repeated address must be
+        // answered at each of its positions, but it is only looked up once:
+        // `addresses` holds the distinct addresses (in first-seen order), and
+        // `positions[i]` the index in `addresses` of `requested[i]`.
+        let mut distinct_index: PreHashMap<Address, usize> = PreHashMap::default();
+        let mut addresses: Vec<Address> = Vec::with_capacity(requested.len());
+        let positions: Vec<usize> = requested
+            .iter()
+            .map(|address| {
+                *distinct_index.entry(*address).or_insert_with(|| {
+                    addresses.push(*address);
+                    addresses.len() - 1
+                })
+            })
+            .collect();
+
         // get info from storage about which blocks the addresses have created
         let created_blocks: Vec<PreHashSet<BlockId>> = {
             let lck = self.0.storage.read_blocks();
@@ -1266,7 +1293,8 @@ impl MassaRpcServer for API<Public> {
             });
         }
 
-        Ok(res)
+        // answer each requested position
+        Ok(positions.into_iter().map(|i| res[i].clone()).collect())
     }
 
     /// get addresses bytecode
@@ -1502,13 +1530,13 @@ impl MassaRpcServer for API<Public> {
         &self,
         filter: EventFilter,
     ) -> RpcResult<Vec<SCOutputEvent>> {
-        let events = self
-            .0
-            .execution_controller
-            .get_filtered_sc_output_event(filter);
-
-        // TODO: get rid of the async part
-        Ok(events)
+        // go through query_state so that the event count and response size budgets apply
+        let response = self.exec_query(vec![ExecutionQueryRequestItem::Events(filter)]);
+        match response.responses.into_iter().next() {
+            Some(Ok(ExecutionQueryResponseItem::Events(events))) => Ok(events),
+            Some(Err(err)) => Err(ApiError::InternalServerError(err.to_string()).into()),
+            _ => Err(ApiError::InternalServerError("unexpected response type".to_string()).into()),
+        }
     }
 
     async fn node_peers_whitelist(&self) -> RpcResult<Vec<IpAddr>> {
