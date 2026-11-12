@@ -328,10 +328,9 @@ impl SpeculativeRollState {
     ///
     /// # Arguments:
     /// * `slot`: the final slot of the cycle to compute
-    /// * `limit_liquidation_to_active_rolls`: when true (execution component
-    ///   version ≥ `MIP_0002_EXECUTION_VERSION`), only the rolls that
-    ///   were active for this cycle are auto-sold. When false, the pre-MIP
-    ///   behavior applies: the address's entire current roll balance is zeroed.
+    ///
+    /// Only the rolls that were active for this cycle are auto-sold: rolls
+    /// bought after the eligibility snapshot are preserved.
     pub fn settle_production_stats(
         &mut self,
         slot: &Slot,
@@ -339,7 +338,6 @@ impl SpeculativeRollState {
         thread_count: u8,
         roll_price: Amount,
         max_miss_ratio: Ratio<u64>,
-        limit_liquidation_to_active_rolls: bool,
     ) -> Vec<(Address, Amount)> {
         #[allow(unused_mut)]
         let mut result = vec![];
@@ -369,17 +367,13 @@ impl SpeculativeRollState {
                 // Production eligibility for cycle C uses the delayed active-roll
                 // snapshot (cycle C − 3). Liquidating `owned_count` would also
                 // auto-sell rolls bought after those obligations were fixed.
-                let rolls_to_sell = if limit_liquidation_to_active_rolls {
-                    let active_count = self
-                        .final_state
-                        .read()
-                        .get_pos_state()
-                        .get_address_active_rolls(&addr, cycle)
-                        .unwrap_or(0);
-                    min(owned_count, active_count)
-                } else {
-                    owned_count
-                };
+                let active_count = self
+                    .final_state
+                    .read()
+                    .get_pos_state()
+                    .get_address_active_rolls(&addr, cycle)
+                    .unwrap_or(0);
+                let rolls_to_sell = min(owned_count, active_count);
                 if rolls_to_sell != 0 {
                     if let Some(amount) = roll_price.checked_mul_u64(rolls_to_sell) {
                         let new_deferred_credits = self
@@ -827,40 +821,20 @@ mod tests {
         (state, address, last_slot_of_cycle_0)
     }
 
-    fn settle(
-        state: &mut SpeculativeRollState,
-        slot: &Slot,
-        limit_liquidation_to_active_rolls: bool,
-    ) {
+    fn settle(state: &mut SpeculativeRollState, slot: &Slot) {
         state.settle_production_stats(
             slot,
             PERIODS_PER_CYCLE,
             POS_THREAD_COUNT,
             ROLL_PRICE,
             Ratio::new(0, 1),
-            limit_liquidation_to_active_rolls,
         );
     }
 
     #[test]
-    fn settle_pre_mip_zeroes_current_balance() {
+    fn settle_preserves_rolls_bought_after_eligibility() {
         let (mut state, address, slot) = setup();
-        settle(&mut state, &slot, false);
-
-        assert_eq!(state.added_changes.roll_changes.get(&address), Some(&0));
-        let target_slot = Slot::new_last_of_cycle(3, PERIODS_PER_CYCLE, POS_THREAD_COUNT).unwrap();
-        let credits = state
-            .added_changes
-            .deferred_credits
-            .get_address_credits_for_slot(&address, &target_slot)
-            .unwrap();
-        assert_eq!(credits, ROLL_PRICE.saturating_mul_u64(OWNED_ROLLS));
-    }
-
-    #[test]
-    fn settle_post_mip_preserves_rolls_bought_after_eligibility() {
-        let (mut state, address, slot) = setup();
-        settle(&mut state, &slot, true);
+        settle(&mut state, &slot);
 
         assert_eq!(
             state.added_changes.roll_changes.get(&address),
