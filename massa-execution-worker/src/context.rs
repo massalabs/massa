@@ -696,16 +696,13 @@ impl ExecutionContext {
         end_key: std::ops::Bound<Vec<u8>>,
         count: Option<u32>,
     ) -> Result<Option<BTreeSet<Vec<u8>>>, ExecutionError> {
-        // From execution version 2 (MIP-0002), one SC datastore-key query returns
-        // at most MAX_DATASTORE_KEYS_PAGE keys. Below that version the query stays
-        // uncapped. An explicit count above the page size is rejected. A query
-        // with no count (the deprecated ABI) is probed at page size + 1 so that
-        // matching more keys fails instead of being truncated.
-        let v2 = self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION);
-        let (effective_count, max_query) = match (v2, count) {
-            (false, _) => (None, None),
-            (true, Some(_)) => (count, Some(MAX_DATASTORE_KEYS_PAGE)),
-            (true, None) => (Some(MAX_DATASTORE_KEYS_PAGE.saturating_add(1)), None),
+        // One SC datastore-key query returns at most MAX_DATASTORE_KEYS_PAGE keys.
+        // An explicit count above the page size is rejected. A query with no count
+        // (the deprecated ABI) is probed at page size + 1 so that matching more keys
+        // fails instead of being truncated.
+        let (effective_count, max_query) = match count {
+            Some(_) => (count, Some(MAX_DATASTORE_KEYS_PAGE)),
+            None => (Some(MAX_DATASTORE_KEYS_PAGE.saturating_add(1)), None),
         };
 
         // cleanup bounds (the returned count is ignored: effective_count above is the scan limit)
@@ -722,7 +719,7 @@ impl ExecutionContext {
             self.speculative_ledger
                 .get_keys(addr, &prefix, start_key, end_key, effective_count);
 
-        if v2 && count.is_none() {
+        if count.is_none() {
             if let Some(keys) = keys.as_ref() {
                 if keys.len() > MAX_DATASTORE_KEYS_PAGE as usize {
                     return Err(ExecutionError::RuntimeError(format!(

@@ -318,8 +318,8 @@ fn get_address_from_opt_or_context(
     }
 }
 
-/// One page of datastore keys. `start_key` is exclusive. Rejected before
-/// execution version 2, and when `count` is outside `1..=MAX_DATASTORE_KEYS_PAGE`.
+/// One page of datastore keys. `start_key` is exclusive. Rejected when `count`
+/// is outside `1..=MAX_DATASTORE_KEYS_PAGE`.
 fn paginated_datastore_keys(
     context: &ExecutionContext,
     addr: &Address,
@@ -327,12 +327,6 @@ fn paginated_datastore_keys(
     start_key: Option<&[u8]>,
     count: u32,
 ) -> Result<BTreeSet<Vec<u8>>> {
-    if !context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
-        bail!(
-            "paginated datastore-key queries are only available from execution version {}",
-            MIP_0002_EXECUTION_VERSION
-        );
-    }
     if !(1..=massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE).contains(&count) {
         bail!(
             "datastore key page size must be between 1 and {}, got {}",
@@ -2408,7 +2402,7 @@ mod tests {
     }
 
     /// Pages chain without gaps or duplicates. `start_key` is exclusive.
-    /// The call is rejected before execution version 2 and when `count` is out of range.
+    /// The call is rejected when `count` is out of range.
     #[test]
     fn test_get_keys_paginated_pages() {
         use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
@@ -2423,10 +2417,6 @@ mod tests {
                 .unwrap();
         }
 
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
-        assert!(interface.get_keys_paginated(None, None, 4).is_err());
-
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
         assert!(interface.get_keys_paginated(None, None, 0).is_err());
         assert!(interface
             .get_keys_paginated(None, None, MAX_DATASTORE_KEYS_PAGE + 1)
@@ -2455,10 +2445,9 @@ mod tests {
         assert_eq!(one.len(), 1);
     }
 
-    /// From execution version 2, an unbounded `get_keys` that matches more than one
-    /// page fails. Before that version the same query returns every key.
+    /// An unbounded `get_keys` that matches more than one page fails.
     #[test]
-    fn test_get_keys_capped_at_execution_v2() {
+    fn test_get_keys_capped() {
         use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
 
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
@@ -2472,11 +2461,6 @@ mod tests {
                 .unwrap();
         }
 
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
-        let keys = interface.get_keys(Some(b"")).unwrap();
-        assert_eq!(keys.len(), MAX_DATASTORE_KEYS_PAGE as usize + 1);
-
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
         assert!(interface.get_keys(Some(b"")).is_err());
 
         let page = interface
@@ -2934,14 +2918,6 @@ mod datastore_key_interface_regressions {
         ledger.write().insert(addr, keys(prefix, count));
     }
 
-    fn set_v2(interface: &InterfaceImpl) {
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
-    }
-
-    fn set_v1(interface: &InterfaceImpl) {
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
-    }
-
     fn assert_error<T>(result: massa_sc_runtime::Result<T>, expected: &str) {
         match result {
             Err(error) => assert_eq!(
@@ -3006,7 +2982,7 @@ mod datastore_key_interface_regressions {
     }
 
     #[test]
-    fn legacy_key_queries_follow_execution_version_boundary() {
+    fn unpaginated_key_queries_reject_more_than_one_page() {
         let (interface, ledger, target, _) = fixture();
         let current = address("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M");
 
@@ -3018,16 +2994,6 @@ mod datastore_key_interface_regressions {
             ledger.write().insert(current, current_keys);
             ledger.write().insert(target, target_keys);
 
-            set_v1(&interface);
-            assert_eq!(interface.get_keys(Some(b"pA")).unwrap(), keys("pA", count));
-            assert_eq!(
-                interface
-                    .get_keys_for(&target.to_string(), Some(b"pB"))
-                    .unwrap(),
-                keys("pB", count)
-            );
-
-            set_v2(&interface);
             if count <= 500 {
                 assert_eq!(interface.get_keys(Some(b"pA")).unwrap(), keys("pA", count));
                 assert_eq!(
@@ -3050,7 +3016,7 @@ mod datastore_key_interface_regressions {
     }
 
     #[test]
-    fn paginated_queries_enforce_activation_counts_and_target_address() {
+    fn paginated_queries_enforce_counts_and_target_address() {
         use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
 
         assert_eq!(MAX_DATASTORE_KEYS_PAGE, 500);
@@ -3064,17 +3030,6 @@ mod datastore_key_interface_regressions {
             .unwrap()
             .insert(b"q000".to_vec());
 
-        set_v1(&interface);
-        assert_error(
-            interface.get_keys_paginated(Some(b"a"), None, 1),
-            "paginated datastore-key queries are only available from execution version 2",
-        );
-        assert_error(
-            interface.get_keys_for_paginated(&target.to_string(), Some(b"p"), None, 1),
-            "paginated datastore-key queries are only available from execution version 2",
-        );
-
-        set_v2(&interface);
         for count in [0, 501] {
             let error = format!("datastore key page size must be between 1 and 500, got {count}");
             assert_error(
@@ -3117,7 +3072,6 @@ mod datastore_key_interface_regressions {
             .get_mut(&target)
             .unwrap()
             .insert(b"q000".to_vec());
-        set_v2(&interface);
 
         let page1 = interface
             .get_keys_for_paginated(&target.to_string(), Some(b"p"), None, 500)
@@ -3160,7 +3114,6 @@ mod datastore_key_interface_regressions {
             .get_mut(&target)
             .unwrap()
             .insert(b"q000".to_vec());
-        set_v2(&interface);
 
         let mut history = BTreeMap::new();
         history.insert(b"p001".to_vec(), SetOrDelete::Delete);
@@ -3218,7 +3171,6 @@ mod datastore_key_interface_regressions {
             .get_mut(&target)
             .unwrap()
             .insert(b"q000".to_vec());
-        set_v2(&interface);
 
         let history_set = BTreeMap::from([
             (b"p100".to_vec(), b"one".to_vec()),
@@ -3276,7 +3228,6 @@ mod datastore_key_interface_regressions {
             .get_mut(&target)
             .unwrap()
             .insert(b"q000".to_vec());
-        set_v2(&interface);
 
         active_history.write().0 = VecDeque::from([history_output(
             Slot::new(1, 0),
