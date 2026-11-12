@@ -1703,7 +1703,6 @@ mod tests {
 
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
         let interface = InterfaceImpl::new_default(sender_addr, None, None);
-        let addr = sender_addr.to_string();
 
         for i in 0..=MAX_DATASTORE_KEYS_PAGE {
             let key = format!("k{i:06}");
