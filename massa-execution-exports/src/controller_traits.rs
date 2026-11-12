@@ -97,17 +97,8 @@ pub trait ExecutionController: Send + Sync {
     /// * `req`: an instance of `ReadOnlyCallRequest` describing the parameters of the execution
     ///
     /// # returns
-    /// An instance of `ExecutionOutput` containing a summary of the effects of the execution,
-    /// or an error if the execution failed.
-    ///
-    /// Blocks the calling thread until the execution worker answers: do not call it
-    /// from an async context, use `execute_readonly_request_async` there.
-    fn execute_readonly_request(
-        &self,
-        req: ReadOnlyExecutionRequest,
-    ) -> Result<ReadOnlyExecutionOutput, ExecutionError>;
-
-    /// Same as `execute_readonly_request`, but returns a future instead of blocking.
+    /// A future resolving to an instance of `ExecutionOutput` containing a summary of the
+    /// effects of the execution, or an error if the execution failed.
     ///
     /// The request is queued (or refused) when this is called; awaiting the future
     /// only waits for the answer, without holding a thread. Dropping the future

@@ -95,14 +95,17 @@ impl ExecutionThread {
     /// Cancel those that are in excess if there are too many.
     fn update_readonly_requests(
         &mut self,
-        new_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
+        mut new_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
     ) {
         // Answer the requests that waited too long and drop the abandoned ones first,
         // so that they neither wait for their turn nor take room from new requests.
         // This runs at every loop iteration, so even while slot work keeps the worker
         // busy, an expired request gets its timeout error within one iteration.
+        // The incoming batch is swept too: it waited for this iteration, possibly
+        // behind a long slot execution, and is cut to the free capacity just below.
         self.readonly_requests
             .remove_expired(self.readonly_queue_timeout);
+        new_requests.remove_expired(self.readonly_queue_timeout);
 
         // Append incoming readonly requests to our readonly request queue
         // Excess requests are cancelled

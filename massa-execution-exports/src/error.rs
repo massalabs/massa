@@ -12,7 +12,7 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Clone, Display, Error, Debug)]
 pub enum ExecutionError {
-    /// Channel error
+    /// Channel error: {0}
     ChannelError(String),
 
     /// Runtime error: {0}

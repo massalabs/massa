@@ -315,10 +315,12 @@ fn assert_readonly_queue_timeout(
     >,
 ) {
     match result {
-        Err(massa_execution_exports::ExecutionError::ChannelError(msg)) => {
+        Err(err @ massa_execution_exports::ExecutionError::ChannelError(_)) => {
+            // the reason must survive `Display`: that is what the API returns to clients
+            let displayed = err.to_string();
             assert!(
-                msg.contains("readonly request timed out"),
-                "unexpected error: {msg}"
+                displayed.contains("readonly request timed out"),
+                "unexpected error: {displayed}"
             )
         }
         other => panic!(
@@ -328,20 +330,22 @@ fn assert_readonly_queue_timeout(
     }
 }
 
-/// MASSA-011: a read-only request that waited longer than `readonly_queue_timeout`
-/// is answered with a timeout error by the worker instead of being executed.
-#[test]
-fn test_readonly_request_times_out_in_queue() {
-    let universe = universe_with_zero_readonly_queue_timeout();
-    assert_readonly_queue_timeout(
-        universe
-            .module_controller
-            .execute_readonly_request(empty_readonly_request()),
-    );
+/// Runs a read-only request through the real execution worker and waits for its answer,
+/// the way the API handlers do but from a synchronous test.
+fn execute_readonly_blocking(
+    controller: &dyn massa_execution_exports::ExecutionController,
+    req: ReadOnlyExecutionRequest,
+) -> Result<massa_execution_exports::ReadOnlyExecutionOutput, massa_execution_exports::ExecutionError>
+{
+    tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("tokio runtime")
+        .block_on(controller.execute_readonly_request_async(req))
 }
 
-/// MASSA-011: the async variant gets the same answer while only awaiting,
-/// without blocking a runtime thread.
+/// MASSA-011: a read-only request that waited longer than `readonly_queue_timeout`
+/// is answered with a timeout error by the worker instead of being executed,
+/// while the caller only awaits, without blocking a runtime thread.
 #[test]
 fn test_readonly_request_async_times_out_in_queue() {
     let universe = universe_with_zero_readonly_queue_timeout();
@@ -397,9 +401,9 @@ fn test_readonly_execution() {
 
     let addr = Address::from_str("AU1LQrXPJ3DVL8SFRqACk31E9MVxBcmCATFiRdpEmgztGxWAx48D").unwrap();
 
-    let mut res = universe
-        .module_controller
-        .execute_readonly_request(ReadOnlyExecutionRequest {
+    let mut res = execute_readonly_blocking(
+        &*universe.module_controller,
+        ReadOnlyExecutionRequest {
             max_gas: 100_000_000,
             call_stack: vec![ExecutionStackElement {
                 address: addr,
@@ -412,8 +416,9 @@ fn test_readonly_execution() {
             ),
             coins: None,
             fee: Some(Amount::from_str("40").unwrap()),
-        })
-        .expect("readonly execution failed");
+        },
+    )
+    .expect("readonly execution failed");
 
     assert!(res.gas_cost > 0);
     assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
@@ -426,9 +431,9 @@ fn test_readonly_execution() {
         })
     );
 
-    let mut res2 = universe
-        .module_controller
-        .execute_readonly_request(ReadOnlyExecutionRequest {
+    let mut res2 = execute_readonly_blocking(
+        &*universe.module_controller,
+        ReadOnlyExecutionRequest {
             max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
             call_stack: vec![
                 ExecutionStackElement {
@@ -457,8 +462,9 @@ fn test_readonly_execution() {
             },
             coins: Some(Amount::from_str("20").unwrap()),
             fee: Some(Amount::from_str("30").unwrap()),
-        })
-        .expect("readonly execution failed");
+        },
+    )
+    .expect("readonly execution failed");
 
     //assert_eq!(res2.out.slot, Slot::new(0, 1));
     assert!(res2.gas_cost > 0);

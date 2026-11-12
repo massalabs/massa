@@ -311,18 +311,6 @@ impl ExecutionController for ExecutionControllerImpl {
 
     /// Executes a read-only request
     /// Read-only requests do not modify consensus state
-    fn execute_readonly_request(
-        &self,
-        req: ReadOnlyExecutionRequest,
-    ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
-        let resp_rx = self.queue_readonly_request(req)?;
-
-        // Wait for the result of the execution, blocking this thread
-        resp_rx
-            .blocking_recv()
-            .map_err(readonly_response_channel_error)?
-    }
-
     fn execute_readonly_request_async(
         &self,
         req: ReadOnlyExecutionRequest,
