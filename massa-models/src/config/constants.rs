@@ -291,6 +291,20 @@ pub const MAX_RUNTIME_MODULE_PASSIVE_DATA: usize = 512;
 pub const MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER: usize = 512;
 /// Maximum number of table in a smart contract
 pub const MAX_RUNTIME_MODULE_TABLE: usize = 16;
+/// Maximum total number of locals declared by the functions of a smart contract
+/// (parameters excluded). Compilation is not metered and its cost grows with it.
+/// The largest total on mainnet and buildnet is 1,267 (ledgers of 2026-09-25 and 2026-11-10).
+pub const MAX_RUNTIME_MODULE_LOCALS: usize = 20_000;
+/// Maximum size in bytes of the code section of a smart contract.
+/// Compilation is not metered and its cost grows with it.
+/// The largest on mainnet and buildnet is 132,200 bytes (ledgers of 2026-09-25 and 2026-11-10).
+pub const MAX_RUNTIME_MODULE_CODE_SECTION_SIZE: usize = 1_048_576;
+/// Maximum total number of table elements in a smart contract (sum of the declared
+/// minimum sizes of its tables, imported ones included). Instantiation allocates
+/// them for free and outside the linear memory limits, and tables cannot grow.
+/// The largest total on mainnet and buildnet is 104 (ledgers of 2026-09-25 and 2026-11-10),
+/// and a module has at most `MAX_RUNTIME_MODULE_FUNCTIONS` (768) distinct functions to reference.
+pub const MAX_RUNTIME_MODULE_TABLE_ELEMENTS: usize = 10_000;
 /// Maximum number of memories in a smart contract
 /// - only 1 supported so far (cf specification)
 pub const MAX_RUNTIME_MODULE_MEMORIES: usize = 1;
