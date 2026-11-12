@@ -6,7 +6,7 @@ use crate::start_pool_controller;
 use crossbeam_channel as _;
 use massa_execution_exports::MockExecutionController;
 use massa_hash::Hash;
-use massa_models::config::{CHAINID, MIP_STORE_STATS_BLOCK_CONSIDERED};
+use massa_models::config::CHAINID;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -21,10 +21,7 @@ use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolControlle
 use massa_pos_exports::MockSelectorController as AutoMockSelectorController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
-use massa_versioning::mips::get_mip_list;
-use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::test_exports::create_test_wallet;
-use num::rational::Ratio;
 use parking_lot::RwLock;
 use tokio::sync::broadcast;
 
@@ -123,10 +120,6 @@ impl PoolTestBoilerPlate {
         let wallet = Arc::new(RwLock::new(create_test_wallet(Some(addresses))));
         let endorsement_sender = broadcast::channel(2000).0;
         let operation_sender = broadcast::channel(5000).0;
-        let mip_stats_config = MipStatsConfig {
-            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            warn_announced_version_ratio: Ratio::new_raw(30, 100),
-        };
         let (pool_manager, pool_controller) = start_pool_controller(
             cfg,
             &storage,
@@ -137,8 +130,6 @@ impl PoolTestBoilerPlate {
                     operation_sender,
                 },
                 selector: selector_story,
-                mip_store: MipStore::try_from((get_mip_list(), mip_stats_config))
-                    .expect("mip store creation failed"),
                 chain_id: *CHAINID,
             },
             wallet,
@@ -163,10 +154,6 @@ pub fn pool_test<F>(
 {
     let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
-    let mip_stats_config = MipStatsConfig {
-        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        warn_announced_version_ratio: Ratio::new_raw(30, 100),
-    };
     let storage = Storage::create_root();
     let keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
@@ -186,8 +173,6 @@ pub fn pool_test<F>(
                 operation_sender,
             },
             selector,
-            mip_store: MipStore::try_from((get_mip_list(), mip_stats_config))
-                .expect("mip store creation failed"),
             chain_id: *CHAINID,
         },
         wallet,

@@ -146,13 +146,6 @@ impl EndorsementTestFactory {
 
         accounts.insert(producer_address, producer_keypair.clone());
 
-        let mip_stats_config = MipStatsConfig {
-            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            warn_announced_version_ratio: Ratio::new_raw(30, 100),
-        };
-        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config))
-            .expect("Cannot create MIP store");
-
         let wallet = create_test_wallet(Some(accounts));
         // the endorsements of slot (1, 0) are made one slot duration after the factory starts
         // (wallet creation is slow, so this is set right before the start):
@@ -179,7 +172,6 @@ impl EndorsementTestFactory {
                 storage: storage.clone_without_refs(),
             },
             rx,
-            mip_store,
         );
 
         EndorsementTestFactory {
