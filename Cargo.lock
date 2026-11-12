@@ -3257,8 +3257,6 @@ dependencies = [
 name = "massa_execution_worker"
 version = "5.1.0"
 dependencies = [
- "blake3",
- "bs58",
  "cfg-if",
  "criterion",
  "hex-literal",

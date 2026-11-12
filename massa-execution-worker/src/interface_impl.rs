@@ -20,7 +20,6 @@ use massa_models::{
     deferred_calls::DeferredCallId, slot::Slot, timeslots::get_block_slot_timestamp,
 };
 use massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, Result, RuntimeModule};
-use massa_signature::{PublicKey, Signature};
 use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 #[cfg(any(
     feature = "gas_calibration",

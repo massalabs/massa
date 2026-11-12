@@ -47,6 +47,7 @@ execution-trace = [
 ]
 dump-block = [
     "prost",
+    "massa-proto-rs",
     "massa_execution_exports/dump-block",
     "db_storage_backend",
 ]
@@ -64,8 +65,6 @@ jemalloc = [
 ]
 
 [dependencies]
-blake3 = { workspace = true }
-bs58 = { workspace = true }
 rand = { workspace = true }
 rand_xoshiro = { workspace = true }
 parking_lot = { workspace = true, features = ["deadlock_detection"] }
@@ -101,7 +100,7 @@ massa_db_worker = { workspace = true, optional = true }
 massa_event_cache = { workspace = true }
 tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
-massa-proto-rs = { workspace = true }
+massa-proto-rs = { workspace = true, optional = true }
 schnellru = { workspace = true, optional = true }
 prost = { workspace = true, optional = true }
 cfg-if = { workspace = true }
