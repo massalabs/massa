@@ -17,8 +17,8 @@
 <a href=#17 id=17 data-nosnippet>17</a>/// Also has the property of ordering by priority (highest first) following the triplet:
 <a href=#18 id=18 data-nosnippet>18</a>/// `(rev(Ratio(msg.fee, max(msg.max_gas,1))), emission_slot, emission_index)`
 <a href=#19 id=19 data-nosnippet>19</a>///
-<a href=#20 id=20 data-nosnippet>20</a>/// Batch selection and pool eviction re-rank with
-<a href=#21 id=21 data-nosnippet>21</a>/// `fee / max(max_gas + async_msg_cst_gas_cost, 1)` via
+<a href=#20 id=20 data-nosnippet>20</a>/// From `MipComponent::Execution` version 2 (MIP-0002), batch selection and pool eviction
+<a href=#21 id=21 data-nosnippet>21</a>/// re-rank with `fee / max(max_gas + async_msg_cst_gas_cost, 1)` via
 <a href=#22 id=22 data-nosnippet>22</a>/// [`crate::async_msg::AsyncMessage::compute_priority_id`]; stored ids keep the historical
 <a href=#23 id=23 data-nosnippet>23</a>/// formula so identity of already-emitted messages is unchanged.
 <a href=#24 id=24 data-nosnippet>24</a></span><span class="kw">pub type </span>AsyncMessageId = (std::cmp::Reverse&lt;Ratio&lt;u64&gt;&gt;, Slot, u64);
