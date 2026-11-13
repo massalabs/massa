@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["ExecutionController","ExecutionManager"]};
+window.SIDEBAR_ITEMS = {"trait":["ExecutionController","ExecutionManager"],"type":["ReadOnlyExecutionFuture"]};

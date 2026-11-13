@@ -546,159 +546,159 @@
 <a href=#546 id=546 data-nosnippet>546</a>        max_final_events: SETTINGS.execution.max_final_events,
 <a href=#547 id=547 data-nosnippet>547</a>        readonly_queue_length: SETTINGS.execution.readonly_queue_length,
 <a href=#548 id=548 data-nosnippet>548</a>        readonly_starvation_timeout: SETTINGS.execution.readonly_starvation_timeout,
-<a href=#549 id=549 data-nosnippet>549</a>        cursor_delay: SETTINGS.execution.cursor_delay,
-<a href=#550 id=550 data-nosnippet>550</a>        max_async_gas: MAX_ASYNC_GAS,
-<a href=#551 id=551 data-nosnippet>551</a>        async_msg_cst_gas_cost: ASYNC_MSG_CST_GAS_COST,
-<a href=#552 id=552 data-nosnippet>552</a>        max_gas_per_block: MAX_GAS_PER_BLOCK,
-<a href=#553 id=553 data-nosnippet>553</a>        roll_price: ROLL_PRICE,
-<a href=#554 id=554 data-nosnippet>554</a>        thread_count: THREAD_COUNT,
-<a href=#555 id=555 data-nosnippet>555</a>        t0: T0,
-<a href=#556 id=556 data-nosnippet>556</a>        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-<a href=#557 id=557 data-nosnippet>557</a>        block_reward: BLOCK_REWARD,
-<a href=#558 id=558 data-nosnippet>558</a>        endorsement_count: ENDORSEMENT_COUNT <span class="kw">as </span>u64,
-<a href=#559 id=559 data-nosnippet>559</a>        operation_validity_period: OPERATION_VALIDITY_PERIODS,
-<a href=#560 id=560 data-nosnippet>560</a>        periods_per_cycle: PERIODS_PER_CYCLE,
-<a href=#561 id=561 data-nosnippet>561</a>        stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
-<a href=#562 id=562 data-nosnippet>562</a>        max_miss_ratio: <span class="kw-2">*</span>POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-<a href=#563 id=563 data-nosnippet>563</a>        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-<a href=#564 id=564 data-nosnippet>564</a>        max_bytecode_size: MAX_BYTECODE_LENGTH,
-<a href=#565 id=565 data-nosnippet>565</a>        max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
-<a href=#566 id=566 data-nosnippet>566</a>        storage_costs_constants,
-<a href=#567 id=567 data-nosnippet>567</a>        max_read_only_gas: SETTINGS.execution.max_read_only_gas,
-<a href=#568 id=568 data-nosnippet>568</a>        gas_costs: gas_costs.clone(),
-<a href=#569 id=569 data-nosnippet>569</a>        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
-<a href=#570 id=570 data-nosnippet>570</a>        last_start_period: final_state.read().get_last_start_period(),
-<a href=#571 id=571 data-nosnippet>571</a>        hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
-<a href=#572 id=572 data-nosnippet>572</a>        lru_cache_size: SETTINGS.execution.lru_cache_size,
-<a href=#573 id=573 data-nosnippet>573</a>        hd_cache_size: SETTINGS.execution.hd_cache_size,
-<a href=#574 id=574 data-nosnippet>574</a>        snip_amount: SETTINGS.execution.snip_amount,
-<a href=#575 id=575 data-nosnippet>575</a>        roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
-<a href=#576 id=576 data-nosnippet>576</a>        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-<a href=#577 id=577 data-nosnippet>577</a>        broadcast_enabled: SETTINGS.api.enable_broadcast,
-<a href=#578 id=578 data-nosnippet>578</a>        broadcast_slot_execution_output_channel_capacity: SETTINGS
-<a href=#579 id=579 data-nosnippet>579</a>            .execution
-<a href=#580 id=580 data-nosnippet>580</a>            .broadcast_slot_execution_output_channel_capacity,
-<a href=#581 id=581 data-nosnippet>581</a>        max_event_size_v0: MAX_EVENT_DATA_SIZE_V0,
-<a href=#582 id=582 data-nosnippet>582</a>        max_event_size: MAX_EVENT_DATA_SIZE,
-<a href=#583 id=583 data-nosnippet>583</a>        max_function_length: MAX_FUNCTION_NAME_LENGTH,
-<a href=#584 id=584 data-nosnippet>584</a>        max_parameter_length: MAX_PARAMETERS_SIZE,
-<a href=#585 id=585 data-nosnippet>585</a>        chain_id: <span class="kw-2">*</span>CHAINID,
-<a href=#586 id=586 data-nosnippet>586</a>        <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#587 id=587 data-nosnippet>587</a>        </span>broadcast_traces_enabled: <span class="bool-val">true</span>,
-<a href=#588 id=588 data-nosnippet>588</a>        <span class="attr">#[cfg(not(feature = <span class="string">"execution-trace"</span>))]
-<a href=#589 id=589 data-nosnippet>589</a>        </span>broadcast_traces_enabled: <span class="bool-val">false</span>,
-<a href=#590 id=590 data-nosnippet>590</a>        broadcast_slot_execution_traces_channel_capacity: SETTINGS
-<a href=#591 id=591 data-nosnippet>591</a>            .execution
-<a href=#592 id=592 data-nosnippet>592</a>            .broadcast_slot_execution_traces_channel_capacity,
-<a href=#593 id=593 data-nosnippet>593</a>        max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
-<a href=#594 id=594 data-nosnippet>594</a>        block_dump_folder_path,
-<a href=#595 id=595 data-nosnippet>595</a>        max_recursive_calls_depth: MAX_RECURSIVE_CALLS_DEPTH,
-<a href=#596 id=596 data-nosnippet>596</a>        condom_limits,
-<a href=#597 id=597 data-nosnippet>597</a>        deferred_calls_config,
-<a href=#598 id=598 data-nosnippet>598</a>        max_event_per_operation: MAX_EVENT_PER_OPERATION,
-<a href=#599 id=599 data-nosnippet>599</a>        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
-<a href=#600 id=600 data-nosnippet>600</a>        event_cache_size: SETTINGS.execution.event_cache_size,
-<a href=#601 id=601 data-nosnippet>601</a>        event_snip_amount: SETTINGS.execution.event_snip_amount,
-<a href=#602 id=602 data-nosnippet>602</a>        broadcast_slot_execution_info_channel_capacity: SETTINGS
-<a href=#603 id=603 data-nosnippet>603</a>            .execution
-<a href=#604 id=604 data-nosnippet>604</a>            .broadcast_slot_execution_info_channel_capacity,
-<a href=#605 id=605 data-nosnippet>605</a>    };
-<a href=#606 id=606 data-nosnippet>606</a>
-<a href=#607 id=607 data-nosnippet>607</a>    <span class="kw">let </span>execution_channels = ExecutionChannels {
-<a href=#608 id=608 data-nosnippet>608</a>        slot_execution_output_sender: broadcast::channel(
-<a href=#609 id=609 data-nosnippet>609</a>            execution_config.broadcast_slot_execution_output_channel_capacity,
-<a href=#610 id=610 data-nosnippet>610</a>        )
-<a href=#611 id=611 data-nosnippet>611</a>        .<span class="number">0</span>,
-<a href=#612 id=612 data-nosnippet>612</a>        <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-<a href=#613 id=613 data-nosnippet>613</a>        </span>slot_execution_traces_sender: broadcast::channel(
-<a href=#614 id=614 data-nosnippet>614</a>            execution_config.broadcast_slot_execution_traces_channel_capacity,
-<a href=#615 id=615 data-nosnippet>615</a>        )
-<a href=#616 id=616 data-nosnippet>616</a>        .<span class="number">0</span>,
-<a href=#617 id=617 data-nosnippet>617</a>        <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
-<a href=#618 id=618 data-nosnippet>618</a>        </span>slot_execution_info_sender: broadcast::channel(
-<a href=#619 id=619 data-nosnippet>619</a>            execution_config.broadcast_slot_execution_info_channel_capacity,
-<a href=#620 id=620 data-nosnippet>620</a>        )
-<a href=#621 id=621 data-nosnippet>621</a>        .<span class="number">0</span>,
-<a href=#622 id=622 data-nosnippet>622</a>    };
-<a href=#623 id=623 data-nosnippet>623</a>
-<a href=#624 id=624 data-nosnippet>624</a>    <span class="macro">cfg_if!</span> {
-<a href=#625 id=625 data-nosnippet>625</a>        <span class="kw">if </span><span class="attr">#[cfg(all(feature = <span class="string">"dump-block"</span>, feature = <span class="string">"db_storage_backend"</span>))] </span>{
-<a href=#626 id=626 data-nosnippet>626</a>            <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
-<a href=#627 id=627 data-nosnippet>627</a>                RocksDBStorageBackend::new(
-<a href=#628 id=628 data-nosnippet>628</a>                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
-<a href=#629 id=629 data-nosnippet>629</a>            ));
-<a href=#630 id=630 data-nosnippet>630</a>        } <span class="kw">else if </span><span class="attr">#[cfg(all(feature = <span class="string">"dump-block"</span>, feature = <span class="string">"file_storage_backend"</span>))] </span>{
-<a href=#631 id=631 data-nosnippet>631</a>            <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
-<a href=#632 id=632 data-nosnippet>632</a>                FileStorageBackend::new(
-<a href=#633 id=633 data-nosnippet>633</a>                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
-<a href=#634 id=634 data-nosnippet>634</a>            ));
-<a href=#635 id=635 data-nosnippet>635</a>        } <span class="kw">else if </span><span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)] </span>{
-<a href=#636 id=636 data-nosnippet>636</a>            <span class="macro">compile_error!</span>(<span class="string">"feature dump-block requise either db_storage_backend or file_storage_backend"</span>);
-<a href=#637 id=637 data-nosnippet>637</a>        }
-<a href=#638 id=638 data-nosnippet>638</a>    }
-<a href=#639 id=639 data-nosnippet>639</a>
-<a href=#640 id=640 data-nosnippet>640</a>    <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
-<a href=#641 id=641 data-nosnippet>641</a>        execution_config,
-<a href=#642 id=642 data-nosnippet>642</a>        final_state.clone(),
-<a href=#643 id=643 data-nosnippet>643</a>        selector_controller.clone(),
-<a href=#644 id=644 data-nosnippet>644</a>        mip_store.clone(),
-<a href=#645 id=645 data-nosnippet>645</a>        execution_channels.clone(),
-<a href=#646 id=646 data-nosnippet>646</a>        node_wallet.clone(),
-<a href=#647 id=647 data-nosnippet>647</a>        massa_metrics.clone(),
-<a href=#648 id=648 data-nosnippet>648</a>        event_cache_controller,
-<a href=#649 id=649 data-nosnippet>649</a>        <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
-<a href=#650 id=650 data-nosnippet>650</a>        </span>block_storage_backend.clone(),
-<a href=#651 id=651 data-nosnippet>651</a>    );
-<a href=#652 id=652 data-nosnippet>652</a>
-<a href=#653 id=653 data-nosnippet>653</a>    <span class="comment">// launch pool controller
-<a href=#654 id=654 data-nosnippet>654</a>    </span><span class="kw">let </span>pool_config = PoolConfig {
-<a href=#655 id=655 data-nosnippet>655</a>        thread_count: THREAD_COUNT,
-<a href=#656 id=656 data-nosnippet>656</a>        max_block_size: MAX_BLOCK_SIZE,
-<a href=#657 id=657 data-nosnippet>657</a>        max_block_gas: MAX_GAS_PER_BLOCK,
-<a href=#658 id=658 data-nosnippet>658</a>        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
-<a href=#659 id=659 data-nosnippet>659</a>        sp_compilation_cost: gas_costs.sp_compilation_cost,
-<a href=#660 id=660 data-nosnippet>660</a>        roll_price: ROLL_PRICE,
-<a href=#661 id=661 data-nosnippet>661</a>        max_block_endorsement_count: ENDORSEMENT_COUNT,
-<a href=#662 id=662 data-nosnippet>662</a>        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-<a href=#663 id=663 data-nosnippet>663</a>        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-<a href=#664 id=664 data-nosnippet>664</a>        max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
-<a href=#665 id=665 data-nosnippet>665</a>        max_operation_pool_excess_items: SETTINGS.pool.max_operation_pool_excess_items,
-<a href=#666 id=666 data-nosnippet>666</a>        operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
-<a href=#667 id=667 data-nosnippet>667</a>        operation_pool_swap_interval: SETTINGS.pool.operation_pool_swap_interval,
-<a href=#668 id=668 data-nosnippet>668</a>        endorsement_pool_swap_interval: SETTINGS.pool.endorsement_pool_swap_interval,
-<a href=#669 id=669 data-nosnippet>669</a>        denunciation_pool_refresh_interval: SETTINGS.pool.denunciation_pool_refresh_interval,
-<a href=#670 id=670 data-nosnippet>670</a>        denunciation_pool_swap_interval: SETTINGS.pool.denunciation_pool_swap_interval,
-<a href=#671 id=671 data-nosnippet>671</a>        operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
-<a href=#672 id=672 data-nosnippet>672</a>        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
-<a href=#673 id=673 data-nosnippet>673</a>        operations_channel_size: SETTINGS.pool.operations_channel_capacity,
-<a href=#674 id=674 data-nosnippet>674</a>        endorsements_channel_size: SETTINGS.pool.endorsements_channel_capacity,
-<a href=#675 id=675 data-nosnippet>675</a>        denunciations_channel_size: SETTINGS.pool.denunciations_channel_capacity,
-<a href=#676 id=676 data-nosnippet>676</a>        broadcast_enabled: SETTINGS.api.enable_broadcast,
-<a href=#677 id=677 data-nosnippet>677</a>        broadcast_endorsements_channel_capacity: SETTINGS
-<a href=#678 id=678 data-nosnippet>678</a>            .pool
-<a href=#679 id=679 data-nosnippet>679</a>            .broadcast_endorsements_channel_capacity,
-<a href=#680 id=680 data-nosnippet>680</a>        broadcast_operations_channel_capacity: SETTINGS.pool.broadcast_operations_channel_capacity,
-<a href=#681 id=681 data-nosnippet>681</a>        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-<a href=#682 id=682 data-nosnippet>682</a>        t0: T0,
-<a href=#683 id=683 data-nosnippet>683</a>        periods_per_cycle: PERIODS_PER_CYCLE,
-<a href=#684 id=684 data-nosnippet>684</a>        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-<a href=#685 id=685 data-nosnippet>685</a>        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-<a href=#686 id=686 data-nosnippet>686</a>        minimal_fees: SETTINGS.pool.minimal_fees,
-<a href=#687 id=687 data-nosnippet>687</a>        last_start_period: final_state.read().get_last_start_period(),
-<a href=#688 id=688 data-nosnippet>688</a>    };
-<a href=#689 id=689 data-nosnippet>689</a>
-<a href=#690 id=690 data-nosnippet>690</a>    <span class="kw">let </span>pool_channels = PoolChannels {
-<a href=#691 id=691 data-nosnippet>691</a>        broadcasts: PoolBroadcasts {
-<a href=#692 id=692 data-nosnippet>692</a>            endorsement_sender: broadcast::channel(
-<a href=#693 id=693 data-nosnippet>693</a>                pool_config.broadcast_endorsements_channel_capacity,
-<a href=#694 id=694 data-nosnippet>694</a>            )
-<a href=#695 id=695 data-nosnippet>695</a>            .<span class="number">0</span>,
-<a href=#696 id=696 data-nosnippet>696</a>            operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity)
-<a href=#697 id=697 data-nosnippet>697</a>                .<span class="number">0</span>,
-<a href=#698 id=698 data-nosnippet>698</a>        },
-<a href=#699 id=699 data-nosnippet>699</a>        selector: selector_controller.clone(),
-<a href=#700 id=700 data-nosnippet>700</a>        execution_controller: execution_controller.clone(),
-<a href=#701 id=701 data-nosnippet>701</a>        mip_store: mip_store.clone(),
+<a href=#549 id=549 data-nosnippet>549</a>        readonly_queue_timeout: SETTINGS.execution.readonly_queue_timeout,
+<a href=#550 id=550 data-nosnippet>550</a>        cursor_delay: SETTINGS.execution.cursor_delay,
+<a href=#551 id=551 data-nosnippet>551</a>        max_async_gas: MAX_ASYNC_GAS,
+<a href=#552 id=552 data-nosnippet>552</a>        async_msg_cst_gas_cost: ASYNC_MSG_CST_GAS_COST,
+<a href=#553 id=553 data-nosnippet>553</a>        max_gas_per_block: MAX_GAS_PER_BLOCK,
+<a href=#554 id=554 data-nosnippet>554</a>        roll_price: ROLL_PRICE,
+<a href=#555 id=555 data-nosnippet>555</a>        thread_count: THREAD_COUNT,
+<a href=#556 id=556 data-nosnippet>556</a>        t0: T0,
+<a href=#557 id=557 data-nosnippet>557</a>        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+<a href=#558 id=558 data-nosnippet>558</a>        block_reward: BLOCK_REWARD,
+<a href=#559 id=559 data-nosnippet>559</a>        endorsement_count: ENDORSEMENT_COUNT <span class="kw">as </span>u64,
+<a href=#560 id=560 data-nosnippet>560</a>        operation_validity_period: OPERATION_VALIDITY_PERIODS,
+<a href=#561 id=561 data-nosnippet>561</a>        periods_per_cycle: PERIODS_PER_CYCLE,
+<a href=#562 id=562 data-nosnippet>562</a>        stats_time_window_duration: SETTINGS.execution.stats_time_window_duration,
+<a href=#563 id=563 data-nosnippet>563</a>        max_miss_ratio: <span class="kw-2">*</span>POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+<a href=#564 id=564 data-nosnippet>564</a>        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+<a href=#565 id=565 data-nosnippet>565</a>        max_bytecode_size: MAX_BYTECODE_LENGTH,
+<a href=#566 id=566 data-nosnippet>566</a>        max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
+<a href=#567 id=567 data-nosnippet>567</a>        storage_costs_constants,
+<a href=#568 id=568 data-nosnippet>568</a>        max_read_only_gas: SETTINGS.execution.max_read_only_gas,
+<a href=#569 id=569 data-nosnippet>569</a>        gas_costs: gas_costs.clone(),
+<a href=#570 id=570 data-nosnippet>570</a>        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+<a href=#571 id=571 data-nosnippet>571</a>        last_start_period: final_state.read().get_last_start_period(),
+<a href=#572 id=572 data-nosnippet>572</a>        hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
+<a href=#573 id=573 data-nosnippet>573</a>        lru_cache_size: SETTINGS.execution.lru_cache_size,
+<a href=#574 id=574 data-nosnippet>574</a>        hd_cache_size: SETTINGS.execution.hd_cache_size,
+<a href=#575 id=575 data-nosnippet>575</a>        snip_amount: SETTINGS.execution.snip_amount,
+<a href=#576 id=576 data-nosnippet>576</a>        roll_count_to_slash_on_denunciation: ROLL_COUNT_TO_SLASH_ON_DENUNCIATION,
+<a href=#577 id=577 data-nosnippet>577</a>        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+<a href=#578 id=578 data-nosnippet>578</a>        broadcast_enabled: SETTINGS.api.enable_broadcast,
+<a href=#579 id=579 data-nosnippet>579</a>        broadcast_slot_execution_output_channel_capacity: SETTINGS
+<a href=#580 id=580 data-nosnippet>580</a>            .execution
+<a href=#581 id=581 data-nosnippet>581</a>            .broadcast_slot_execution_output_channel_capacity,
+<a href=#582 id=582 data-nosnippet>582</a>        max_event_size_v0: MAX_EVENT_DATA_SIZE_V0,
+<a href=#583 id=583 data-nosnippet>583</a>        max_event_size: MAX_EVENT_DATA_SIZE,
+<a href=#584 id=584 data-nosnippet>584</a>        max_function_length: MAX_FUNCTION_NAME_LENGTH,
+<a href=#585 id=585 data-nosnippet>585</a>        max_parameter_length: MAX_PARAMETERS_SIZE,
+<a href=#586 id=586 data-nosnippet>586</a>        chain_id: <span class="kw-2">*</span>CHAINID,
+<a href=#587 id=587 data-nosnippet>587</a>        <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#588 id=588 data-nosnippet>588</a>        </span>broadcast_traces_enabled: <span class="bool-val">true</span>,
+<a href=#589 id=589 data-nosnippet>589</a>        <span class="attr">#[cfg(not(feature = <span class="string">"execution-trace"</span>))]
+<a href=#590 id=590 data-nosnippet>590</a>        </span>broadcast_traces_enabled: <span class="bool-val">false</span>,
+<a href=#591 id=591 data-nosnippet>591</a>        broadcast_slot_execution_traces_channel_capacity: SETTINGS
+<a href=#592 id=592 data-nosnippet>592</a>            .execution
+<a href=#593 id=593 data-nosnippet>593</a>            .broadcast_slot_execution_traces_channel_capacity,
+<a href=#594 id=594 data-nosnippet>594</a>        max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
+<a href=#595 id=595 data-nosnippet>595</a>        block_dump_folder_path,
+<a href=#596 id=596 data-nosnippet>596</a>        max_recursive_calls_depth: MAX_RECURSIVE_CALLS_DEPTH,
+<a href=#597 id=597 data-nosnippet>597</a>        condom_limits,
+<a href=#598 id=598 data-nosnippet>598</a>        deferred_calls_config,
+<a href=#599 id=599 data-nosnippet>599</a>        max_event_per_operation: MAX_EVENT_PER_OPERATION,
+<a href=#600 id=600 data-nosnippet>600</a>        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
+<a href=#601 id=601 data-nosnippet>601</a>        event_cache_size: SETTINGS.execution.event_cache_size,
+<a href=#602 id=602 data-nosnippet>602</a>        event_snip_amount: SETTINGS.execution.event_snip_amount,
+<a href=#603 id=603 data-nosnippet>603</a>        broadcast_slot_execution_info_channel_capacity: SETTINGS
+<a href=#604 id=604 data-nosnippet>604</a>            .execution
+<a href=#605 id=605 data-nosnippet>605</a>            .broadcast_slot_execution_info_channel_capacity,
+<a href=#606 id=606 data-nosnippet>606</a>    };
+<a href=#607 id=607 data-nosnippet>607</a>
+<a href=#608 id=608 data-nosnippet>608</a>    <span class="kw">let </span>execution_channels = ExecutionChannels {
+<a href=#609 id=609 data-nosnippet>609</a>        slot_execution_output_sender: broadcast::channel(
+<a href=#610 id=610 data-nosnippet>610</a>            execution_config.broadcast_slot_execution_output_channel_capacity,
+<a href=#611 id=611 data-nosnippet>611</a>        )
+<a href=#612 id=612 data-nosnippet>612</a>        .<span class="number">0</span>,
+<a href=#613 id=613 data-nosnippet>613</a>        <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href=#614 id=614 data-nosnippet>614</a>        </span>slot_execution_traces_sender: broadcast::channel(
+<a href=#615 id=615 data-nosnippet>615</a>            execution_config.broadcast_slot_execution_traces_channel_capacity,
+<a href=#616 id=616 data-nosnippet>616</a>        )
+<a href=#617 id=617 data-nosnippet>617</a>        .<span class="number">0</span>,
+<a href=#618 id=618 data-nosnippet>618</a>        <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
+<a href=#619 id=619 data-nosnippet>619</a>        </span>slot_execution_info_sender: broadcast::channel(
+<a href=#620 id=620 data-nosnippet>620</a>            execution_config.broadcast_slot_execution_info_channel_capacity,
+<a href=#621 id=621 data-nosnippet>621</a>        )
+<a href=#622 id=622 data-nosnippet>622</a>        .<span class="number">0</span>,
+<a href=#623 id=623 data-nosnippet>623</a>    };
+<a href=#624 id=624 data-nosnippet>624</a>
+<a href=#625 id=625 data-nosnippet>625</a>    <span class="macro">cfg_if!</span> {
+<a href=#626 id=626 data-nosnippet>626</a>        <span class="kw">if </span><span class="attr">#[cfg(all(feature = <span class="string">"dump-block"</span>, feature = <span class="string">"db_storage_backend"</span>))] </span>{
+<a href=#627 id=627 data-nosnippet>627</a>            <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
+<a href=#628 id=628 data-nosnippet>628</a>                RocksDBStorageBackend::new(
+<a href=#629 id=629 data-nosnippet>629</a>                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
+<a href=#630 id=630 data-nosnippet>630</a>            ));
+<a href=#631 id=631 data-nosnippet>631</a>        } <span class="kw">else if </span><span class="attr">#[cfg(all(feature = <span class="string">"dump-block"</span>, feature = <span class="string">"file_storage_backend"</span>))] </span>{
+<a href=#632 id=632 data-nosnippet>632</a>            <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
+<a href=#633 id=633 data-nosnippet>633</a>                FileStorageBackend::new(
+<a href=#634 id=634 data-nosnippet>634</a>                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
+<a href=#635 id=635 data-nosnippet>635</a>            ));
+<a href=#636 id=636 data-nosnippet>636</a>        } <span class="kw">else if </span><span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)] </span>{
+<a href=#637 id=637 data-nosnippet>637</a>            <span class="macro">compile_error!</span>(<span class="string">"feature dump-block requise either db_storage_backend or file_storage_backend"</span>);
+<a href=#638 id=638 data-nosnippet>638</a>        }
+<a href=#639 id=639 data-nosnippet>639</a>    }
+<a href=#640 id=640 data-nosnippet>640</a>
+<a href=#641 id=641 data-nosnippet>641</a>    <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
+<a href=#642 id=642 data-nosnippet>642</a>        execution_config,
+<a href=#643 id=643 data-nosnippet>643</a>        final_state.clone(),
+<a href=#644 id=644 data-nosnippet>644</a>        selector_controller.clone(),
+<a href=#645 id=645 data-nosnippet>645</a>        mip_store.clone(),
+<a href=#646 id=646 data-nosnippet>646</a>        execution_channels.clone(),
+<a href=#647 id=647 data-nosnippet>647</a>        node_wallet.clone(),
+<a href=#648 id=648 data-nosnippet>648</a>        massa_metrics.clone(),
+<a href=#649 id=649 data-nosnippet>649</a>        event_cache_controller,
+<a href=#650 id=650 data-nosnippet>650</a>        <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
+<a href=#651 id=651 data-nosnippet>651</a>        </span>block_storage_backend.clone(),
+<a href=#652 id=652 data-nosnippet>652</a>    );
+<a href=#653 id=653 data-nosnippet>653</a>
+<a href=#654 id=654 data-nosnippet>654</a>    <span class="comment">// launch pool controller
+<a href=#655 id=655 data-nosnippet>655</a>    </span><span class="kw">let </span>pool_config = PoolConfig {
+<a href=#656 id=656 data-nosnippet>656</a>        thread_count: THREAD_COUNT,
+<a href=#657 id=657 data-nosnippet>657</a>        max_block_size: MAX_BLOCK_SIZE,
+<a href=#658 id=658 data-nosnippet>658</a>        max_block_gas: MAX_GAS_PER_BLOCK,
+<a href=#659 id=659 data-nosnippet>659</a>        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+<a href=#660 id=660 data-nosnippet>660</a>        sp_compilation_cost: gas_costs.sp_compilation_cost,
+<a href=#661 id=661 data-nosnippet>661</a>        roll_price: ROLL_PRICE,
+<a href=#662 id=662 data-nosnippet>662</a>        max_block_endorsement_count: ENDORSEMENT_COUNT,
+<a href=#663 id=663 data-nosnippet>663</a>        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+<a href=#664 id=664 data-nosnippet>664</a>        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+<a href=#665 id=665 data-nosnippet>665</a>        max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
+<a href=#666 id=666 data-nosnippet>666</a>        max_operation_pool_excess_items: SETTINGS.pool.max_operation_pool_excess_items,
+<a href=#667 id=667 data-nosnippet>667</a>        operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
+<a href=#668 id=668 data-nosnippet>668</a>        operation_pool_swap_interval: SETTINGS.pool.operation_pool_swap_interval,
+<a href=#669 id=669 data-nosnippet>669</a>        endorsement_pool_swap_interval: SETTINGS.pool.endorsement_pool_swap_interval,
+<a href=#670 id=670 data-nosnippet>670</a>        denunciation_pool_refresh_interval: SETTINGS.pool.denunciation_pool_refresh_interval,
+<a href=#671 id=671 data-nosnippet>671</a>        denunciation_pool_swap_interval: SETTINGS.pool.denunciation_pool_swap_interval,
+<a href=#672 id=672 data-nosnippet>672</a>        operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
+<a href=#673 id=673 data-nosnippet>673</a>        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
+<a href=#674 id=674 data-nosnippet>674</a>        operations_channel_size: SETTINGS.pool.operations_channel_capacity,
+<a href=#675 id=675 data-nosnippet>675</a>        endorsements_channel_size: SETTINGS.pool.endorsements_channel_capacity,
+<a href=#676 id=676 data-nosnippet>676</a>        denunciations_channel_size: SETTINGS.pool.denunciations_channel_capacity,
+<a href=#677 id=677 data-nosnippet>677</a>        broadcast_enabled: SETTINGS.api.enable_broadcast,
+<a href=#678 id=678 data-nosnippet>678</a>        broadcast_endorsements_channel_capacity: SETTINGS
+<a href=#679 id=679 data-nosnippet>679</a>            .pool
+<a href=#680 id=680 data-nosnippet>680</a>            .broadcast_endorsements_channel_capacity,
+<a href=#681 id=681 data-nosnippet>681</a>        broadcast_operations_channel_capacity: SETTINGS.pool.broadcast_operations_channel_capacity,
+<a href=#682 id=682 data-nosnippet>682</a>        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+<a href=#683 id=683 data-nosnippet>683</a>        t0: T0,
+<a href=#684 id=684 data-nosnippet>684</a>        periods_per_cycle: PERIODS_PER_CYCLE,
+<a href=#685 id=685 data-nosnippet>685</a>        denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+<a href=#686 id=686 data-nosnippet>686</a>        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+<a href=#687 id=687 data-nosnippet>687</a>        minimal_fees: SETTINGS.pool.minimal_fees,
+<a href=#688 id=688 data-nosnippet>688</a>        last_start_period: final_state.read().get_last_start_period(),
+<a href=#689 id=689 data-nosnippet>689</a>    };
+<a href=#690 id=690 data-nosnippet>690</a>
+<a href=#691 id=691 data-nosnippet>691</a>    <span class="kw">let </span>pool_channels = PoolChannels {
+<a href=#692 id=692 data-nosnippet>692</a>        broadcasts: PoolBroadcasts {
+<a href=#693 id=693 data-nosnippet>693</a>            endorsement_sender: broadcast::channel(
+<a href=#694 id=694 data-nosnippet>694</a>                pool_config.broadcast_endorsements_channel_capacity,
+<a href=#695 id=695 data-nosnippet>695</a>            )
+<a href=#696 id=696 data-nosnippet>696</a>            .<span class="number">0</span>,
+<a href=#697 id=697 data-nosnippet>697</a>            operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity)
+<a href=#698 id=698 data-nosnippet>698</a>                .<span class="number">0</span>,
+<a href=#699 id=699 data-nosnippet>699</a>        },
+<a href=#700 id=700 data-nosnippet>700</a>        selector: selector_controller.clone(),
+<a href=#701 id=701 data-nosnippet>701</a>        execution_controller: execution_controller.clone(),
 <a href=#702 id=702 data-nosnippet>702</a>        chain_id: <span class="kw-2">*</span>CHAINID,
 <a href=#703 id=703 data-nosnippet>703</a>    };
 <a href=#704 id=704 data-nosnippet>704</a>
