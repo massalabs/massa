@@ -1645,6 +1645,8 @@ mod tests {
         let de_same =
             Denunciation::try_from((&e_a1, &e_a2, chain_a)).expect("same-chain denunciation");
         assert!(de_same.is_valid_with_chain(chain_a));
+        // It does not verify on another chain.
+        assert!(!de_same.is_valid_with_chain(chain_b));
 
         // A second endorsement produced by the same key on a different chain.
         let e_b2 = make_endorsement(&keypair, slot, "blk_b2", chain_b);
@@ -1690,6 +1692,8 @@ mod tests {
         let de_same =
             Denunciation::try_from((&h_a1, &h_a2, chain_a)).expect("same-chain header de");
         assert!(de_same.is_valid_with_chain(chain_a));
+        // It does not verify on another chain.
+        assert!(!de_same.is_valid_with_chain(chain_b));
 
         let h_b2 = make_header(&keypair, slot, "hdr_b2", chain_b);
         assert!(

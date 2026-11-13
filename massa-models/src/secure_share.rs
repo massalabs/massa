@@ -232,15 +232,6 @@ where
     T: Display + SecureShareContent,
     ID: Id,
 {
-    /// Sign the SecureShare given the content
-    pub fn sign(
-        keypair: &KeyPair,
-        content_hash: &Hash,
-        _content: &T,
-    ) -> Result<Signature, ModelsError> {
-        Ok(keypair.sign(content_hash)?)
-    }
-
     /// check if self has been signed by public key on chain `chain_id`; see
     /// [`SecureShareContent::compute_signed_hash`].
     pub fn verify_signature(&self, chain_id: u64) -> Result<(), ModelsError> {
