@@ -721,7 +721,7 @@ impl ExecutionState {
         // local chain id, so two legitimate same-(slot, index) endorsements / block
         // headers produced by the same validator on two different chains cannot be
         // combined into a denunciation on either chain (F90 / PDF #11).
-        if !denunciation.is_valid_with_chain(Some(self.config.chain_id)) {
+        if !denunciation.is_valid_with_chain(self.config.chain_id) {
             return Err(ExecutionError::IncludeDenunciationError(
                 "denunciation is not valid".to_string(),
             ));

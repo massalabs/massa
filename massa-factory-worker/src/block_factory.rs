@@ -292,7 +292,6 @@ impl BlockFactoryWorker {
             BlockHeaderSerializer::new(), // TODO reuse self.block_header_serializer
             &block_producer_keypair,
             self.cfg.chain_id,
-            Some(self.cfg.chain_id),
         )
         .expect("error while producing block header");
         // create block
@@ -305,7 +304,6 @@ impl BlockFactoryWorker {
             BlockSerializer::new(), // TODO reuse self.block_serializer
             &block_producer_keypair,
             self.cfg.chain_id,
-            None,
         )
         .expect("error while producing block");
         let block_id = block.id;

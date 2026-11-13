@@ -198,10 +198,9 @@ fn verify_received_block(
     config: &crate::config::GrpcConfig,
 ) -> Result<(), ModelsError> {
     // Block::verify_signature delegates to the nested header signing domain (F87).
-    let sig_chain_id = Some(config.chain_id);
-    block.verify_signature(sig_chain_id)?;
+    block.verify_signature(config.chain_id)?;
     for endorsement in block.content.header.content.endorsements.iter() {
-        endorsement.verify_signature(sig_chain_id)?;
+        endorsement.verify_signature(config.chain_id)?;
     }
     Ok(())
 }

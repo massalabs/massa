@@ -298,7 +298,6 @@ impl Wallet {
             OperationSerializer::new(),
             sender_keypair,
             self.chain_id,
-            None,
         )
         .unwrap())
     }

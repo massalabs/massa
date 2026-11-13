@@ -418,7 +418,6 @@ fn test_protocol_bounds_conflicting_endorsements_for_the_same_draw() {
                 EndorsementSerializer::new(),
                 &endorsement_creator,
                 *CHAINID,
-                Some(*CHAINID),
             )
             .unwrap()
         })
