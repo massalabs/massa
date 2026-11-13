@@ -155,18 +155,16 @@ impl DenunciationPool {
 
         let key = DenunciationIndex::from(&denunciation_precursor);
 
-        // Denounced signatures are reconstructed with the chain-scoped layout:
-        // it must match the layout used to sign the endorsement / block header,
-        // otherwise the denunciation fails to verify. See F90 / PDF #11.
-        let sig_chain_id = Some(self.channels.chain_id);
+        // Denounced signatures are reconstructed for the local chain: messages signed
+        // on another chain do not verify. See F90 / PDF #11.
+        let chain_id = self.channels.chain_id;
 
         let denunciation_: Option<Denunciation> = match self.denunciations_cache.entry(key) {
             Entry::Occupied(mut eo) => match eo.get_mut() {
                 DenunciationStatus::Accumulating(de_p_) => {
                     let de_p: &DenunciationPrecursor = de_p_;
                     if *de_p != denunciation_precursor {
-                        match Denunciation::try_from((de_p, &denunciation_precursor, sig_chain_id))
-                        {
+                        match Denunciation::try_from((de_p, &denunciation_precursor, chain_id)) {
                             Ok(de) => {
                                 eo.insert(DenunciationStatus::DenunciationEmitted(de.clone()));
                                 Some(de)
@@ -378,7 +376,6 @@ mod tests {
                 BlockHeaderSerializer::new(),
                 &keypair,
                 *CHAINID,
-                Some(*CHAINID),
             )
             .expect("error while producing block header");
 
@@ -402,7 +399,6 @@ mod tests {
                 EndorsementSerializer::new(),
                 &keypair,
                 *CHAINID,
-                Some(*CHAINID),
             )
             .unwrap();
 

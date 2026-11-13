@@ -621,7 +621,7 @@ impl RetrievalThread {
 
         // Authenticate the header before processing embedded endorsements so an
         // invalid block signature cannot trigger endorsement verification or side effects.
-        if let Err(err) = header.verify_signature(Some(self.config.chain_id)) {
+        if let Err(err) = header.verify_signature(self.config.chain_id) {
             return Err(ProtocolError::InvalidBlock(format!(
                 "invalid header signature: {}",
                 err

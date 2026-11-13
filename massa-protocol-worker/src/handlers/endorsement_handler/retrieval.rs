@@ -223,12 +223,11 @@ pub(crate) fn note_endorsements_from_peer(
     }
 
     // Batch signature verification (chain-scoped signed-hash layout).
-    let sig_chain_id = Some(config.chain_id);
     let sig_batch = new_endorsements
         .values()
         .map(|endorsement| {
             (
-                endorsement.compute_signed_hash(sig_chain_id),
+                endorsement.compute_signed_hash(config.chain_id),
                 endorsement.signature,
                 endorsement.content_creator_pub_key,
             )

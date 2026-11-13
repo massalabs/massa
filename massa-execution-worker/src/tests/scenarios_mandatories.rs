@@ -3692,7 +3692,6 @@ fn send_and_receive_transaction() {
             OperationSerializer::new(),
             &KeyPair::from_str(TEST_SK_1).unwrap(),
             *CHAINID,
-            None,
         )
         .unwrap();
         operation_vec.push(operation.clone());
@@ -3794,7 +3793,6 @@ fn roll_buy() {
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         *CHAINID,
-        None,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -3933,7 +3931,6 @@ fn roll_sell() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
-        None,
     )
     .unwrap();
     let operation2 = Operation::new_verifiable(
@@ -3947,7 +3944,6 @@ fn roll_sell() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
-        None,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -4197,7 +4193,6 @@ fn roll_slash() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
-        None,
     )
     .unwrap();
 
@@ -4205,7 +4200,7 @@ fn roll_slash() {
     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
         gen_endorsements_for_denunciation(Some(Slot::new(1, 0)), Some(keypair.clone()));
     let denunciation =
-        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
+        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, *CHAINID)).unwrap();
 
     // create a denunciation (that will be ignored as it has been created at the last start period)
     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(
@@ -4213,7 +4208,7 @@ fn roll_slash() {
         Some(keypair.clone()),
     );
     let denunciation_2 =
-        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
+        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, *CHAINID)).unwrap();
 
     // create the block containing the roll buy operation
     universe.storage.store_operations(vec![operation1.clone()]);
@@ -4330,7 +4325,6 @@ fn roll_slash_2() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
-        None,
     )
     .unwrap();
 
@@ -4338,7 +4332,7 @@ fn roll_slash_2() {
     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
         gen_endorsements_for_denunciation(Some(Slot::new(1, 0)), Some(keypair.clone()));
     let denunciation =
-        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
+        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, *CHAINID)).unwrap();
 
     // create a denunciation (that will be ignored as it has been created at the last start period)
     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(
@@ -4346,7 +4340,7 @@ fn roll_slash_2() {
         Some(keypair.clone()),
     );
     let denunciation_2 =
-        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))).unwrap();
+        Denunciation::try_from((&s_endorsement_1, &s_endorsement_2, *CHAINID)).unwrap();
 
     // create the block containing the roll buy operation
     universe.storage.store_operations(vec![operation1.clone()]);
@@ -4854,7 +4848,6 @@ fn not_enough_instance_gas() {
         OperationSerializer::new(),
         &keypair,
         *CHAINID,
-        None,
     )
     .unwrap();
     universe.storage.store_operations(vec![operation.clone()]);
@@ -5431,7 +5424,6 @@ fn execution_trace_transfers_are_bound_to_event() {
         OperationSerializer::new(),
         &sender_keypair,
         *CHAINID,
-        Some(*CHAINID),
     )
     .unwrap();
     let op_id = operation.id;
@@ -5809,7 +5801,6 @@ fn test_dump_block() {
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         *CHAINID,
-        None,
     )
     .unwrap();
     // create the block containing the transaction operation

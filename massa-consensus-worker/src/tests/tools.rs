@@ -113,7 +113,6 @@ pub fn create_block_with_merkle_root(
         BlockHeaderSerializer::new(),
         creator,
         *CHAINID,
-        Some(*CHAINID),
     )
     .unwrap();
 
@@ -125,7 +124,6 @@ pub fn create_block_with_merkle_root(
         BlockSerializer::new(),
         creator,
         *CHAINID,
-        None,
     )
     .unwrap()
 }

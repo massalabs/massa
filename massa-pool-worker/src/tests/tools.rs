@@ -84,14 +84,7 @@ impl OpGenerator {
             op,
             expire_period: expirery,
         };
-        Operation::new_verifiable(
-            content,
-            OperationSerializer::new(),
-            &creator,
-            *CHAINID,
-            None,
-        )
-        .unwrap()
+        Operation::new_verifiable(content, OperationSerializer::new(), &creator, *CHAINID).unwrap()
     }
 }
 
@@ -207,7 +200,6 @@ pub fn create_endorsement_on_block(
         EndorsementSerializer::new(),
         sender_keypair,
         *CHAINID,
-        Some(*CHAINID),
     )
     .unwrap()
 }

@@ -81,7 +81,7 @@ pub(crate) async fn send_endorsements(
                                             // Deserialize the endorsement and verify its signature
                                             let (rest, res_endorsement): (&[u8], SecureShareEndorsement) = tuple;
                                             if rest.is_empty() {
-                                                res_endorsement.verify_signature(Some(config.chain_id))
+                                                res_endorsement.verify_signature(config.chain_id)
                                                     .map(|_| (res_endorsement.id.to_string(), res_endorsement))
                                                     .map_err(|e| e.into())
                                             } else {
