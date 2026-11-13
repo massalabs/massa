@@ -41,12 +41,12 @@ pub fn start_factory(
         wallet.clone(),
         channels.clone(),
         block_worker_rx,
-        mip_store.clone(),
+        mip_store,
     );
 
     // start endorsement factory worker
     let endorsement_worker_handle =
-        EndorsementFactoryWorker::spawn(cfg, wallet, channels, endorsement_worker_rx, mip_store);
+        EndorsementFactoryWorker::spawn(cfg, wallet, channels, endorsement_worker_rx);
 
     // create factory manager
     let manager = FactoryManagerImpl {

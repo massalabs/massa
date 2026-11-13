@@ -46,7 +46,6 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
-use massa_versioning::consensus_signature::sig_chain_id_for_slot;
 use massa_versioning::versioning::MipStore;
 use rand::thread_rng;
 use rand::{seq::SliceRandom, Rng};
@@ -621,17 +620,8 @@ impl RetrievalThread {
         }
 
         // Authenticate the header before processing embedded endorsements so an
-        // invalid block signature cannot trigger endorsement verification or side effects
-        // (signature layout gated on the header's own slot).
-        let header_slot_ts = get_block_slot_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            header.content.slot,
-        )?;
-        let header_sig_chain_id =
-            sig_chain_id_for_slot(&self.mip_store, self.config.chain_id, header_slot_ts);
-        if let Err(err) = header.verify_signature(header_sig_chain_id) {
+        // invalid block signature cannot trigger endorsement verification or side effects.
+        if let Err(err) = header.verify_signature(Some(self.config.chain_id)) {
             return Err(ProtocolError::InvalidBlock(format!(
                 "invalid header signature: {}",
                 err
@@ -648,7 +638,6 @@ impl RetrievalThread {
             &self.config,
             &self.sender_propagation_endorsements,
             self.pool_controller.as_mut(),
-            &self.mip_store,
         ) {
             return Err(ProtocolError::InvalidBlock(format!(
                 "invalid endorsements: {}",

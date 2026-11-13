@@ -1,7 +1,6 @@
 use massa_execution_exports::ExecutionController;
 use massa_models::{endorsement::SecureShareEndorsement, operation::SecureShareOperation};
 use massa_pos_exports::SelectorController;
-use massa_versioning::versioning::MipStore;
 
 /// channels used by the pool worker
 #[derive(Clone)]
@@ -12,11 +11,8 @@ pub struct PoolChannels {
     pub selector: Box<dyn SelectorController>,
     /// Broadcasts used by the pool worker to send new operations and endorsements
     pub broadcasts: PoolBroadcasts,
-    /// MIP store, used to decide the consensus signature layout (chain-scoped
-    /// vs legacy) when creating denunciations (F90 / PDF #11).
-    pub mip_store: MipStore,
     /// Local chain id, folded into the signed hash of endorsements / block headers
-    /// once MIP-0002 `Execution` v2 is active.
+    /// when creating denunciations (F90 / PDF #11).
     pub chain_id: u64,
 }
 
