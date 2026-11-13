@@ -307,6 +307,8 @@ pub struct MassaMetrics {
     // read-only execution queue
     /// number of read-only requests waiting in the execution worker queue
     readonly_queue_length: IntGauge,
+    /// number of read-only requests admitted but not yet taken in by the execution worker
+    readonly_input_queue_length: IntGauge,
     /// number of read-only requests answered with the queue timeout error
     readonly_requests_timed_out: IntCounter,
     /// number of read-only requests refused because the queue was full
@@ -578,6 +580,11 @@ impl MassaMetrics {
             "number of read-only requests waiting in the execution worker queue",
         )
         .unwrap();
+        let readonly_input_queue_length = IntGauge::new(
+            "readonly_input_queue_length",
+            "number of read-only requests admitted but not yet taken in by the execution worker",
+        )
+        .unwrap();
         let readonly_requests_timed_out = IntCounter::new(
             "readonly_requests_timed_out",
             "number of read-only requests answered with a timeout because they waited too long in the queue",
@@ -648,6 +655,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(module_lru_cache_memory_usage.clone()));
                 let _ = prometheus::register(Box::new(active_history_total_event_len.clone()));
                 let _ = prometheus::register(Box::new(readonly_queue_length.clone()));
+                let _ = prometheus::register(Box::new(readonly_input_queue_length.clone()));
                 let _ = prometheus::register(Box::new(readonly_requests_timed_out.clone()));
                 let _ = prometheus::register(Box::new(readonly_requests_refused.clone()));
 
@@ -712,6 +720,7 @@ impl MassaMetrics {
                 module_lru_cache_memory_usage,
                 active_history_total_event_len,
                 readonly_queue_length,
+                readonly_input_queue_length,
                 readonly_requests_timed_out,
                 readonly_requests_refused,
                 tick_delay,
@@ -925,6 +934,10 @@ impl MassaMetrics {
 
     pub fn set_readonly_queue_length(&self, len: usize) {
         self.readonly_queue_length.set(len as i64);
+    }
+
+    pub fn set_readonly_input_queue_length(&self, len: usize) {
+        self.readonly_input_queue_length.set(len as i64);
     }
 
     pub fn inc_readonly_requests_timed_out_by(&self, count: usize) {

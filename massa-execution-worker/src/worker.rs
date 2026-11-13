@@ -179,6 +179,7 @@ impl ExecutionThread {
 
             // take current input data, resetting it
             let input_data: ExecutionInputData = input_data_lock.take();
+            self.massa_metrics.set_readonly_input_queue_length(0);
 
             // if we need to stop, return None
             if input_data.stop {
@@ -311,6 +312,7 @@ impl ExecutionThread {
         let mut input_data = self.input_data.1.lock();
         input_data.closed = true;
         input_data.take().readonly_requests.cancel(cancel_err);
+        self.massa_metrics.set_readonly_input_queue_length(0);
     }
 }
 

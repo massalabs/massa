@@ -209,7 +209,9 @@
 [execution]
     # max number of generated events kept in RAM
     max_final_events = 10000
-    # maximum length of the read-only execution requests queue
+    # maximum length of each of the two read-only execution request queues: the one
+    # requests are admitted into, and the execution worker's own queue it moves them to.
+    # Up to twice this many requests can be waiting in total.
     readonly_queue_length = 100
     # maximum time in milliseconds a queued read-only request may wait behind slot
     # execution before being served, even if slot work is still pending.

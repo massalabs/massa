@@ -169,6 +169,8 @@ impl ExecutionControllerImpl {
         input_data
             .readonly_requests
             .push(RequestWithResponseSender::new(req, resp_tx));
+        self.massa_metrics
+            .set_readonly_input_queue_length(input_data.readonly_requests.len());
 
         // wake up the execution main loop
         self.input_data.0.notify_one();
