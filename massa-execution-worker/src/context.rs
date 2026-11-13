@@ -1465,7 +1465,7 @@ impl ExecutionContext {
             .slot_calls
     }
 
-    /// Get the condom limits to pass to the VM depending on the current execution component version
+    /// Get the condom limits to pass to the VM
     pub fn get_condom_limits(&self) -> CondomLimits {
         self.config.condom_limits.clone()
     }

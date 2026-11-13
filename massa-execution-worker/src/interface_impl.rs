@@ -314,8 +314,8 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Execution component version active at the current slot. massa-sc-runtime gates runtime
-    /// changes on it: e.g. the paginated datastore-key ABIs only exist from MIP_0002_EXECUTION_VERSION on.
+    /// Execution component version active at the current slot. massa-sc-runtime can gate
+    /// runtime changes on it (none at the moment).
     fn get_interface_version(&self) -> Result<u32> {
         Ok(context_guard!(self).execution_component_version)
     }
@@ -557,8 +557,7 @@ impl Interface for InterfaceImpl {
     /// One page of datastore keys for the current address.
     ///
     /// `start_key` is an exclusive cursor. `count` must be in
-    /// `1..=MAX_DATASTORE_KEYS_PAGE`. Available from execution version 2
-    /// (MIP-0002); the runtime does not resolve the import before that.
+    /// `1..=MAX_DATASTORE_KEYS_PAGE`.
     fn get_keys_paginated(
         &self,
         prefix: Option<&[u8]>,
@@ -1606,9 +1605,8 @@ mod tests {
         send(ceiling).expect("a message exactly at the ceiling is still schedulable");
     }
 
-    // The runtime gates changes on the reported version (e.g. it registers the paginated
-    // datastore-key ABIs from MIP_0002_EXECUTION_VERSION on): it must follow the execution component version active
-    // at the current slot, on both sides of the activation.
+    // The runtime can gate changes on the reported version: it must follow the execution
+    // component version active at the current slot, on both sides of an activation.
     #[test]
     fn test_get_interface_version_follows_execution_component_version() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
