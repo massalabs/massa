@@ -1292,7 +1292,7 @@
 <a href=#1292 id=1292 data-nosnippet>1292</a>        <span class="comment">// Create an endorsement denunciation and check if it is valid
 <a href=#1293 id=1293 data-nosnippet>1293</a>        </span><span class="kw">let </span>(_slot, _keypair, s_endorsement_1, s_endorsement_2, _s_endorsement_3) =
 <a href=#1294 id=1294 data-nosnippet>1294</a>            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-<a href=#1295 id=1295 data-nosnippet>1295</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))
+<a href=#1295 id=1295 data-nosnippet>1295</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2, <span class="kw-2">*</span>CHAINID)
 <a href=#1296 id=1296 data-nosnippet>1296</a>            .try_into()
 <a href=#1297 id=1297 data-nosnippet>1297</a>            .unwrap();
 <a href=#1298 id=1298 data-nosnippet>1298</a>
@@ -1340,7 +1340,7 @@
 <a href=#1340 id=1340 data-nosnippet>1340</a>        <span class="kw">let </span>(slot, keypair, s_endorsement_1, s_endorsement_2, s_endorsement_3) =
 <a href=#1341 id=1341 data-nosnippet>1341</a>            gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
 <a href=#1342 id=1342 data-nosnippet>1342</a>
-<a href=#1343 id=1343 data-nosnippet>1343</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))
+<a href=#1343 id=1343 data-nosnippet>1343</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2, <span class="kw-2">*</span>CHAINID)
 <a href=#1344 id=1344 data-nosnippet>1344</a>            .try_into()
 <a href=#1345 id=1345 data-nosnippet>1345</a>            .unwrap();
 <a href=#1346 id=1346 data-nosnippet>1346</a>
@@ -1375,7 +1375,7 @@
 <a href=#1375 id=1375 data-nosnippet>1375</a>        <span class="comment">// Create an block header denunciation and check if it is valid
 <a href=#1376 id=1376 data-nosnippet>1376</a>        </span><span class="kw">let </span>(_slot, _keypair, s_block_header_1, s_block_header_2, s_block_header_3) =
 <a href=#1377 id=1377 data-nosnippet>1377</a>            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-<a href=#1378 id=1378 data-nosnippet>1378</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))
+<a href=#1378 id=1378 data-nosnippet>1378</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="kw-2">*</span>CHAINID)
 <a href=#1379 id=1379 data-nosnippet>1379</a>            .try_into()
 <a href=#1380 id=1380 data-nosnippet>1380</a>            .unwrap();
 <a href=#1381 id=1381 data-nosnippet>1381</a>
@@ -1483,7 +1483,7 @@
 <a href=#1483 id=1483 data-nosnippet>1483</a>    </span><span class="kw">fn </span>test_block_header_denunciation_ser_der() {
 <a href=#1484 id=1484 data-nosnippet>1484</a>        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
 <a href=#1485 id=1485 data-nosnippet>1485</a>            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-<a href=#1486 id=1486 data-nosnippet>1486</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))
+<a href=#1486 id=1486 data-nosnippet>1486</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="kw-2">*</span>CHAINID)
 <a href=#1487 id=1487 data-nosnippet>1487</a>            .try_into()
 <a href=#1488 id=1488 data-nosnippet>1488</a>            .unwrap();
 <a href=#1489 id=1489 data-nosnippet>1489</a>
@@ -1510,7 +1510,7 @@
 <a href=#1510 id=1510 data-nosnippet>1510</a>    </span><span class="kw">fn </span>test_denunciation_ser_der() {
 <a href=#1511 id=1511 data-nosnippet>1511</a>        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
 <a href=#1512 id=1512 data-nosnippet>1512</a>            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-<a href=#1513 id=1513 data-nosnippet>1513</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))
+<a href=#1513 id=1513 data-nosnippet>1513</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="kw-2">*</span>CHAINID)
 <a href=#1514 id=1514 data-nosnippet>1514</a>            .try_into()
 <a href=#1515 id=1515 data-nosnippet>1515</a>            .unwrap();
 <a href=#1516 id=1516 data-nosnippet>1516</a>
@@ -1541,13 +1541,13 @@
 <a href=#1541 id=1541 data-nosnippet>1541</a>    </span><span class="kw">fn </span>test_denunciation_precursor() {
 <a href=#1542 id=1542 data-nosnippet>1542</a>        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
 <a href=#1543 id=1543 data-nosnippet>1543</a>            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-<a href=#1544 id=1544 data-nosnippet>1544</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))
+<a href=#1544 id=1544 data-nosnippet>1544</a>        <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="kw-2">*</span>CHAINID)
 <a href=#1545 id=1545 data-nosnippet>1545</a>            .try_into()
 <a href=#1546 id=1546 data-nosnippet>1546</a>            .unwrap();
 <a href=#1547 id=1547 data-nosnippet>1547</a>
 <a href=#1548 id=1548 data-nosnippet>1548</a>        <span class="kw">let </span>de_p_1 = DenunciationPrecursor::from(<span class="kw-2">&amp;</span>s_block_header_1);
 <a href=#1549 id=1549 data-nosnippet>1549</a>        <span class="kw">let </span>de_p_2 = DenunciationPrecursor::from(<span class="kw-2">&amp;</span>s_block_header_2);
-<a href=#1550 id=1550 data-nosnippet>1550</a>        <span class="kw">let </span>denunciation_2: Denunciation = (<span class="kw-2">&amp;</span>de_p_1, <span class="kw-2">&amp;</span>de_p_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)).try_into().unwrap();
+<a href=#1550 id=1550 data-nosnippet>1550</a>        <span class="kw">let </span>denunciation_2: Denunciation = (<span class="kw-2">&amp;</span>de_p_1, <span class="kw-2">&amp;</span>de_p_2, <span class="kw-2">*</span>CHAINID).try_into().unwrap();
 <a href=#1551 id=1551 data-nosnippet>1551</a>
 <a href=#1552 id=1552 data-nosnippet>1552</a>        <span class="macro">assert_eq!</span>(denunciation, denunciation_2);
 <a href=#1553 id=1553 data-nosnippet>1553</a>
@@ -1558,7 +1558,7 @@
 <a href=#1558 id=1558 data-nosnippet>1558</a>
 <a href=#1559 id=1559 data-nosnippet>1559</a>        <span class="kw">let </span>de_p_3 = DenunciationPrecursor::from(<span class="kw-2">&amp;</span>s_endorsement_1);
 <a href=#1560 id=1560 data-nosnippet>1560</a>        <span class="kw">let </span>de_p_4 = DenunciationPrecursor::from(<span class="kw-2">&amp;</span>s_endorsement_2);
-<a href=#1561 id=1561 data-nosnippet>1561</a>        <span class="kw">let </span>denunciation_4: Denunciation = (<span class="kw-2">&amp;</span>de_p_3, <span class="kw-2">&amp;</span>de_p_4, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID)).try_into().unwrap();
+<a href=#1561 id=1561 data-nosnippet>1561</a>        <span class="kw">let </span>denunciation_4: Denunciation = (<span class="kw-2">&amp;</span>de_p_3, <span class="kw-2">&amp;</span>de_p_4, <span class="kw-2">*</span>CHAINID).try_into().unwrap();
 <a href=#1562 id=1562 data-nosnippet>1562</a>
 <a href=#1563 id=1563 data-nosnippet>1563</a>        <span class="macro">assert_eq!</span>(denunciation_3, denunciation_4);
 <a href=#1564 id=1564 data-nosnippet>1564</a>    }
@@ -1567,7 +1567,7 @@
 <a href=#1567 id=1567 data-nosnippet>1567</a>    </span><span class="kw">fn </span>test_denunciation_index_ser_der() {
 <a href=#1568 id=1568 data-nosnippet>1568</a>        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_block_header_1, s_block_header_2, <span class="kw">_</span>) =
 <a href=#1569 id=1569 data-nosnippet>1569</a>            gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-<a href=#1570 id=1570 data-nosnippet>1570</a>        <span class="kw">let </span>denunciation_1: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>CHAINID))
+<a href=#1570 id=1570 data-nosnippet>1570</a>        <span class="kw">let </span>denunciation_1: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2, <span class="kw-2">*</span>CHAINID)
 <a href=#1571 id=1571 data-nosnippet>1571</a>            .try_into()
 <a href=#1572 id=1572 data-nosnippet>1572</a>            .unwrap();
 <a href=#1573 id=1573 data-nosnippet>1573</a>        <span class="kw">let </span>denunciation_index_1 = DenunciationIndex::from(<span class="kw-2">&amp;</span>denunciation_1);
