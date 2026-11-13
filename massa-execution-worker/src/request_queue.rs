@@ -97,12 +97,16 @@ impl<T, R> RequestQueue<T, R> {
     /// Extends Self with the contents of another `RequestQueue`.
     /// The contents of the incoming queue are appended last.
     /// Excess items with respect to `self.max_items` are canceled and dropped.
-    pub fn extend(&mut self, mut other: RequestQueue<T, R>) {
+    ///
+    /// # Returns
+    /// The number of incoming items cancelled because the queue was full
+    pub fn extend(&mut self, mut other: RequestQueue<T, R>) -> usize {
         // compute the number of available item slots
         let free_slots = self.max_items.saturating_sub(self.queue.len());
 
         // if there are not enough available slots to fit the entire incoming queue
-        if free_slots < other.queue.len() {
+        let excess = other.queue.len().saturating_sub(free_slots);
+        if excess > 0 {
             // Truncate the incoming queue to the size that fits, cancelling excess items.
             // When the destination is already full this cancels the whole incoming queue:
             // `RequestQueue` does not cancel on drop, so dropping it instead would close
@@ -117,6 +121,8 @@ impl<T, R> RequestQueue<T, R> {
 
         // append the kept part of the incoming queue
         self.queue.extend(other.queue);
+
+        excess
     }
 
     /// Cancel all queued items.
@@ -132,7 +138,11 @@ impl<T, R> RequestQueue<T, R> {
     /// Removes the requests that must not be executed anymore:
     /// * the ones whose caller gave up (dropped the receiving side) are dropped;
     /// * the ones that waited longer than `max_wait` are cancelled with a timeout error.
-    pub fn remove_expired(&mut self, max_wait: Duration) {
+    ///
+    /// # Returns
+    /// The number of requests cancelled with a timeout error
+    pub fn remove_expired(&mut self, max_wait: Duration) -> usize {
+        let mut timed_out = 0;
         let mut kept = VecDeque::with_capacity(self.queue.len());
         for req in self.queue.drain(..) {
             if req.is_abandoned() {
@@ -145,11 +155,13 @@ impl<T, R> RequestQueue<T, R> {
                     waited.as_millis(),
                     max_wait.as_millis()
                 )));
+                timed_out += 1;
                 continue;
             }
             kept.push_back(req);
         }
         self.queue = kept;
+        timed_out
     }
 
     /// Pop out the oldest element of the queue
@@ -182,6 +194,11 @@ impl<T, R> RequestQueue<T, R> {
     /// true if the queue is full, false otherwise
     pub fn is_full(&self) -> bool {
         self.queue.len() >= self.max_items
+    }
+
+    /// Returns the number of items in the queue
+    pub fn len(&self) -> usize {
+        self.queue.len()
     }
 
     /// Checks whether the queue is empty
@@ -234,7 +251,7 @@ mod tests {
         incoming.push(req1);
         incoming.push(req2);
 
-        destination.extend(incoming);
+        assert_eq!(destination.extend(incoming), 2);
 
         assert_cancelled_for_capacity(rx1);
         assert_cancelled_for_capacity(rx2);
@@ -253,7 +270,7 @@ mod tests {
         incoming.push(req1);
         incoming.push(req2);
 
-        destination.extend(incoming);
+        assert_eq!(destination.extend(incoming), 1);
 
         // the first incoming request fits: nothing received, sender still alive
         assert!(matches!(
@@ -279,7 +296,8 @@ mod tests {
         let (fresh, mut fresh_rx) = make_request(2);
         queue.push(fresh);
 
-        queue.remove_expired(Duration::from_millis(25));
+        // only the old request counts as timed out: the abandoned one is dropped silently
+        assert_eq!(queue.remove_expired(Duration::from_millis(25)), 1);
 
         assert_cancelled_with(old_rx, "readonly request timed out");
         // only the fresh request is left, still waiting for its answer

@@ -42,8 +42,10 @@ static_assertions::const_assert!(THREAD_NAME.len() < 16);
 pub enum ConnectivityCommand {
     Stop,
     GetStats {
+        /// one-shot response channel: a plain crossbeam channel rather than a
+        /// `MassaChannel`, whose metrics would be registered for every call
         #[allow(clippy::type_complexity)]
-        responder: MassaSender<(
+        responder: crossbeam::channel::Sender<(
             NetworkStats,
             HashMap<PeerId, (SocketAddr, PeerConnectionType)>,
         )>,

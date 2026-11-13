@@ -12,6 +12,7 @@ use massa_execution_exports::{
     ExecutionQueryResponseItem, ReadOnlyExecutionFuture, ReadOnlyExecutionOutput,
     ReadOnlyExecutionRequest,
 };
+use massa_metrics::MassaMetrics;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
@@ -125,6 +126,8 @@ pub struct ExecutionControllerImpl {
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// current execution state (see execution.rs for details)
     pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
+    /// metrics, to count the read-only requests refused at admission
+    pub(crate) massa_metrics: MassaMetrics,
 }
 
 /// Receiving side of the response channel of a queued read-only request
@@ -151,7 +154,13 @@ impl ExecutionControllerImpl {
         let mut input_data = self.input_data.1.lock();
 
         // refuse the request if the queue is full or the worker is closing
-        input_data.check_readonly_admission()?;
+        if let Err(err) = input_data.check_readonly_admission() {
+            // only count refusals due to load, not the ones during shutdown
+            if !input_data.closed {
+                self.massa_metrics.inc_readonly_requests_refused_by(1);
+            }
+            return Err(err);
+        }
 
         // prepare the channel to send back the result of the read-only execution
         let (resp_tx, resp_rx) = oneshot::channel();
@@ -160,6 +169,8 @@ impl ExecutionControllerImpl {
         input_data
             .readonly_requests
             .push(RequestWithResponseSender::new(req, resp_tx));
+        self.massa_metrics
+            .set_readonly_input_queue_length(input_data.readonly_requests.len());
 
         // wake up the execution main loop
         self.input_data.0.notify_one();

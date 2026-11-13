@@ -5936,7 +5936,7 @@ mod query_state_resource_regressions {
             selector,
             channels,
             wallet,
-            metrics,
+            metrics.clone(),
             event_cache,
             #[cfg(feature = "dump-block")]
             block_storage_backend,
@@ -5944,6 +5944,7 @@ mod query_state_resource_regressions {
         ExecutionControllerImpl {
             input_data: Arc::new((Condvar::new(), Mutex::new(ExecutionInputData::new(config)))),
             execution_state: Arc::new(RwLock::new(state)),
+            massa_metrics: metrics,
         }
     }
 
