@@ -1,0 +1,41 @@
+[package]
+name = "jsonrpsee-server"
+description = "JSON-RPC server that supports HTTP and WebSocket transports"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+readme.workspace = true
+publish = true
+
+[dependencies]
+futures-util = { version = "0.3.14", default-features = false, features = ["io", "async-await-macro"] }
+jsonrpsee-types = { workspace = true }
+jsonrpsee-core = { workspace = true, features = ["server", "http-helpers"] }
+tracing = "0.1.34"
+serde = "1"
+serde_json = { version = "1", features = ["raw_value"] }
+soketto = { version = "0.8", features = ["http"] }
+tokio = { version = "1.23.1", features = ["net", "rt-multi-thread", "macros", "time"] }
+tokio-util = { version = "0.7", features = ["compat"] }
+tokio-stream = { version = "0.1.7", features = ["sync"] }
+hyper = { version = "1.3", features = ["server", "http1", "http2"] }
+hyper-util = { version = "0.1", features = ["tokio", "service", "tokio", "server-auto"] }
+http = "1"
+http-body = "1"
+http-body-util = "0.1.0"
+tower = { workspace = true, features = ["util"] }
+thiserror = "1"
+route-recognizer = "0.3.1"
+pin-project = "1.1.3"
+
+[dev-dependencies]
+jsonrpsee-test-utils = { path = "../test-utils" }
+tracing-subscriber = { version = "0.3.3", features = ["env-filter"] }
+tower = { workspace = true, features = ["timeout"] }
+socket2 = "0.5.1"
