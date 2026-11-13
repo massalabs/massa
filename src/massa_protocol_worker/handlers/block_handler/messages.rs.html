@@ -555,54 +555,49 @@
 <a href=#555 id=555 data-nosnippet>555</a>            },
 <a href=#556 id=556 data-nosnippet>556</a>            expire_period: <span class="number">50</span>,
 <a href=#557 id=557 data-nosnippet>557</a>        };
-<a href=#558 id=558 data-nosnippet>558</a>        <span class="kw">let </span>operation: SecureShareOperation = Operation::new_verifiable(
-<a href=#559 id=559 data-nosnippet>559</a>            content,
-<a href=#560 id=560 data-nosnippet>560</a>            OperationSerializer::new(),
-<a href=#561 id=561 data-nosnippet>561</a>            <span class="kw-2">&amp;</span>keypair,
-<a href=#562 id=562 data-nosnippet>562</a>            <span class="kw-2">*</span>CHAINID,
-<a href=#563 id=563 data-nosnippet>563</a>            <span class="prelude-val">None</span>,
-<a href=#564 id=564 data-nosnippet>564</a>        )
-<a href=#565 id=565 data-nosnippet>565</a>        .unwrap();
-<a href=#566 id=566 data-nosnippet>566</a>        <span class="kw">let </span>operations = <span class="macro">vec!</span>[operation.clone(), operation];
-<a href=#567 id=567 data-nosnippet>567</a>        <span class="kw">let </span>total_operations_size: usize = operations.iter().map(|op| op.serialized_size()).sum();
-<a href=#568 id=568 data-nosnippet>568</a>
-<a href=#569 id=569 data-nosnippet>569</a>        <span class="kw">let </span>message = <span class="kw">super</span>::BlockMessage::DataResponse {
-<a href=#570 id=570 data-nosnippet>570</a>            block_id: BlockId::from_str(<span class="string">"B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg"</span>)
-<a href=#571 id=571 data-nosnippet>571</a>                .unwrap(),
-<a href=#572 id=572 data-nosnippet>572</a>            block_info: <span class="kw">super</span>::BlockInfoReply::Operations(operations),
-<a href=#573 id=573 data-nosnippet>573</a>        };
-<a href=#574 id=574 data-nosnippet>574</a>        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
-<a href=#575 id=575 data-nosnippet>575</a>        <span class="kw">super</span>::BlockMessageSerializer::new()
-<a href=#576 id=576 data-nosnippet>576</a>            .serialize(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;mut </span>buffer)
-<a href=#577 id=577 data-nosnippet>577</a>            .unwrap();
-<a href=#578 id=578 data-nosnippet>578</a>
-<a href=#579 id=579 data-nosnippet>579</a>        <span class="kw">let </span>make_deserializer = |max_serialized_operations_size_per_block: usize| {
-<a href=#580 id=580 data-nosnippet>580</a>            <span class="kw">super</span>::BlockMessageDeserializer::new(<span class="kw">super</span>::BlockMessageDeserializerArgs {
-<a href=#581 id=581 data-nosnippet>581</a>                thread_count: <span class="number">1</span>,
-<a href=#582 id=582 data-nosnippet>582</a>                endorsement_count: <span class="number">1</span>,
-<a href=#583 id=583 data-nosnippet>583</a>                max_operations_per_block: <span class="number">2</span>,
-<a href=#584 id=584 data-nosnippet>584</a>                max_serialized_operations_size_per_block,
-<a href=#585 id=585 data-nosnippet>585</a>                max_bytecode_size: <span class="number">1000</span>,
-<a href=#586 id=586 data-nosnippet>586</a>                max_function_name_length: <span class="number">255</span>,
-<a href=#587 id=587 data-nosnippet>587</a>                max_parameters_size: <span class="number">1000</span>,
-<a href=#588 id=588 data-nosnippet>588</a>                max_op_datastore_entry_count: <span class="number">10</span>,
-<a href=#589 id=589 data-nosnippet>589</a>                max_op_datastore_key_length: <span class="number">255</span>,
-<a href=#590 id=590 data-nosnippet>590</a>                max_op_datastore_value_length: <span class="number">1000</span>,
-<a href=#591 id=591 data-nosnippet>591</a>                max_denunciations_in_block_header: <span class="number">1</span>,
-<a href=#592 id=592 data-nosnippet>592</a>                last_start_period: <span class="prelude-val">None</span>,
-<a href=#593 id=593 data-nosnippet>593</a>                chain_id: <span class="kw-2">*</span>CHAINID,
-<a href=#594 id=594 data-nosnippet>594</a>            })
-<a href=#595 id=595 data-nosnippet>595</a>        };
-<a href=#596 id=596 data-nosnippet>596</a>
-<a href=#597 id=597 data-nosnippet>597</a>        <span class="comment">// within the block-level limit: accepted
-<a href=#598 id=598 data-nosnippet>598</a>        </span><span class="kw">let </span>(rest, <span class="kw">_</span>) = make_deserializer(total_operations_size)
-<a href=#599 id=599 data-nosnippet>599</a>            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
-<a href=#600 id=600 data-nosnippet>600</a>            .unwrap();
-<a href=#601 id=601 data-nosnippet>601</a>        <span class="macro">assert!</span>(rest.is_empty());
-<a href=#602 id=602 data-nosnippet>602</a>
-<a href=#603 id=603 data-nosnippet>603</a>        <span class="comment">// over the block-level limit: rejected without parsing the operations
-<a href=#604 id=604 data-nosnippet>604</a>        </span>make_deserializer(<span class="number">0</span>)
-<a href=#605 id=605 data-nosnippet>605</a>            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
-<a href=#606 id=606 data-nosnippet>606</a>            .expect_err(<span class="string">"operations exceeding the block size limit should be rejected"</span>);
-<a href=#607 id=607 data-nosnippet>607</a>    }
-<a href=#608 id=608 data-nosnippet>608</a>}</code></pre></div></section></main></body></html>
+<a href=#558 id=558 data-nosnippet>558</a>        <span class="kw">let </span>operation: SecureShareOperation =
+<a href=#559 id=559 data-nosnippet>559</a>            Operation::new_verifiable(content, OperationSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="kw-2">*</span>CHAINID)
+<a href=#560 id=560 data-nosnippet>560</a>                .unwrap();
+<a href=#561 id=561 data-nosnippet>561</a>        <span class="kw">let </span>operations = <span class="macro">vec!</span>[operation.clone(), operation];
+<a href=#562 id=562 data-nosnippet>562</a>        <span class="kw">let </span>total_operations_size: usize = operations.iter().map(|op| op.serialized_size()).sum();
+<a href=#563 id=563 data-nosnippet>563</a>
+<a href=#564 id=564 data-nosnippet>564</a>        <span class="kw">let </span>message = <span class="kw">super</span>::BlockMessage::DataResponse {
+<a href=#565 id=565 data-nosnippet>565</a>            block_id: BlockId::from_str(<span class="string">"B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg"</span>)
+<a href=#566 id=566 data-nosnippet>566</a>                .unwrap(),
+<a href=#567 id=567 data-nosnippet>567</a>            block_info: <span class="kw">super</span>::BlockInfoReply::Operations(operations),
+<a href=#568 id=568 data-nosnippet>568</a>        };
+<a href=#569 id=569 data-nosnippet>569</a>        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+<a href=#570 id=570 data-nosnippet>570</a>        <span class="kw">super</span>::BlockMessageSerializer::new()
+<a href=#571 id=571 data-nosnippet>571</a>            .serialize(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;mut </span>buffer)
+<a href=#572 id=572 data-nosnippet>572</a>            .unwrap();
+<a href=#573 id=573 data-nosnippet>573</a>
+<a href=#574 id=574 data-nosnippet>574</a>        <span class="kw">let </span>make_deserializer = |max_serialized_operations_size_per_block: usize| {
+<a href=#575 id=575 data-nosnippet>575</a>            <span class="kw">super</span>::BlockMessageDeserializer::new(<span class="kw">super</span>::BlockMessageDeserializerArgs {
+<a href=#576 id=576 data-nosnippet>576</a>                thread_count: <span class="number">1</span>,
+<a href=#577 id=577 data-nosnippet>577</a>                endorsement_count: <span class="number">1</span>,
+<a href=#578 id=578 data-nosnippet>578</a>                max_operations_per_block: <span class="number">2</span>,
+<a href=#579 id=579 data-nosnippet>579</a>                max_serialized_operations_size_per_block,
+<a href=#580 id=580 data-nosnippet>580</a>                max_bytecode_size: <span class="number">1000</span>,
+<a href=#581 id=581 data-nosnippet>581</a>                max_function_name_length: <span class="number">255</span>,
+<a href=#582 id=582 data-nosnippet>582</a>                max_parameters_size: <span class="number">1000</span>,
+<a href=#583 id=583 data-nosnippet>583</a>                max_op_datastore_entry_count: <span class="number">10</span>,
+<a href=#584 id=584 data-nosnippet>584</a>                max_op_datastore_key_length: <span class="number">255</span>,
+<a href=#585 id=585 data-nosnippet>585</a>                max_op_datastore_value_length: <span class="number">1000</span>,
+<a href=#586 id=586 data-nosnippet>586</a>                max_denunciations_in_block_header: <span class="number">1</span>,
+<a href=#587 id=587 data-nosnippet>587</a>                last_start_period: <span class="prelude-val">None</span>,
+<a href=#588 id=588 data-nosnippet>588</a>                chain_id: <span class="kw-2">*</span>CHAINID,
+<a href=#589 id=589 data-nosnippet>589</a>            })
+<a href=#590 id=590 data-nosnippet>590</a>        };
+<a href=#591 id=591 data-nosnippet>591</a>
+<a href=#592 id=592 data-nosnippet>592</a>        <span class="comment">// within the block-level limit: accepted
+<a href=#593 id=593 data-nosnippet>593</a>        </span><span class="kw">let </span>(rest, <span class="kw">_</span>) = make_deserializer(total_operations_size)
+<a href=#594 id=594 data-nosnippet>594</a>            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
+<a href=#595 id=595 data-nosnippet>595</a>            .unwrap();
+<a href=#596 id=596 data-nosnippet>596</a>        <span class="macro">assert!</span>(rest.is_empty());
+<a href=#597 id=597 data-nosnippet>597</a>
+<a href=#598 id=598 data-nosnippet>598</a>        <span class="comment">// over the block-level limit: rejected without parsing the operations
+<a href=#599 id=599 data-nosnippet>599</a>        </span>make_deserializer(<span class="number">0</span>)
+<a href=#600 id=600 data-nosnippet>600</a>            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
+<a href=#601 id=601 data-nosnippet>601</a>            .expect_err(<span class="string">"operations exceeding the block size limit should be rejected"</span>);
+<a href=#602 id=602 data-nosnippet>602</a>    }
+<a href=#603 id=603 data-nosnippet>603</a>}</code></pre></div></section></main></body></html>
