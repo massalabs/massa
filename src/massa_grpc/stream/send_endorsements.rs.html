@@ -81,7 +81,7 @@
 <a href=#81 id=81 data-nosnippet>81</a>                                            <span class="comment">// Deserialize the endorsement and verify its signature
 <a href=#82 id=82 data-nosnippet>82</a>                                            </span><span class="kw">let </span>(rest, res_endorsement): (<span class="kw-2">&amp;</span>[u8], SecureShareEndorsement) = tuple;
 <a href=#83 id=83 data-nosnippet>83</a>                                            <span class="kw">if </span>rest.is_empty() {
-<a href=#84 id=84 data-nosnippet>84</a>                                                res_endorsement.verify_signature(config.chain_id)
+<a href=#84 id=84 data-nosnippet>84</a>                                                res_endorsement.verify_signature(<span class="prelude-val">Some</span>(config.chain_id))
 <a href=#85 id=85 data-nosnippet>85</a>                                                    .map(|<span class="kw">_</span>| (res_endorsement.id.to_string(), res_endorsement))
 <a href=#86 id=86 data-nosnippet>86</a>                                                    .map_err(|e| e.into())
 <a href=#87 id=87 data-nosnippet>87</a>                                            } <span class="kw">else </span>{

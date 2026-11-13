@@ -198,9 +198,10 @@
 <a href=#198 id=198 data-nosnippet>198</a>    config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::config::GrpcConfig,
 <a href=#199 id=199 data-nosnippet>199</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
 <a href=#200 id=200 data-nosnippet>200</a>    <span class="comment">// Block::verify_signature delegates to the nested header signing domain (F87).
-<a href=#201 id=201 data-nosnippet>201</a>    </span>block.verify_signature(config.chain_id)<span class="question-mark">?</span>;
-<a href=#202 id=202 data-nosnippet>202</a>    <span class="kw">for </span>endorsement <span class="kw">in </span>block.content.header.content.endorsements.iter() {
-<a href=#203 id=203 data-nosnippet>203</a>        endorsement.verify_signature(config.chain_id)<span class="question-mark">?</span>;
-<a href=#204 id=204 data-nosnippet>204</a>    }
-<a href=#205 id=205 data-nosnippet>205</a>    <span class="prelude-val">Ok</span>(())
-<a href=#206 id=206 data-nosnippet>206</a>}</code></pre></div></section></main></body></html>
+<a href=#201 id=201 data-nosnippet>201</a>    </span><span class="kw">let </span>sig_chain_id = <span class="prelude-val">Some</span>(config.chain_id);
+<a href=#202 id=202 data-nosnippet>202</a>    block.verify_signature(sig_chain_id)<span class="question-mark">?</span>;
+<a href=#203 id=203 data-nosnippet>203</a>    <span class="kw">for </span>endorsement <span class="kw">in </span>block.content.header.content.endorsements.iter() {
+<a href=#204 id=204 data-nosnippet>204</a>        endorsement.verify_signature(sig_chain_id)<span class="question-mark">?</span>;
+<a href=#205 id=205 data-nosnippet>205</a>    }
+<a href=#206 id=206 data-nosnippet>206</a>    <span class="prelude-val">Ok</span>(())
+<a href=#207 id=207 data-nosnippet>207</a>}</code></pre></div></section></main></body></html>
