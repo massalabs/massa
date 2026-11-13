@@ -16,8 +16,6 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::consensus_signature::sig_chain_id_for_slot;
-use massa_versioning::versioning::MipStore;
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -50,7 +48,6 @@ pub struct RetrievalThread {
     storage: Storage,
     peer_cmd_sender: MassaSender<PeerManagementCmd>,
     metrics: MassaMetrics,
-    mip_store: MipStore,
     endorsement_message_deserializer: EndorsementMessageDeserializer,
 }
 
@@ -155,7 +152,6 @@ impl RetrievalThread {
                     &self.config,
                     &self.internal_sender,
                     self.pool_controller.as_mut(),
-                    &self.mip_store,
                 ) {
                     warn!(
                         "peer {} sent us critically incorrect endorsements, \
@@ -204,7 +200,6 @@ pub(crate) fn note_endorsements_from_peer(
     config: &ProtocolConfig,
     endorsement_propagation_sender: &MassaSender<EndorsementHandlerPropagationCommand>,
     pool_controller: &mut dyn PoolController,
-    mip_store: &MipStore,
 ) -> Result<(), ProtocolError> {
     let mut new_endorsements = PreHashMap::with_capacity(endorsements.len());
     let mut all_endorsement_ids = PreHashSet::with_capacity(endorsements.len());
@@ -227,25 +222,18 @@ pub(crate) fn note_endorsements_from_peer(
         }
     }
 
-    // Batch signature verification. Layout is per-endorsement slot: the
-    // network-agreed Execution component version at that slot timestamp.
+    // Batch signature verification (chain-scoped signed-hash layout).
+    let sig_chain_id = Some(config.chain_id);
     let sig_batch = new_endorsements
         .values()
         .map(|endorsement| {
-            let slot_ts = get_block_slot_timestamp(
-                config.thread_count,
-                config.t0,
-                config.genesis_timestamp,
-                endorsement.content.slot,
-            )?;
-            let sig_chain_id = sig_chain_id_for_slot(mip_store, config.chain_id, slot_ts);
-            Ok((
+            (
                 endorsement.compute_signed_hash(sig_chain_id),
                 endorsement.signature,
                 endorsement.content_creator_pub_key,
-            ))
+            )
         })
-        .collect::<Result<Vec<_>, ProtocolError>>()?;
+        .collect::<Vec<_>>();
     verify_sigs_batch(&sig_batch)?;
 
     let now = MassaTime::now();
@@ -402,7 +390,6 @@ pub fn start_retrieval_thread(
     config: ProtocolConfig,
     storage: Storage,
     metrics: MassaMetrics,
-    mip_store: MipStore,
 ) -> JoinHandle<()> {
     let endorsement_message_deserializer =
         EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
@@ -425,7 +412,6 @@ pub fn start_retrieval_thread(
                 config,
                 storage,
                 metrics,
-                mip_store,
                 endorsement_message_deserializer,
             };
             retrieval_thread.run();

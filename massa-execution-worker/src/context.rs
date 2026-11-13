@@ -53,7 +53,6 @@ use massa_sc_runtime::{CondomLimits, MAX_DATASTORE_KEYS_PAGE};
 use massa_serialization::Serializer;
 use massa_time::MassaTime;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
-use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 use massa_versioning::versioning::{MipComponent, MipStore};
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use parking_lot::RwLock;
@@ -120,9 +119,6 @@ pub struct ExecutionContextSnapshot {
 
     /// The version of the execution component
     pub execution_component_version: u32,
-
-    /// True if this slot activates a new execution component version vs the previous slot
-    pub execution_component_version_upgraded: bool,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -218,9 +214,6 @@ pub struct ExecutionContext {
     /// The version of the execution component
     pub execution_component_version: u32,
 
-    /// True if this slot activates a new execution component version vs the previous slot
-    pub execution_component_version_upgraded: bool,
-
     /// recursion counter, incremented for each new nested call
     pub recursion_counter: u16,
 
@@ -261,14 +254,13 @@ impl ExecutionContext {
         let slot = Slot::new(0, 0);
         let transfers_history = Arc::new(RwLock::new(Vec::new()));
 
-        let (execution_component_version, execution_component_version_upgraded) =
-            execution_component_version_info(
-                &mip_store,
-                &slot,
-                config.thread_count,
-                config.t0,
-                config.genesis_timestamp,
-            );
+        let execution_component_version = execution_component_version_at(
+            &mip_store,
+            &slot,
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+        );
 
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -322,7 +314,6 @@ impl ExecutionContext {
             execution_trail_hash,
             gas_remaining_before_subexecution: None,
             execution_component_version,
-            execution_component_version_upgraded,
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
             transfers_history,
@@ -353,7 +344,6 @@ impl ExecutionContext {
             user_event_count_in_current_exec: self.user_event_count_in_current_exec,
             transfer_history_len: self.transfers_history.read().len(),
             execution_component_version: self.execution_component_version,
-            execution_component_version_upgraded: self.execution_component_version_upgraded,
         }
     }
 
@@ -403,7 +393,6 @@ impl ExecutionContext {
         self.recursion_counter = snapshot.recursion_counter;
         self.user_event_count_in_current_exec = snapshot.user_event_count_in_current_exec;
         self.execution_component_version = snapshot.execution_component_version;
-        self.execution_component_version_upgraded = snapshot.execution_component_version_upgraded;
 
         {
             let mut transfers_history = self.transfers_history.write();
@@ -445,14 +434,13 @@ impl ExecutionContext {
         let execution_trail_hash =
             generate_execution_trail_hash(&prev_execution_trail_hash, &slot, None, true);
 
-        let (execution_component_version, execution_component_version_upgraded) =
-            execution_component_version_info(
-                &mip_store,
-                &slot,
-                config.thread_count,
-                config.t0,
-                config.genesis_timestamp,
-            );
+        let execution_component_version = execution_component_version_at(
+            &mip_store,
+            &slot,
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+        );
 
         // return readonly context
         ExecutionContext {
@@ -460,7 +448,6 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             execution_component_version,
-            execution_component_version_upgraded,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -481,7 +468,6 @@ impl ExecutionContext {
             self.slot,
             max_gas,
             async_msg_cst_gas_cost,
-            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         )
     }
 
@@ -518,21 +504,19 @@ impl ExecutionContext {
             false,
         );
 
-        let (execution_component_version, execution_component_version_upgraded) =
-            execution_component_version_info(
-                &mip_store,
-                &slot,
-                config.thread_count,
-                config.t0,
-                config.genesis_timestamp,
-            );
+        let execution_component_version = execution_component_version_at(
+            &mip_store,
+            &slot,
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+        );
 
         // return active slot execution context
         ExecutionContext {
             slot,
             opt_block_id,
             execution_component_version,
-            execution_component_version_upgraded,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -696,16 +680,13 @@ impl ExecutionContext {
         end_key: std::ops::Bound<Vec<u8>>,
         count: Option<u32>,
     ) -> Result<Option<BTreeSet<Vec<u8>>>, ExecutionError> {
-        // From execution version 2 (MIP-0002), one SC datastore-key query returns
-        // at most MAX_DATASTORE_KEYS_PAGE keys. Below that version the query stays
-        // uncapped. An explicit count above the page size is rejected. A query
-        // with no count (the deprecated ABI) is probed at page size + 1 so that
-        // matching more keys fails instead of being truncated.
-        let v2 = self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION);
-        let (effective_count, max_query) = match (v2, count) {
-            (false, _) => (None, None),
-            (true, Some(_)) => (count, Some(MAX_DATASTORE_KEYS_PAGE)),
-            (true, None) => (Some(MAX_DATASTORE_KEYS_PAGE.saturating_add(1)), None),
+        // One SC datastore-key query returns at most MAX_DATASTORE_KEYS_PAGE keys.
+        // An explicit count above the page size is rejected. A query with no count
+        // (the deprecated ABI) is probed at page size + 1 so that matching more keys
+        // fails instead of being truncated.
+        let (effective_count, max_query) = match count {
+            Some(_) => (count, Some(MAX_DATASTORE_KEYS_PAGE)),
+            None => (Some(MAX_DATASTORE_KEYS_PAGE.saturating_add(1)), None),
         };
 
         // cleanup bounds (the returned count is ignored: effective_count above is the scan limit)
@@ -722,7 +703,7 @@ impl ExecutionContext {
             self.speculative_ledger
                 .get_keys(addr, &prefix, start_key, end_key, effective_count);
 
-        if v2 && count.is_none() {
+        if count.is_none() {
             if let Some(keys) = keys.as_ref() {
                 if keys.len() > MAX_DATASTORE_KEYS_PAGE as usize {
                     return Err(ExecutionError::RuntimeError(format!(
@@ -1114,7 +1095,6 @@ impl ExecutionContext {
             &slot,
             &self.speculative_ledger.added_changes,
             self.config.async_msg_cst_gas_cost,
-            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         );
 
         let mut cancel_async_message_transfers = vec![];
@@ -1148,7 +1128,6 @@ impl ExecutionContext {
                 self.config.thread_count,
                 self.config.roll_price,
                 self.config.max_miss_ratio,
-                self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
             )
         } else {
             vec![]
@@ -1216,16 +1195,6 @@ impl ExecutionContext {
         // set data entry
         self.speculative_ledger
             .set_bytecode(&self.get_current_address()?, address, bytecode)
-    }
-
-    /// Overwrites the bytecode of `address` without charging storage costs or
-    /// checking write rights.
-    ///
-    /// Reserved for protocol-level irregular state changes applied
-    /// deterministically at a versioning activation (see `wmas_patch`). Do not
-    /// use from ABI / user execution paths.
-    pub fn override_bytecode(&mut self, address: &Address, bytecode: Bytecode) {
-        self.speculative_ledger.set_bytecode_raw(address, bytecode);
     }
 
     /// Creates a new event but does not emit it.
@@ -1356,10 +1325,7 @@ impl ExecutionContext {
     }
 
     pub fn deferred_calls_advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
-        self.speculative_deferred_calls.advance_slot(
-            current_slot,
-            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
-        )
+        self.speculative_deferred_calls.advance_slot(current_slot)
     }
 
     /// Get the price it would cost to reserve "gas" with params at target slot "slot".
@@ -1375,7 +1341,6 @@ impl ExecutionContext {
             max_gas_request,
             current_slot,
             params_size,
-            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
         )
     }
 
@@ -1383,11 +1348,8 @@ impl ExecutionContext {
         &mut self,
         call: DeferredCall,
     ) -> Result<DeferredCallId, ExecutionError> {
-        self.speculative_deferred_calls.register_call(
-            call,
-            self.execution_trail_hash,
-            self.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION),
-        )
+        self.speculative_deferred_calls
+            .register_call(call, self.execution_trail_hash)
     }
 
     /// Check if a deferred call exists
@@ -1507,56 +1469,9 @@ impl ExecutionContext {
     pub fn get_condom_limits(&self) -> CondomLimits {
         self.config.condom_limits.clone()
     }
-
-    /// Returns `true` if the execution component version is at least `version`.
-    pub fn is_execution_component_version_at_least(&self, version: u32) -> bool {
-        self.execution_component_version >= version
-    }
-
-    /// Returns `true` if this slot is the activation slot of execution component
-    /// version `target`: the version just upgraded and landed exactly on `target`.
-    ///
-    /// Use this for one-shot irregular state changes (e.g. WMAS). Prefer
-    /// [`Self::is_execution_component_version_at_least`] for sticky behaviour
-    /// that should apply on every slot from `target` onward.
-    ///
-    /// Note: this assumes MIP bumps land on `target` exactly (no single-slot
-    /// jump past it). That matches how Massa MIPs set component versions.
-    pub fn is_execution_component_version_activation(&self, target: u32) -> bool {
-        self.execution_component_version_upgraded && self.execution_component_version == target
-    }
 }
 
-/// Execution component version active at `slot`, and whether that version is
-/// strictly greater than at the previous slot (any bump). Genesis counts as an
-/// upgrade when the version is greater than 0.
-///
-/// Returns `(version, upgraded)`.
-pub(crate) fn execution_component_version_info(
-    mip_store: &MipStore,
-    slot: &Slot,
-    thread_count: u8,
-    t0: MassaTime,
-    genesis_timestamp: MassaTime,
-) -> (u32, bool) {
-    let version =
-        execution_component_version_at(mip_store, slot, thread_count, t0, genesis_timestamp);
-    let upgraded = match slot.get_prev_slot(thread_count) {
-        Ok(prev) => {
-            version
-                > execution_component_version_at(
-                    mip_store,
-                    &prev,
-                    thread_count,
-                    t0,
-                    genesis_timestamp,
-                )
-        }
-        Err(_) => version > 0,
-    };
-    (version, upgraded)
-}
-
+/// Execution component version active at `slot`.
 fn execution_component_version_at(
     mip_store: &MipStore,
     slot: &Slot,
