@@ -368,7 +368,7 @@ dependencies = [
  "bitflags 2.9.0",
  "cexpr",
  "clang-sys",
- "itertools 0.10.5",
+ "itertools 0.12.1",
  "proc-macro2 1.0.94",
  "quote 1.0.40",
  "regex",
@@ -2915,7 +2915,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=a56cc0be35123538d34f225140602e5212d002f3#a56cc0be35123538d34f225140602e5212d002f3"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=73c2f7c26476619972cc29ca3ed0cc78ee13d255#73c2f7c26476619972cc29ca3ed0cc78ee13d255"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2923,15 +2923,10 @@ dependencies = [
  "chrono",
  "displaydoc",
  "loupe",
- "massa-proto-rs",
  "more-asserts 0.3.1",
  "num_enum",
- "parking_lot",
- "prost",
- "prost-types",
  "rand",
  "regex",
- "rust_decimal",
  "serde",
  "serde_json",
  "serial_test",
@@ -2944,7 +2939,6 @@ dependencies = [
  "wasmer-compiler-singlepass",
  "wasmer-middlewares",
  "wasmer-types",
- "which",
 ]
 
 [[package]]
@@ -3263,8 +3257,6 @@ dependencies = [
 name = "massa_execution_worker"
 version = "5.1.0"
 dependencies = [
- "blake3",
- "bs58",
  "cfg-if",
  "criterion",
  "hex-literal",
@@ -4644,8 +4636,8 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.4.1",
- "itertools 0.10.5",
+ "heck 0.5.0",
+ "itertools 0.12.1",
  "log",
  "multimap",
  "once_cell",
@@ -4665,7 +4657,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools 0.12.1",
  "proc-macro2 1.0.94",
  "quote 1.0.40",
  "syn 2.0.100",
@@ -6918,19 +6910,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09aed61f5e8d2c18344b3faa33a4c837855fe56642757754775548fee21386c4"
 dependencies = [
  "rustls-pki-types",
-]
-
-[[package]]
-name = "which"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bf3ea8596f3a0dd5980b46430f2058dfe2c36a27ccfbb1845d6fbfcd9ba6e14"
-dependencies = [
- "either",
- "home",
- "once_cell",
- "rustix 0.38.44",
- "windows-sys 0.48.0",
 ]
 
 [[package]]
