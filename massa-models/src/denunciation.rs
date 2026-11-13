@@ -1292,7 +1292,7 @@ mod tests {
         // Create an endorsement denunciation and check if it is valid
         let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _s_endorsement_3) =
             gen_endorsements_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))
+        let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2, *CHAINID)
             .try_into()
             .unwrap();
 
@@ -1340,7 +1340,7 @@ mod tests {
         let (slot, keypair, s_endorsement_1, s_endorsement_2, s_endorsement_3) =
             gen_endorsements_for_denunciation(None, None);
 
-        let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2, Some(*CHAINID))
+        let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2, *CHAINID)
             .try_into()
             .unwrap();
 
@@ -1375,7 +1375,7 @@ mod tests {
         // Create an block header denunciation and check if it is valid
         let (_slot, _keypair, s_block_header_1, s_block_header_2, s_block_header_3) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, *CHAINID)
             .try_into()
             .unwrap();
 
@@ -1483,7 +1483,7 @@ mod tests {
     fn test_block_header_denunciation_ser_der() {
         let (_, _, s_block_header_1, s_block_header_2, _) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, *CHAINID)
             .try_into()
             .unwrap();
 
@@ -1510,7 +1510,7 @@ mod tests {
     fn test_denunciation_ser_der() {
         let (_, _, s_block_header_1, s_block_header_2, _) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, *CHAINID)
             .try_into()
             .unwrap();
 
@@ -1541,13 +1541,13 @@ mod tests {
     fn test_denunciation_precursor() {
         let (_, _, s_block_header_1, s_block_header_2, _) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+        let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2, *CHAINID)
             .try_into()
             .unwrap();
 
         let de_p_1 = DenunciationPrecursor::from(&s_block_header_1);
         let de_p_2 = DenunciationPrecursor::from(&s_block_header_2);
-        let denunciation_2: Denunciation = (&de_p_1, &de_p_2, Some(*CHAINID)).try_into().unwrap();
+        let denunciation_2: Denunciation = (&de_p_1, &de_p_2, *CHAINID).try_into().unwrap();
 
         assert_eq!(denunciation, denunciation_2);
 
@@ -1558,7 +1558,7 @@ mod tests {
 
         let de_p_3 = DenunciationPrecursor::from(&s_endorsement_1);
         let de_p_4 = DenunciationPrecursor::from(&s_endorsement_2);
-        let denunciation_4: Denunciation = (&de_p_3, &de_p_4, Some(*CHAINID)).try_into().unwrap();
+        let denunciation_4: Denunciation = (&de_p_3, &de_p_4, *CHAINID).try_into().unwrap();
 
         assert_eq!(denunciation_3, denunciation_4);
     }
@@ -1567,7 +1567,7 @@ mod tests {
     fn test_denunciation_index_ser_der() {
         let (_, _, s_block_header_1, s_block_header_2, _) =
             gen_block_headers_for_denunciation(None, None);
-        let denunciation_1: Denunciation = (&s_block_header_1, &s_block_header_2, Some(*CHAINID))
+        let denunciation_1: Denunciation = (&s_block_header_1, &s_block_header_2, *CHAINID)
             .try_into()
             .unwrap();
         let denunciation_index_1 = DenunciationIndex::from(&denunciation_1);
