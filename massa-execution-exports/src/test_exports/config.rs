@@ -58,6 +58,7 @@ impl Default for ExecutionConfig {
         Self {
             readonly_queue_length: 100,
             readonly_starvation_timeout: MassaTime::from_millis(200),
+            readonly_queue_timeout: MassaTime::from_millis(30_000),
             max_final_events: 1000,
             max_async_gas: MAX_ASYNC_GAS,
             async_msg_cst_gas_cost: ASYNC_MSG_CST_GAS_COST,

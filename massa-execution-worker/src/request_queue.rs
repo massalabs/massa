@@ -1,30 +1,38 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines a generic finite-size execution request queue with an MPSC-based result sender.
+//! This file defines a generic finite-size execution request queue with a oneshot result sender.
 
-use massa_channel::sender::MassaSender;
 use massa_execution_exports::ExecutionError;
 use std::collections::VecDeque;
+use std::time::{Duration, Instant};
+use tokio::sync::oneshot;
 
-/// Represents an execution request T coupled with an MPSC sender for a result of type R
+/// Sender of the result of a request
+pub(crate) type ResponseSender<R> = oneshot::Sender<Result<R, ExecutionError>>;
+
+/// Represents an execution request T coupled with a oneshot sender for a result of type R
 #[derive(Debug)]
 pub(crate) struct RequestWithResponseSender<T, R> {
     /// The underlying execution request
     request: T,
-    /// An std::mpsc::Sender to later send the execution output R (or an error)
-    response_tx: MassaSender<Result<R, ExecutionError>>,
+    /// A oneshot sender to later send the execution output R (or an error).
+    /// The receiving side can be awaited asynchronously or waited on synchronously.
+    response_tx: ResponseSender<R>,
+    /// When the request was created, i.e. queued by the caller
+    enqueued_at: Instant,
 }
 
 impl<T, R> RequestWithResponseSender<T, R> {
-    /// Create a new request with response sender
+    /// Create a new request with response sender, enqueued now
     ///
     /// # Arguments
     /// * `request`: the underlying request of type T
-    /// * `response_tx`: an `std::mpsc::Sender` to later send the execution output R (or an error)
-    pub fn new(request: T, response_tx: MassaSender<Result<R, ExecutionError>>) -> Self {
+    /// * `response_tx`: a oneshot sender to later send the execution output R (or an error)
+    pub fn new(request: T, response_tx: ResponseSender<R>) -> Self {
         RequestWithResponseSender {
             request,
             response_tx,
+            enqueued_at: Instant::now(),
         }
     }
 
@@ -39,14 +47,25 @@ impl<T, R> RequestWithResponseSender<T, R> {
         let _ = self.response_tx.send(Err(err));
     }
 
+    /// Whether the caller gave up on the request (dropped the receiving side),
+    /// in which case there is no point executing it.
+    pub fn is_abandoned(&self) -> bool {
+        self.response_tx.is_closed()
+    }
+
+    /// How long the request has been waiting since it was queued
+    pub fn waited(&self) -> Duration {
+        self.enqueued_at.elapsed()
+    }
+
     /// Destructure self into a (request, response sender) pair
-    pub fn into_request_sender_pair(self) -> (T, MassaSender<Result<R, ExecutionError>>) {
+    pub fn into_request_sender_pair(self) -> (T, ResponseSender<R>) {
         (self.request, self.response_tx)
     }
 }
 
 /// Structure representing an execution request queue with maximal length.
-/// Each request is a `RequestWithResponseSender` that comes with an MPSC sender
+/// Each request is a `RequestWithResponseSender` that comes with a oneshot sender
 /// to return the execution result when the execution is over (or an error).
 #[derive(Debug)]
 pub(crate) struct RequestQueue<T, R> {
@@ -110,6 +129,29 @@ impl<T, R> RequestQueue<T, R> {
         }
     }
 
+    /// Removes the requests that must not be executed anymore:
+    /// * the ones whose caller gave up (dropped the receiving side) are dropped;
+    /// * the ones that waited longer than `max_wait` are cancelled with a timeout error.
+    pub fn remove_expired(&mut self, max_wait: Duration) {
+        let mut kept = VecDeque::with_capacity(self.queue.len());
+        for req in self.queue.drain(..) {
+            if req.is_abandoned() {
+                continue;
+            }
+            let waited = req.waited();
+            if waited > max_wait {
+                req.cancel(ExecutionError::ChannelError(format!(
+                    "readonly request timed out after waiting {} ms in the queue (limit: {} ms)",
+                    waited.as_millis(),
+                    max_wait.as_millis()
+                )));
+                continue;
+            }
+            kept.push_back(req);
+        }
+        self.queue = kept;
+    }
+
     /// Pop out the oldest element of the queue
     ///
     /// # Returns
@@ -121,9 +163,6 @@ impl<T, R> RequestQueue<T, R> {
     /// Push a new element at the end of the queue.
     /// May fail if maximum capacity is reached,
     /// in which case the request is canceled and dropped.
-    ///
-    /// # Returns
-    /// The oldest element of the queue, or None if the queue is empty
     pub fn push(&mut self, req: RequestWithResponseSender<T, R>) {
         // If the queue is already full, cancel the incoming request and return.
         if self.queue.len() >= self.max_items {
@@ -136,14 +175,6 @@ impl<T, R> RequestQueue<T, R> {
         // Append the incoming request to the end of the queue.
         self.queue.push_back(req);
     }
-
-    // Take all the elements into a new queue and reset the current queue
-    /*pub fn take(&mut self) -> Self {
-        RequestQueue {
-            max_items: self.max_items,
-            queue: std::mem::take(&mut self.queue),
-        }
-    }*/
 
     /// Checks whether the queue is full
     ///
@@ -165,31 +196,30 @@ impl<T, R> RequestQueue<T, R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_channel::receiver::MassaReceiver;
-    use massa_channel::MassaChannel;
 
-    fn make_request(
-        request: u32,
-    ) -> (
-        RequestWithResponseSender<u32, u32>,
-        MassaReceiver<Result<u32, ExecutionError>>,
-    ) {
-        let (response_tx, response_rx) = MassaChannel::new("test_request_queue".to_string(), None);
+    type ResponseReceiver = oneshot::Receiver<Result<u32, ExecutionError>>;
+
+    fn make_request(request: u32) -> (RequestWithResponseSender<u32, u32>, ResponseReceiver) {
+        let (response_tx, response_rx) = oneshot::channel();
         (
             RequestWithResponseSender::new(request, response_tx),
             response_rx,
         )
     }
 
-    /// Assert that the request behind `response_rx` was cancelled with a clean
-    /// capacity error, not silently dropped.
-    fn assert_cancelled_for_capacity(response_rx: MassaReceiver<Result<u32, ExecutionError>>) {
-        match response_rx.recv() {
+    /// Assert that the request behind `response_rx` was cancelled with an error
+    /// containing `expected`, not silently dropped.
+    fn assert_cancelled_with(mut response_rx: ResponseReceiver, expected: &str) {
+        match response_rx.try_recv() {
             Ok(Err(ExecutionError::ChannelError(msg))) => {
-                assert!(msg.contains("maximal request queue capacity reached"))
+                assert!(msg.contains(expected), "unexpected error: {msg}")
             }
-            other => panic!("expected a capacity cancellation error, got {:?}", other),
+            other => panic!("expected a `{expected}` cancellation, got {:?}", other),
         }
+    }
+
+    fn assert_cancelled_for_capacity(response_rx: ResponseReceiver) {
+        assert_cancelled_with(response_rx, "maximal request queue capacity reached");
     }
 
     #[test]
@@ -218,7 +248,7 @@ mod tests {
         destination.push(req);
 
         let mut incoming = RequestQueue::<u32, u32>::new(2);
-        let (req1, rx1) = make_request(1);
+        let (req1, mut rx1) = make_request(1);
         let (req2, rx2) = make_request(2);
         incoming.push(req1);
         incoming.push(req2);
@@ -226,9 +256,42 @@ mod tests {
         destination.extend(incoming);
 
         // the first incoming request fits: nothing received, sender still alive
-        assert!(rx1.try_recv().unwrap_err().is_empty());
+        assert!(matches!(
+            rx1.try_recv(),
+            Err(oneshot::error::TryRecvError::Empty)
+        ));
         // the second one is in excess and must be cancelled with a clean error
         assert_cancelled_for_capacity(rx2);
         assert!(destination.is_full());
+    }
+
+    /// MASSA-011: a request that waited longer than the limit is answered with a
+    /// timeout error, and one whose caller gave up is dropped without an answer.
+    #[test]
+    fn test_remove_expired() {
+        let mut queue = RequestQueue::<u32, u32>::new(4);
+        let (old, old_rx) = make_request(0);
+        let (abandoned, abandoned_rx) = make_request(1);
+        drop(abandoned_rx);
+        queue.push(old);
+        queue.push(abandoned);
+        std::thread::sleep(Duration::from_millis(50));
+        let (fresh, mut fresh_rx) = make_request(2);
+        queue.push(fresh);
+
+        queue.remove_expired(Duration::from_millis(25));
+
+        assert_cancelled_with(old_rx, "readonly request timed out");
+        // only the fresh request is left, still waiting for its answer
+        let (request, _fresh_tx) = queue
+            .pop()
+            .expect("fresh request kept")
+            .into_request_sender_pair();
+        assert_eq!(request, 2);
+        assert!(queue.pop().is_none());
+        assert!(matches!(
+            fresh_rx.try_recv(),
+            Err(oneshot::error::TryRecvError::Empty)
+        ));
     }
 }
