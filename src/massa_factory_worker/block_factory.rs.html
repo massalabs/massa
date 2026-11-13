@@ -292,123 +292,125 @@
 <a href=#292 id=292 data-nosnippet>292</a>            BlockHeaderSerializer::new(), <span class="comment">// TODO reuse self.block_header_serializer
 <a href=#293 id=293 data-nosnippet>293</a>            </span><span class="kw-2">&amp;</span>block_producer_keypair,
 <a href=#294 id=294 data-nosnippet>294</a>            <span class="self">self</span>.cfg.chain_id,
-<a href=#295 id=295 data-nosnippet>295</a>        )
-<a href=#296 id=296 data-nosnippet>296</a>        .expect(<span class="string">"error while producing block header"</span>);
-<a href=#297 id=297 data-nosnippet>297</a>        <span class="comment">// create block
-<a href=#298 id=298 data-nosnippet>298</a>        </span><span class="kw">let </span>block_ = Block {
-<a href=#299 id=299 data-nosnippet>299</a>            header,
-<a href=#300 id=300 data-nosnippet>300</a>            operations: op_ids.into_iter().collect(),
-<a href=#301 id=301 data-nosnippet>301</a>        };
-<a href=#302 id=302 data-nosnippet>302</a>        <span class="kw">let </span>block = Block::new_verifiable(
-<a href=#303 id=303 data-nosnippet>303</a>            block_,
-<a href=#304 id=304 data-nosnippet>304</a>            BlockSerializer::new(), <span class="comment">// TODO reuse self.block_serializer
-<a href=#305 id=305 data-nosnippet>305</a>            </span><span class="kw-2">&amp;</span>block_producer_keypair,
-<a href=#306 id=306 data-nosnippet>306</a>            <span class="self">self</span>.cfg.chain_id,
-<a href=#307 id=307 data-nosnippet>307</a>        )
-<a href=#308 id=308 data-nosnippet>308</a>        .expect(<span class="string">"error while producing block"</span>);
-<a href=#309 id=309 data-nosnippet>309</a>        <span class="kw">let </span>block_id = block.id;
-<a href=#310 id=310 data-nosnippet>310</a>        timings.push((<span class="string">"block creation END"</span>, MassaTime::now()));
-<a href=#311 id=311 data-nosnippet>311</a>
-<a href=#312 id=312 data-nosnippet>312</a>        <span class="comment">// store block in storage
-<a href=#313 id=313 data-nosnippet>313</a>        </span>timings.push((<span class="string">"block store START"</span>, MassaTime::now()));
-<a href=#314 id=314 data-nosnippet>314</a>        block_storage.store_block(block);
-<a href=#315 id=315 data-nosnippet>315</a>        timings.push((<span class="string">"block store END"</span>, MassaTime::now()));
-<a href=#316 id=316 data-nosnippet>316</a>
-<a href=#317 id=317 data-nosnippet>317</a>        <span class="comment">// log block creation
-<a href=#318 id=318 data-nosnippet>318</a>        </span><span class="macro">info!</span>(
-<a href=#319 id=319 data-nosnippet>319</a>            <span class="string">"block {} created at slot {} by address {}"</span>,
-<a href=#320 id=320 data-nosnippet>320</a>            block_id, slot, block_producer_addr
-<a href=#321 id=321 data-nosnippet>321</a>        );
-<a href=#322 id=322 data-nosnippet>322</a>
-<a href=#323 id=323 data-nosnippet>323</a>        <span class="comment">// send full block to consensus
-<a href=#324 id=324 data-nosnippet>324</a>        </span>timings.push((<span class="string">"register_block START"</span>, MassaTime::now()));
-<a href=#325 id=325 data-nosnippet>325</a>        <span class="self">self</span>.channels
-<a href=#326 id=326 data-nosnippet>326</a>            .consensus
-<a href=#327 id=327 data-nosnippet>327</a>            .register_block(block_id, slot, block_storage, <span class="bool-val">true</span>);
-<a href=#328 id=328 data-nosnippet>328</a>        massa_metrics::inc_factory_blocks_produced(had_pool_timeout);
-<a href=#329 id=329 data-nosnippet>329</a>        timings.push((<span class="string">"register_block END"</span>, MassaTime::now()));
-<a href=#330 id=330 data-nosnippet>330</a>
-<a href=#331 id=331 data-nosnippet>331</a>        <span class="comment">// Check block latency
-<a href=#332 id=332 data-nosnippet>332</a>        </span><span class="kw">let </span>block_timestamp = get_block_slot_timestamp(
-<a href=#333 id=333 data-nosnippet>333</a>            <span class="self">self</span>.cfg.thread_count,
-<a href=#334 id=334 data-nosnippet>334</a>            <span class="self">self</span>.cfg.t0,
-<a href=#335 id=335 data-nosnippet>335</a>            <span class="self">self</span>.cfg.genesis_timestamp,
-<a href=#336 id=336 data-nosnippet>336</a>            slot,
-<a href=#337 id=337 data-nosnippet>337</a>        )
-<a href=#338 id=338 data-nosnippet>338</a>        .expect(<span class="string">"could not get block slot timestamp"</span>);
-<a href=#339 id=339 data-nosnippet>339</a>        <span class="kw">let </span>cur_timestamp = MassaTime::now();
-<a href=#340 id=340 data-nosnippet>340</a>        <span class="kw">let </span>delay = cur_timestamp.saturating_sub(block_timestamp);
-<a href=#341 id=341 data-nosnippet>341</a>        <span class="kw">if </span>delay &gt; <span class="self">self</span>.cfg.block_delay_warn {
-<a href=#342 id=342 data-nosnippet>342</a>            <span class="kw">let </span><span class="kw-2">mut </span>timing_details = String::new();
-<a href=#343 id=343 data-nosnippet>343</a>            <span class="kw">for </span>(step_name, step_t) <span class="kw">in </span><span class="kw-2">&amp;</span>timings {
-<a href=#344 id=344 data-nosnippet>344</a>                timing_details.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">" / {} at ts={}"</span>, step_name, step_t));
-<a href=#345 id=345 data-nosnippet>345</a>            }
-<a href=#346 id=346 data-nosnippet>346</a>            <span class="macro">warn!</span>(
-<a href=#347 id=347 data-nosnippet>347</a>                <span class="string">"Block {} production at slot {} was delayed by {}ms (threshold: {}ms) [{}]"</span>,
-<a href=#348 id=348 data-nosnippet>348</a>                block_id,
-<a href=#349 id=349 data-nosnippet>349</a>                slot,
-<a href=#350 id=350 data-nosnippet>350</a>                delay.as_millis(),
-<a href=#351 id=351 data-nosnippet>351</a>                <span class="self">self</span>.cfg.block_delay_warn.as_millis(),
-<a href=#352 id=352 data-nosnippet>352</a>                timing_details
-<a href=#353 id=353 data-nosnippet>353</a>            );
-<a href=#354 id=354 data-nosnippet>354</a>        }
-<a href=#355 id=355 data-nosnippet>355</a>    }
-<a href=#356 id=356 data-nosnippet>356</a>
-<a href=#357 id=357 data-nosnippet>357</a>    <span class="doccomment">/// main run loop of the block creator thread
-<a href=#358 id=358 data-nosnippet>358</a>    </span><span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#359 id=359 data-nosnippet>359</a>        <span class="kw">let </span><span class="kw-2">mut </span>prev_slot = <span class="prelude-val">None</span>;
-<a href=#360 id=360 data-nosnippet>360</a>        <span class="kw">loop </span>{
-<a href=#361 id=361 data-nosnippet>361</a>            <span class="comment">// get next slot
-<a href=#362 id=362 data-nosnippet>362</a>            </span><span class="kw">let </span>(slot, block_instant) = <span class="self">self</span>.get_next_slot(prev_slot);
-<a href=#363 id=363 data-nosnippet>363</a>
-<a href=#364 id=364 data-nosnippet>364</a>            <span class="comment">// wait until slot
-<a href=#365 id=365 data-nosnippet>365</a>            </span><span class="kw">if </span>!<span class="self">self</span>.interruptible_wait_until(block_instant) {
-<a href=#366 id=366 data-nosnippet>366</a>                <span class="kw">break</span>;
-<a href=#367 id=367 data-nosnippet>367</a>            }
-<a href=#368 id=368 data-nosnippet>368</a>
-<a href=#369 id=369 data-nosnippet>369</a>            <span class="comment">// process slot
-<a href=#370 id=370 data-nosnippet>370</a>            </span><span class="self">self</span>.process_slot(slot);
-<a href=#371 id=371 data-nosnippet>371</a>
-<a href=#372 id=372 data-nosnippet>372</a>            <span class="comment">// update previous slot
-<a href=#373 id=373 data-nosnippet>373</a>            </span>prev_slot = <span class="prelude-val">Some</span>(slot);
-<a href=#374 id=374 data-nosnippet>374</a>        }
-<a href=#375 id=375 data-nosnippet>375</a>    }
-<a href=#376 id=376 data-nosnippet>376</a>}
-<a href=#377 id=377 data-nosnippet>377</a>
-<a href=#378 id=378 data-nosnippet>378</a><span class="doccomment">/// Computes the next slot to produce a block for at time `now`, see `BlockFactoryWorker::get_next_slot`.
-<a href=#379 id=379 data-nosnippet>379</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_next_block_slot(
-<a href=#380 id=380 data-nosnippet>380</a>    cfg: <span class="kw-2">&amp;</span>FactoryConfig,
-<a href=#381 id=381 data-nosnippet>381</a>    previous_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-<a href=#382 id=382 data-nosnippet>382</a>    now: MassaTime,
-<a href=#383 id=383 data-nosnippet>383</a>) -&gt; Slot {
-<a href=#384 id=384 data-nosnippet>384</a>    <span class="kw">let </span><span class="kw-2">mut </span>next_slot = <span class="kw">if </span>previous_slot.is_none() {
-<a href=#385 id=385 data-nosnippet>385</a>        <span class="comment">// First computed slot: only consider slots at least `initial_delay` ahead of us.
-<a href=#386 id=386 data-nosnippet>386</a>        // The slots before are already past: a previous instance of this node may have produced
-<a href=#387 id=387 data-nosnippet>387</a>        // them right before a restart, and producing them again is double-staking.
-<a href=#388 id=388 data-nosnippet>388</a>        </span>get_first_slot_at_or_after_timestamp(
-<a href=#389 id=389 data-nosnippet>389</a>            cfg.thread_count,
-<a href=#390 id=390 data-nosnippet>390</a>            cfg.t0,
-<a href=#391 id=391 data-nosnippet>391</a>            cfg.genesis_timestamp,
-<a href=#392 id=392 data-nosnippet>392</a>            now.saturating_add(cfg.initial_delay),
-<a href=#393 id=393 data-nosnippet>393</a>        )
-<a href=#394 id=394 data-nosnippet>394</a>    } <span class="kw">else </span>{
-<a href=#395 id=395 data-nosnippet>395</a>        <span class="comment">// get closest slot according to the current absolute time
-<a href=#396 id=396 data-nosnippet>396</a>        </span>get_closest_slot_to_timestamp(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, now)
-<a href=#397 id=397 data-nosnippet>397</a>    };
-<a href=#398 id=398 data-nosnippet>398</a>
-<a href=#399 id=399 data-nosnippet>399</a>    <span class="comment">// ignore genesis
-<a href=#400 id=400 data-nosnippet>400</a>    </span><span class="kw">if </span>next_slot.period &lt;= cfg.last_start_period {
-<a href=#401 id=401 data-nosnippet>401</a>        next_slot = Slot::new(cfg.last_start_period + <span class="number">1</span>, <span class="number">0</span>);
-<a href=#402 id=402 data-nosnippet>402</a>    }
-<a href=#403 id=403 data-nosnippet>403</a>
-<a href=#404 id=404 data-nosnippet>404</a>    <span class="comment">// protection against double-production on unexpected system clock adjustment
-<a href=#405 id=405 data-nosnippet>405</a>    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(prev_slot) = previous_slot {
-<a href=#406 id=406 data-nosnippet>406</a>        <span class="kw">if </span>next_slot &lt;= prev_slot {
-<a href=#407 id=407 data-nosnippet>407</a>            next_slot = prev_slot
-<a href=#408 id=408 data-nosnippet>408</a>                .get_next_slot(cfg.thread_count)
-<a href=#409 id=409 data-nosnippet>409</a>                .expect(<span class="string">"could not compute next slot"</span>);
-<a href=#410 id=410 data-nosnippet>410</a>        }
-<a href=#411 id=411 data-nosnippet>411</a>    }
-<a href=#412 id=412 data-nosnippet>412</a>
-<a href=#413 id=413 data-nosnippet>413</a>    next_slot
-<a href=#414 id=414 data-nosnippet>414</a>}</code></pre></div></section></main></body></html>
+<a href=#295 id=295 data-nosnippet>295</a>            <span class="prelude-val">Some</span>(<span class="self">self</span>.cfg.chain_id),
+<a href=#296 id=296 data-nosnippet>296</a>        )
+<a href=#297 id=297 data-nosnippet>297</a>        .expect(<span class="string">"error while producing block header"</span>);
+<a href=#298 id=298 data-nosnippet>298</a>        <span class="comment">// create block
+<a href=#299 id=299 data-nosnippet>299</a>        </span><span class="kw">let </span>block_ = Block {
+<a href=#300 id=300 data-nosnippet>300</a>            header,
+<a href=#301 id=301 data-nosnippet>301</a>            operations: op_ids.into_iter().collect(),
+<a href=#302 id=302 data-nosnippet>302</a>        };
+<a href=#303 id=303 data-nosnippet>303</a>        <span class="kw">let </span>block = Block::new_verifiable(
+<a href=#304 id=304 data-nosnippet>304</a>            block_,
+<a href=#305 id=305 data-nosnippet>305</a>            BlockSerializer::new(), <span class="comment">// TODO reuse self.block_serializer
+<a href=#306 id=306 data-nosnippet>306</a>            </span><span class="kw-2">&amp;</span>block_producer_keypair,
+<a href=#307 id=307 data-nosnippet>307</a>            <span class="self">self</span>.cfg.chain_id,
+<a href=#308 id=308 data-nosnippet>308</a>            <span class="prelude-val">None</span>,
+<a href=#309 id=309 data-nosnippet>309</a>        )
+<a href=#310 id=310 data-nosnippet>310</a>        .expect(<span class="string">"error while producing block"</span>);
+<a href=#311 id=311 data-nosnippet>311</a>        <span class="kw">let </span>block_id = block.id;
+<a href=#312 id=312 data-nosnippet>312</a>        timings.push((<span class="string">"block creation END"</span>, MassaTime::now()));
+<a href=#313 id=313 data-nosnippet>313</a>
+<a href=#314 id=314 data-nosnippet>314</a>        <span class="comment">// store block in storage
+<a href=#315 id=315 data-nosnippet>315</a>        </span>timings.push((<span class="string">"block store START"</span>, MassaTime::now()));
+<a href=#316 id=316 data-nosnippet>316</a>        block_storage.store_block(block);
+<a href=#317 id=317 data-nosnippet>317</a>        timings.push((<span class="string">"block store END"</span>, MassaTime::now()));
+<a href=#318 id=318 data-nosnippet>318</a>
+<a href=#319 id=319 data-nosnippet>319</a>        <span class="comment">// log block creation
+<a href=#320 id=320 data-nosnippet>320</a>        </span><span class="macro">info!</span>(
+<a href=#321 id=321 data-nosnippet>321</a>            <span class="string">"block {} created at slot {} by address {}"</span>,
+<a href=#322 id=322 data-nosnippet>322</a>            block_id, slot, block_producer_addr
+<a href=#323 id=323 data-nosnippet>323</a>        );
+<a href=#324 id=324 data-nosnippet>324</a>
+<a href=#325 id=325 data-nosnippet>325</a>        <span class="comment">// send full block to consensus
+<a href=#326 id=326 data-nosnippet>326</a>        </span>timings.push((<span class="string">"register_block START"</span>, MassaTime::now()));
+<a href=#327 id=327 data-nosnippet>327</a>        <span class="self">self</span>.channels
+<a href=#328 id=328 data-nosnippet>328</a>            .consensus
+<a href=#329 id=329 data-nosnippet>329</a>            .register_block(block_id, slot, block_storage, <span class="bool-val">true</span>);
+<a href=#330 id=330 data-nosnippet>330</a>        massa_metrics::inc_factory_blocks_produced(had_pool_timeout);
+<a href=#331 id=331 data-nosnippet>331</a>        timings.push((<span class="string">"register_block END"</span>, MassaTime::now()));
+<a href=#332 id=332 data-nosnippet>332</a>
+<a href=#333 id=333 data-nosnippet>333</a>        <span class="comment">// Check block latency
+<a href=#334 id=334 data-nosnippet>334</a>        </span><span class="kw">let </span>block_timestamp = get_block_slot_timestamp(
+<a href=#335 id=335 data-nosnippet>335</a>            <span class="self">self</span>.cfg.thread_count,
+<a href=#336 id=336 data-nosnippet>336</a>            <span class="self">self</span>.cfg.t0,
+<a href=#337 id=337 data-nosnippet>337</a>            <span class="self">self</span>.cfg.genesis_timestamp,
+<a href=#338 id=338 data-nosnippet>338</a>            slot,
+<a href=#339 id=339 data-nosnippet>339</a>        )
+<a href=#340 id=340 data-nosnippet>340</a>        .expect(<span class="string">"could not get block slot timestamp"</span>);
+<a href=#341 id=341 data-nosnippet>341</a>        <span class="kw">let </span>cur_timestamp = MassaTime::now();
+<a href=#342 id=342 data-nosnippet>342</a>        <span class="kw">let </span>delay = cur_timestamp.saturating_sub(block_timestamp);
+<a href=#343 id=343 data-nosnippet>343</a>        <span class="kw">if </span>delay &gt; <span class="self">self</span>.cfg.block_delay_warn {
+<a href=#344 id=344 data-nosnippet>344</a>            <span class="kw">let </span><span class="kw-2">mut </span>timing_details = String::new();
+<a href=#345 id=345 data-nosnippet>345</a>            <span class="kw">for </span>(step_name, step_t) <span class="kw">in </span><span class="kw-2">&amp;</span>timings {
+<a href=#346 id=346 data-nosnippet>346</a>                timing_details.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">" / {} at ts={}"</span>, step_name, step_t));
+<a href=#347 id=347 data-nosnippet>347</a>            }
+<a href=#348 id=348 data-nosnippet>348</a>            <span class="macro">warn!</span>(
+<a href=#349 id=349 data-nosnippet>349</a>                <span class="string">"Block {} production at slot {} was delayed by {}ms (threshold: {}ms) [{}]"</span>,
+<a href=#350 id=350 data-nosnippet>350</a>                block_id,
+<a href=#351 id=351 data-nosnippet>351</a>                slot,
+<a href=#352 id=352 data-nosnippet>352</a>                delay.as_millis(),
+<a href=#353 id=353 data-nosnippet>353</a>                <span class="self">self</span>.cfg.block_delay_warn.as_millis(),
+<a href=#354 id=354 data-nosnippet>354</a>                timing_details
+<a href=#355 id=355 data-nosnippet>355</a>            );
+<a href=#356 id=356 data-nosnippet>356</a>        }
+<a href=#357 id=357 data-nosnippet>357</a>    }
+<a href=#358 id=358 data-nosnippet>358</a>
+<a href=#359 id=359 data-nosnippet>359</a>    <span class="doccomment">/// main run loop of the block creator thread
+<a href=#360 id=360 data-nosnippet>360</a>    </span><span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#361 id=361 data-nosnippet>361</a>        <span class="kw">let </span><span class="kw-2">mut </span>prev_slot = <span class="prelude-val">None</span>;
+<a href=#362 id=362 data-nosnippet>362</a>        <span class="kw">loop </span>{
+<a href=#363 id=363 data-nosnippet>363</a>            <span class="comment">// get next slot
+<a href=#364 id=364 data-nosnippet>364</a>            </span><span class="kw">let </span>(slot, block_instant) = <span class="self">self</span>.get_next_slot(prev_slot);
+<a href=#365 id=365 data-nosnippet>365</a>
+<a href=#366 id=366 data-nosnippet>366</a>            <span class="comment">// wait until slot
+<a href=#367 id=367 data-nosnippet>367</a>            </span><span class="kw">if </span>!<span class="self">self</span>.interruptible_wait_until(block_instant) {
+<a href=#368 id=368 data-nosnippet>368</a>                <span class="kw">break</span>;
+<a href=#369 id=369 data-nosnippet>369</a>            }
+<a href=#370 id=370 data-nosnippet>370</a>
+<a href=#371 id=371 data-nosnippet>371</a>            <span class="comment">// process slot
+<a href=#372 id=372 data-nosnippet>372</a>            </span><span class="self">self</span>.process_slot(slot);
+<a href=#373 id=373 data-nosnippet>373</a>
+<a href=#374 id=374 data-nosnippet>374</a>            <span class="comment">// update previous slot
+<a href=#375 id=375 data-nosnippet>375</a>            </span>prev_slot = <span class="prelude-val">Some</span>(slot);
+<a href=#376 id=376 data-nosnippet>376</a>        }
+<a href=#377 id=377 data-nosnippet>377</a>    }
+<a href=#378 id=378 data-nosnippet>378</a>}
+<a href=#379 id=379 data-nosnippet>379</a>
+<a href=#380 id=380 data-nosnippet>380</a><span class="doccomment">/// Computes the next slot to produce a block for at time `now`, see `BlockFactoryWorker::get_next_slot`.
+<a href=#381 id=381 data-nosnippet>381</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_next_block_slot(
+<a href=#382 id=382 data-nosnippet>382</a>    cfg: <span class="kw-2">&amp;</span>FactoryConfig,
+<a href=#383 id=383 data-nosnippet>383</a>    previous_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
+<a href=#384 id=384 data-nosnippet>384</a>    now: MassaTime,
+<a href=#385 id=385 data-nosnippet>385</a>) -&gt; Slot {
+<a href=#386 id=386 data-nosnippet>386</a>    <span class="kw">let </span><span class="kw-2">mut </span>next_slot = <span class="kw">if </span>previous_slot.is_none() {
+<a href=#387 id=387 data-nosnippet>387</a>        <span class="comment">// First computed slot: only consider slots at least `initial_delay` ahead of us.
+<a href=#388 id=388 data-nosnippet>388</a>        // The slots before are already past: a previous instance of this node may have produced
+<a href=#389 id=389 data-nosnippet>389</a>        // them right before a restart, and producing them again is double-staking.
+<a href=#390 id=390 data-nosnippet>390</a>        </span>get_first_slot_at_or_after_timestamp(
+<a href=#391 id=391 data-nosnippet>391</a>            cfg.thread_count,
+<a href=#392 id=392 data-nosnippet>392</a>            cfg.t0,
+<a href=#393 id=393 data-nosnippet>393</a>            cfg.genesis_timestamp,
+<a href=#394 id=394 data-nosnippet>394</a>            now.saturating_add(cfg.initial_delay),
+<a href=#395 id=395 data-nosnippet>395</a>        )
+<a href=#396 id=396 data-nosnippet>396</a>    } <span class="kw">else </span>{
+<a href=#397 id=397 data-nosnippet>397</a>        <span class="comment">// get closest slot according to the current absolute time
+<a href=#398 id=398 data-nosnippet>398</a>        </span>get_closest_slot_to_timestamp(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, now)
+<a href=#399 id=399 data-nosnippet>399</a>    };
+<a href=#400 id=400 data-nosnippet>400</a>
+<a href=#401 id=401 data-nosnippet>401</a>    <span class="comment">// ignore genesis
+<a href=#402 id=402 data-nosnippet>402</a>    </span><span class="kw">if </span>next_slot.period &lt;= cfg.last_start_period {
+<a href=#403 id=403 data-nosnippet>403</a>        next_slot = Slot::new(cfg.last_start_period + <span class="number">1</span>, <span class="number">0</span>);
+<a href=#404 id=404 data-nosnippet>404</a>    }
+<a href=#405 id=405 data-nosnippet>405</a>
+<a href=#406 id=406 data-nosnippet>406</a>    <span class="comment">// protection against double-production on unexpected system clock adjustment
+<a href=#407 id=407 data-nosnippet>407</a>    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(prev_slot) = previous_slot {
+<a href=#408 id=408 data-nosnippet>408</a>        <span class="kw">if </span>next_slot &lt;= prev_slot {
+<a href=#409 id=409 data-nosnippet>409</a>            next_slot = prev_slot
+<a href=#410 id=410 data-nosnippet>410</a>                .get_next_slot(cfg.thread_count)
+<a href=#411 id=411 data-nosnippet>411</a>                .expect(<span class="string">"could not compute next slot"</span>);
+<a href=#412 id=412 data-nosnippet>412</a>        }
+<a href=#413 id=413 data-nosnippet>413</a>    }
+<a href=#414 id=414 data-nosnippet>414</a>
+<a href=#415 id=415 data-nosnippet>415</a>    next_slot
+<a href=#416 id=416 data-nosnippet>416</a>}</code></pre></div></section></main></body></html>
