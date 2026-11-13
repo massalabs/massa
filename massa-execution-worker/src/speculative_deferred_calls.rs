@@ -117,15 +117,13 @@ impl SpeculativeDeferredCallRegistry {
 
     /// Returns the base fee for a slot.
     ///
-    /// With `min_gas_cost_fallback`, an uninitialized slot (no entry, or zero) falls back to
-    /// `min_gas_cost` instead of zero: this is exactly what `advance_slot` would have written
-    /// for it from an empty registry (0 booked gas puts the controller in its "decrease"
-    /// branch, which floors at `min_gas_cost`), so the fallback is the missing initialization,
-    /// not a different pricing rule. It only fires on a registry that has not been advancing
-    /// for `max_future_slots` slots yet -- a fresh network, or the gap left by a restart from
-    /// snapshot -- so it is gated on `MIP_0002_EXECUTION_VERSION` to keep pre-activation nodes
-    /// charging the same fee.
-    pub fn get_slot_base_fee(&self, slot: &Slot, min_gas_cost_fallback: bool) -> Amount {
+    /// An uninitialized slot (no entry, or zero) falls back to `min_gas_cost` instead of zero:
+    /// this is exactly what `advance_slot` would have written for it from an empty registry
+    /// (0 booked gas puts the controller in its "decrease" branch, which floors at
+    /// `min_gas_cost`), so the fallback is the missing initialization, not a different pricing
+    /// rule. It only fires on a registry that has not been advancing for `max_future_slots`
+    /// slots yet -- a fresh network, or the gap left by a restart from snapshot.
+    pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
         // get slot base fee from current changes
         if let Some(v) = self.deferred_calls_changes.get_slot_base_fee(slot) {
             if !v.is_zero() {
@@ -156,7 +154,7 @@ impl SpeculativeDeferredCallRegistry {
             .get_deferred_call_registry()
             .get_slot_base_fee(slot);
 
-        if min_gas_cost_fallback && base_fee.is_zero() {
+        if base_fee.is_zero() {
             Amount::from_raw(self.config.min_gas_cost)
         } else {
             base_fee
@@ -165,11 +163,7 @@ impl SpeculativeDeferredCallRegistry {
 
     /// Consumes and deletes the current slot, prepares a new slot in the future
     /// and returns the calls that need to be executed in the current slot
-    pub fn advance_slot(
-        &mut self,
-        current_slot: Slot,
-        min_gas_cost_fallback: bool,
-    ) -> DeferredSlotCalls {
+    pub fn advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
         // get the state of the current slot
         let slot_calls = self.get_calls_by_slot(current_slot);
         let total_booked_gas_before = self.get_effective_total_gas();
@@ -186,7 +180,7 @@ impl SpeculativeDeferredCallRegistry {
             .get_prev_slot(self.config.thread_count)
             .expect("cannot get prev slot");
 
-        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot, min_gas_cost_fallback);
+        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot);
 
         let new_slot_base_fee = match avg_booked_gas.cmp(&TARGET_BOOKING) {
             // the previous booking rate was exactly the expected one: do not adjust the base fee
@@ -383,7 +377,6 @@ impl SpeculativeDeferredCallRegistry {
         max_gas_request: u64,
         current_slot: Slot,
         params_size: u64,
-        min_gas_cost_fallback: bool,
     ) -> Result<Amount, ExecutionError> {
         // Check that the slot is not in the past
         if target_slot <= current_slot {
@@ -427,7 +420,7 @@ impl SpeculativeDeferredCallRegistry {
 
         // Integral fee
         let integral_fee = self
-            .get_slot_base_fee(&target_slot, min_gas_cost_fallback)
+            .get_slot_base_fee(&target_slot)
             .saturating_mul_u64(max_gas_request);
 
         // The integral fee is not enough to respond to quick demand surges within the long booking period `deferred_call_max_future_slots`. Proportional regulation is also necessary.
@@ -477,33 +470,10 @@ impl SpeculativeDeferredCallRegistry {
         &mut self,
         call: DeferredCall,
         trail_hash: massa_hash::Hash,
-        use_effective_index: bool,
     ) -> Result<DeferredCallId, ExecutionError> {
-        let index = if use_effective_index {
-            self.get_calls_by_slot(call.target_slot).slot_calls.len()
-        } else {
-            let mut index = 0;
-
-            if let Some(val) = self
-                .deferred_calls_changes
-                .slots_change
-                .get(&call.target_slot)
-            {
-                index += val.calls_len();
-            }
-
-            {
-                // final state
-                let slots_call = self
-                    .final_state
-                    .read()
-                    .get_deferred_call_registry()
-                    .get_slot_calls(call.target_slot);
-                index += slots_call.slot_calls.len();
-            }
-
-            index
-        };
+        // index allocation uses the same effective view as execution
+        // (current changes + active history + final state)
+        let index = self.get_calls_by_slot(call.target_slot).slot_calls.len();
 
         let id = DeferredCallId::new(0, call.target_slot, index as u64, trail_hash.to_bytes())?;
 
@@ -617,7 +587,6 @@ mod tests {
                     thread: 1,
                 },
                 1_000,
-                true,
             )
             .is_err());
 
@@ -634,7 +603,6 @@ mod tests {
                     thread: 1,
                 },
                 1000,
-                true,
             )
             .is_err());
 
@@ -652,7 +620,6 @@ mod tests {
                     thread: 1,
                 },
                 1000,
-                true,
             )
             .is_err());
 
@@ -666,11 +633,10 @@ mod tests {
                     thread: 1,
                 },
                 50_000_000,
-                true,
             )
             .is_err());
 
-        // no params, before MIP-0002: an uninitialized slot has a zero integral fee
+        // no params: uninitialized slots must still charge the integral fee
         assert_eq!(
             speculative
                 .compute_call_fee(
@@ -681,24 +647,6 @@ mod tests {
                         thread: 1,
                     },
                     0,
-                    false,
-                )
-                .unwrap(),
-            Amount::from_str("0.036600079").unwrap()
-        );
-
-        // no params, from MIP-0002 on: uninitialized slots must still charge the integral fee
-        assert_eq!(
-            speculative
-                .compute_call_fee(
-                    good_slot,
-                    200_000,
-                    Slot {
-                        period: 1,
-                        thread: 1,
-                    },
-                    0,
-                    true,
                 )
                 .unwrap(),
             Amount::from_str("0.038600079").unwrap()
@@ -715,7 +663,6 @@ mod tests {
                         thread: 1,
                     },
                     10_000,
-                    true,
                 )
                 .unwrap(),
             Amount::from_str("1.038600079").unwrap()
@@ -760,12 +707,9 @@ mod tests {
             thread: 1,
         };
 
-        // before MIP-0002 activation, an uninitialized slot keeps its zero base fee
-        assert_eq!(speculative.get_slot_base_fee(&slot, false), Amount::zero());
-
-        // from MIP-0002 on, it falls back to `min_gas_cost`
+        // an uninitialized slot falls back to `min_gas_cost`
         assert_eq!(
-            speculative.get_slot_base_fee(&slot, true),
+            speculative.get_slot_base_fee(&slot),
             Amount::from_raw(config.min_gas_cost)
         );
     }
@@ -862,28 +806,7 @@ mod tests {
         )
     }
 
-    // Before MIP-0002, active-history deferred calls are not counted when allocating
-    // the per-slot index, which can assign an already-used index.
-    #[test]
-    fn register_call_legacy_index_ignores_active_history() {
-        let target_slot = Slot::new(10, 1);
-        let history_id =
-            DeferredCallId::new(0, target_slot, 0, Hash::compute_from(b"history").to_bytes())
-                .unwrap();
-        let mut registry = registry_with_history_call(target_slot, history_id);
-
-        let id = registry
-            .register_call(
-                sample_deferred_call(target_slot),
-                Hash::compute_from(b"new-call"),
-                false,
-            )
-            .unwrap();
-
-        assert_eq!(deferred_call_index(&id), 0);
-    }
-
-    // From MIP-0002 on, index allocation uses the same effective view as execution.
+    // Index allocation uses the same effective view as execution.
     #[test]
     fn register_call_effective_index_includes_active_history() {
         let target_slot = Slot::new(10, 1);
@@ -898,7 +821,6 @@ mod tests {
             .register_call(
                 sample_deferred_call(target_slot),
                 Hash::compute_from(b"new-call"),
-                true,
             )
             .unwrap();
 
@@ -919,14 +841,12 @@ mod tests {
             .register_call(
                 sample_deferred_call(target_slot),
                 Hash::compute_from(b"first"),
-                true,
             )
             .unwrap();
         let id2 = registry
             .register_call(
                 sample_deferred_call(target_slot),
                 Hash::compute_from(b"second"),
-                true,
             )
             .unwrap();
 
