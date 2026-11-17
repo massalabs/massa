@@ -511,6 +511,68 @@ fn deferred_attribution_same_slot_sequence() {
 }
 
 #[test]
+fn fee_failure_after_deferred_call_has_empty_call_stack() {
+    let mut f = fixture(true);
+    let w = seed(&f.final_state, f.db.clone(), DeferredProfile::Success);
+    f.state
+        .execute_final_slot(&Slot::new(1, 0), None, selector());
+    let broke = (0..)
+        .map(|_| KeyPair::generate(0).unwrap())
+        .find(|keypair| {
+            Address::from_public_key(&keypair.get_public_key()).get_thread(THREAD_COUNT) == 1
+        })
+        .unwrap();
+    let broke_op = ExecutionTestUniverse::create_call_sc_operation(
+        &broke,
+        3_000_000,
+        Amount::from_raw(100),
+        Amount::from_raw(0),
+        w.target,
+        "receive".into(),
+        vec![42; 4],
+    )
+    .unwrap();
+    let slot = Slot::new(1, 1);
+    let key = KeyPair::from_str("S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq").unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&key, slot, vec![broke_op.clone()], vec![], vec![]);
+    let mut storage = Storage::create_root();
+    storage.store_operations(vec![broke_op.clone()]);
+    storage.store_block(block.clone());
+    let target = (
+        block.id,
+        ExecutionBlockMetadata {
+            same_thread_parent_creator: Some(Address::from_public_key(&key.get_public_key())),
+            storage: Some(storage),
+        },
+    );
+    f.state
+        .execute_candidate_slot(&slot, Some(&target), selector());
+    let candidate = f.state.active_history.read().0.back().unwrap().clone();
+    assert!(
+        candidate
+            .events
+            .0
+            .iter()
+            .any(|e| e.context.deferred_call_id.as_ref() == Some(&w.deferred)),
+        "successful deferred call must run before the operation"
+    );
+    let fee_errors: Vec<_> = candidate
+        .events
+        .0
+        .iter()
+        .filter(|e| e.data.starts_with("could not spend fees"))
+        .collect();
+    assert_eq!(fee_errors.len(), 1);
+    assert_eq!(fee_errors[0].context.origin_operation_id, Some(broke_op.id));
+    assert!(
+        fee_errors[0].context.call_stack.is_empty(),
+        "fee-failure event must not inherit the deferred call stack: {:?}",
+        fee_errors[0].context.call_stack
+    );
+}
+
+#[test]
 fn deferred_attribution_failure_and_cancellation() {
     for profile in [
         DeferredProfile::ValidationFailure,

@@ -502,6 +502,9 @@ impl ExecutionState {
         // Note: set operation ID early as if context.transfer_coins fails, event_create will use
         // operation ID in the event message
         context.origin_operation_id = Some(operation_id);
+        // Drop the call stack left by the previous deferred call or operation, so that a
+        // fee-failure event emitted below is not attributed to its addresses.
+        context.stack.clear();
 
         // debit the fee from the operation sender
         if let Err(err) = context.transfer_coins(
