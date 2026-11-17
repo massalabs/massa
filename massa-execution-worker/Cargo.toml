@@ -107,6 +107,7 @@ rocksdb = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
+massa-proto-rs = { workspace = true }
 massa_storage = { workspace = true }
 massa_execution_exports = { workspace = true, features = ["test-exports"] }
 massa_final_state = { workspace = true, features = ["test-exports"] }
