@@ -8,7 +8,7 @@ jsonrpsee = {workspace = true, "features" = ["client"]}
 jsonrpsee-http-client = {workspace = true}
 jsonrpsee-ws-client = {workspace = true}
 http = {workspace = true}
-tonic = {workspace = true, "features" = ["gzip", "tls"]}   # BOM UPGRADE     Revert to {"version": "0.9.1", "features": ["gzip"]} if problem
+tonic = {workspace = true, "features" = ["gzip", "tls-ring"]}   # BOM UPGRADE     Revert to {"version": "0.9.1", "features": ["gzip"]} if problem
 thiserror = {workspace = true}
 tracing = {workspace = true, "features" = ["log"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["log"]} if problem
 massa_api_exports = {workspace = true}
