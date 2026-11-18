@@ -16,21 +16,10 @@ use massa_execution_exports::{
 use massa_models::async_msg::{AsyncMessage, AsyncMessageTrigger};
 
 use massa_models::{
-    address::{Address, SCAddress, UserAddress},
-    amount::Amount,
-    bytecode::Bytecode,
-    datastore::get_prefix_bounds,
-    deferred_calls::DeferredCallId,
-    slot::Slot,
-    timeslots::get_block_slot_timestamp,
-};
-use massa_proto_rs::massa::model::v1::{
-    AddressCategory, ComparisonResult, NativeAmount, NativeTime,
+    address::Address, amount::Amount, bytecode::Bytecode, datastore::get_prefix_bounds,
+    deferred_calls::DeferredCallId, slot::Slot, timeslots::get_block_slot_timestamp,
 };
 use massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, Result, RuntimeModule};
-use massa_signature::{PublicKey, Signature};
-use massa_time::MassaTime;
-use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
@@ -40,7 +29,6 @@ use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 use num::rational::Ratio;
 use parking_lot::Mutex;
 use rand::Rng;
-use rand::RngCore;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::str::FromStr;
@@ -177,6 +165,82 @@ impl InterfaceImpl {
         InterfaceImpl::new(config, context)
     }
 
+    /// Shared body of `init_call` and `init_call_without_bytecode`.
+    ///
+    /// Returns the target bytecode when `return_bytecode` is set. Otherwise the
+    /// bytecode is only checked for presence, without being fetched when its hash
+    /// is already cached in the execution context. Checks, ordering and errors are
+    /// the same in both cases.
+    fn init_call_impl(
+        &self,
+        address: &str,
+        raw_coins: u64,
+        return_bytecode: bool,
+    ) -> Result<Option<Vec<u8>>> {
+        // get target address
+        let to_address = Address::from_str(address).map_err(|e| e.to_string())?;
+
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        // check that the target address is a SC address and if it exists
+        context
+            .check_target_sc_address(to_address)
+            .map_err(|e| e.to_string())?;
+
+        // get target bytecode (a cached hash means a non-empty bytecode is present)
+        let bytecode = if return_bytecode {
+            match context.get_bytecode(&to_address) {
+                Some(bytecode) => Some(bytecode.0),
+                None => bail!("bytecode not found for address {}", to_address),
+            }
+        } else {
+            if context.get_cached_bytecode_hash(&to_address).is_none()
+                && context.get_bytecode_and_hash(&to_address).is_none()
+            {
+                bail!("bytecode not found for address {}", to_address);
+            }
+            None
+        };
+
+        // get caller address
+        let from_address = match context.stack.last() {
+            Some(addr) => addr.address,
+            _ => bail!("failed to read call stack current address"),
+        };
+
+        // transfer coins from caller to target address
+        let coins = Amount::from_raw(raw_coins);
+        // note: rights are not checked here we checked that to_address is an SC address above
+        // and we know that the sender is at the top of the call stack
+        if let Err(err) = context.transfer_coins(
+            Some(from_address),
+            Some(to_address),
+            coins,
+            false,
+            TransferContext::AbiCallCoins,
+        ) {
+            bail!(
+                "error transferring {} coins from {} to {}: {}",
+                coins,
+                from_address,
+                to_address,
+                err
+            );
+        }
+
+        // push a new call stack element on top of the current call stack
+        context.stack.push(ExecutionStackElement {
+            address: to_address,
+            coins,
+            owned_addresses: vec![to_address],
+            operation_datastore: None,
+        });
+
+        // return the target bytecode
+        Ok(bytecode)
+    }
+
     // Allow certain addresses to bypass:
     // - the event size limit
     // - the user event count per operation / asc / deferred_call
@@ -200,50 +264,8 @@ impl InterfaceClone for InterfaceImpl {
     }
 }
 
-/// Helper function that creates an amount from a NativeAmount
-fn amount_from_native_amount(amount: &NativeAmount) -> Result<Amount> {
-    let amount = Amount::from_mantissa_scale(amount.mantissa, amount.scale)
-        .map_err(|err| format!("{}", err))?;
-
-    Ok(amount)
-}
-
-/// Helper function that creates a NativeAmount from the amount internal representation
-fn amount_to_native_amount(amount: &Amount) -> NativeAmount {
-    let (mantissa, scale) = amount.to_mantissa_scale();
-    NativeAmount { mantissa, scale }
-}
-
-/// Helper function that creates an MassaTime from a NativeTime
-fn massa_time_from_native_time(time: &NativeTime) -> Result<MassaTime> {
-    let time = MassaTime::from_millis(time.milliseconds);
-    Ok(time)
-}
-
-/// Helper function that creates a NativeTime from the MassaTime internal representation
-fn massa_time_to_native_time(time: &MassaTime) -> NativeTime {
-    let milliseconds = time.as_millis();
-    NativeTime { milliseconds }
-}
-
-/// Helper function to get the address from the option given as argument to some ABIs
-/// Fallback to the current context address if not provided.
-fn get_address_from_opt_or_context(
-    context: &ExecutionContext,
-    option_address_string: Option<String>,
-) -> Result<Address> {
-    match option_address_string {
-        Some(address_string) => {
-            Address::from_str(&address_string).map_err(|e| e.to_string().into())
-        }
-        None => context
-            .get_current_address()
-            .map_err(|e| e.to_string().into()),
-    }
-}
-
-/// One page of datastore keys. `start_key` is exclusive. Rejected before
-/// execution version 2, and when `count` is outside `1..=MAX_DATASTORE_KEYS_PAGE`.
+/// One page of datastore keys. `start_key` is exclusive. Rejected when `count`
+/// is outside `1..=MAX_DATASTORE_KEYS_PAGE`.
 fn paginated_datastore_keys(
     context: &ExecutionContext,
     addr: &Address,
@@ -251,12 +273,6 @@ fn paginated_datastore_keys(
     start_key: Option<&[u8]>,
     count: u32,
 ) -> Result<BTreeSet<Vec<u8>>> {
-    if !context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
-        bail!(
-            "paginated datastore-key queries are only available from execution version {}",
-            MIP_0002_EXECUTION_VERSION
-        );
-    }
     if !(1..=massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE).contains(&count) {
         bail!(
             "datastore key page size must be between 1 and {}, got {}",
@@ -298,8 +314,8 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Execution component version active at the current slot. massa-sc-runtime gates runtime
-    /// changes on it: from MIP_0002_EXECUTION_VERSION on, wasmv1 modules are no longer executed.
+    /// Execution component version active at the current slot. massa-sc-runtime can gate
+    /// runtime changes on it (none at the moment).
     fn get_interface_version(&self) -> Result<u32> {
         Ok(context_guard!(self).execution_component_version)
     }
@@ -345,59 +361,14 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The target bytecode or an error
     fn init_call(&self, address: &str, raw_coins: u64) -> Result<Vec<u8>> {
-        // get target address
-        let to_address = Address::from_str(address).map_err(|e| e.to_string())?;
+        self.init_call_impl(address, raw_coins, true)
+            .map(|bytecode| bytecode.unwrap_or_default())
+    }
 
-        // write-lock context
-        let mut context = context_guard!(self);
-
-        // check that the target address is a SC address and if it exists
-        context
-            .check_target_sc_address(to_address)
-            .map_err(|e| e.to_string())?;
-
-        // get target bytecode
-        let bytecode = match context.get_bytecode(&to_address) {
-            Some(bytecode) => bytecode,
-            None => bail!("bytecode not found for address {}", to_address),
-        };
-
-        // get caller address
-        let from_address = match context.stack.last() {
-            Some(addr) => addr.address,
-            _ => bail!("failed to read call stack current address"),
-        };
-
-        // transfer coins from caller to target address
-        let coins = Amount::from_raw(raw_coins);
-        // note: rights are not checked here we checked that to_address is an SC address above
-        // and we know that the sender is at the top of the call stack
-        if let Err(err) = context.transfer_coins(
-            Some(from_address),
-            Some(to_address),
-            coins,
-            false,
-            TransferContext::AbiCallCoins,
-        ) {
-            bail!(
-                "error transferring {} coins from {} to {}: {}",
-                coins,
-                from_address,
-                to_address,
-                err
-            );
-        }
-
-        // push a new call stack element on top of the current call stack
-        context.stack.push(ExecutionStackElement {
-            address: to_address,
-            coins,
-            owned_addresses: vec![to_address],
-            operation_datastore: None,
-        });
-
-        // return the target bytecode
-        Ok(bytecode.0)
+    /// Same as `init_call`, without returning the target bytecode.
+    /// It is not fetched when its hash is already cached in the execution context.
+    fn init_call_without_bytecode(&self, address: &str, raw_coins: u64) -> Result<()> {
+        self.init_call_impl(address, raw_coins, false).map(|_| ())
     }
 
     /// Called to finish the call process after a bytecode calls a function from another one.
@@ -429,6 +400,41 @@ impl Interface for InterfaceImpl {
         Ok(ret)
     }
 
+    /// Same as `raw_get_bytecode_for` followed by `get_module`.
+    ///
+    /// `function_exists`, `call` and `local_call` cost a flat amount of gas whatever
+    /// the target bytecode size, so when the bytecode hash is cached in the execution
+    /// context and the module is in the module cache, the bytecode is neither fetched
+    /// nor hashed again. Same result, errors and gas as the uncached path.
+    fn get_module_for_address(&self, address: &str, gas_limit: u64) -> Result<RuntimeModule> {
+        let mut context = context_guard!(self);
+        let address = Address::from_str(address).map_err(|e| e.to_string())?;
+        let condom_limits = context.get_condom_limits();
+
+        if let Some((hash, bytecode_len)) = context.get_cached_bytecode_hash(&address) {
+            if let Some(ret) = context.module_cache.write().load_cached_module_by_hash(
+                hash,
+                bytecode_len,
+                gas_limit,
+                condom_limits.clone(),
+            ) {
+                return Ok(ret.map_err(|e| e.to_string())?);
+            }
+        }
+
+        let (bytecode, hash) = match context.get_bytecode_and_hash(&address) {
+            Some(bytecode_and_hash) => bytecode_and_hash,
+            _ => bail!("bytecode not found"),
+        };
+        let ret = context
+            .module_cache
+            .write()
+            .load_module_with_hash(&bytecode.0, hash, gas_limit, condom_limits)
+            .map_err(|e| e.to_string())?;
+
+        Ok(ret)
+    }
+
     /// Compile and return a temporary module
     ///
     /// # Returns
@@ -451,8 +457,6 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_balance_wasmv1`
     fn get_balance(&self) -> Result<u64> {
         let context = context_guard!(self);
         let address = context.get_current_address().map_err(|e| e.to_string())?;
@@ -467,8 +471,6 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_balance_wasmv1`
     fn get_balance_for(&self, address: &str) -> Result<u64> {
         let address =
             massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
@@ -476,24 +478,6 @@ impl Interface for InterfaceImpl {
             .get_balance(&address)
             .unwrap_or_default()
             .to_raw())
-    }
-
-    /// Gets the balance of arbitrary address passed as argument, or the balance of the current address if no argument is passed.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address for which to get the balance
-    ///
-    /// # Returns
-    /// The raw representation (no decimal factor) of the balance of the address,
-    /// or zero if the address is not found in the ledger.
-    fn get_balance_wasmv1(&self, address: Option<String>) -> Result<NativeAmount> {
-        let context = context_guard!(self);
-        let address = get_address_from_opt_or_context(&context, address)?;
-
-        let amount = context.get_balance(&address).unwrap_or_default();
-        let native_amount = amount_to_native_amount(&amount);
-
-        Ok(native_amount)
     }
 
     /// Creates a new ledger entry with the initial bytecode given as argument.
@@ -515,8 +499,6 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_keys_wasmv1`
     fn get_keys(&self, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let addr = context.get_current_address().map_err(|e| e.to_string())?;
@@ -547,8 +529,6 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_keys_wasmv1`
     fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address).map_err(|e| e.to_string())?;
         let context = context_guard!(self);
@@ -577,8 +557,7 @@ impl Interface for InterfaceImpl {
     /// One page of datastore keys for the current address.
     ///
     /// `start_key` is an exclusive cursor. `count` must be in
-    /// `1..=MAX_DATASTORE_KEYS_PAGE`. Available from execution version 2
-    /// (MIP-0002); the runtime does not resolve the import before that.
+    /// `1..=MAX_DATASTORE_KEYS_PAGE`.
     fn get_keys_paginated(
         &self,
         prefix: Option<&[u8]>,
@@ -603,34 +582,6 @@ impl Interface for InterfaceImpl {
         paginated_datastore_keys(&context, &addr, prefix, start_key, count)
     }
 
-    /// Get the datastore keys (aka entries) for a given address, or the current address if none is provided
-    ///
-    /// # Returns
-    /// A list of keys (keys are byte arrays)
-    fn get_ds_keys_wasmv1(
-        &self,
-        prefix: &[u8],
-        address: Option<String>,
-    ) -> Result<BTreeSet<Vec<u8>>> {
-        let context = context_guard!(self);
-        let address = get_address_from_opt_or_context(&context, address)?;
-
-        // TODO update when implementing the ABI key limits
-        let start_key = std::ops::Bound::Unbounded;
-        // TODO update when implementing the ABI key limits
-        let end_key = std::ops::Bound::Unbounded;
-        // TODO update when implementing the ABI key limits
-        let count = None;
-
-        match context
-            .get_keys(&address, prefix, start_key, end_key, count)
-            .map_err(|e| e.to_string())?
-        {
-            Some(value) => Ok(value),
-            _ => bail!("data entry not found"),
-        }
-    }
-
     /// Gets a datastore value by key for the current address (top of the call stack).
     ///
     /// # Arguments
@@ -638,8 +589,6 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_get_data_wasmv1`
     fn raw_get_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = context.get_current_address().map_err(|e| e.to_string())?;
@@ -657,30 +606,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_get_data_wasmv1`
     fn raw_get_data_for(&self, address: &str, key: &[u8]) -> Result<Vec<u8>> {
         let addr = &massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         let context = context_guard!(self);
         match context.get_data_entry(addr, key) {
-            Some(value) => Ok(value),
-            _ => bail!("data entry not found"),
-        }
-    }
-
-    /// Gets a datastore value by key for a given address, or the current address if none is provided.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry to retrieve
-    ///
-    /// # Returns
-    /// The datastore value matching the provided key, if found, otherwise an error.
-    fn get_ds_value_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<Vec<u8>> {
-        let context = context_guard!(self);
-        let address = get_address_from_opt_or_context(&context, address)?;
-
-        match context.get_data_entry(&address, key) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -694,8 +623,6 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_set_data_wasmv1`
     fn raw_set_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address().map_err(|e| e.to_string())?;
@@ -713,23 +640,11 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_set_data_wasmv1`
     fn raw_set_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
         let addr = massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         let mut context = context_guard!(self);
         context
             .set_data_entry(&addr, key.to_vec(), value.to_vec())
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    fn set_ds_value_wasmv1(&self, key: &[u8], value: &[u8], address: Option<String>) -> Result<()> {
-        let mut context = context_guard!(self);
-        let address = get_address_from_opt_or_context(&context, address)?;
-
-        context
-            .set_data_entry(&address, key.to_vec(), value.to_vec())
             .map_err(|e| e.to_string())?;
         Ok(())
     }
@@ -740,8 +655,6 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * key: string key of the datastore entry
     /// * value: value to append
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_append_data_wasmv1`
     fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address().map_err(|e| e.to_string())?;
@@ -758,34 +671,10 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_append_data_wasmv1`
     fn raw_append_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
         let addr = massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         context_guard!(self)
             .append_data_entry(&addr, key.to_vec(), value.to_vec())
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    /// Appends a value to a datastore entry for a given address, or the current address if none is provided
-    /// Fails if the entry or address does not exist.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry
-    /// * value: value to append
-    fn append_ds_value_wasmv1(
-        &self,
-        key: &[u8],
-        value: &[u8],
-        address: Option<String>,
-    ) -> Result<()> {
-        let mut context = context_guard!(self);
-        let address = get_address_from_opt_or_context(&context, address)?;
-
-        context
-            .append_data_entry(&address, key.to_vec(), value.to_vec())
             .map_err(|e| e.to_string())?;
         Ok(())
     }
@@ -795,8 +684,6 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments
     /// * key: string key of the datastore entry to delete
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_delete_data_wasmv1`
     fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address().map_err(|e| e.to_string())?;
@@ -812,28 +699,10 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to delete
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_delete_data_wasmv1`
     fn raw_delete_data_for(&self, address: &str, key: &[u8]) -> Result<()> {
         let addr = &massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         context_guard!(self)
             .delete_data_entry(addr, key)
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    /// Deletes a datastore entry by key for a given address, or the current address if none is provided.
-    /// Fails if the address or entry does not exist.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry to delete
-    fn delete_ds_entry_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<()> {
-        let mut context = context_guard!(self);
-        let address = get_address_from_opt_or_context(&context, address)?;
-
-        context
-            .delete_data_entry(&address, key)
             .map_err(|e| e.to_string())?;
         Ok(())
     }
@@ -845,8 +714,6 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `has_data_wasmv1`
     fn has_data(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         let addr = context.get_current_address().map_err(|e| e.to_string())?;
@@ -861,27 +728,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `has_data_wasmv1`
     fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
         let addr = massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         let context = context_guard!(self);
         Ok(context.has_data_entry(&addr, key))
-    }
-
-    /// Checks if a datastore entry exists for a given address, or the current address if none is provided.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry to retrieve
-    ///
-    /// # Returns
-    /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    fn ds_entry_exists_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<bool> {
-        let context = context_guard!(self);
-        let address = get_address_from_opt_or_context(&context, address)?;
-
-        Ok(context.has_data_entry(&address, key))
     }
 
     /// Check whether or not the caller has write access in the current context
@@ -905,8 +755,6 @@ impl Interface for InterfaceImpl {
     }
 
     /// Returns bytecode of the current address
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_get_bytecode_wasmv1`
     fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = context.get_current_address().map_err(|e| e.to_string())?;
@@ -917,22 +765,9 @@ impl Interface for InterfaceImpl {
     }
 
     /// Returns bytecode of the target address
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_get_bytecode_wasmv1`
     fn raw_get_bytecode_for(&self, address: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = Address::from_str(address).map_err(|e| e.to_string())?;
-        match context.get_bytecode(&address) {
-            Some(bytecode) => Ok(bytecode.0),
-            _ => bail!("bytecode not found"),
-        }
-    }
-
-    /// Returns bytecode of the target address, or the current address if not provided
-    fn get_bytecode_wasmv1(&self, address: Option<String>) -> Result<Vec<u8>> {
-        let context = context_guard!(self);
-        let address = get_address_from_opt_or_context(&context, address)?;
-
         match context.get_bytecode(&address) {
             Some(bytecode) => Ok(bytecode.0),
             _ => bail!("bytecode not found"),
@@ -944,34 +779,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_op_keys_wasmv1`
     fn get_op_keys(&self, prefix_opt: Option<&[u8]>) -> Result<Vec<Vec<u8>>> {
         let prefix: &[u8] = prefix_opt.unwrap_or_default();
 
         // compute prefix range
-        let prefix_range = get_prefix_bounds(prefix);
-        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
-
-        let context = context_guard!(self);
-        let stack = context.stack.last().ok_or("No stack")?;
-        let datastore = stack
-            .operation_datastore
-            .as_ref()
-            .ok_or("No datastore in stack")?;
-        let keys = datastore
-            .range::<Vec<u8>, _>(range_ref)
-            .map(|(k, _v)| k.clone())
-            .collect();
-        Ok(keys)
-    }
-
-    /// Get the operation datastore keys (aka entries).
-    /// Note that the datastore is only accessible to the initial caller level.
-    ///
-    /// # Returns
-    /// A list of keys (keys are byte arrays) that match the given prefix
-    fn get_op_keys_wasmv1(&self, prefix: &[u8]) -> Result<Vec<Vec<u8>>> {
         let prefix_range = get_prefix_bounds(prefix);
         let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
@@ -1228,8 +1039,6 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * `to_address`: string representation of the address to which the coins are sent
     /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `transfer_coins_wasmv1`
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
         let to_address = Address::from_str(to_address).map_err(|e| e.to_string())?;
         let amount = Amount::from_raw(raw_amount);
@@ -1253,8 +1062,6 @@ impl Interface for InterfaceImpl {
     /// * `from_address`: string representation of the address that is sending the coins
     /// * `to_address`: string representation of the address to which the coins are sent
     /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `transfer_coins_wasmv1`
     fn transfer_coins_for(
         &self,
         from_address: &str,
@@ -1272,38 +1079,6 @@ impl Interface for InterfaceImpl {
                 amount,
                 true,
                 TransferContext::AbiTransferForCoins,
-            )
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    /// Transfer coins from a given address (or the current address if not specified) towards a target address.
-    ///
-    /// # Arguments
-    /// * `to_address`: string representation of the address to which the coins are sent
-    /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
-    /// * `from_address`: string representation of the address that is sending the coins
-    fn transfer_coins_wasmv1(
-        &self,
-        to_address: String,
-        raw_amount: NativeAmount,
-        from_address: Option<String>,
-    ) -> Result<()> {
-        let to_address = Address::from_str(&to_address).map_err(|e| e.to_string())?;
-        let amount = amount_from_native_amount(&raw_amount)?;
-
-        let mut context = context_guard!(self);
-        let from_address = match from_address {
-            Some(from_address) => Address::from_str(&from_address).map_err(|e| e.to_string())?,
-            None => context.get_current_address().map_err(|e| e.to_string())?,
-        };
-        context
-            .transfer_coins(
-                Some(from_address),
-                Some(to_address),
-                amount,
-                true,
-                TransferContext::AbiTransferCoins,
             )
             .map_err(|e| e.to_string())?;
         Ok(())
@@ -1343,25 +1118,11 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The raw representation (no decimal factor) of the amount of coins
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_call_coins_wasmv1`
     fn get_call_coins(&self) -> Result<u64> {
         Ok(context_guard!(self)
             .get_current_call_coins()
             .map_err(|e| e.to_string())?
             .to_raw())
-    }
-
-    /// Gets the amount of coins that have been transferred at the beginning of the call.
-    /// See the `init_call` method.
-    ///
-    /// # Returns
-    /// The amount of coins
-    fn get_call_coins_wasmv1(&self) -> Result<NativeAmount> {
-        let amount = context_guard!(self)
-            .get_current_call_coins()
-            .map_err(|e| e.to_string())?;
-        Ok(amount_to_native_amount(&amount))
     }
 
     /// Emits an execution event to be stored.
@@ -1401,45 +1162,6 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Emits an execution event to be stored.
-    ///
-    /// # Arguments:
-    /// data: the bytes_array data that is the payload of the event
-    fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
-        let mut context = context_guard!(self);
-
-        let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
-
-        // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
-        let max_event_size = match bypass_event_limitation {
-            true => self.config.max_event_size_v0,
-            false => self.config.max_event_size,
-        };
-
-        if data.len() > max_event_size {
-            bail!("Event data size is too large");
-        };
-
-        let data_str = String::from_utf8(data.clone()).unwrap_or(format!("{:?}", data));
-        let event = context.event_create(data_str, false);
-
-        // Do not increment the event count if we bypass the event limitation
-        if !bypass_event_limitation {
-            context.user_event_count_in_current_exec =
-                context.user_event_count_in_current_exec.saturating_add(1);
-        }
-
-        let event_per_op = context.user_event_count_in_current_exec as usize;
-
-        if event_per_op > self.config.max_event_per_operation {
-            bail!("Too many event for this operation");
-        }
-
-        context.event_emit(event);
-
-        Ok(())
-    }
-
     /// Returns the current time (millisecond UNIX timestamp)
     /// Note that in order to ensure determinism, this is actually the time of the context slot.
     fn get_time(&self) -> Result<u64> {
@@ -1459,8 +1181,6 @@ impl Interface for InterfaceImpl {
     /// # Warning
     /// This random number generator is unsafe:
     /// it can be both predicted and manipulated before the execution
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `unsafe_random_wasmv1`
     fn unsafe_random(&self) -> Result<i64> {
         let distr = rand::distributions::Uniform::new_inclusive(i64::MIN, i64::MAX);
         Ok(context_guard!(self).unsafe_rng.sample(distr))
@@ -1471,25 +1191,9 @@ impl Interface for InterfaceImpl {
     /// # Warning
     /// This random number generator is unsafe:
     /// it can be both predicted and manipulated before the execution
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `unsafe_random_wasmv1`
     fn unsafe_random_f64(&self) -> Result<f64> {
         let distr = rand::distributions::Uniform::new(0f64, 1f64);
         Ok(context_guard!(self).unsafe_rng.sample(distr))
-    }
-
-    /// Returns a pseudo-random deterministic byte array, with the given number of bytes
-    ///
-    /// # Warning
-    /// This random number generator is unsafe:
-    /// it can be both predicted and manipulated before the execution
-    fn unsafe_random_wasmv1(&self, num_bytes: u64) -> Result<Vec<u8>> {
-        let mut arr = vec![0u8; num_bytes as usize];
-        context_guard!(self)
-            .unsafe_rng
-            .try_fill_bytes(&mut arr)
-            .map_err(|e| e.to_string())?;
-        Ok(arr)
     }
 
     /// Adds an asynchronous message to the context speculative asynchronous pool
@@ -1500,14 +1204,11 @@ impl Interface for InterfaceImpl {
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
     /// * `max_gas`: Maximum gas for the message execution.
-    ///   Bounded below by `max_instance_cost`, and — from execution component version
-    ///   [`MIP_0002_EXECUTION_VERSION`] on — above by the largest budget any slot
+    ///   Bounded below by `max_instance_cost`, and above by the largest budget any slot
     ///   can ever offer. `take_batch_to_execute` only schedules a message when
     ///   `max_gas + async_msg_cst_gas_cost` fits the slot's async gas budget, which never
-    ///   exceeds `max_async_gas + max_gas_per_block` (see `execute_slot`). Before that
-    ///   version, a message above the ceiling was accepted but permanently unschedulable:
-    ///   it occupied async pool capacity until its validity end, and on expiry
-    ///   `cancel_async_message` refunded `raw_coins` but not `raw_fee`.
+    ///   exceeds `max_async_gas + max_gas_per_block` (see `execute_slot`). A message above
+    ///   that ceiling would be permanently unschedulable.
     /// * `fee`: Fee to pay
     /// * `raw_coins`: Coins given by the sender
     /// * `data`: Message data
@@ -1551,20 +1252,17 @@ impl Interface for InterfaceImpl {
         if max_gas < self.config.gas_costs.max_instance_cost {
             bail!("max gas is lower than the minimum instance cost")
         }
-        // Reject messages that no slot could ever schedule. Gated: rejecting here changes
-        // execution results, so it only applies once the MIP has activated.
-        if execution_context.is_execution_component_version_at_least(MIP_0002_EXECUTION_VERSION) {
-            let max_schedulable_gas = self
-                .config
-                .max_async_gas
-                .saturating_add(self.config.max_gas_per_block)
-                .saturating_sub(self.config.async_msg_cst_gas_cost);
-            if max_gas > max_schedulable_gas {
-                bail!(
-                    "max gas is higher than the maximum schedulable async gas ({})",
-                    max_schedulable_gas
-                )
-            }
+        // Reject messages that no slot could ever schedule.
+        let max_schedulable_gas = self
+            .config
+            .max_async_gas
+            .saturating_add(self.config.max_gas_per_block)
+            .saturating_sub(self.config.async_msg_cst_gas_cost);
+        if max_gas > max_schedulable_gas {
+            bail!(
+                "max gas is higher than the maximum schedulable async gas ({})",
+                max_schedulable_gas
+            )
         }
         if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
         {
@@ -1639,30 +1337,18 @@ impl Interface for InterfaceImpl {
     }
 
     /// Returns the period of the current execution slot
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     fn get_current_period(&self) -> Result<u64> {
         let slot = context_guard!(self).slot;
         Ok(slot.period)
     }
 
     /// Returns the thread of the current execution slot
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     fn get_current_thread(&self) -> Result<u8> {
         let slot = context_guard!(self).slot;
         Ok(slot.thread)
     }
 
-    /// Returns the current execution slot
-    fn get_current_slot(&self) -> Result<massa_proto_rs::massa::model::v1::Slot> {
-        let slot_models = context_guard!(self).slot;
-        Ok(slot_models.into())
-    }
-
     /// Sets the bytecode of the current address
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_set_bytecode_wasmv1`
     fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
         let mut execution_context = context_guard!(self);
         let address = execution_context
@@ -1676,25 +1362,11 @@ impl Interface for InterfaceImpl {
 
     /// Sets the bytecode of an arbitrary address.
     /// Fails if the address does not exist, is an user address, or if the context doesn't have write access rights on it.
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `raw_set_bytecode_wasmv1`
     fn raw_set_bytecode_for(&self, address: &str, bytecode: &[u8]) -> Result<()> {
         let address: Address =
             massa_models::address::Address::from_str(address).map_err(|e| e.to_string())?;
         let mut execution_context = context_guard!(self);
         match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
-            Ok(()) => Ok(()),
-            Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
-        }
-    }
-
-    /// Sets the bytecode of an arbitrary address, or the current address if not provided.
-    /// Fails if the address does not exist, is an user address, or if the context doesn't have write access rights on it.
-    fn set_bytecode_wasmv1(&self, bytecode: &[u8], address: Option<String>) -> Result<()> {
-        let mut context = context_guard!(self);
-        let address = get_address_from_opt_or_context(&context, address)?;
-
-        match context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
             Ok(()) => Ok(()),
             Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
         }
@@ -1712,17 +1384,6 @@ impl Interface for InterfaceImpl {
         hasher.update(bytes);
         let hash = hasher.finalize().into();
         Ok(hash)
-    }
-
-    /// Hashes givens byte array with blake3
-    ///
-    /// # Arguments
-    /// * bytes: byte array to hash
-    ///
-    /// # Returns
-    /// The byte array of the resulting hash
-    fn hash_blake3(&self, bytes: &[u8]) -> Result<[u8; 32]> {
-        Ok(blake3::hash(bytes).into())
     }
 
     /// Get the number of fees needed to reserve space in the target slot
@@ -1892,354 +1553,6 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    #[allow(unused_variables)]
-    fn init_call_wasmv1(&self, address: &str, raw_coins: NativeAmount) -> Result<Vec<u8>> {
-        // get target address
-        let to_address = Address::from_str(address).map_err(|e| e.to_string())?;
-
-        // check that the target address is an SC address
-        if !matches!(to_address, Address::SC(..)) {
-            bail!("called address {} is not an SC address", to_address);
-        }
-
-        // write-lock context
-        let mut context = context_guard!(self);
-
-        // get target bytecode
-        let bytecode = match context.get_bytecode(&to_address) {
-            Some(bytecode) => bytecode,
-            None => bail!("bytecode not found for address {}", to_address),
-        };
-
-        // get caller address
-        let from_address = match context.stack.last() {
-            Some(addr) => addr.address,
-            _ => bail!("failed to read call stack current address"),
-        };
-
-        // transfer coins from caller to target address
-        let coins = amount_from_native_amount(&raw_coins)?;
-        // note: rights are not checked here we checked that to_address is an SC address above
-        // and we know that the sender is at the top of the call stack
-        if let Err(err) = context.transfer_coins(
-            Some(from_address),
-            Some(to_address),
-            coins,
-            false,
-            TransferContext::AbiCallCoins,
-        ) {
-            bail!(
-                "error transferring {} coins from {} to {}: {}",
-                coins,
-                from_address,
-                to_address,
-                err
-            );
-        }
-
-        // push a new call stack element on top of the current call stack
-        context.stack.push(ExecutionStackElement {
-            address: to_address,
-            coins,
-            owned_addresses: vec![to_address],
-            operation_datastore: None,
-        });
-
-        // return the target bytecode
-        Ok(bytecode.0)
-    }
-
-    /// Returns a NativeAmount from a string
-    fn native_amount_from_str_wasmv1(&self, amount: &str) -> Result<NativeAmount> {
-        let amount = Amount::from_str(amount).map_err(|err| format!("{}", err))?;
-        Ok(amount_to_native_amount(&amount))
-    }
-
-    /// Returns a string from a NativeAmount
-    fn native_amount_to_string_wasmv1(&self, amount: &NativeAmount) -> Result<String> {
-        let amount = amount_from_native_amount(amount)
-            .map_err(|err| format!("Couldn't convert native amount to Amount: {}", err))?;
-        Ok(amount.to_string())
-    }
-
-    /// Checks if the given native amount is valid
-    fn check_native_amount_wasmv1(&self, amount: &NativeAmount) -> Result<bool> {
-        Ok(amount_from_native_amount(amount).is_ok())
-    }
-
-    /// Adds two native amounts, saturating at the numeric bounds instead of overflowing.
-    fn add_native_amount_wasmv1(
-        &self,
-        amount1: &NativeAmount,
-        amount2: &NativeAmount,
-    ) -> Result<NativeAmount> {
-        let amount1 = amount_from_native_amount(amount1)?;
-        let amount2 = amount_from_native_amount(amount2)?;
-        let sum = amount1.saturating_add(amount2);
-        Ok(amount_to_native_amount(&sum))
-    }
-
-    /// Subtracts two native amounts, saturating at the numeric bounds instead of overflowing.
-    fn sub_native_amount_wasmv1(
-        &self,
-        amount1: &NativeAmount,
-        amount2: &NativeAmount,
-    ) -> Result<NativeAmount> {
-        let amount1 = amount_from_native_amount(amount1)?;
-        let amount2 = amount_from_native_amount(amount2)?;
-        let sub = amount1.saturating_sub(amount2);
-        Ok(amount_to_native_amount(&sub))
-    }
-
-    /// Multiplies a native amount by a factor, saturating at the numeric bounds instead of overflowing.
-    fn scalar_mul_native_amount_wasmv1(
-        &self,
-        amount: &NativeAmount,
-        factor: u64,
-    ) -> Result<NativeAmount> {
-        let amount = amount_from_native_amount(amount)?;
-        let mul = amount.saturating_mul_u64(factor);
-        Ok(amount_to_native_amount(&mul))
-    }
-
-    /// Divides a native amount by a divisor, return an error if the divisor is 0.
-    fn scalar_div_rem_native_amount_wasmv1(
-        &self,
-        dividend: &NativeAmount,
-        divisor: u64,
-    ) -> Result<(NativeAmount, NativeAmount)> {
-        let dividend = amount_from_native_amount(dividend)?;
-
-        let quotient = dividend
-            .checked_div_u64(divisor)
-            .ok_or("Couldn't div_rem native amount")?;
-        // we can unwrap, we
-        let remainder = dividend
-            .checked_rem_u64(divisor)
-            .ok_or("Couldn't checked_rem_u64 native amount")?;
-
-        Ok((
-            amount_to_native_amount(&quotient),
-            amount_to_native_amount(&remainder),
-        ))
-    }
-
-    /// Divides a native amount by a divisor, return an error if the divisor is 0.
-    fn div_rem_native_amount_wasmv1(
-        &self,
-        dividend: &NativeAmount,
-        divisor: &NativeAmount,
-    ) -> Result<(u64, NativeAmount)> {
-        let dividend = amount_from_native_amount(dividend)?;
-        let divisor = amount_from_native_amount(divisor)?;
-
-        let quotient = dividend
-            .checked_div(divisor)
-            .ok_or("Couldn't div_rem native amount")?;
-
-        let remainder = dividend
-            .checked_rem(&divisor)
-            .ok_or("Couldn't checked_rem native amount")?;
-        let remainder = amount_to_native_amount(&remainder);
-
-        Ok((quotient, remainder))
-    }
-
-    fn base58_check_to_bytes_wasmv1(&self, s: &str) -> Result<Vec<u8>> {
-        Ok(bs58::decode(s)
-            .with_check(None)
-            .into_vec()
-            .map_err(|err| format!("bs58 parsing error: {}", err))?)
-    }
-
-    fn bytes_to_base58_check_wasmv1(&self, data: &[u8]) -> String {
-        bs58::encode(data).with_check().into_string()
-    }
-
-    fn check_address_wasmv1(&self, to_check: &str) -> Result<bool> {
-        Ok(Address::from_str(to_check).is_ok())
-    }
-
-    fn check_pubkey_wasmv1(&self, to_check: &str) -> Result<bool> {
-        Ok(PublicKey::from_str(to_check).is_ok())
-    }
-
-    fn check_signature_wasmv1(&self, to_check: &str) -> Result<bool> {
-        Ok(Signature::from_str(to_check).is_ok())
-    }
-
-    fn get_address_category_wasmv1(&self, to_check: &str) -> Result<AddressCategory> {
-        let addr = Address::from_str(to_check).map_err(|e| e.to_string())?;
-
-        // Fixed behavior for this ABI in https://github.com/massalabs/massa/pull/4728
-        // We keep the previous (bugged) code if the execution component version is 0
-        // to avoid a breaking change
-        match addr {
-            Address::User(_) => Ok(AddressCategory::UserAddress),
-            Address::SC(_) => Ok(AddressCategory::ScAddress),
-            #[allow(unreachable_patterns)]
-            _ => Ok(AddressCategory::Unspecified),
-        }
-    }
-
-    fn get_address_version_wasmv1(&self, address: &str) -> Result<u64> {
-        let address = Address::from_str(address).map_err(|e| e.to_string())?;
-        match address {
-            Address::User(UserAddress::UserAddressV0(_)) => Ok(0),
-            // Address::User(UserAddress::UserAddressV1(_)) => Ok(1),
-            Address::SC(SCAddress::SCAddressV0(_)) => Ok(0),
-            // Address::SC(SCAddress::SCAddressV1(_)) => Ok(1),
-            #[allow(unreachable_patterns)]
-            _ => bail!("Unknown address version"),
-        }
-    }
-
-    fn get_pubkey_version_wasmv1(&self, pubkey: &str) -> Result<u64> {
-        let pubkey = PublicKey::from_str(pubkey).map_err(|e| e.to_string())?;
-        match pubkey {
-            PublicKey::PublicKeyV0(_) => Ok(0),
-            #[allow(unreachable_patterns)]
-            _ => bail!("Unknown pubkey version"),
-        }
-    }
-
-    fn get_signature_version_wasmv1(&self, signature: &str) -> Result<u64> {
-        let signature = Signature::from_str(signature).map_err(|e| e.to_string())?;
-        match signature {
-            Signature::SignatureV0(_) => Ok(0),
-            #[allow(unreachable_patterns)]
-            _ => bail!("Unknown signature version"),
-        }
-    }
-
-    fn checked_add_native_time_wasmv1(
-        &self,
-        time1: &NativeTime,
-        time2: &NativeTime,
-    ) -> Result<NativeTime> {
-        let time1 = massa_time_from_native_time(time1)?;
-        let time2 = massa_time_from_native_time(time2)?;
-        let sum = time1.checked_add(time2).or_else(|e| bail!("{}", e))?;
-        Ok(massa_time_to_native_time(&sum))
-    }
-
-    fn checked_sub_native_time_wasmv1(
-        &self,
-        time1: &NativeTime,
-        time2: &NativeTime,
-    ) -> Result<NativeTime> {
-        let time1 = massa_time_from_native_time(time1)?;
-        let time2 = massa_time_from_native_time(time2)?;
-        let sub = time1.checked_sub(time2).or_else(|e| bail!("{}", e))?;
-        Ok(massa_time_to_native_time(&sub))
-    }
-
-    fn checked_mul_native_time_wasmv1(&self, time: &NativeTime, factor: u64) -> Result<NativeTime> {
-        let time1 = massa_time_from_native_time(time)?;
-        let mul = time1.checked_mul(factor).or_else(|e| bail!("{}", e))?;
-        Ok(massa_time_to_native_time(&mul))
-    }
-
-    fn checked_scalar_div_native_time_wasmv1(
-        &self,
-        dividend: &NativeTime,
-        divisor: u64,
-    ) -> Result<(NativeTime, NativeTime)> {
-        let dividend = massa_time_from_native_time(dividend)?;
-
-        let quotient = dividend
-            .checked_div_u64(divisor)
-            .or_else(|_| bail!("Couldn't div_rem native time"))?;
-        let remainder = dividend
-            .checked_rem_u64(divisor)
-            .or_else(|_| bail!("Couldn't checked_rem_u64 native time"))?;
-
-        Ok((
-            massa_time_to_native_time(&quotient),
-            massa_time_to_native_time(&remainder),
-        ))
-    }
-
-    fn checked_div_native_time_wasmv1(
-        &self,
-        dividend: &NativeTime,
-        divisor: &NativeTime,
-    ) -> Result<(u64, NativeTime)> {
-        let dividend = massa_time_from_native_time(dividend)?;
-        let divisor = massa_time_from_native_time(divisor)?;
-
-        let quotient = dividend
-            .checked_div_time(divisor)
-            .or_else(|_| bail!("Couldn't div_rem native time"))?;
-
-        let remainder = dividend
-            .checked_rem_time(divisor)
-            .or_else(|_| bail!("Couldn't checked_rem native time"))?;
-        let remainder = massa_time_to_native_time(&remainder);
-
-        Ok((quotient, remainder))
-    }
-
-    fn compare_address_wasmv1(&self, left: &str, right: &str) -> Result<ComparisonResult> {
-        let left = Address::from_str(left).map_err(|e| e.to_string())?;
-        let right = Address::from_str(right).map_err(|e| e.to_string())?;
-
-        let res = match left.cmp(&right) {
-            std::cmp::Ordering::Less => ComparisonResult::Lower,
-            std::cmp::Ordering::Equal => ComparisonResult::Equal,
-            std::cmp::Ordering::Greater => ComparisonResult::Greater,
-        };
-
-        Ok(res)
-    }
-
-    fn compare_native_amount_wasmv1(
-        &self,
-        left: &NativeAmount,
-        right: &NativeAmount,
-    ) -> Result<ComparisonResult> {
-        let left = amount_from_native_amount(left)?;
-        let right = amount_from_native_amount(right)?;
-
-        let res = match left.cmp(&right) {
-            std::cmp::Ordering::Less => ComparisonResult::Lower,
-            std::cmp::Ordering::Equal => ComparisonResult::Equal,
-            std::cmp::Ordering::Greater => ComparisonResult::Greater,
-        };
-
-        Ok(res)
-    }
-
-    fn compare_native_time_wasmv1(
-        &self,
-        left: &NativeTime,
-        right: &NativeTime,
-    ) -> Result<ComparisonResult> {
-        let left = massa_time_from_native_time(left)?;
-        let right = massa_time_from_native_time(right)?;
-
-        let res = match left.cmp(&right) {
-            std::cmp::Ordering::Less => ComparisonResult::Lower,
-            std::cmp::Ordering::Equal => ComparisonResult::Equal,
-            std::cmp::Ordering::Greater => ComparisonResult::Greater,
-        };
-
-        Ok(res)
-    }
-
-    fn compare_pub_key_wasmv1(&self, left: &str, right: &str) -> Result<ComparisonResult> {
-        let left = PublicKey::from_str(left).map_err(|e| e.to_string())?;
-        let right = PublicKey::from_str(right).map_err(|e| e.to_string())?;
-
-        let res = match left.cmp(&right) {
-            std::cmp::Ordering::Less => ComparisonResult::Lower,
-            std::cmp::Ordering::Equal => ComparisonResult::Equal,
-            std::cmp::Ordering::Greater => ComparisonResult::Greater,
-        };
-
-        Ok(res)
-    }
-
     fn chain_id(&self) -> Result<u64> {
         Ok(self.config.chain_id)
     }
@@ -2265,9 +1578,9 @@ mod tests {
     use super::*;
     use massa_models::address::Address;
     use massa_signature::KeyPair;
+    use massa_versioning::mips::MIP_0002_EXECUTION_VERSION;
 
-    // An async message asking for more gas than any slot can ever schedule is admitted
-    // before the MIP activates, and rejected from MIP_0002_EXECUTION_VERSION on.
+    // An async message asking for more gas than any slot can ever schedule is rejected.
     #[test]
     fn test_send_message_max_gas_ceiling() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
@@ -2284,22 +1597,16 @@ mod tests {
             interface.send_message(target, "receive", (0, 0), (10, 0), max_gas, 0, 0, &[], None)
         };
 
-        // pre-activation: the oversized message is accepted, which is the bug being fixed
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
-        send(ceiling + 1).expect("oversized message should be admitted before activation");
-
-        // post-activation: rejected, while a message exactly at the ceiling still passes
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
+        // rejected, while a message exactly at the ceiling still passes
         assert!(
             send(ceiling + 1).is_err(),
-            "oversized message should be rejected after activation"
+            "oversized message should be rejected"
         );
         send(ceiling).expect("a message exactly at the ceiling is still schedulable");
     }
 
-    // The runtime gates changes on the reported version (e.g. it stops executing wasmv1 modules
-    // from MIP_0002_EXECUTION_VERSION on): it must follow the execution component version active
-    // at the current slot, on both sides of the activation.
+    // The runtime can gate changes on the reported version: it must follow the execution
+    // component version active at the current slot, on both sides of an activation.
     #[test]
     fn test_get_interface_version_follows_execution_component_version() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
@@ -2318,23 +1625,16 @@ mod tests {
         );
     }
 
-    // Tests the get_keys_wasmv1 interface method used by the updated get_keys abi.
     #[test]
     fn test_get_keys() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
         let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
-        interface
-            .set_ds_value_wasmv1(b"k1", b"v1", Some(sender_addr.to_string()))
-            .unwrap();
-        interface
-            .set_ds_value_wasmv1(b"k2", b"v2", Some(sender_addr.to_string()))
-            .unwrap();
-        interface
-            .set_ds_value_wasmv1(b"l3", b"v3", Some(sender_addr.to_string()))
-            .unwrap();
+        interface.raw_set_data(b"k1", b"v1").unwrap();
+        interface.raw_set_data(b"k2", b"v2").unwrap();
+        interface.raw_set_data(b"l3", b"v3").unwrap();
 
-        let keys = interface.get_ds_keys_wasmv1(b"k", None).unwrap();
+        let keys = interface.get_keys(Some(b"k")).unwrap();
 
         assert_eq!(keys.len(), 2);
         assert!(keys.contains(b"k1".as_slice()));
@@ -2342,7 +1642,7 @@ mod tests {
     }
 
     /// Pages chain without gaps or duplicates. `start_key` is exclusive.
-    /// The call is rejected before execution version 2 and when `count` is out of range.
+    /// The call is rejected when `count` is out of range.
     #[test]
     fn test_get_keys_paginated_pages() {
         use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
@@ -2352,15 +1652,9 @@ mod tests {
 
         for i in 0..10u32 {
             let key = format!("key{i:02}");
-            interface
-                .set_ds_value_wasmv1(key.as_bytes(), b"v", Some(sender_addr.to_string()))
-                .unwrap();
+            interface.raw_set_data(key.as_bytes(), b"v").unwrap();
         }
 
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
-        assert!(interface.get_keys_paginated(None, None, 4).is_err());
-
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
         assert!(interface.get_keys_paginated(None, None, 0).is_err());
         assert!(interface
             .get_keys_paginated(None, None, MAX_DATASTORE_KEYS_PAGE + 1)
@@ -2389,28 +1683,19 @@ mod tests {
         assert_eq!(one.len(), 1);
     }
 
-    /// From execution version 2, an unbounded `get_keys` that matches more than one
-    /// page fails. Before that version the same query returns every key.
+    /// An unbounded `get_keys` that matches more than one page fails.
     #[test]
-    fn test_get_keys_capped_at_execution_v2() {
+    fn test_get_keys_capped() {
         use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
 
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
         let interface = InterfaceImpl::new_default(sender_addr, None, None);
-        let addr = sender_addr.to_string();
 
         for i in 0..=MAX_DATASTORE_KEYS_PAGE {
             let key = format!("k{i:06}");
-            interface
-                .set_ds_value_wasmv1(key.as_bytes(), b"v", Some(addr.clone()))
-                .unwrap();
+            interface.raw_set_data(key.as_bytes(), b"v").unwrap();
         }
 
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
-        let keys = interface.get_keys(Some(b"")).unwrap();
-        assert_eq!(keys.len(), MAX_DATASTORE_KEYS_PAGE as usize + 1);
-
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
         assert!(interface.get_keys(Some(b"")).is_err());
 
         let page = interface
@@ -2419,7 +1704,6 @@ mod tests {
         assert_eq!(page.len(), MAX_DATASTORE_KEYS_PAGE as usize);
     }
 
-    // Tests the get_op_keys_wasmv1 interface method used by the updated get_op_keys abi.
     #[test]
     fn test_get_op_keys() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
@@ -2431,296 +1715,11 @@ mod tests {
 
         let interface = InterfaceImpl::new_default(sender_addr, Some(operation_datastore), None);
 
-        let op_keys = interface.get_op_keys_wasmv1(b"k").unwrap();
+        let op_keys = interface.get_op_keys(Some(b"k")).unwrap();
 
         assert_eq!(op_keys.len(), 2);
         assert!(op_keys.contains(&b"k1".to_vec()));
         assert!(op_keys.contains(&b"k2".to_vec()));
-    }
-
-    #[test]
-    fn test_native_amount() {
-        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None, None);
-
-        let amount1 = interface.native_amount_from_str_wasmv1("100").unwrap();
-        let amount2 = interface.native_amount_from_str_wasmv1("100").unwrap();
-        let amount3 = interface.native_amount_from_str_wasmv1("200").unwrap();
-
-        let sum = interface
-            .add_native_amount_wasmv1(&amount1, &amount2)
-            .unwrap();
-
-        assert_eq!(amount3, sum);
-        println!(
-            "sum: {}",
-            interface.native_amount_to_string_wasmv1(&sum).unwrap()
-        );
-        assert_eq!(
-            "200",
-            interface.native_amount_to_string_wasmv1(&sum).unwrap()
-        );
-
-        let diff = interface.sub_native_amount_wasmv1(&sum, &amount2).unwrap();
-        assert_eq!(amount1, diff);
-
-        let amount4 = NativeAmount {
-            mantissa: 1,
-            scale: 9,
-        };
-
-        let is_valid = interface.check_native_amount_wasmv1(&amount4).unwrap();
-        assert!(is_valid);
-
-        let mul = interface
-            .scalar_mul_native_amount_wasmv1(&amount1, 2)
-            .unwrap();
-        assert_eq!(mul, amount3);
-
-        let (quotient, remainder) = interface
-            .scalar_div_rem_native_amount_wasmv1(&amount1, 2)
-            .unwrap();
-        let quotient_res_50 = interface.native_amount_from_str_wasmv1("50").unwrap();
-        let remainder_res_0 = interface.native_amount_from_str_wasmv1("0").unwrap();
-        assert_eq!(quotient, quotient_res_50);
-        assert_eq!(remainder, remainder_res_0);
-
-        let (quotient, remainder) = interface
-            .scalar_div_rem_native_amount_wasmv1(&amount1, 3)
-            .unwrap();
-        let verif_div = interface
-            .scalar_mul_native_amount_wasmv1(&quotient, 3)
-            .unwrap();
-        let verif_dif = interface
-            .add_native_amount_wasmv1(&verif_div, &remainder)
-            .unwrap();
-        assert_eq!(verif_dif, amount1);
-
-        let amount5 = interface.native_amount_from_str_wasmv1("2").unwrap();
-        let (quotient, remainder) = interface
-            .div_rem_native_amount_wasmv1(&amount1, &amount5)
-            .unwrap();
-        assert_eq!(quotient, 50);
-        assert_eq!(remainder, remainder_res_0);
-
-        let amount6 = interface.native_amount_from_str_wasmv1("3").unwrap();
-        let (quotient, remainder) = interface
-            .div_rem_native_amount_wasmv1(&amount1, &amount6)
-            .unwrap();
-        let verif_div = interface
-            .scalar_mul_native_amount_wasmv1(&amount6, quotient)
-            .unwrap();
-        let verif_dif = interface
-            .add_native_amount_wasmv1(&verif_div, &remainder)
-            .unwrap();
-        assert_eq!(verif_dif, amount1);
-    }
-
-    #[test]
-    fn test_base58_check_to_form() {
-        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None, None);
-
-        let data = "helloworld";
-        let encoded = interface.bytes_to_base58_check_wasmv1(data.as_bytes());
-        let decoded = interface.base58_check_to_bytes_wasmv1(&encoded).unwrap();
-
-        assert_eq!(data.as_bytes(), decoded);
-    }
-    #[test]
-    fn test_comparison_function() {
-        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None, None);
-
-        // address
-        let addr1 =
-            Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()).to_string();
-        let addr2 =
-            Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()).to_string();
-
-        let cmp_res = interface.compare_address_wasmv1(&addr1, &addr1).unwrap();
-        println!("compare_address_wasmv1(: {}", cmp_res.as_str_name());
-        assert_eq!(
-            cmp_res,
-            ComparisonResult::Equal,
-            "  > Error: compare_address_wasmv1((addr1, addr1) should return EQUAL"
-        );
-
-        let cmp_res1 = interface.compare_address_wasmv1(&addr1, &addr2).unwrap();
-        println!(
-            "compare_address_wasmv1((addr1, addr2): {}",
-            cmp_res1.as_str_name()
-        );
-
-        let cmp_res2 = interface.compare_address_wasmv1(&addr2, &addr1).unwrap();
-        println!(
-            "compare_address_wasmv1((addr2, addr1): {}",
-            cmp_res2.as_str_name()
-        );
-
-        if cmp_res1 == ComparisonResult::Lower {
-            assert_eq!(
-                cmp_res2,
-                ComparisonResult::Greater,
-                "  > Error: compare_address_wasmv1((addr2, addr1) should return GREATER"
-            );
-        } else if cmp_res1 == ComparisonResult::Greater {
-            assert_eq!(
-                cmp_res2,
-                ComparisonResult::Lower,
-                "  > Error: compare_address_wasmv1((addr2, addr1) should return LOWER"
-            );
-        } else {
-            assert_eq!(
-                cmp_res1, cmp_res2,
-                "  > Error: compare_address_wasmv1((addr2, addr1) should return EQUAL"
-            );
-        }
-
-        //amount
-        let amount1 = interface.native_amount_from_str_wasmv1("1").unwrap();
-        let amount2 = interface.native_amount_from_str_wasmv1("2").unwrap();
-        println!("do some compare with amount1 = 1, amount2 = 2");
-
-        let cmp_res = interface
-            .compare_native_amount_wasmv1(&amount1, &amount1)
-            .unwrap();
-        println!(
-            "compare_native_amount_wasmv1(amount1, amount1): {}",
-            cmp_res.as_str_name()
-        );
-        assert_eq!(
-            cmp_res,
-            ComparisonResult::Equal,
-            "  > Error: compare_native_amount_wasmv1(amount1, amount1) should return EQUAL"
-        );
-
-        let cmp_res = interface
-            .compare_native_amount_wasmv1(&amount1, &amount2)
-            .unwrap();
-        println!(
-            "compare_native_amount_wasmv1(amount1, amount2): {}",
-            cmp_res.as_str_name()
-        );
-        assert_eq!(
-            cmp_res,
-            ComparisonResult::Lower,
-            "  > Error: compare_native_amount_wasmv1(amount1, amount2) should return LOWER"
-        );
-
-        let cmp_res = interface
-            .compare_native_amount_wasmv1(&amount2, &amount1)
-            .unwrap();
-        println!(
-            "compare_native_amount_wasmv1(amount2, amount1): {}",
-            cmp_res.as_str_name()
-        );
-        assert_eq!(
-            cmp_res,
-            ComparisonResult::Greater,
-            "  > Error: compare_native_amount_wasmv1(amount2, amount1) should return GREATER"
-        );
-
-        //time
-        let time1 = massa_time_to_native_time(&MassaTime::from_millis(1));
-        let time2 = massa_time_to_native_time(&MassaTime::from_millis(2));
-        println!(
-            "do some compare with time1 = {}, time2 = {}",
-            time1.milliseconds, time2.milliseconds
-        );
-
-        let cmp_res = interface
-            .compare_native_time_wasmv1(&time1, &time1)
-            .unwrap();
-        println!(
-            "compare_native_time_wasmv1(time1, time1): {}",
-            cmp_res.as_str_name()
-        );
-        assert_eq!(
-            cmp_res,
-            ComparisonResult::Equal,
-            "  > Error:compare_native_time_wasmv1(time1, time1) should return EQUAL"
-        );
-
-        let cmp_res = interface
-            .compare_native_time_wasmv1(&time1, &time2)
-            .unwrap();
-        println!(
-            "compare_native_time_wasmv1(time1, time2): {}",
-            cmp_res.as_str_name()
-        );
-        assert_eq!(
-            cmp_res,
-            ComparisonResult::Lower,
-            "  > Error: compare_native_time_wasmv1(time1, time2) should return LOWER"
-        );
-
-        let cmp_res = interface
-            .compare_native_time_wasmv1(&time2, &time1)
-            .unwrap();
-        println!(
-            "compare_native_time_wasmv1(time2, time1): {}",
-            cmp_res.as_str_name()
-        );
-        assert_eq!(
-            cmp_res,
-            ComparisonResult::Greater,
-            "  > Error: compare_native_time_wasmv1(time2, time1) should return GREATER"
-        );
-
-        //pub_key
-        let pub_key1 = KeyPair::generate(0).unwrap().get_public_key().to_string();
-        let pub_key2 = KeyPair::generate(0).unwrap().get_public_key().to_string();
-
-        println!(
-            "do some compare with pub_key1 = {}, pub_key2 = {}",
-            pub_key1, pub_key2
-        );
-
-        let cmp_res = interface
-            .compare_pub_key_wasmv1(&pub_key1, &pub_key1)
-            .unwrap();
-        println!(
-            "compare_pub_key_wasmv1(pub_key1, pub_key1): {}",
-            cmp_res.as_str_name()
-        );
-        assert_eq!(
-            cmp_res,
-            ComparisonResult::Equal,
-            "  > Error: compare_pub_key_wasmv1(pub_key1, pub_key1) should return EQUAL"
-        );
-        let cmp_res1 = interface
-            .compare_pub_key_wasmv1(&pub_key1, &pub_key2)
-            .unwrap();
-        println!(
-            "compare_pub_key_wasmv1(pub_key1, pub_key2): {}",
-            cmp_res1.as_str_name()
-        );
-        let cmp_res2 = interface
-            .compare_pub_key_wasmv1(&pub_key2, &pub_key1)
-            .unwrap();
-        println!(
-            "compare_pub_key_wasmv1(pub_key2, pub_key1): {}",
-            cmp_res2.as_str_name()
-        );
-        if cmp_res1 == ComparisonResult::Lower {
-            assert_eq!(
-                cmp_res2,
-                ComparisonResult::Greater,
-                "  > Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return GREATER"
-            );
-        } else if cmp_res1 == ComparisonResult::Greater {
-            assert_eq!(
-                cmp_res2,
-                ComparisonResult::Lower,
-                "  > Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return LOWER"
-            );
-        } else {
-            assert_eq!(
-                cmp_res1, cmp_res2,
-                "  > Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return EQUAL"
-            );
-        }
     }
 }
 
@@ -2868,14 +1867,6 @@ mod datastore_key_interface_regressions {
         ledger.write().insert(addr, keys(prefix, count));
     }
 
-    fn set_v2(interface: &InterfaceImpl) {
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION;
-    }
-
-    fn set_v1(interface: &InterfaceImpl) {
-        interface.context.lock().execution_component_version = MIP_0002_EXECUTION_VERSION - 1;
-    }
-
     fn assert_error<T>(result: massa_sc_runtime::Result<T>, expected: &str) {
         match result {
             Err(error) => assert_eq!(
@@ -2940,7 +1931,7 @@ mod datastore_key_interface_regressions {
     }
 
     #[test]
-    fn legacy_key_queries_follow_execution_version_boundary() {
+    fn unpaginated_key_queries_reject_more_than_one_page() {
         let (interface, ledger, target, _) = fixture();
         let current = address("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M");
 
@@ -2952,16 +1943,6 @@ mod datastore_key_interface_regressions {
             ledger.write().insert(current, current_keys);
             ledger.write().insert(target, target_keys);
 
-            set_v1(&interface);
-            assert_eq!(interface.get_keys(Some(b"pA")).unwrap(), keys("pA", count));
-            assert_eq!(
-                interface
-                    .get_keys_for(&target.to_string(), Some(b"pB"))
-                    .unwrap(),
-                keys("pB", count)
-            );
-
-            set_v2(&interface);
             if count <= 500 {
                 assert_eq!(interface.get_keys(Some(b"pA")).unwrap(), keys("pA", count));
                 assert_eq!(
@@ -2984,7 +1965,7 @@ mod datastore_key_interface_regressions {
     }
 
     #[test]
-    fn paginated_queries_enforce_activation_counts_and_target_address() {
+    fn paginated_queries_enforce_counts_and_target_address() {
         use massa_sc_runtime::MAX_DATASTORE_KEYS_PAGE;
 
         assert_eq!(MAX_DATASTORE_KEYS_PAGE, 500);
@@ -2998,17 +1979,6 @@ mod datastore_key_interface_regressions {
             .unwrap()
             .insert(b"q000".to_vec());
 
-        set_v1(&interface);
-        assert_error(
-            interface.get_keys_paginated(Some(b"a"), None, 1),
-            "paginated datastore-key queries are only available from execution version 2",
-        );
-        assert_error(
-            interface.get_keys_for_paginated(&target.to_string(), Some(b"p"), None, 1),
-            "paginated datastore-key queries are only available from execution version 2",
-        );
-
-        set_v2(&interface);
         for count in [0, 501] {
             let error = format!("datastore key page size must be between 1 and 500, got {count}");
             assert_error(
@@ -3051,7 +2021,6 @@ mod datastore_key_interface_regressions {
             .get_mut(&target)
             .unwrap()
             .insert(b"q000".to_vec());
-        set_v2(&interface);
 
         let page1 = interface
             .get_keys_for_paginated(&target.to_string(), Some(b"p"), None, 500)
@@ -3094,7 +2063,6 @@ mod datastore_key_interface_regressions {
             .get_mut(&target)
             .unwrap()
             .insert(b"q000".to_vec());
-        set_v2(&interface);
 
         let mut history = BTreeMap::new();
         history.insert(b"p001".to_vec(), SetOrDelete::Delete);
@@ -3152,7 +2120,6 @@ mod datastore_key_interface_regressions {
             .get_mut(&target)
             .unwrap()
             .insert(b"q000".to_vec());
-        set_v2(&interface);
 
         let history_set = BTreeMap::from([
             (b"p100".to_vec(), b"one".to_vec()),
@@ -3210,7 +2177,6 @@ mod datastore_key_interface_regressions {
             .get_mut(&target)
             .unwrap()
             .insert(b"q000".to_vec());
-        set_v2(&interface);
 
         active_history.write().0 = VecDeque::from([history_output(
             Slot::new(1, 0),
@@ -3247,5 +2213,113 @@ mod datastore_key_interface_regressions {
             expected
         );
         assert_current_address_unchanged(&interface);
+    }
+}
+
+#[cfg(test)]
+mod module_for_address_regressions {
+    use super::*;
+    use massa_hash::Hash;
+    use massa_ledger_exports::LedgerEntry;
+    use massa_models::types::SetUpdateOrDelete;
+    use massa_sc_runtime::Interface;
+    use massa_signature::KeyPair;
+
+    const VALID_WASM: &[u8] = include_bytes!("tests/wasm/receive_message.wasm");
+    const INVALID_WASM: &[u8] = b"not a wasm module";
+    const SC: &str = "AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy";
+
+    fn sc() -> Address {
+        Address::from_str(SC).unwrap()
+    }
+
+    fn cached_hash(interface: &InterfaceImpl) -> Option<(Hash, usize)> {
+        interface.context.lock().get_cached_bytecode_hash(&sc())
+    }
+
+    /// Result of the uncached path that `get_module_for_address` replaces
+    fn default_path(interface: &InterfaceImpl) -> std::result::Result<(), String> {
+        let bytecode = interface
+            .raw_get_bytecode_for(SC)
+            .map_err(|e| e.to_string())?;
+        interface
+            .get_module(&bytecode, u64::MAX)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    fn by_address(interface: &InterfaceImpl) -> std::result::Result<(), String> {
+        interface
+            .get_module_for_address(SC, u64::MAX)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    // MASSA-007: while the bytecode hash of an address is cached, `get_module_for_address`
+    // must still load the module of the current bytecode, so every bytecode change and
+    // every snapshot reset drops the cached hash.
+    #[test]
+    fn test_get_module_for_address_follows_bytecode_changes() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .added_changes
+            .0
+            .insert(
+                sc(),
+                SetUpdateOrDelete::Set(LedgerEntry {
+                    bytecode: Bytecode(VALID_WASM.to_vec()),
+                    ..Default::default()
+                }),
+            );
+        let valid = Some((Hash::compute_from(VALID_WASM), VALID_WASM.len()));
+
+        // cold, then served from the cached hash
+        assert_eq!(cached_hash(&interface), None);
+        assert_eq!(by_address(&interface), Ok(()));
+        assert_eq!(cached_hash(&interface), valid);
+        assert_eq!(by_address(&interface), Ok(()));
+        assert_eq!(by_address(&interface), default_path(&interface));
+
+        // a bytecode change drops the cached hash: the new, invalid, module is loaded
+        let snapshot = interface.context.lock().speculative_ledger.get_snapshot();
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .set_bytecode_raw(&sc(), Bytecode(INVALID_WASM.to_vec()));
+        assert_eq!(cached_hash(&interface), None);
+        let err = by_address(&interface).expect_err("the new bytecode is invalid");
+        assert_eq!(Err(err), default_path(&interface));
+        assert_eq!(
+            cached_hash(&interface),
+            Some((Hash::compute_from(INVALID_WASM), INVALID_WASM.len()))
+        );
+        // still invalid when served from the cached hash
+        assert_eq!(by_address(&interface), default_path(&interface));
+        assert!(by_address(&interface).is_err());
+
+        // a snapshot reset reverts the bytecode and drops the cached hash
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .reset_to_snapshot(snapshot);
+        assert_eq!(cached_hash(&interface), None);
+        assert_eq!(by_address(&interface), Ok(()));
+        assert_eq!(cached_hash(&interface), valid);
+
+        // empty bytecode: same error as the default path, and never cached
+        interface
+            .context
+            .lock()
+            .speculative_ledger
+            .set_bytecode_raw(&sc(), Bytecode(Vec::new()));
+        let err = by_address(&interface).expect_err("empty bytecode");
+        assert_eq!(Err(err), default_path(&interface));
+        assert_eq!(cached_hash(&interface), None);
     }
 }

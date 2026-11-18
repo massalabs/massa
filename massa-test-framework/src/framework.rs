@@ -69,7 +69,6 @@ pub trait TestUniverse {
             BlockHeaderSerializer::new(),
             keypair,
             *CHAINID,
-            Some(*CHAINID),
         )
         .unwrap();
 
@@ -81,7 +80,6 @@ pub trait TestUniverse {
             BlockSerializer::new(),
             keypair,
             0,
-            None,
         )
         .unwrap()
     }
@@ -102,8 +100,7 @@ pub trait TestUniverse {
             op,
             expire_period,
         };
-        Operation::new_verifiable(content, OperationSerializer::new(), keypair, chain_id, None)
-            .unwrap()
+        Operation::new_verifiable(content, OperationSerializer::new(), keypair, chain_id).unwrap()
     }
 
     fn create_endorsement(creator: &KeyPair, slot: Slot) -> SecureShareEndorsement {
@@ -112,14 +109,8 @@ pub trait TestUniverse {
             index: 0,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
         };
-        Endorsement::new_verifiable(
-            content,
-            EndorsementSerializer::new(),
-            creator,
-            *CHAINID,
-            Some(*CHAINID),
-        )
-        .unwrap()
+        Endorsement::new_verifiable(content, EndorsementSerializer::new(), creator, *CHAINID)
+            .unwrap()
     }
 }
 

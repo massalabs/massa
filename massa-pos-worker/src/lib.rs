@@ -109,6 +109,9 @@ impl RwLockCondvar {
     }
 
     fn notify_all(&self) {
+        // Take the mutex so that the notification cannot fall between a waiter
+        // releasing its read guard and parking on the condvar (lost wakeup).
+        let _mutex_guard = self.mutex.lock();
         self.condvar.notify_all();
     }
 }

@@ -117,7 +117,7 @@ mockall_wrap = { path = "./massa-mockall-wrap" }
 
 # Massa projects dependencies
 massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", "rev" = "f3b36ea7f0df92bc4fd2b3661dc3fa8885c5aef3" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "c2b4bfcd46db32b8cff1c6a8aa22cdeac3382397" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "71f0bd3ca198574cadb4314f3a7fdbc36c1b0fab" }
 
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "c26659997602386d3c9883361d8867139d8de246" }
 # Dev only - use local dependencies

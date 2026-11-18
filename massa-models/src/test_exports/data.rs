@@ -10,13 +10,6 @@ use crate::endorsement::{
 use crate::secure_share::SecureShareContent;
 use crate::slot::Slot;
 
-/// Default signed-hash layout for tests that are not covering the pre-activation path.
-/// `None` remains the legacy layout and is only for explicit MIP-boundary tests.
-#[inline]
-pub fn test_sig_chain_id() -> Option<u64> {
-    Some(*CHAINID)
-}
-
 /// Helper to generate endorsements ready for denunciation
 pub fn gen_endorsements_for_denunciation(
     with_slot: Option<Slot>,
@@ -42,7 +35,6 @@ pub fn gen_endorsements_for_denunciation(
         EndorsementSerializer::new(),
         &keypair,
         *CHAINID,
-        test_sig_chain_id(),
     )
     .unwrap();
 
@@ -57,7 +49,6 @@ pub fn gen_endorsements_for_denunciation(
         EndorsementSerializer::new(),
         &keypair,
         *CHAINID,
-        test_sig_chain_id(),
     )
     .unwrap();
 
@@ -71,7 +62,6 @@ pub fn gen_endorsements_for_denunciation(
         EndorsementSerializer::new(),
         &keypair,
         *CHAINID,
-        test_sig_chain_id(),
     )
     .unwrap();
 
@@ -112,7 +102,6 @@ pub fn gen_block_headers_for_denunciation(
         EndorsementSerializerLW::new(),
         &keypair,
         *CHAINID,
-        test_sig_chain_id(),
     )
     .unwrap();
 
@@ -132,7 +121,6 @@ pub fn gen_block_headers_for_denunciation(
         BlockHeaderSerializer::new(),
         &keypair,
         *CHAINID,
-        test_sig_chain_id(),
     )
     .expect("error while producing block header");
 
@@ -152,7 +140,6 @@ pub fn gen_block_headers_for_denunciation(
         BlockHeaderSerializer::new(),
         &keypair,
         *CHAINID,
-        test_sig_chain_id(),
     )
     .expect("error while producing block header");
 
@@ -172,7 +159,6 @@ pub fn gen_block_headers_for_denunciation(
         BlockHeaderSerializer::new(),
         &keypair,
         *CHAINID,
-        test_sig_chain_id(),
     )
     .expect("error while producing block header");
 

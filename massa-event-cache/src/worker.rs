@@ -129,6 +129,7 @@ pub fn start_event_cache_writer_worker(
         cfg.max_events_per_operation,
         cfg.max_operations_per_block,
         cfg.max_events_per_query,
+        cfg.max_scanned_keys_per_query,
     )));
 
     // define the input data interface
@@ -207,6 +208,7 @@ mod tests {
             MAX_EVENT_PER_OPERATION as u64,
             MAX_OPERATIONS_PER_BLOCK as u64,
             5000,
+            1_000_000,
         )));
 
         let mut input = EventCacheWriterInputData::new();
@@ -247,6 +249,7 @@ mod tests {
             MAX_EVENT_PER_OPERATION as u64,
             MAX_OPERATIONS_PER_BLOCK as u64,
             5000,
+            1_000_000,
         )));
         let input_data = Arc::new((Condvar::new(), Mutex::new(EventCacheWriterInputData::new())));
         let controller = EventCacheControllerImpl {
@@ -269,6 +272,7 @@ mod tests {
             let in_queue = !input_data.1.lock().events.is_empty();
             let in_cache = !cache_read
                 .get_filtered_sc_output_events(&filter)
+                .unwrap()
                 .1
                 .is_empty();
             assert!(
@@ -282,6 +286,7 @@ mod tests {
         while cache
             .read()
             .get_filtered_sc_output_events(&filter)
+            .unwrap()
             .1
             .is_empty()
         {

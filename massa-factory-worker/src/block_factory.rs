@@ -14,7 +14,6 @@ use massa_models::{
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_time::MassaTime;
-use massa_versioning::consensus_signature::sig_chain_id_for_slot;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -280,7 +279,6 @@ impl BlockFactoryWorker {
         timings.push(("get_block_denunciations END", MassaTime::now()));
 
         timings.push(("block creation START", MassaTime::now()));
-        let sig_chain_id = sig_chain_id_for_slot(&self.mip_store, self.cfg.chain_id, slot_ts);
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
                 current_version,
@@ -294,7 +292,6 @@ impl BlockFactoryWorker {
             BlockHeaderSerializer::new(), // TODO reuse self.block_header_serializer
             &block_producer_keypair,
             self.cfg.chain_id,
-            sig_chain_id,
         )
         .expect("error while producing block header");
         // create block
@@ -307,7 +304,6 @@ impl BlockFactoryWorker {
             BlockSerializer::new(), // TODO reuse self.block_serializer
             &block_producer_keypair,
             self.cfg.chain_id,
-            None,
         )
         .expect("error while producing block");
         let block_id = block.id;

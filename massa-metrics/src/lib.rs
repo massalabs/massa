@@ -304,6 +304,16 @@ pub struct MassaMetrics {
     // active history
     active_history_total_event_len: IntGauge,
 
+    // read-only execution queue
+    /// number of read-only requests waiting in the execution worker queue
+    readonly_queue_length: IntGauge,
+    /// number of read-only requests admitted but not yet taken in by the execution worker
+    readonly_input_queue_length: IntGauge,
+    /// number of read-only requests answered with the queue timeout error
+    readonly_requests_timed_out: IntCounter,
+    /// number of read-only requests refused because the queue was full
+    readonly_requests_refused: IntCounter,
+
     pub tick_delay: Duration,
 }
 
@@ -565,6 +575,27 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let readonly_queue_length = IntGauge::new(
+            "readonly_queue_length",
+            "number of read-only requests waiting in the execution worker queue",
+        )
+        .unwrap();
+        let readonly_input_queue_length = IntGauge::new(
+            "readonly_input_queue_length",
+            "number of read-only requests admitted but not yet taken in by the execution worker",
+        )
+        .unwrap();
+        let readonly_requests_timed_out = IntCounter::new(
+            "readonly_requests_timed_out",
+            "number of read-only requests answered with a timeout because they waited too long in the queue",
+        )
+        .unwrap();
+        let readonly_requests_refused = IntCounter::new(
+            "readonly_requests_refused",
+            "number of read-only requests refused because the queue was full",
+        )
+        .unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -623,6 +654,10 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(db_change_versioning_history_size.clone()));
                 let _ = prometheus::register(Box::new(module_lru_cache_memory_usage.clone()));
                 let _ = prometheus::register(Box::new(active_history_total_event_len.clone()));
+                let _ = prometheus::register(Box::new(readonly_queue_length.clone()));
+                let _ = prometheus::register(Box::new(readonly_input_queue_length.clone()));
+                let _ = prometheus::register(Box::new(readonly_requests_timed_out.clone()));
+                let _ = prometheus::register(Box::new(readonly_requests_refused.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -684,6 +719,10 @@ impl MassaMetrics {
                 db_change_versioning_history_size,
                 module_lru_cache_memory_usage,
                 active_history_total_event_len,
+                readonly_queue_length,
+                readonly_input_queue_length,
+                readonly_requests_timed_out,
+                readonly_requests_refused,
                 tick_delay,
             },
             stopper,
@@ -891,6 +930,22 @@ impl MassaMetrics {
 
     pub fn set_active_history_total_event_len(&self, size: usize) {
         self.active_history_total_event_len.set(size as i64);
+    }
+
+    pub fn set_readonly_queue_length(&self, len: usize) {
+        self.readonly_queue_length.set(len as i64);
+    }
+
+    pub fn set_readonly_input_queue_length(&self, len: usize) {
+        self.readonly_input_queue_length.set(len as i64);
+    }
+
+    pub fn inc_readonly_requests_timed_out_by(&self, count: usize) {
+        self.readonly_requests_timed_out.inc_by(count as u64);
+    }
+
+    pub fn inc_readonly_requests_refused_by(&self, count: usize) {
+        self.readonly_requests_refused.inc_by(count as u64);
     }
 
     // Update the network version vote metrics

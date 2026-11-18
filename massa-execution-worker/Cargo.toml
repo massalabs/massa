@@ -47,6 +47,7 @@ execution-trace = [
 ]
 dump-block = [
     "prost",
+    "massa-proto-rs",
     "massa_execution_exports/dump-block",
     "db_storage_backend",
 ]
@@ -64,8 +65,6 @@ jemalloc = [
 ]
 
 [dependencies]
-blake3 = { workspace = true }
-bs58 = { workspace = true }
 rand = { workspace = true }
 rand_xoshiro = { workspace = true }
 parking_lot = { workspace = true, features = ["deadlock_detection"] }
@@ -80,7 +79,6 @@ libsecp256k1 = { workspace = true }
 criterion = { workspace = true, "optional" = true }
 massa_pos_worker = { workspace = true, "optional" = true }
 massa_async_pool = { workspace = true }
-massa_channel = { workspace = true }
 massa_deferred_calls = { workspace = true }
 massa_executed_ops = { workspace = true }
 massa_execution_exports = { workspace = true }
@@ -101,11 +99,12 @@ massa_db_worker = { workspace = true, optional = true }
 massa_event_cache = { workspace = true }
 tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
-massa-proto-rs = { workspace = true }
+massa-proto-rs = { workspace = true, optional = true }
 schnellru = { workspace = true, optional = true }
 prost = { workspace = true, optional = true }
 cfg-if = { workspace = true }
 rocksdb = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 massa_storage = { workspace = true }
@@ -121,7 +120,7 @@ massa_db_worker = { workspace = true }
 tempfile = { workspace = true }
 massa_test_framework = { workspace = true, "features" = ["test-exports"] }
 massa_versioning = { workspace = true, "features" = ["test-exports"] }
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["sync", "rt"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }
 massa_event_cache = { workspace = true, features = ["test-exports"] }

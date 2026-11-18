@@ -9,7 +9,8 @@ use massa_execution_exports::mapping_grpc::{
     to_event_filter, to_execution_query_response, to_querystate_filter,
 };
 use massa_execution_exports::{
-    ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponseItem,
+    ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_models::address::Address;
 use massa_models::amount::Amount;
@@ -43,7 +44,7 @@ use massa_proto_rs::massa::api::v1::{
 };
 
 /// Execute read only call (function or bytecode)
-pub(crate) fn execute_read_only_call(
+pub(crate) async fn execute_read_only_call(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::ExecuteReadOnlyCallRequest>,
 ) -> Result<grpc_api::ExecuteReadOnlyCallResponse, GrpcError> {
@@ -162,9 +163,11 @@ pub(crate) fn execute_read_only_call(
         )));
     }
 
+    // await the answer without holding a runtime thread
     let output = grpc
         .execution_controller
-        .execute_readonly_request(read_only_call)?;
+        .execute_readonly_request_async(read_only_call)
+        .await?;
 
     let result = grpc_model::ReadOnlyExecutionOutput {
         out: Some(output.out.into()),
@@ -560,8 +563,7 @@ pub(crate) fn get_slot_transfers(
 
             let abi_transfer_1 = "assembly_script_transfer_coins".to_string();
             let abi_transfer_2 = "assembly_script_transfer_coins_for".to_string();
-            let abi_transfer_3 = "abi_transfer_coins".to_string();
-            let transfer_abi_names = vec![abi_transfer_1, abi_transfer_2, abi_transfer_3];
+            let transfer_abi_names = vec![abi_transfer_1, abi_transfer_2];
             for (i, asc_call_stack) in abi_calls.asc_call_stacks.iter().enumerate() {
                 for abi_trace in asc_call_stack {
                     let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
@@ -805,12 +807,26 @@ pub(crate) fn get_sc_execution_events(
     request: tonic::Request<grpc_api::GetScExecutionEventsRequest>,
 ) -> Result<grpc_api::GetScExecutionEventsResponse, GrpcError> {
     let event_filter = to_event_filter(request.into_inner().filters)?;
-    let events: Vec<grpc_model::ScExecutionEvent> = grpc
+    // go through query_state so that the event count and response size budgets apply
+    let response = grpc
         .execution_controller
-        .get_filtered_sc_output_event(event_filter)
-        .into_iter()
-        .map(|event| event.into())
-        .collect();
+        .query_state(ExecutionQueryRequest {
+            requests: vec![ExecutionQueryRequestItem::Events(event_filter)],
+            max_response_size: grpc.grpc_config.max_encoding_message_size,
+            max_event_count: Some(grpc.grpc_config.max_event_per_query as usize),
+            query_state_deadline_ms: grpc.grpc_config.query_state_deadline_ms,
+        });
+    let events: Vec<grpc_model::ScExecutionEvent> = match response.responses.into_iter().next() {
+        Some(Ok(ExecutionQueryResponseItem::Events(events))) => {
+            events.into_iter().map(|event| event.into()).collect()
+        }
+        Some(Err(err)) => return Err(GrpcError::InternalServerError(err.to_string())),
+        _ => {
+            return Err(GrpcError::InternalServerError(
+                "unexpected response type".to_string(),
+            ))
+        }
+    };
 
     Ok(grpc_api::GetScExecutionEventsResponse { events })
 }

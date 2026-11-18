@@ -176,8 +176,8 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "as-ffi-bindings"
-version = "0.2.5"
-source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.6#ba6583eb2877065090e28985e370feac427641a1"
+version = "0.5.7"
+source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.7#c9881d64438a5fe30c33473cb0b56c5ba041a7e8"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -2902,7 +2902,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=c2b4bfcd46db32b8cff1c6a8aa22cdeac3382397#c2b4bfcd46db32b8cff1c6a8aa22cdeac3382397"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=71f0bd3ca198574cadb4314f3a7fdbc36c1b0fab#71f0bd3ca198574cadb4314f3a7fdbc36c1b0fab"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2910,15 +2910,10 @@ dependencies = [
  "chrono",
  "displaydoc",
  "loupe",
- "massa-proto-rs",
  "more-asserts 0.3.1",
  "num_enum",
- "parking_lot",
- "prost",
- "prost-types",
  "rand",
  "regex",
- "rust_decimal",
  "serde",
  "serde_json",
  "serial_test",
@@ -2931,7 +2926,6 @@ dependencies = [
  "wasmer-compiler-singlepass",
  "wasmer-middlewares",
  "wasmer-types",
- "which",
 ]
 
 [[package]]
@@ -3250,8 +3244,6 @@ dependencies = [
 name = "massa_execution_worker"
 version = "5.1.0"
 dependencies = [
- "blake3",
- "bs58",
  "cfg-if",
  "criterion",
  "hex-literal",
@@ -3259,7 +3251,6 @@ dependencies = [
  "massa-proto-rs",
  "massa-sc-runtime",
  "massa_async_pool",
- "massa_channel",
  "massa_db_exports",
  "massa_db_worker",
  "massa_deferred_calls",
@@ -3547,7 +3538,6 @@ dependencies = [
  "massa_pos_exports",
  "massa_storage",
  "massa_time",
- "massa_versioning",
  "mockall",
  "mockall_wrap",
  "serde",
@@ -3569,10 +3559,8 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
- "massa_versioning",
  "massa_wallet",
  "mockall",
- "num",
  "parking_lot",
  "tokio",
  "tracing",
@@ -6971,19 +6959,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09aed61f5e8d2c18344b3faa33a4c837855fe56642757754775548fee21386c4"
 dependencies = [
  "rustls-pki-types",
-]
-
-[[package]]
-name = "which"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bf3ea8596f3a0dd5980b46430f2058dfe2c36a27ccfbb1845d6fbfcd9ba6e14"
-dependencies = [
- "either",
- "home",
- "once_cell",
- "rustix 0.38.44",
- "windows-sys 0.48.0",
 ]
 
 [[package]]

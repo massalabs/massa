@@ -181,7 +181,9 @@ pub enum PeerManagementCmd {
     Ban(Vec<PeerId>),
     Unban(Vec<PeerId>),
     GetBootstrapPeers {
-        responder: MassaSender<BootstrapPeers>,
+        /// one-shot response channel: a plain crossbeam channel rather than a
+        /// `MassaChannel`, whose metrics would be registered for every call
+        responder: crossbeam::channel::Sender<BootstrapPeers>,
     },
     Stop,
 }

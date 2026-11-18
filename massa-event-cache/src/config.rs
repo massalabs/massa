@@ -19,4 +19,7 @@ pub struct EventCacheConfig {
     pub max_operations_per_block: u64,
     /// Maximum events returned in a query
     pub max_events_per_query: usize,
+    /// Maximum number of index keys a query may scan, over all its filter criteria.
+    /// A query that would scan more fails, asking the client to narrow its filter.
+    pub max_scanned_keys_per_query: u64,
 }

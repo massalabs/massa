@@ -9,12 +9,11 @@ use massa_models::slot::Slot;
 use massa_models::{
     address::Address,
     denunciation::{Denunciation, DenunciationPrecursor},
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
+    timeslots::get_closest_slot_to_timestamp,
 };
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::consensus_signature::sig_chain_id_for_slot;
 
 #[derive(Clone)]
 pub struct DenunciationPool {
@@ -156,37 +155,16 @@ impl DenunciationPool {
 
         let key = DenunciationIndex::from(&denunciation_precursor);
 
-        // Decide the consensus signature layout for reconstructing the denounced
-        // signatures: `None` (legacy) before MIP-0002 `Execution` v2 is active for
-        // the denounced slot, `Some(chain_id)` afterwards. This must match the
-        // layout used to sign the endorsement / block header, otherwise the
-        // denunciation fails to verify. See F90 / PDF #11.
-        let de_slot = denunciation_precursor.get_slot();
-        let de_slot_ts = match get_block_slot_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            *de_slot,
-        ) {
-            Ok(ts) => ts,
-            Err(e) => {
-                debug!(
-                    "Denunciation pool cannot compute denounced slot timestamp: {}",
-                    e
-                );
-                return;
-            }
-        };
-        let sig_chain_id =
-            sig_chain_id_for_slot(&self.channels.mip_store, self.channels.chain_id, de_slot_ts);
+        // Denounced signatures are reconstructed for the local chain: messages signed
+        // on another chain do not verify. See F90 / PDF #11.
+        let chain_id = self.channels.chain_id;
 
         let denunciation_: Option<Denunciation> = match self.denunciations_cache.entry(key) {
             Entry::Occupied(mut eo) => match eo.get_mut() {
                 DenunciationStatus::Accumulating(de_p_) => {
                     let de_p: &DenunciationPrecursor = de_p_;
                     if *de_p != denunciation_precursor {
-                        match Denunciation::try_from((de_p, &denunciation_precursor, sig_chain_id))
-                        {
+                        match Denunciation::try_from((de_p, &denunciation_precursor, chain_id)) {
                             Ok(de) => {
                                 eo.insert(DenunciationStatus::DenunciationEmitted(de.clone()));
                                 Some(de)
@@ -398,7 +376,6 @@ mod tests {
                 BlockHeaderSerializer::new(),
                 &keypair,
                 *CHAINID,
-                Some(*CHAINID),
             )
             .expect("error while producing block header");
 
@@ -422,7 +399,6 @@ mod tests {
                 EndorsementSerializer::new(),
                 &keypair,
                 *CHAINID,
-                Some(*CHAINID),
             )
             .unwrap();
 

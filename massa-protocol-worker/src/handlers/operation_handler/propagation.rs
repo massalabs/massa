@@ -638,7 +638,7 @@ mod tests {
             },
             expire_period: index,
         };
-        Operation::new_verifiable(content, OperationSerializer::new(), &keypair, 0, None).unwrap()
+        Operation::new_verifiable(content, OperationSerializer::new(), &keypair, 0).unwrap()
     }
 
     /// A failed announcement must not mark the peer as knowing the operations, and the

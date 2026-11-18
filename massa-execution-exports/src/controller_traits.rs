@@ -20,9 +20,15 @@ use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 
 #[cfg(feature = "execution-trace")]
 use crate::types_trace_info::{AbiTrace, SlotAbiCallStack, Transfer};
+
+/// Future resolving to the result of a queued read-only execution
+pub type ReadOnlyExecutionFuture =
+    Pin<Box<dyn Future<Output = Result<ReadOnlyExecutionOutput, ExecutionError>> + Send>>;
 
 #[cfg_attr(feature = "test-exports", mockall::automock)]
 /// interface that communicates with the execution worker thread
@@ -91,12 +97,16 @@ pub trait ExecutionController: Send + Sync {
     /// * `req`: an instance of `ReadOnlyCallRequest` describing the parameters of the execution
     ///
     /// # returns
-    /// An instance of `ExecutionOutput` containing a summary of the effects of the execution,
-    /// or an error if the execution failed.
-    fn execute_readonly_request(
+    /// A future resolving to an instance of `ExecutionOutput` containing a summary of the
+    /// effects of the execution, or an error if the execution failed.
+    ///
+    /// The request is queued (or refused) when this is called; awaiting the future
+    /// only waits for the answer, without holding a thread. Dropping the future
+    /// abandons the request: the execution worker skips it if it has not started it yet.
+    fn execute_readonly_request_async(
         &self,
         req: ReadOnlyExecutionRequest,
-    ) -> Result<ReadOnlyExecutionOutput, ExecutionError>;
+    ) -> ReadOnlyExecutionFuture;
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
     /// (speculative, final)

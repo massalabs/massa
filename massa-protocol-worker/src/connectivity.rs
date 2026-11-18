@@ -42,8 +42,10 @@ static_assertions::const_assert!(THREAD_NAME.len() < 16);
 pub enum ConnectivityCommand {
     Stop,
     GetStats {
+        /// one-shot response channel: a plain crossbeam channel rather than a
+        /// `MassaChannel`, whose metrics would be registered for every call
         #[allow(clippy::type_complexity)]
-        responder: MassaSender<(
+        responder: crossbeam::channel::Sender<(
             NetworkStats,
             HashMap<PeerId, (SocketAddr, PeerConnectionType)>,
         )>,
@@ -164,7 +166,6 @@ pub(crate) fn start_connectivity_thread(
                 protocol_channels.endorsement_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),
                 massa_metrics.clone(),
-                mip_store.clone(),
             );
             let mut block_handler = BlockHandler::new(
                 network_controller.get_active_connections(),

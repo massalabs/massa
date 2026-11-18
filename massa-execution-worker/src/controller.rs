@@ -5,13 +5,14 @@
 
 use crate::execution::ExecutionState;
 use crate::request_queue::{RequestQueue, RequestWithResponseSender};
-use massa_channel::MassaChannel;
 use massa_execution_exports::{
     ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, ExecutionQueryError, ExecutionQueryExecutionStatus,
     ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
-    ExecutionQueryResponseItem, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionQueryResponseItem, ReadOnlyExecutionFuture, ReadOnlyExecutionOutput,
+    ReadOnlyExecutionRequest,
 };
+use massa_metrics::MassaMetrics;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
@@ -24,7 +25,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Display;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tracing::info;
+use tokio::sync::oneshot;
+use tracing::{info, warn};
 
 #[cfg(feature = "execution-trace")]
 use massa_execution_exports::types_trace_info::AbiTrace;
@@ -45,6 +47,9 @@ pub(crate) struct ExecutionInputData {
     pub block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     /// queue for read-only execution requests and response MPSCs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
+    /// set by the worker after its final drain: new read-only requests are refused.
+    /// Unlike the other fields, it is not reset by `take`.
+    pub closed: bool,
 }
 
 impl Display for ExecutionInputData {
@@ -75,14 +80,30 @@ impl ExecutionInputData {
             finalized_blocks: Default::default(),
             new_blockclique: Default::default(),
             block_metadata: Default::default(),
-            readonly_requests: RequestQueue::new(config.max_final_events),
+            readonly_requests: RequestQueue::new(config.readonly_queue_length),
+            closed: false,
         }
+    }
+
+    /// Checks whether a new read-only request can be queued
+    pub fn check_readonly_admission(&self) -> Result<(), ExecutionError> {
+        if self.closed {
+            return Err(ExecutionError::ChannelError(
+                "readonly execution refused because the execution worker is closing".into(),
+            ));
+        }
+        if self.readonly_requests.is_full() {
+            return Err(ExecutionError::ChannelError(
+                "too many queued readonly requests".into(),
+            ));
+        }
+        Ok(())
     }
 
     /// Takes the current input data into a clone that is returned,
     /// and resets self.
     pub fn take(&mut self) -> Self {
-        let max_final_events = self.readonly_requests.capacity();
+        let readonly_queue_length = self.readonly_requests.capacity();
         ExecutionInputData {
             stop: std::mem::take(&mut self.stop),
             finalized_blocks: std::mem::take(&mut self.finalized_blocks),
@@ -90,8 +111,9 @@ impl ExecutionInputData {
             block_metadata: std::mem::take(&mut self.block_metadata),
             readonly_requests: std::mem::replace(
                 &mut self.readonly_requests,
-                RequestQueue::new(max_final_events),
+                RequestQueue::new(readonly_queue_length),
             ),
+            closed: self.closed,
         }
     }
 }
@@ -104,6 +126,57 @@ pub struct ExecutionControllerImpl {
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// current execution state (see execution.rs for details)
     pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
+    /// metrics, to count the read-only requests refused at admission
+    pub(crate) massa_metrics: MassaMetrics,
+}
+
+/// Receiving side of the response channel of a queued read-only request
+type ReadOnlyResponseReceiver = oneshot::Receiver<Result<ReadOnlyExecutionOutput, ExecutionError>>;
+
+/// The execution worker dropped the response sender without answering
+fn readonly_response_channel_error(err: oneshot::error::RecvError) -> ExecutionError {
+    ExecutionError::ChannelError(format!(
+        "readonly execution response channel readout failed: {}",
+        err
+    ))
+}
+
+impl ExecutionControllerImpl {
+    /// Queues a read-only request for the execution worker, or refuses it if the
+    /// queue is full or the worker is closing.
+    ///
+    /// # Returns
+    /// The receiving side of the channel the worker answers on
+    fn queue_readonly_request(
+        &self,
+        req: ReadOnlyExecutionRequest,
+    ) -> Result<ReadOnlyResponseReceiver, ExecutionError> {
+        let mut input_data = self.input_data.1.lock();
+
+        // refuse the request if the queue is full or the worker is closing
+        if let Err(err) = input_data.check_readonly_admission() {
+            // only count refusals due to load, not the ones during shutdown
+            if !input_data.closed {
+                self.massa_metrics.inc_readonly_requests_refused_by(1);
+            }
+            return Err(err);
+        }
+
+        // prepare the channel to send back the result of the read-only execution
+        let (resp_tx, resp_rx) = oneshot::channel();
+
+        // append the request to the queue of input read-only requests
+        input_data
+            .readonly_requests
+            .push(RequestWithResponseSender::new(req, resp_tx));
+        self.massa_metrics
+            .set_readonly_input_queue_length(input_data.readonly_requests.len());
+
+        // wake up the execution main loop
+        self.input_data.0.notify_one();
+
+        Ok(resp_rx)
+    }
 }
 
 impl ExecutionController for ExecutionControllerImpl {
@@ -209,13 +282,18 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    // ponytail: single-shot path uncapped (explicit None), one full active-history scan per call;
-    // thread a handler-provided limit like query_state does if this is abused
-    // (breaking-changes list, F42).
+    // Uncapped (explicit None): the public JSON-RPC and gRPC handlers go through
+    // `query_state` instead, which applies the event count and response size budgets.
+    // A query that exceeds the event cache scan budget returns no events here (logged):
+    // this trait method has no error channel, unlike the `Events` item of `query_state`.
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         self.execution_state
             .read()
             .get_filtered_sc_output_event(filter, None)
+            .unwrap_or_else(|err| {
+                warn!("get_filtered_sc_output_event: {}", err);
+                Vec::new()
+            })
     }
 
     /// Get the final and candidate values of balance.
@@ -249,42 +327,13 @@ impl ExecutionController for ExecutionControllerImpl {
 
     /// Executes a read-only request
     /// Read-only requests do not modify consensus state
-    fn execute_readonly_request(
+    fn execute_readonly_request_async(
         &self,
         req: ReadOnlyExecutionRequest,
-    ) -> Result<ReadOnlyExecutionOutput, ExecutionError> {
-        let resp_rx = {
-            let mut input_data = self.input_data.1.lock();
-
-            // if the read-only queue is already full, return an error
-            if input_data.readonly_requests.is_full() {
-                return Err(ExecutionError::ChannelError(
-                    "too many queued readonly requests".into(),
-                ));
-            }
-
-            // prepare the channel to send back the result of the read-only execution
-            let (resp_tx, resp_rx) = MassaChannel::new("read_only_request".to_string(), None);
-
-            // append the request to the queue of input read-only requests
-            input_data
-                .readonly_requests
-                .push(RequestWithResponseSender::new(req, resp_tx));
-
-            // wake up the execution main loop
-            self.input_data.0.notify_one();
-
-            resp_rx
-        };
-
-        // Wait for the result of the execution
-        match resp_rx.recv() {
-            Ok(result) => result,
-            Err(err) => Err(ExecutionError::ChannelError(format!(
-                "readonly execution response channel readout failed: {}",
-                err
-            ))),
-        }
+    ) -> ReadOnlyExecutionFuture {
+        // queue (or refuse) the request now, then only wait for the answer in the future
+        let resp_rx = self.queue_readonly_request(req);
+        Box::pin(async move { resp_rx?.await.map_err(readonly_response_channel_error)? })
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
@@ -693,7 +742,9 @@ fn eval_query_item(
                 ));
             }
             let limit = *remaining_events;
-            let events = exec_state.get_filtered_sc_output_event(filter, limit);
+            let events = exec_state
+                .get_filtered_sc_output_event(filter, limit)
+                .map_err(ExecutionQueryError::TooLargeResponse)?;
             if let Some(remaining) = remaining_events {
                 *remaining -= events.len();
             }
@@ -790,5 +841,62 @@ impl ExecutionManager for ExecutionManagerImpl {
                 .expect("Execution manager thread panicked");
         }
         info!("Execution manager stopped");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use massa_execution_exports::ReadOnlyExecutionTarget;
+
+    fn readonly_request(
+    ) -> RequestWithResponseSender<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput> {
+        let (resp_tx, _resp_rx) = oneshot::channel();
+        RequestWithResponseSender::new(
+            ReadOnlyExecutionRequest {
+                max_gas: 0,
+                call_stack: vec![],
+                target: ReadOnlyExecutionTarget::BytecodeExecution(vec![]),
+                coins: None,
+                fee: None,
+            },
+            resp_tx,
+        )
+    }
+
+    #[test]
+    fn readonly_admission_uses_readonly_queue_length() {
+        let config = ExecutionConfig {
+            readonly_queue_length: 1,
+            max_final_events: 1000,
+            ..Default::default()
+        };
+        let mut input_data = ExecutionInputData::new(config);
+        assert_eq!(input_data.readonly_requests.capacity(), 1);
+        assert!(input_data.check_readonly_admission().is_ok());
+
+        input_data.readonly_requests.push(readonly_request());
+        assert!(input_data.check_readonly_admission().is_err());
+
+        // the worker takes the queue: the capacity stays the same
+        let taken = input_data.take();
+        assert_eq!(taken.readonly_requests.capacity(), 1);
+        assert_eq!(input_data.readonly_requests.capacity(), 1);
+        assert!(input_data.check_readonly_admission().is_ok());
+    }
+
+    #[test]
+    fn readonly_admission_refused_after_close() {
+        let mut input_data = ExecutionInputData::new(ExecutionConfig::default());
+        input_data.closed = true;
+
+        // a request pushed after the final drain would never be answered
+        let _ = input_data.take();
+        assert!(input_data.closed, "take must not reset the closed flag");
+        // `ExecutionError`'s Display drops the message, so match the variant instead
+        assert!(matches!(
+            input_data.check_readonly_admission(),
+            Err(ExecutionError::ChannelError(msg)) if msg.contains("execution worker is closing")
+        ));
     }
 }

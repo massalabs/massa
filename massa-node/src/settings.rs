@@ -29,6 +29,7 @@ pub struct ExecutionSettings {
     pub max_final_events: usize,
     pub readonly_queue_length: usize,
     pub readonly_starvation_timeout: MassaTime,
+    pub readonly_queue_timeout: MassaTime,
     pub cursor_delay: MassaTime,
     pub stats_time_window_duration: MassaTime,
     pub max_read_only_gas: u64,
@@ -46,6 +47,7 @@ pub struct ExecutionSettings {
     pub event_cache_size: usize,
     pub event_snip_amount: usize,
     pub max_event_per_query: usize,
+    pub max_event_keys_scanned_per_query: u64,
     /// wall-clock deadline for a query_state batch, in ms (`None` = no deadline)
     #[serde(default)]
     pub query_state_deadline_ms: Option<u64>,

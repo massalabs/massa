@@ -189,6 +189,13 @@ impl ProductionDatastoreFixture {
         let controller = ExecutionControllerImpl {
             input_data,
             execution_state: execution_state.clone(),
+            massa_metrics: MassaMetrics::new(
+                false,
+                "127.0.0.1:0".parse().unwrap(),
+                THREAD_COUNT,
+                std::time::Duration::from_secs(1),
+            )
+            .0,
         };
 
         Self {

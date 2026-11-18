@@ -34,6 +34,9 @@ chain_id = 77658377
     id_kind = "Number"
     # max length for logging for requests and responses. Logs bigger than this limit will be truncated
     max_log_length = 4096
+    # maximum number of addresses sent in one `get_addresses` request (e.g. by `wallet_info`).
+    # Must not exceed the node's JSON-RPC `max_arguments` (128 by default).
+    max_addresses_per_request = 128
     # custom headers passed to the server with every request (default is empty).
     headers = []
 

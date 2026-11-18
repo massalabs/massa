@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, time::Duration};
 
-use massa_channel::{sender::MassaSender, MassaChannel};
+use massa_channel::sender::MassaSender;
 use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
@@ -145,7 +145,7 @@ impl ProtocolController for ProtocolControllerImpl {
         ),
         ProtocolError,
     > {
-        let (sender, receiver) = MassaChannel::new("get_stats".to_string(), Some(1));
+        let (sender, receiver) = crossbeam::channel::bounded(1);
         self.sender_connectivity_thread
             .as_ref()
             .unwrap()
@@ -173,7 +173,7 @@ impl ProtocolController for ProtocolControllerImpl {
     }
 
     fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, ProtocolError> {
-        let (sender, receiver) = MassaChannel::new("get_bootstrap_peers".to_string(), Some(1));
+        let (sender, receiver) = crossbeam::channel::bounded(1);
         self.sender_peer_management_thread
             .as_ref()
             .unwrap()

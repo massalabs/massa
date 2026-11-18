@@ -110,31 +110,62 @@ impl ModuleCache {
     /// * `ModuleInfo::Module` if the module is valid and has no delta
     /// * `ModuleInfo::ModuleAndDelta` if the module is valid and has a delta
     fn load_module_info(&mut self, bytecode: &[u8], condom_limits: CondomLimits) -> ModuleInfo {
-        if bytecode.is_empty() {
-            let error_msg = "load_module: bytecode is absent".to_string();
-            debug!(error_msg);
-            return ModuleInfo::Invalid(error_msg);
-        }
-        if bytecode.len() > self.cfg.max_module_length as usize {
-            let error_msg = format!(
-                "load_module: bytecode length {} exceeds max module length {}",
-                bytecode.len(),
-                self.cfg.max_module_length
-            );
-            debug!(error_msg);
-            return ModuleInfo::Invalid(error_msg);
+        if let Some(invalid) = self.check_module_length(bytecode.len()) {
+            return invalid;
         }
         let hash = Hash::compute_from(bytecode);
+        self.load_module_info_with_hash(bytecode, hash, condom_limits)
+    }
+
+    /// Length checks of `load_module_info`, done before hashing the bytecode
+    fn check_module_length(&self, bytecode_len: usize) -> Option<ModuleInfo> {
+        if bytecode_len == 0 {
+            let error_msg = "load_module: bytecode is absent".to_string();
+            debug!(error_msg);
+            return Some(ModuleInfo::Invalid(error_msg));
+        }
+        if bytecode_len > self.cfg.max_module_length as usize {
+            let error_msg = format!(
+                "load_module: bytecode length {} exceeds max module length {}",
+                bytecode_len, self.cfg.max_module_length
+            );
+            debug!(error_msg);
+            return Some(ModuleInfo::Invalid(error_msg));
+        }
+        None
+    }
+
+    /// Looks up the module info of a bytecode whose hash is already known in the
+    /// LRU then the HD cache.
+    fn get_cached_module_info(
+        &mut self,
+        hash: Hash,
+        condom_limits: CondomLimits,
+    ) -> Option<ModuleInfo> {
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             debug!("load_module: {} present in lru", hash);
-            lru_module_info
+            Some(lru_module_info)
         } else if let Some(hd_module_info) =
             self.hd_cache
-                .get(hash, self.cfg.gas_costs.clone(), condom_limits.clone())
+                .get(hash, self.cfg.gas_costs.clone(), condom_limits)
         {
             debug!("load_module: {} missing in lru but present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info.clone());
-            hd_module_info
+            Some(hd_module_info)
+        } else {
+            None
+        }
+    }
+
+    /// `load_module_info` after the length checks, with `hash == Hash::compute_from(bytecode)`
+    fn load_module_info_with_hash(
+        &mut self,
+        bytecode: &[u8],
+        hash: Hash,
+        condom_limits: CondomLimits,
+    ) -> ModuleInfo {
+        if let Some(module_info) = self.get_cached_module_info(hash, condom_limits.clone()) {
+            module_info
         } else {
             debug!("load_module: {} missing", hash);
             let module_info = self.compile_cached(bytecode, hash, condom_limits);
@@ -154,6 +185,54 @@ impl ModuleCache {
         execution_gas: u64,
         condom_limits: CondomLimits,
     ) -> Result<RuntimeModule, CacheError> {
+        self.check_execution_gas(execution_gas)?;
+        let module_info = self.load_module_info(bytecode, condom_limits);
+        Self::module_from_info(module_info, execution_gas)
+    }
+
+    /// Same as `load_module`, when the caller already knows `hash == Hash::compute_from(bytecode)`.
+    pub fn load_module_with_hash(
+        &mut self,
+        bytecode: &[u8],
+        hash: Hash,
+        execution_gas: u64,
+        condom_limits: CondomLimits,
+    ) -> Result<RuntimeModule, CacheError> {
+        debug_assert_eq!(hash, Hash::compute_from(bytecode));
+        self.check_execution_gas(execution_gas)?;
+        let module_info = match self.check_module_length(bytecode.len()) {
+            Some(invalid) => invalid,
+            None => self.load_module_info_with_hash(bytecode, hash, condom_limits),
+        };
+        Self::module_from_info(module_info, execution_gas)
+    }
+
+    /// Same as `load_module` for a bytecode known only by its hash and length,
+    /// without access to the bytecode itself.
+    ///
+    /// Returns `None` when the result cannot be decided without the bytecode
+    /// (module in neither the LRU nor the HD cache, or invalid length): the
+    /// caller must then fall back to `load_module_with_hash`. Otherwise, returns
+    /// exactly what `load_module` would for that bytecode.
+    pub fn load_cached_module_by_hash(
+        &mut self,
+        hash: Hash,
+        bytecode_len: usize,
+        execution_gas: u64,
+        condom_limits: CondomLimits,
+    ) -> Option<Result<RuntimeModule, CacheError>> {
+        if let Err(err) = self.check_execution_gas(execution_gas) {
+            return Some(Err(err));
+        }
+        if self.check_module_length(bytecode_len).is_some() {
+            return None;
+        }
+        let module_info = self.get_cached_module_info(hash, condom_limits)?;
+        Some(Self::module_from_info(module_info, execution_gas))
+    }
+
+    /// Gas check done by `load_module` before loading anything
+    fn check_execution_gas(&self, execution_gas: u64) -> Result<(), CacheError> {
         // Do not actually debit the instance creation cost from the provided gas
         // This is only supposed to be a check
         execution_gas
@@ -164,7 +243,14 @@ impl ModuleCache {
             )))?;
         // TODO: interesting but unimportant optim
         // remove max_instance_cost hard check if module is cached and has a delta
-        let module_info = self.load_module_info(bytecode, condom_limits);
+        Ok(())
+    }
+
+    /// Turns the loaded module info into a module, checking the instance creation cost
+    fn module_from_info(
+        module_info: ModuleInfo,
+        execution_gas: u64,
+    ) -> Result<RuntimeModule, CacheError> {
         let module = match module_info {
             ModuleInfo::Invalid(err) => {
                 let err_msg = format!("invalid module: {}", err);
@@ -294,6 +380,68 @@ mod tests {
             1,
             "save_module must not read the HD cache when the module is in the LRU cache"
         );
+    }
+
+    /// `load_cached_module_by_hash` must return what `load_module` returns, and
+    /// `None` whenever that cannot be decided without the bytecode.
+    #[test]
+    #[serial]
+    fn test_load_cached_module_by_hash_matches_load_module() {
+        let (mut cache, _cache_dir) = setup(1_000_000);
+        let condom_limits = CondomLimits::default();
+        let hash = Hash::compute_from(TEST_BYTECODE);
+        let len = TEST_BYTECODE.len();
+
+        // not cached yet: the caller must fall back to the bytecode path
+        assert!(cache
+            .load_cached_module_by_hash(hash, len, u64::MAX, condom_limits.clone())
+            .is_none());
+
+        cache
+            .load_module_with_hash(TEST_BYTECODE, hash, u64::MAX, condom_limits.clone())
+            .expect("valid module");
+        assert!(matches!(
+            cache.load_cached_module_by_hash(hash, len, u64::MAX, condom_limits.clone()),
+            Some(Ok(_))
+        ));
+
+        // not enough gas: same error as load_module
+        let low_gas = cache.cfg.gas_costs.max_instance_cost - 1;
+        let expected = cache
+            .load_module(TEST_BYTECODE, low_gas, condom_limits.clone())
+            .err()
+            .expect("gas check must fail")
+            .to_string();
+        let got = cache
+            .load_cached_module_by_hash(hash, len, low_gas, condom_limits.clone())
+            .expect("gas check needs no bytecode")
+            .err()
+            .expect("gas check must fail")
+            .to_string();
+        assert_eq!(got, expected);
+
+        // invalid lengths are left to the bytecode path, which reports them
+        assert!(cache
+            .load_cached_module_by_hash(hash, 0, u64::MAX, condom_limits.clone())
+            .is_none());
+        assert!(cache
+            .load_cached_module_by_hash(hash, 1_000_001, u64::MAX, condom_limits.clone())
+            .is_none());
+
+        // a module marked invalid is reported as invalid, as by load_module
+        cache.set_invalid(TEST_BYTECODE, "test error".to_string());
+        let expected = cache
+            .load_module(TEST_BYTECODE, u64::MAX, condom_limits.clone())
+            .err()
+            .expect("invalid module")
+            .to_string();
+        let got = cache
+            .load_cached_module_by_hash(hash, len, u64::MAX, condom_limits)
+            .expect("invalid module is cached")
+            .err()
+            .expect("invalid module")
+            .to_string();
+        assert_eq!(got, expected);
     }
 
     #[test]
