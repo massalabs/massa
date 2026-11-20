@@ -207,7 +207,8 @@ impl Version {
     /// ```
     pub fn is_compatible(&self, other: &Version) -> bool {
         self.instance == other.instance
-            && (other.major >= self.major || (self.major == 6 && other.major == 5))
+            && (other.major >= self.major
+                || (self.major == 6 && other.major == 5 && other.minor >= 1))
     }
 }
 
