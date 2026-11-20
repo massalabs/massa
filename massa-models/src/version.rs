@@ -190,7 +190,8 @@ impl Deserializer<Version> for VersionDeserializer {
 
 impl Version {
     /// true if a peer running `other` is compatible with us (`self`): same instance,
-    /// and same or newer major (6.x nodes also accept 5.x peers)
+    /// and same or newer major (6.x nodes also accept 5.1+ peers, and buildnet's
+    /// 31.x nodes accept 30.2+ peers, the releases carrying MIP-0002)
     ///
     /// ```rust
     /// # use massa_models::version::Version;
@@ -201,6 +202,9 @@ impl Version {
     /// assert!(v("TEST.5.1").is_compatible(&v("TEST.7.0")));
     /// assert!(v("TEST.6.0").is_compatible(&v("TEST.5.1")));
     /// assert!(!v("TEST.6.0").is_compatible(&v("TEST.4.2")));
+    /// assert!(v("TEST.31.0").is_compatible(&v("TEST.30.2")));
+    /// assert!(!v("TEST.31.0").is_compatible(&v("TEST.30.1")));
+    /// assert!(v("TEST.30.2").is_compatible(&v("TEST.31.0")));
     /// assert!(!v("TEST.7.0").is_compatible(&v("TEST.5.1")));
     /// assert!(!v("TEST.3.0").is_compatible(&v("TEST.2.0")));
     /// assert!(!v("TEST.5.1").is_compatible(&v("PROD.5.1")));
@@ -208,7 +212,8 @@ impl Version {
     pub fn is_compatible(&self, other: &Version) -> bool {
         self.instance == other.instance
             && (other.major >= self.major
-                || (self.major == 6 && other.major == 5 && other.minor >= 1))
+                || (self.major == 6 && other.major == 5 && other.minor >= 1)
+                || (self.major == 31 && other.major == 30 && other.minor >= 2))
     }
 }
 
