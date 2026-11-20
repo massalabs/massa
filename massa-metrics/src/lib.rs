@@ -184,6 +184,19 @@ impl MetricsStopper {
     }
 }
 
+/// Registers `collector` in the default registry, replacing any collector already registered under
+/// the same name.
+///
+/// The node creates a new `MassaMetrics` on every in-process restart (re-bootstrap after a desync).
+/// Without the replacement the registration fails, and the endpoint keeps exporting the collectors
+/// of the previous instance, frozen at their last value.
+fn register<C: prometheus::core::Collector + Clone + 'static>(collector: &C) {
+    let _ = prometheus::unregister(Box::new(collector.clone()));
+    if let Err(e) = prometheus::register(Box::new(collector.clone())) {
+        warn!("failed to register metric: {}", e);
+    }
+}
+
 #[derive(Clone)]
 pub struct MassaMetrics {
     /// enable metrics
@@ -335,7 +348,7 @@ impl MassaMetrics {
             .expect("Failed to create gauge");
             #[cfg(not(feature = "test-exports"))]
             {
-                let _ = prometheus::register(Box::new(gauge.clone()));
+                register(&gauge);
             }
 
             consensus_vec.push(gauge);
@@ -602,62 +615,57 @@ impl MassaMetrics {
             #[cfg(not(feature = "test-exports"))]
             {
                 register_lazy_static_metrics();
-                let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
-                let _ = prometheus::register(Box::new(final_cursor_period.clone()));
-                let _ = prometheus::register(Box::new(active_cursor_thread.clone()));
-                let _ = prometheus::register(Box::new(active_cursor_period.clone()));
-                let _ = prometheus::register(Box::new(active_out_connections.clone()));
-                let _ = prometheus::register(Box::new(block_cache_blocks_known_by_peer.clone()));
-                let _ = prometheus::register(Box::new(block_cache_checked_headers_size.clone()));
-                let _ = prometheus::register(Box::new(operation_cache_checked_operations.clone()));
-                let _ = prometheus::register(Box::new(active_in_connections.clone()));
-                let _ = prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()));
-                let _ = prometheus::register(Box::new(consensus_state_active_index.clone()));
-                let _ = prometheus::register(Box::new(
-                    consensus_state_active_index_without_ops.clone(),
-                ));
-                let _ = prometheus::register(Box::new(consensus_state_incoming_index.clone()));
-                let _ = prometheus::register(Box::new(consensus_state_discarded_index.clone()));
-                let _ = prometheus::register(Box::new(consensus_state_block_statuses.clone()));
-                let _ = prometheus::register(Box::new(
-                    operation_cache_checked_operations_prefix.clone(),
-                ));
-                let _ =
-                    prometheus::register(Box::new(endorsement_cache_checked_endorsements.clone()));
-                let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
-                let _ = prometheus::register(Box::new(peernet_total_bytes_received.clone()));
-                let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
-                let _ = prometheus::register(Box::new(operations_final_counter.clone()));
-                let _ = prometheus::register(Box::new(stakers.clone()));
-                let _ = prometheus::register(Box::new(rolls.clone()));
-                let _ = prometheus::register(Box::new(know_peers.clone()));
-                let _ = prometheus::register(Box::new(banned_peers.clone()));
-                let _ = prometheus::register(Box::new(executed_final_slot.clone()));
-                let _ = prometheus::register(Box::new(executed_final_slot_with_block.clone()));
-                let _ = prometheus::register(Box::new(active_history.clone()));
-                let _ = prometheus::register(Box::new(bootstrap_counter.clone()));
-                let _ = prometheus::register(Box::new(bootstrap_success.clone()));
-                let _ = prometheus::register(Box::new(bootstrap_failed.clone()));
-                let _ = prometheus::register(Box::new(process_available_processors.clone()));
-                let _ = prometheus::register(Box::new(operations_pool.clone()));
-                let _ = prometheus::register(Box::new(endorsements_pool.clone()));
-                let _ = prometheus::register(Box::new(denunciations_pool.clone()));
-                let _ = prometheus::register(Box::new(protocol_tester_success.clone()));
-                let _ = prometheus::register(Box::new(protocol_tester_failed.clone()));
-                let _ = prometheus::register(Box::new(sc_messages_final.clone()));
-                let _ = prometheus::register(Box::new(async_message_pool_size.clone()));
-                let _ = prometheus::register(Box::new(current_time_period.clone()));
-                let _ = prometheus::register(Box::new(current_time_thread.clone()));
-                let _ = prometheus::register(Box::new(block_slot_delay.clone()));
-                let _ = prometheus::register(Box::new(network_current_version.clone()));
-                let _ = prometheus::register(Box::new(db_change_history_size.clone()));
-                let _ = prometheus::register(Box::new(db_change_versioning_history_size.clone()));
-                let _ = prometheus::register(Box::new(module_lru_cache_memory_usage.clone()));
-                let _ = prometheus::register(Box::new(active_history_total_event_len.clone()));
-                let _ = prometheus::register(Box::new(readonly_queue_length.clone()));
-                let _ = prometheus::register(Box::new(readonly_input_queue_length.clone()));
-                let _ = prometheus::register(Box::new(readonly_requests_timed_out.clone()));
-                let _ = prometheus::register(Box::new(readonly_requests_refused.clone()));
+                register(&final_cursor_thread);
+                register(&final_cursor_period);
+                register(&active_cursor_thread);
+                register(&active_cursor_period);
+                register(&active_out_connections);
+                register(&block_cache_blocks_known_by_peer);
+                register(&block_cache_checked_headers_size);
+                register(&operation_cache_checked_operations);
+                register(&active_in_connections);
+                register(&operation_cache_ops_know_by_peer);
+                register(&consensus_state_active_index);
+                register(&consensus_state_active_index_without_ops);
+                register(&consensus_state_incoming_index);
+                register(&consensus_state_discarded_index);
+                register(&consensus_state_block_statuses);
+                register(&operation_cache_checked_operations_prefix);
+                register(&endorsement_cache_checked_endorsements);
+                register(&endorsement_cache_known_by_peer);
+                register(&peernet_total_bytes_received);
+                register(&peernet_total_bytes_sent);
+                register(&operations_final_counter);
+                register(&stakers);
+                register(&rolls);
+                register(&know_peers);
+                register(&banned_peers);
+                register(&executed_final_slot);
+                register(&executed_final_slot_with_block);
+                register(&active_history);
+                register(&bootstrap_counter);
+                register(&bootstrap_success);
+                register(&bootstrap_failed);
+                register(&process_available_processors);
+                register(&operations_pool);
+                register(&endorsements_pool);
+                register(&denunciations_pool);
+                register(&protocol_tester_success);
+                register(&protocol_tester_failed);
+                register(&sc_messages_final);
+                register(&async_message_pool_size);
+                register(&current_time_period);
+                register(&current_time_thread);
+                register(&block_slot_delay);
+                register(&network_current_version);
+                register(&db_change_history_size);
+                register(&db_change_versioning_history_size);
+                register(&module_lru_cache_memory_usage);
+                register(&active_history_total_event_len);
+                register(&readonly_queue_length);
+                register(&readonly_input_queue_length);
+                register(&readonly_requests_timed_out);
+                register(&readonly_requests_refused);
 
                 stopper = server::bind_metrics(addr);
             }
@@ -992,7 +1000,7 @@ impl MassaMetrics {
                     let label = format!("network_version_votes_{}", version);
                     let counter = IntGauge::new(label, "vote counter for network version").unwrap();
                     counter.set(count as i64);
-                    let _ = prometheus::register(Box::new(counter.clone()));
+                    register(&counter);
                     write.insert(version, counter);
                 }
             }
@@ -1049,12 +1057,49 @@ impl MassaMetrics {
                     peer_total_bytes_sent.inc_by(tx_peernet);
                     peer_total_bytes_receive.inc_by(rx_peernet);
 
-                    let _ = prometheus::register(Box::new(peer_total_bytes_receive.clone()));
-                    let _ = prometheus::register(Box::new(peer_total_bytes_sent.clone()));
+                    register(&peer_total_bytes_receive);
+                    register(&peer_total_bytes_sent);
 
                     write.insert(k, (peer_total_bytes_sent, peer_total_bytes_receive));
                 }
             }
         }
+    }
+}
+
+#[cfg(all(test, not(feature = "test-exports")))]
+mod tests {
+    use super::*;
+
+    /// The node creates a new `MassaMetrics` on every in-process restart (re-bootstrap after a
+    /// desync): the endpoint must then export the new collectors, not the previous ones.
+    #[test]
+    fn new_instance_replaces_the_previous_one_in_the_registry() {
+        let addr = "127.0.0.1:0".parse().unwrap();
+        let tick = Duration::from_secs(5);
+
+        let (first, mut first_stopper) = MassaMetrics::new(true, addr, 2, tick);
+        first.inc_executed_final_slot();
+        first.update_peers_tx_rx(HashMap::from([("peer".to_string(), (10, 10))]));
+        first_stopper.stop();
+
+        let (second, mut second_stopper) = MassaMetrics::new(true, addr, 2, tick);
+        for _ in 0..3 {
+            second.inc_executed_final_slot();
+        }
+        second.update_peers_tx_rx(HashMap::from([("peer".to_string(), (70, 70))]));
+        second_stopper.stop();
+
+        let exported = |name: &str| {
+            prometheus::gather()
+                .into_iter()
+                .find(|family| family.get_name() == name)
+                .unwrap_or_else(|| panic!("{} is not exported", name))
+                .get_metric()[0]
+                .get_counter()
+                .get_value()
+        };
+        assert_eq!(exported("executed_final_slot"), 3.0);
+        assert_eq!(exported("peer_total_bytes_sent_peer"), 70.0);
     }
 }
