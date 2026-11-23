@@ -5,7 +5,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use massa_models::{config::THREAD_COUNT, slot::Slot};
+use massa_models::{
+    config::THREAD_COUNT,
+    slot::{Slot, SLOT_KEY_SIZE},
+};
 use rocksdb::{DBCompressionType, Options, WriteBatch};
 
 /// Parse a block-dump file name of the form `block_slot_{thread}_{period}.bin`
@@ -123,6 +126,11 @@ fn oldest_kept_slot(slot: &Slot, max_blocks: u64) -> Option<Slot> {
 ///
 /// Every final slot is dumped (missed slots with an empty value), so retention
 /// keeps the last `max_blocks` slots: this needs no scan of the store on startup.
+///
+/// Retention assumes `write` is called with strictly increasing, consecutive
+/// slots (as final slots are): an out-of-order write below the window would
+/// never be evicted, and non-consecutive writes fall back to one range delete
+/// per write.
 pub struct RocksDBStorageBackend {
     db: rocksdb::DB,
     /// oldest slot kept, as of the last write since startup
@@ -165,7 +173,11 @@ impl StorageBackend for RocksDBStorageBackend {
                 // a downtime gap or a lowered `max_blocks`) or a gap in written
                 // slots: drop everything older than the window in one range delete
                 _ => {
-                    batch.delete_range(Slot::new(0, 0).to_bytes_key(), oldest_kept.to_bytes_key());
+                    batch.delete_range(Slot::min().to_bytes_key(), oldest_kept.to_bytes_key());
+                    // dumps above the written slot: dump folder reused after a network reset
+                    if let Ok(next) = slot.get_next_slot(THREAD_COUNT) {
+                        batch.delete_range(next.to_bytes_key(), [u8::MAX; SLOT_KEY_SIZE]);
+                    }
                     self.oldest_kept = Some(oldest_kept);
                 }
             }
@@ -318,6 +330,32 @@ mod tests {
             assert_eq!(storage.read(slot), None);
         }
         assert_eq!(storage.read(&recent), Some(value.clone()));
+    }
+
+    #[test]
+    fn rocksdb_backend_drops_dumps_above_written_slot_after_network_reset() {
+        let dir = tempfile::tempdir().unwrap();
+        let value = vec![1, 2, 3];
+        let old = [Slot::new(100, 0), Slot::new(100, 1), Slot::new(100, 2)];
+
+        {
+            let mut storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 3);
+            for slot in &old {
+                storage.write(slot, &value);
+            }
+        }
+        // dump folder reused after a network reset: periods restart from zero
+        let mut storage = RocksDBStorageBackend::new(dir.path().to_path_buf(), 3);
+        let new = [Slot::new(0, 0), Slot::new(0, 1), Slot::new(0, 2)];
+        for slot in &new {
+            storage.write(slot, &value);
+        }
+        for slot in &old {
+            assert_eq!(storage.read(slot), None);
+        }
+        for slot in &new {
+            assert_eq!(storage.read(slot), Some(value.clone()));
+        }
     }
 
     #[test]
