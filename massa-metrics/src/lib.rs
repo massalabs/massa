@@ -76,6 +76,12 @@ lazy_static! {
             "number of locally produced blocks where at least one pool read timed out during assembly"
         ).unwrap();
 
+        // static so that it survives the `MassaMetrics` re-creation done on every re-bootstrap
+        static ref BOOTSTRAP_COUNTER: IntCounter = register_int_counter!(
+            "bootstrap_counter",
+            "number of times our node (re-)bootstrapped"
+        ).unwrap();
+
 }
 
 pub fn inc_deferred_calls_registered() {
@@ -160,6 +166,7 @@ fn register_lazy_static_metrics() {
     lazy_static::initialize(&FACTORY_POOL_TIMEOUT_DENUNCIATIONS);
     lazy_static::initialize(&FACTORY_BLOCKS_PRODUCED);
     lazy_static::initialize(&FACTORY_BLOCKS_PRODUCED_WITH_POOL_TIMEOUT);
+    lazy_static::initialize(&BOOTSTRAP_COUNTER);
 }
 
 #[derive(Default)]
@@ -235,8 +242,6 @@ pub struct MassaMetrics {
     // number of autonomous SC messages executed as final
     sc_messages_final: IntCounter,
 
-    /// number of times our node (re-)bootstrapped
-    bootstrap_counter: IntCounter,
     /// number of times we successfully bootstrapped someone
     bootstrap_peers_success: IntCounter,
     /// number of times we failed/refused to bootstrap someone
@@ -417,11 +422,6 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        let bootstrap_counter = IntCounter::new(
-            "bootstrap_counter",
-            "number of times our node (re-)bootstrapped",
-        )
-        .unwrap();
         let bootstrap_success = IntCounter::new(
             "bootstrap_peers_success",
             "number of times we successfully bootstrapped someone",
@@ -643,7 +643,6 @@ impl MassaMetrics {
                 register(&executed_final_slot);
                 register(&executed_final_slot_with_block);
                 register(&active_history);
-                register(&bootstrap_counter);
                 register(&bootstrap_success);
                 register(&bootstrap_failed);
                 register(&process_available_processors);
@@ -686,7 +685,6 @@ impl MassaMetrics {
                 denunciations_pool,
                 async_message_pool_size,
                 sc_messages_final,
-                bootstrap_counter,
                 bootstrap_peers_success: bootstrap_success,
                 bootstrap_peers_failed: bootstrap_failed,
                 protocol_tester_success,
@@ -857,7 +855,7 @@ impl MassaMetrics {
     }
 
     pub fn inc_bootstrap_counter(&self) {
-        self.bootstrap_counter.inc();
+        BOOTSTRAP_COUNTER.inc();
     }
 
     pub fn inc_bootstrap_peers_success(&self) {
@@ -1067,39 +1065,51 @@ impl MassaMetrics {
     }
 }
 
-#[cfg(all(test, not(feature = "test-exports")))]
+#[cfg(test)]
 mod tests {
     use super::*;
+
+    fn exported(name: &str) -> f64 {
+        prometheus::gather()
+            .into_iter()
+            .find(|family| family.get_name() == name)
+            .unwrap_or_else(|| panic!("{} is not exported", name))
+            .get_metric()[0]
+            .get_counter()
+            .get_value()
+    }
 
     /// The node creates a new `MassaMetrics` on every in-process restart (re-bootstrap after a
     /// desync): the endpoint must then export the new collectors, not the previous ones.
     #[test]
-    fn new_instance_replaces_the_previous_one_in_the_registry() {
+    fn register_replaces_the_collector_of_the_previous_instance() {
+        let new_counter = || IntCounter::new("register_test_counter", "help").unwrap();
+
+        let first = new_counter();
+        register(&first);
+        first.inc();
+
+        let second = new_counter();
+        register(&second);
+        second.inc_by(3);
+
+        assert_eq!(exported("register_test_counter"), 3.0);
+    }
+
+    /// `bootstrap_counter` counts the re-bootstraps: it must not restart from zero with each new
+    /// `MassaMetrics`.
+    #[test]
+    fn bootstrap_counter_survives_a_new_instance() {
         let addr = "127.0.0.1:0".parse().unwrap();
         let tick = Duration::from_secs(5);
 
-        let (first, mut first_stopper) = MassaMetrics::new(true, addr, 2, tick);
-        first.inc_executed_final_slot();
-        first.update_peers_tx_rx(HashMap::from([("peer".to_string(), (10, 10))]));
-        first_stopper.stop();
+        MassaMetrics::new(false, addr, 2, tick)
+            .0
+            .inc_bootstrap_counter();
+        MassaMetrics::new(false, addr, 2, tick)
+            .0
+            .inc_bootstrap_counter();
 
-        let (second, mut second_stopper) = MassaMetrics::new(true, addr, 2, tick);
-        for _ in 0..3 {
-            second.inc_executed_final_slot();
-        }
-        second.update_peers_tx_rx(HashMap::from([("peer".to_string(), (70, 70))]));
-        second_stopper.stop();
-
-        let exported = |name: &str| {
-            prometheus::gather()
-                .into_iter()
-                .find(|family| family.get_name() == name)
-                .unwrap_or_else(|| panic!("{} is not exported", name))
-                .get_metric()[0]
-                .get_counter()
-                .get_value()
-        };
-        assert_eq!(exported("executed_final_slot"), 3.0);
-        assert_eq!(exported("peer_total_bytes_sent_peer"), 70.0);
+        assert_eq!(exported("bootstrap_counter"), 2.0);
     }
 }
