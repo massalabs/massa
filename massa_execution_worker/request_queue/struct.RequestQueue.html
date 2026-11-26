@@ -18,7 +18,7 @@ The contents of the incoming queue are appended last.
 Excess items with respect to <code>self.max_items</code> are canceled and dropped.</p>
 <h5 id="returns"><a class="doc-anchor" href="#returns">§</a>Returns</h5>
 <p>The number of incoming items cancelled because the queue was full</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.cancel" class="method"><a class="src rightside" href="../../src/massa_execution_worker/request_queue.rs.html#132-136">Source</a><h4 class="code-header">pub fn <a href="#method.cancel" class="fn">cancel</a>(&amp;mut self, err: <a class="enum" href="../../massa_execution_exports/error/enum.ExecutionError.html" title="enum massa_execution_exports::error::ExecutionError">ExecutionError</a>)</h4></section></summary><div class="docblock"><p>Cancel all queued items.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.cancel" class="method"><a class="src rightside" href="../../src/massa_execution_worker/request_queue.rs.html#132-136">Source</a><h4 class="code-header">pub fn <a href="#method.cancel" class="fn">cancel</a>(&amp;mut self, err: ExecutionError)</h4></section></summary><div class="docblock"><p>Cancel all queued items.</p>
 <h5 id="arguments-1"><a class="doc-anchor" href="#arguments-1">§</a>Arguments</h5>
 <ul>
 <li>err: the error to send through the response channel of cancelled items</li>
